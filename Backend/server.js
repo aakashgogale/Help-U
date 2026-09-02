@@ -157,6 +157,15 @@ app.get('/api/test/redis', async (req, res) => {
   }
 });
 
+// Root / Health Route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'Help-U Backend API is running live 🚀',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 
 app.use('/api/public/cities', require('./routes/public-routes/city.routes.js'));
