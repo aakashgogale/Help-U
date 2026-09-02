@@ -1,3 +1,109 @@
+# ==========================================
+# Environment Variables & Secrets (CRITICAL)
+# ==========================================
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+env.example*
+
+# Private keys & Certificates
+*.pem
+*.key
+*.pfx
+*.p12
+*.cert
+*.crt
+id_rsa
+id_ed25519
+
+# Firebase & Cloud Service Account Keys
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+firebase-service-account.json
+google-services.json
+GoogleService-Info.plist
+
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+*/node_modules/
+**/node_modules/
+.pnpm-store/
+
+# ==========================================
+# Build & Distribution Outputs
+# ==========================================
+dist/
+*/dist/
+**/dist/
+dist-ssr/
+build/
+*/build/
+**/build/
+out/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# ==========================================
+# Logs & Debugging
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# IDE & Editor Specific
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# Temporary & Local Scripts
+# ==========================================
+temp/
+tmp/
+*.tmp
+*.bak
+*.local
 branch_structure.json
+temp_*.bat
 temp_auto_push.bat
 temp_interactive_push.bat
+
+# ==========================================
+# Database / Local Storage Dumps
+# ==========================================
+data/
+*.sqlite
+*.sqlite3
+*.db

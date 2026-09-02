@@ -13,27 +13,33 @@ let isConnected = false;
  */
 const initRedis = () => {
   if (process.env.REDIS_ENABLED !== 'true') {
-    console.log('[Redis] Disabled via REDIS_ENABLED env variable');
+    console.log('[Redis] Disabled (REDIS_ENABLED is not true)');
     return null;
   }
 
   try {
     const redisUrl = process.env.REDIS_URL;
+    const redisOptions = {
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      lazyConnect: true,
+      retryStrategy: (times) => {
+        if (times > 3) {
+          console.log('[Redis] Max retries (3) reached. Running without Redis cache.');
+          return null; // Stop retrying
+        }
+        return Math.min(times * 300, 2000);
+      }
+    };
 
     if (redisUrl) {
-      redis = new Redis(redisUrl);
+      redis = new Redis(redisUrl, redisOptions);
     } else {
       redis = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT) || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
-        retryStrategy: (times) => {
-          if (times > 3) {
-            console.log('[Redis] Max retries reached, giving up');
-            return null;
-          }
-          return Math.min(times * 200, 2000);
-        }
+        ...redisOptions
       });
     }
 
@@ -50,6 +56,11 @@ const initRedis = () => {
     redis.on('close', () => {
       isConnected = false;
       console.log('[Redis] Connection closed');
+    });
+
+    // Attempt connection
+    redis.connect().catch((err) => {
+      console.warn('[Redis] Initial connection failed:', err.message);
     });
 
     return redis;
