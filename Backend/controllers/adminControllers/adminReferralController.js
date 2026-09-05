@@ -90,7 +90,7 @@ exports.approveAndRewardReferral = async (req, res) => {
 
     const referrer = referral.referrerId;
     if (!referrer) {
-      return res.status(404).json({ success: false, message: 'Referrer vendor account not found' });
+      return res.status(404).json({ success: false, message: 'Referrer worker account not found' });
     }
 
     // Determine final reward amount
@@ -113,7 +113,7 @@ exports.approveAndRewardReferral = async (req, res) => {
       amount: reward,
       status: 'completed',
       paymentMethod: 'wallet',
-      description: `Referral bonus for referring vendor ${referral.referredVendorId?.name || 'partner'}`,
+      description: `Referral bonus for referring worker ${referral.referredVendorId?.name || 'partner'}`,
       balanceBefore: currentEarnings,
       balanceAfter: updatedEarnings,
       metadata: {
@@ -134,7 +134,7 @@ exports.approveAndRewardReferral = async (req, res) => {
         vendorId: referrer._id,
         type: 'vendor_referral_rewarded',
         title: '💰 Referral Bonus Credited!',
-        message: `Congratulations! ₹${reward} referral bonus has been credited to your wallet for referring ${referral.referredVendorId?.name || 'a new vendor'}.`,
+        message: `Congratulations! ₹${reward} referral bonus has been credited to your wallet for referring ${referral.referredVendorId?.name || 'a new worker'}.`,
         relatedId: referral._id,
         relatedType: 'vendor'
       });

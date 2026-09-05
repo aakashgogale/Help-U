@@ -2,14 +2,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleMap, useJsApiLoader, DirectionsRenderer, OverlayView, PolylineF } from '@react-google-maps/api';
-import { FiArrowLeft, FiNavigation, FiMapPin, FiCrosshair, FiPhone, FiClock, FiCheckCircle, FiX, FiMaximize, FiMinimize, FiWifiOff, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi';
+import { GoogleMap, useJsApiLoader, OverlayView, PolylineF } from '@react-google-maps/api';
+import { FiArrowLeft, FiNavigation, FiMapPin, FiCrosshair, FiPhone, FiClock, FiCheckCircle, FiX, FiMaximize, FiMinimize, FiWifiOff, FiAlertTriangle, FiRefreshCw, FiTool, FiDollarSign } from 'react-icons/fi';
 import { FaMotorcycle } from 'react-icons/fa';
-import { getBookingById, verifySelfVisit } from '../../services/bookingService';
+import { getBookingById, verifySelfVisit, startSelfJob, vendorReached } from '../../services/bookingService';
 import VisitVerificationModal from '../../components/common/VisitVerificationModal';
 import vendorService from '../../../../services/vendorService';
 import { toast } from 'react-hot-toast';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
+import { computeRoute, formatDistance, formatDuration } from '../../../../utils/googleRoutes';
 
 // Simple toggle for the simulation button (Controlled via .env)
 const SHOW_SIMULATION_BUTTON = import.meta.env.VITE_ENABLE_MAP_SIMULATION === 'true';
@@ -46,7 +47,6 @@ const BookingMap = () => {
   const [coords, setCoords] = useState(null);
   const [map, setMap] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [directions, setDirections] = useState(null);
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
   const [routePath, setRoutePath] = useState([]);
@@ -356,33 +356,30 @@ const BookingMap = () => {
     if (isLoaded && currentLocation && coords && map && !directionsCalculatedRef.current) {
       directionsCalculatedRef.current = true; // Prevent recalculation
 
-      const directionsService = new window.google.maps.DirectionsService();
-      directionsService.route(
-        {
-          origin: currentLocation,
-          destination: coords,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            setDirections(result);
-            setRouteError(null);
-            const leg = result.routes[0].legs[0];
-            setDistance(leg.distance.text);
-            setDuration(leg.duration.text);
+      computeRoute(currentLocation, coords)
+        .then(({ distanceMeters, durationSeconds, path }) => {
+          setRouteError(null);
+          setDistance(formatDistance(distanceMeters));
+          setDuration(formatDuration(durationSeconds));
 
-            // Store full path and set initial state
-            fullRoutePathRef.current = result.routes[0].overview_path;
-            setRoutePath(result.routes[0].overview_path);
+          // Store full path and set initial state
+          fullRoutePathRef.current = path;
+          setRoutePath(path);
 
-            // Center on current location
-            map.setCenter(currentLocation);
-            map.setZoom(15);
-          } else {
-            setRouteError('Could not calculate a driving route to this location.');
-          }
-        }
-      );
+          // Center on current location
+          map.setCenter(currentLocation);
+          map.setZoom(15);
+        })
+        .catch((error) => {
+          console.error('[BookingMap] Route calculation failed:', error);
+          setRouteError(
+            error.message === 'NO_ROUTE'
+              ? 'Could not calculate a driving route to this location.'
+              : 'Route service is unavailable right now.'
+          );
+          // Allow a retry on the next render cycle
+          directionsCalculatedRef.current = false;
+        });
     }
   }, [isLoaded, coords, map, currentLocation]);
 
@@ -529,6 +526,34 @@ const BookingMap = () => {
 
   if (!isLoaded || loading) return <div className="h-screen bg-gray-100 flex items-center justify-center"><div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
+  const handleStartJourney = async () => {
+    try {
+      setActionLoading(true);
+      await startSelfJob(id);
+      toast.success('Journey Started! OTP sent to customer.');
+      setBooking(prev => ({ ...prev, status: 'journey_started' }));
+    } catch (err) {
+      console.error('Failed to start journey:', err);
+      toast.error(err.response?.data?.message || 'Failed to start journey');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReached = async () => {
+    try {
+      setActionLoading(true);
+      await vendorReached(id);
+      setIsVisitModalOpen(true);
+      toast.success('Customer notified! Please enter customer verification OTP.');
+    } catch (err) {
+      console.error('Failed to notify reached:', err);
+      setIsVisitModalOpen(true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col relative bg-white overflow-hidden">
       {/* Top Floating Header */}
@@ -647,33 +672,21 @@ const BookingMap = () => {
           onDragStart={() => setIsAutoCenter(false)}
           options={mapOptions}
         >
-          {directions && (
-            <>
-              <DirectionsRenderer
-                directions={directions}
-                options={{
-                  suppressMarkers: true,
-                  suppressPolylines: true
-                }}
-              />
-              <PolylineF
-                path={routePath}
-                options={{
-                  strokeColor: "#0F766E", // Dark Teal
-                  strokeWeight: 8,
-                  strokeOpacity: 1,
-                  zIndex: 50
-                }}
-              />
-            </>
+          {routePath && routePath.length > 0 && (
+            <PolylineF
+              path={routePath}
+              options={{
+                strokeColor: "#0F766E", // Dark Teal
+                strokeWeight: 8,
+                strokeOpacity: 1,
+                zIndex: 50
+              }}
+            />
           )}
 
           {destinationMarker}
           {riderMarker}
         </GoogleMap>
-
-        {/* Recenter Button */}
-
 
         {/* Full Screen Toggle Button */}
         <button
@@ -757,30 +770,73 @@ const BookingMap = () => {
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          {booking?.status === 'journey_started' && (
+          {(booking?.status === 'confirmed' || booking?.status === 'assigned' || booking?.status === 'accepted' || booking?.status === 'pending') && (
             <button
-              onClick={() => setIsVisitModalOpen(true)}
-              className="px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 transition-all active:scale-95"
+              onClick={handleStartJourney}
+              disabled={actionLoading}
+              className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30 transition-all active:scale-95 disabled:opacity-50"
             >
-              <FiCheckCircle className="w-5 h-5" /> Reached
+              <FiNavigation className="w-5 h-5" /> Start Journey
             </button>
           )}
 
-          {(booking?.userId?.phone || booking?.customerPhone) && (
-            <a href={`tel:${booking.userId?.phone || booking.customerPhone}`} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30 transition-all active:scale-95">
-              <FiPhone className="w-5 h-5" /> Call
+          {booking?.status === 'journey_started' && (
+            <button
+              onClick={handleReached}
+              disabled={actionLoading}
+              className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <FiCheckCircle className="w-5 h-5" /> Reached (Enter OTP)
+            </button>
+          )}
+
+          {(booking?.status === 'visited' || booking?.status === 'in_progress') && (
+            <button
+              onClick={() => navigate(`/worker/booking/${id}`)}
+              className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30 transition-all active:scale-95"
+            >
+              <FiTool className="w-5 h-5" /> Start Work / Bill
+            </button>
+          )}
+
+          {booking?.status === 'work_done' && (
+            <button
+              onClick={() => navigate(`/worker/booking/${id}`)}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
+            >
+              <FiDollarSign className="w-5 h-5" /> Collect Payment
+            </button>
+          )}
+
+          {booking?.status === 'completed' && (
+            <button
+              onClick={() => navigate(`/worker/booking/${id}`)}
+              className="flex-1 bg-gray-800 hover:bg-black text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+            >
+              <FiCheckCircle className="w-5 h-5" /> Job Completed
+            </button>
+          )}
+
+          {(booking?.userId?.phone || booking?.customerPhone || booking?.address?.phone) && (
+            <a
+              href={`tel:${booking.userId?.phone || booking.customerPhone || booking.address?.phone}`}
+              className="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+            >
+              <FiPhone className="w-5 h-5 text-teal-600" />
             </a>
           )}
+
           <button
             onClick={() => {
               const bAddr = booking?.address;
-              const addressStr = typeof bAddr === 'string' ? bAddr : `${bAddr.addressLine1 || ''}, ${bAddr.city || ''}`;
+              const addressStr = typeof bAddr === 'string' ? bAddr : `${bAddr?.addressLine1 || ''}, ${bAddr?.city || ''}`;
               const dest = coords ? `${coords.lat},${coords.lng}` : encodeURIComponent(addressStr);
               window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`, '_blank');
             }}
-            className="w-14 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl flex items-center justify-center transition-all active:scale-95"
+            className="w-14 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0"
+            title="Open in Google Maps"
           >
-            <FiNavigation className="w-6 h-6" />
+            <FiNavigation className="w-6 h-6 text-gray-600" />
           </button>
         </div>
       </div>
@@ -790,7 +846,7 @@ const BookingMap = () => {
         isOpen={isVisitModalOpen}
         onClose={() => setIsVisitModalOpen(false)}
         bookingId={id}
-        onSuccess={() => navigate(`/vendor/booking/${id}`)}
+        onSuccess={() => navigate(`/worker/booking/${id}`)}
       />
     </div>
   );

@@ -80,7 +80,7 @@ const WithdrawalRequest = () => {
         setIsBankSaved(true);
       } else {
         toast.error('Please add bank details and QR code first');
-        navigate('/vendor/bank-details', { replace: true, state: { redirectTo: '/vendor/wallet/withdraw' } });
+        navigate('/worker/bank-details', { replace: true, state: { redirectTo: '/worker/wallet/withdraw' } });
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -122,7 +122,7 @@ const WithdrawalRequest = () => {
       });
       toast.success('Request sent successfully!');
       window.dispatchEvent(new Event('vendorWalletUpdated'));
-      navigate('/vendor/wallet');
+      navigate('/worker/wallet');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Submission failed.');
     } finally {
@@ -230,7 +230,7 @@ const WithdrawalRequest = () => {
             </div>
             {isBankSaved && (
               <button
-                onClick={() => navigate('/vendor/bank-details')}
+                onClick={() => navigate('/worker/bank-details')}
                 className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all border border-gray-200 active:scale-95"
               >
                 <FiEdit2 className="w-4 h-4" />
@@ -289,7 +289,7 @@ const WithdrawalRequest = () => {
                     <div className="w-40 h-40 rounded-2xl border border-blue-100 bg-white p-2">
                       <img
                         src={bankAccount.qrCodeImage}
-                        alt="Vendor payout QR"
+                        alt="Worker payout QR"
                         className="w-full h-full object-contain rounded-xl"
                       />
                     </div>
@@ -308,7 +308,7 @@ const WithdrawalRequest = () => {
             <div className="bg-amber-50/60 rounded-2xl p-5 border border-amber-100">
               <p className="text-sm font-bold text-amber-900 mb-2">Bank details are required before withdrawal.</p>
               <button
-                onClick={() => navigate('/vendor/bank-details')}
+                onClick={() => navigate('/worker/bank-details')}
                 className="text-xs font-black uppercase tracking-wider text-white px-4 py-3 rounded-xl"
                 style={{ background: themeColors.button }}
               >

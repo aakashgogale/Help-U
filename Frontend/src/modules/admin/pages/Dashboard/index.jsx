@@ -167,7 +167,7 @@ const AdminDashboard = () => {
       link: '/admin/reports/revenue'
     },
     {
-      title: 'Vendor Earnings',
+      title: 'Worker Earnings',
       value: formatCurrency(stats.totalVendorEarnings || 0),
       change: 0,
       icon: FiBriefcase,
@@ -175,7 +175,7 @@ const AdminDashboard = () => {
       bgColor: 'bg-gradient-to-br from-cyan-500 to-sky-600',
       cardBg: 'bg-gradient-to-br from-cyan-50 to-sky-50',
       iconBg: 'bg-white/20',
-      link: '/admin/vendors/analytics'
+      link: '/admin/workers/analytics'
     },
     {
       title: 'GST Collected',
@@ -222,7 +222,7 @@ const AdminDashboard = () => {
       link: '/admin/users/analytics'
     },
     {
-      title: 'New Vendors',
+      title: 'New Workers',
       value: (stats.totalVendors || 0).toLocaleString(),
       change: 0,
       icon: FiBriefcase,
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
       bgColor: 'bg-gradient-to-br from-teal-500 to-cyan-600',
       cardBg: 'bg-gradient-to-br from-teal-50 to-cyan-50',
       iconBg: 'bg-white/20',
-      link: '/admin/vendors/analytics'
+      link: '/admin/workers/analytics'
     },
   ];
 

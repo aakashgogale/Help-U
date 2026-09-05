@@ -23,7 +23,7 @@ const BookingAlert = () => {
         if (!foundBooking) {
           // If not found in any local lists, it's likely already processed
           // Redirect to dashboard instead of showing fallback alert
-          navigate('/vendor/dashboard', { replace: true });
+          navigate('/worker/dashboard', { replace: true });
           return;
         }
         setBooking(foundBooking);
@@ -36,7 +36,7 @@ const BookingAlert = () => {
         }
       } catch (error) {
         console.error('Error loading booking:', error);
-        navigate('/vendor/dashboard', { replace: true });
+        navigate('/worker/dashboard', { replace: true });
       } finally {
         setLoading(false);
       }
@@ -51,8 +51,8 @@ const BookingAlert = () => {
 
     const handleBookingTaken = (data) => {
       if (String(data.bookingId) === String(id)) {
-        toast.error('This booking was just accepted by another vendor.', { icon: '⚡' });
-        navigate('/vendor/dashboard', { replace: true }); // Close modal immediately
+        toast.error('This booking was just accepted by another worker.', { icon: '⚡' });
+        navigate('/worker/dashboard', { replace: true }); // Close modal immediately
       }
     };
 
@@ -74,27 +74,27 @@ const BookingAlert = () => {
 
       window.dispatchEvent(new Event('vendorJobsUpdated'));
       toast.success('Booking accepted & assigned to you!');
-      navigate('/vendor/dashboard', { replace: true });
+      navigate('/worker/dashboard', { replace: true });
     } catch (error) {
       console.error('Error accepting:', error);
       toast.error('Failed to accept booking. It may have expired.');
-      navigate('/vendor/dashboard', { replace: true });
+      navigate('/worker/dashboard', { replace: true });
     }
   };
 
   const handleReject = async () => {
     try {
-      await rejectBooking(id, 'Vendor rejected');
+      await rejectBooking(id, 'Worker rejected');
 
       const pendingJobs = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
       const updated = pendingJobs.filter(job => job.id !== id);
       localStorage.setItem('vendorPendingJobs', JSON.stringify(updated));
 
       window.dispatchEvent(new Event('vendorJobsUpdated'));
-      navigate('/vendor/dashboard', { replace: true });
+      navigate('/worker/dashboard', { replace: true });
     } catch (error) {
       console.error('Error rejecting:', error);
-      navigate('/vendor/dashboard', { replace: true });
+      navigate('/worker/dashboard', { replace: true });
     }
   };
 
@@ -106,7 +106,7 @@ const BookingAlert = () => {
       booking={booking}
       onAccept={handleAccept}
       onReject={handleReject}
-      onMinimize={() => navigate('/vendor/dashboard', { replace: true })}
+      onMinimize={() => navigate('/worker/dashboard', { replace: true })}
       maxSearchTimeMins={maxSearchTime}
     />
   );

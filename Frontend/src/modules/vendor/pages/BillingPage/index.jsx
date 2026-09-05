@@ -175,11 +175,11 @@ const BillingPage = () => {
       }
 
       // 2. Load from Backend (if no draft or to get config)
-      const billRes = await vendorBillService.getBill(id);
+      const billRes = await vendorBillService.getBill(id).catch(() => ({ success: false }));
 
       // If we used draft, we still might want payout settings from backend bill
       // If NO draft, we use backend bill data
-      if (billRes.success && billRes.bill) {
+      if (billRes && billRes.success && billRes.bill) {
         if (!hasDraft) {
           setSelectedServices((billRes.bill.services || []).filter(s => !s.isOriginal));
           setSelectedParts(billRes.bill.parts || []);
@@ -212,21 +212,14 @@ const BillingPage = () => {
         else if (currentData.selectedServices?.length > 0) reachedStep = 2;
 
         setMaxStep(prev => Math.max(prev, reachedStep));
-      } else if (!hasDraft) {
-        // Fallback settings if no bill and no draft
-        // ... (existing settings fetch)
-      } else {
-        // Has draft but no backend bill - ok
       }
 
-      // Fallback settings logic (existing)
-      if (!billRes.success || !billRes.bill?.payoutConfig) {
+      // Fallback settings logic (safe api.get)
+      if (!billRes?.success || !billRes?.bill?.payoutConfig) {
         try {
-          const token = localStorage.getItem('vendorToken');
-          const res = await fetch('/api/vendors/settings', { headers: { Authorization: `Bearer ${token}` } });
-          const data = await res.json();
-          if (data.success && data.data?.global) {
-            const g = data.data.global;
+          const res = await api.get('/vendors/settings').catch(() => null);
+          if (res?.data?.success && res?.data?.data?.global) {
+            const g = res.data.data.global;
             setPayoutSettings({
               serviceGstPct: g.serviceGstPercentage ?? 18,
               partsGstPct: g.partsGstPercentage ?? 18,
@@ -234,7 +227,9 @@ const BillingPage = () => {
               partsPayoutPct: g.partsPayoutPercentage ?? 10
             });
           }
-        } catch (e) { console.error('Error fetching global settings:', e); }
+        } catch (e) {
+          console.error('Error fetching global settings:', e);
+        }
       }
 
     } catch (error) {
@@ -473,7 +468,7 @@ const BillingPage = () => {
         localStorage.removeItem(`billing_step_${id}`);
         localStorage.removeItem(`billing_max_step_${id}`);
         localStorage.removeItem(`billing_data_${id}`);
-        navigate(`/vendor/booking/${id}`);
+        navigate(`/worker/booking/${id}`);
       } else {
         toast.error(res.message || 'Failed to generate bill');
         setSubmitting(false);
@@ -568,7 +563,7 @@ const BillingPage = () => {
         localStorage.removeItem(`billing_max_step_${id}`);
         localStorage.removeItem(`billing_data_${id}`);
         fetchData();
-        navigate(`/vendor/booking/${id}`);
+        navigate(`/worker/booking/${id}`);
       } else {
         toast.error(res.message || 'Invalid OTP');
       }
@@ -623,7 +618,7 @@ const BillingPage = () => {
         localStorage.removeItem(`billing_max_step_${id}`);
         localStorage.removeItem(`billing_data_${id}`);
         fetchData();
-        navigate(`/vendor/booking/${id}`);
+        navigate(`/worker/booking/${id}`);
       } else {
         toast.error(res.message || 'Payment not yet confirmed');
       }
@@ -1420,6 +1415,10 @@ const BillingPage = () => {
         qrImageUrl={onlinePaymentData?.qrImageUrl}
         amount={calculations.remainingPayableAmount}
         onCheckStatus={checkPaymentStatus}
+        onSwitchToOtp={() => {
+          setShowQrModal(false);
+          setShowOtpModal(true);
+        }}
       />
     </div>
   );

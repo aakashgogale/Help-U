@@ -9,7 +9,7 @@ const initializeSocket = (server) => {
     pingTimeout: 60000,
     pingInterval: 25000,
     cors: {
-      origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'].filter(Boolean),
+      origin: [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'].filter(Boolean),
       credentials: true,
       methods: ["GET", "POST"]
     },

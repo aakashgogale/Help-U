@@ -19,7 +19,7 @@ const getTokenKeys = (url) => {
   if (window.location.pathname.startsWith('/admin')) {
     return { access: 'adminAccessToken', refresh: 'adminRefreshToken', role: 'admin' };
   }
-  if (window.location.pathname.startsWith('/vendor')) {
+  if (window.location.pathname.startsWith('/worker') || window.location.pathname.startsWith('/vendor')) {
     return { access: 'vendorAccessToken', refresh: 'vendorRefreshToken', role: 'vendor' };
   }
 
@@ -158,7 +158,7 @@ export const handleLogout = (role = null) => {
     // Determine role from path if not provided
     const path = window.location.pathname;
     if (path.startsWith('/admin')) role = 'admin';
-    else if (path.startsWith('/vendor')) role = 'vendor';
+    else if (path.startsWith('/worker') || path.startsWith('/vendor')) role = 'vendor';
     else role = 'user';
   }
 
@@ -176,8 +176,8 @@ export const handleLogout = (role = null) => {
 
   if (role === 'vendor') {
     clearTokens('vendor');
-    if (window.location.pathname !== '/vendor/login') {
-      window.location.href = '/vendor/login';
+    if (window.location.pathname !== '/worker/login' && window.location.pathname !== '/vendor/login') {
+      window.location.href = '/worker/login';
     }
   } else if (role === 'admin') {
     clearTokens('admin');

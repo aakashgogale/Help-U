@@ -331,8 +331,8 @@ const PaymentReports = () => {
     },
     {
       id: 'cod',
-      title: 'Cash Collected by Vendor',
-      description: 'Track cash collected by vendors vs commission owed. Identify high-risk vendors.',
+      title: 'Cash Collected by Worker',
+      description: 'Track cash collected by workers vs commission owed. Identify high-risk workers.',
       icon: FiAlertTriangle,
       color: 'orange',
       status: 'available'
@@ -348,7 +348,7 @@ const PaymentReports = () => {
           { key: 'bookingNumber', header: 'Booking ID' },
           { key: 'service', header: 'Service' },
           { key: 'customer', header: 'Customer' },
-          { key: 'vendor', header: 'Vendor' },
+          { key: 'vendor', header: 'Worker' },
           { key: 'amount', header: 'Amount', render: (val) => `₹${(val || 0).toLocaleString('en-IN')}` },
           { key: 'platformFee', header: 'Platform Fee', render: (val) => `₹${(val || 0).toLocaleString('en-IN')}` },
           { key: 'paymentMethod', header: 'Method' },
@@ -375,7 +375,7 @@ const PaymentReports = () => {
         ];
       case 'tds':
         return [
-          { key: 'vendorName', header: 'Vendor Name' },
+          { key: 'vendorName', header: 'Worker Name' },
           { key: 'panNumber', header: 'PAN Number' },
           { key: 'grossSales', header: 'Gross Sales', render: (val) => `₹${(val || 0).toLocaleString('en-IN')}` },
           { key: 'tdsRate', header: 'Rate (%)', render: (val) => `${val}%` },
@@ -384,7 +384,7 @@ const PaymentReports = () => {
         ];
       case 'cod':
         return [
-          { key: 'vendorName', header: 'Vendor Name' },
+          { key: 'vendorName', header: 'Worker Name' },
           { key: 'phone', header: 'Phone' },
           { key: 'totalCashCollected', header: 'Cash Collected', render: (val) => `₹${(val || 0).toLocaleString('en-IN')}` },
           {
@@ -446,9 +446,9 @@ const PaymentReports = () => {
           color="indigo"
         />
         <StatsCard
-          title="Vendor Earnings"
+          title="Worker Earnings"
           value={`₹${(overview?.revenue?.totalVendorEarnings || 0).toLocaleString('en-IN')}`}
-          subtitle="Total Vendors Gross"
+          subtitle="Total Workers Gross"
           icon={FiDollarSign}
           color="teal"
         />
@@ -457,28 +457,28 @@ const PaymentReports = () => {
         <StatsCard
           title="Settlements Received"
           value={`₹${(overview?.revenue?.totalSettlementReceived || 0).toLocaleString('en-IN')}`}
-          subtitle="Vendors paid Platform"
+          subtitle="Workers paid Platform"
           icon={FiTrendingUp}
           color="emerald"
         />
         <StatsCard
           title="Pending Settlements (Owed)"
           value={`₹${(overview?.revenue?.totalPendingSettlement || 0).toLocaleString('en-IN')}`}
-          subtitle="Vendors negative balance"
+          subtitle="Workers negative balance"
           icon={FiAlertTriangle}
           color="orange"
         />
         <StatsCard
           title="Payouts Completed"
           value={`₹${(overview?.revenue?.totalAmountPaidToVendors || 0).toLocaleString('en-IN')}`}
-          subtitle="Platform paid Vendors"
+          subtitle="Platform paid Workers"
           icon={FiCheck}
           color="blue"
         />
         <StatsCard
           title="Pending Payouts"
           value={`₹${(overview?.revenue?.totalPendingPayout || 0).toLocaleString('en-IN')}`}
-          subtitle="Vendors awaiting withdrawal"
+          subtitle="Workers awaiting withdrawal"
           icon={FiAlertTriangle}
           color="red"
         />
@@ -564,7 +564,7 @@ const PaymentReports = () => {
                 <>
                   <div><span className="text-gray-500">Total Gross Sales:</span> <span className="font-semibold">₹{(reportSummary.totalGrossSales || 0).toLocaleString('en-IN')}</span></div>
                   <div><span className="text-gray-500">Total TDS Liability:</span> <span className="font-semibold text-purple-600">₹{(reportSummary.totalTDS || 0).toFixed(2)}</span></div>
-                  <div><span className="text-gray-500">Vendors:</span> <span className="font-semibold">{reportSummary.vendorCount || 0}</span></div>
+                  <div><span className="text-gray-500">Workers:</span> <span className="font-semibold">{reportSummary.vendorCount || 0}</span></div>
                 </>
               )}
               {activeReport === 'cod' && (
@@ -578,7 +578,7 @@ const PaymentReports = () => {
                     <span className="font-semibold text-red-600 text-lg">₹{(reportSummary.totalOutstandingDues || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-xs">High Risk Vendors</span>
+                    <span className="text-gray-500 block text-xs">High Risk Workers</span>
                     <span className="font-semibold text-red-600 text-lg">{reportSummary.highRiskCount || 0}</span>
                   </div>
                 </div>
@@ -587,7 +587,7 @@ const PaymentReports = () => {
                 <>
                   <div><span className="text-gray-500">Total Amount:</span> <span className="font-semibold">₹{(reportSummary.totalAmount || 0).toLocaleString('en-IN')}</span></div>
                   <div><span className="text-gray-500">Platform Commission:</span> <span className="font-semibold text-green-600">₹{(reportSummary.totalCommission || 0).toLocaleString('en-IN')}</span></div>
-                  <div><span className="text-gray-500">Vendor Earnings:</span> <span className="font-semibold">₹{(reportSummary.totalVendorEarnings || 0).toLocaleString('en-IN')}</span></div>
+                  <div><span className="text-gray-500">Worker Earnings:</span> <span className="font-semibold">₹{(reportSummary.totalVendorEarnings || 0).toLocaleString('en-IN')}</span></div>
                 </>
               )}
             </div>
@@ -625,7 +625,7 @@ const PaymentReports = () => {
             <p className="font-semibold text-amber-800">Indian Tax Compliance Notes</p>
             <ul className="mt-2 text-amber-700 space-y-1">
               <li>• <strong>GSTR-1</strong>: Monthly sales return to be filed by the 11th of the following month.</li>
-              <li>• <strong>TDS u/s 194-O</strong>: 1% TDS on vendor gross sales (if annual sales exceed ₹5 Lakhs). Deposit by 7th of next month.</li>
+              <li>• <strong>TDS u/s 194-O</strong>: 1% TDS on worker gross sales (if annual sales exceed ₹5 Lakhs). Deposit by 7th of next month.</li>
               <li>• <strong>HSN/SAC Code 9988</strong>: Used for "Other Professional, Technical and Business Services".</li>
               <li>• This report is for reference. Please consult your CA for official filing.</li>
             </ul>

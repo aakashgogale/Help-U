@@ -11,7 +11,7 @@ exports.getVendorReferralDetails = async (req, res) => {
 
     let vendor = await Vendor.findById(vendorId);
     if (!vendor) {
-      return res.status(404).json({ success: false, message: 'Vendor not found' });
+      return res.status(404).json({ success: false, message: 'Worker not found' });
     }
 
     // Ensure vendor has a referralCode

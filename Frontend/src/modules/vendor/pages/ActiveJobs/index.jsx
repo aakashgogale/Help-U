@@ -87,9 +87,10 @@ const ActiveJobs = memo(() => {
   }, [filter, searchQuery, loadJobs]);
 
   useEffect(() => {
-    window.addEventListener('vendorJobsUpdated', () => loadJobs(filter, searchQuery));
+    const handleUpdate = () => loadJobs(filter, searchQuery);
+    window.addEventListener('vendorJobsUpdated', handleUpdate);
     return () => {
-      window.removeEventListener('vendorJobsUpdated', () => loadJobs(filter, searchQuery));
+      window.removeEventListener('vendorJobsUpdated', handleUpdate);
     };
   }, [loadJobs, filter, searchQuery]);
 
@@ -218,7 +219,7 @@ const ActiveJobs = memo(() => {
               return (
                 <div
                   key={job.id}
-                  onClick={() => navigate(`/vendor/booking/${job.id}`)}
+                  onClick={() => navigate(`/worker/booking/${job.id}`)}
                   className="rounded-xl p-4 shadow-lg cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
                   style={{
                     background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',

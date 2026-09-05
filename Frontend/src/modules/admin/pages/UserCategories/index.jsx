@@ -94,8 +94,10 @@ const UserCategories = () => {
           <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
           <Route path="sections" element={<ServicesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
           <Route path="brands" element={<BrandsPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="vendor-services" element={<VendorServicesPage />} />
-          <Route path="vendor-parts" element={<VendorPartsPage />} />
+          <Route path="worker-services" element={<VendorServicesPage />} />
+          <Route path="vendor-services" element={<Navigate to="../worker-services" replace />} />
+          <Route path="worker-parts" element={<VendorPartsPage />} />
+          <Route path="vendor-parts" element={<Navigate to="../worker-parts" replace />} />
           <Route path="*" element={<Navigate to="home" replace />} />
         </Routes>
       </motion.div>

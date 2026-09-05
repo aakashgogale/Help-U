@@ -235,7 +235,7 @@ exports.getVendorReport = async (req, res) => {
     });
   } catch (error) {
     console.error('Vendor report error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch vendor report' });
+    res.status(500).json({ success: false, message: 'Failed to fetch worker report' });
   }
 };
 

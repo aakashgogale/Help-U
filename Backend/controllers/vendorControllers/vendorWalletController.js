@@ -59,7 +59,7 @@ const getWallet = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -200,7 +200,7 @@ const recordCashCollection = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -213,7 +213,7 @@ const recordCashCollection = async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found or does not belong to this vendor'
+        message: 'Booking not found or does not belong to this worker'
       });
     }
 
@@ -377,7 +377,7 @@ const requestSettlement = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -490,7 +490,7 @@ const createSettlementOrder = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -602,7 +602,7 @@ const verifySettlementPayment = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -691,7 +691,7 @@ const requestWithdrawal = async (req, res) => {
     }
 
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     const currentEarnings = vendor.wallet?.earnings || 0;
 
@@ -812,7 +812,7 @@ const getWalletSummary = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 

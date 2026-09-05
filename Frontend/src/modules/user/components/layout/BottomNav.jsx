@@ -4,6 +4,7 @@ import { FiHome, FiGift, FiShoppingCart, FiUser, FiTrash2, FiCalendar } from 're
 import { HiHome, HiGift, HiShoppingCart, HiUser, HiTrash, HiCalendar } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../../../context/CartContext';
+import { useConfig } from '../../../../context/ConfigContext';
 
 // Colorful theme for each nav item
 const navItemColors = {
@@ -44,15 +45,19 @@ const BottomNav = React.memo(() => {
   const location = useLocation();
   const navRef = useRef(null);
   const { cartCount } = useCart();
+  const { isScrapEnabled } = useConfig();
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
-  const navItems = useMemo(() => [
-    { id: 'home', label: 'Home', icon: FiHome, filledIcon: HiHome, path: '/user' },
-    { id: 'bookings', label: 'Bookings', icon: FiCalendar, filledIcon: HiCalendar, path: '/user/my-bookings' },
-    { id: 'scrap', label: 'Scrap', icon: FiTrash2, filledIcon: HiTrash, path: '/user/scrap' },
-    { id: 'cart', label: 'Cart', icon: FiShoppingCart, filledIcon: HiShoppingCart, path: '/user/cart', isCart: true },
-    { id: 'account', label: 'Account', icon: FiUser, filledIcon: HiUser, path: '/user/account' },
-  ], []);
+  const navItems = useMemo(() => {
+    const items = [
+      { id: 'home', label: 'Home', icon: FiHome, filledIcon: HiHome, path: '/user' },
+      { id: 'bookings', label: 'Bookings', icon: FiCalendar, filledIcon: HiCalendar, path: '/user/my-bookings' },
+      ...(isScrapEnabled ? [{ id: 'scrap', label: 'Scrap', icon: FiTrash2, filledIcon: HiTrash, path: '/user/scrap' }] : []),
+      { id: 'cart', label: 'Cart', icon: FiShoppingCart, filledIcon: HiShoppingCart, path: '/user/cart', isCart: true },
+      { id: 'account', label: 'Account', icon: FiUser, filledIcon: HiUser, path: '/user/account' },
+    ];
+    return items;
+  }, [isScrapEnabled]);
 
   const getActiveTab = () => {
     if (location.pathname === '/user' || location.pathname === '/user/') return 'home';

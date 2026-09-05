@@ -39,10 +39,10 @@ const BottomNav = memo(() => {
     const badgeCount = pendingJobsCount;
 
     return [
-      { path: '/vendor/dashboard', icon: FiHome, activeIcon: HiHome, label: 'Home' },
-      { path: '/vendor/jobs', icon: FiBriefcase, activeIcon: HiBriefcase, label: 'Jobs', badge: badgeCount },
-      { path: '/vendor/wallet', icon: FaWallet, activeIcon: FaWallet, label: 'Wallet' },
-      { path: '/vendor/profile', icon: FiUser, activeIcon: HiUser, label: 'Profile' },
+      { path: '/worker/dashboard', icon: FiHome, activeIcon: HiHome, label: 'Home' },
+      { path: '/worker/jobs', icon: FiBriefcase, activeIcon: HiBriefcase, label: 'Jobs', badge: badgeCount },
+      { path: '/worker/wallet', icon: FaWallet, activeIcon: FaWallet, label: 'Wallet' },
+      { path: '/worker/profile', icon: FiUser, activeIcon: HiUser, label: 'Profile' },
     ];
   }, [pendingJobsCount]);
 
@@ -54,6 +54,8 @@ const BottomNav = memo(() => {
 
   // Hide nav when specific routes are active (booking alerts, maps)
   const hideNavRoutes = [
+    '/worker/booking-alert/',
+    '/worker/booking/',
     '/vendor/booking-alert/',
     '/vendor/booking/',
   ];
@@ -91,7 +93,7 @@ const BottomNav = memo(() => {
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path ||
-            (item.path === '/vendor/dashboard' && location.pathname === '/vendor');
+            (item.path === '/worker/dashboard' && (location.pathname === '/worker' || location.pathname === '/vendor'));
           const IconComponent = isActive ? item.activeIcon : item.icon;
 
           return (

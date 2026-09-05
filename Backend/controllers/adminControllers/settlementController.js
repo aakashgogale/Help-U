@@ -97,7 +97,7 @@ const getVendorLedger = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -138,7 +138,7 @@ const getVendorLedger = async (req, res) => {
     console.error('Get vendor ledger error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendor ledger'
+      message: 'Failed to fetch worker ledger'
     });
   }
 };
@@ -216,7 +216,7 @@ const approveSettlement = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -453,14 +453,14 @@ const blockVendor = async (req, res) => {
     const { reason } = req.body;
 
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     vendor.wallet.isBlocked = true;
     vendor.wallet.blockedAt = new Date();
     vendor.wallet.blockReason = reason || 'Blocked by admin due to pending dues.';
     await vendor.save();
 
-    res.status(200).json({ success: true, message: 'Vendor blocked successfully' });
+    res.status(200).json({ success: true, message: 'Worker blocked successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -474,14 +474,14 @@ const unblockVendor = async (req, res) => {
     const { vendorId } = req.params;
 
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     vendor.wallet.isBlocked = false;
     vendor.wallet.blockedAt = null;
     vendor.wallet.blockReason = null;
     await vendor.save();
 
-    res.status(200).json({ success: true, message: 'Vendor unblocked successfully' });
+    res.status(200).json({ success: true, message: 'Worker unblocked successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -500,7 +500,7 @@ const updateCashLimit = async (req, res) => {
     }
 
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     vendor.wallet.cashLimit = limit;
 
@@ -592,7 +592,7 @@ module.exports = {
       if (withdrawal.status !== 'pending') return res.status(400).json({ success: false, message: 'Not pending' });
 
       const vendor = await Vendor.findById(withdrawal.vendorId);
-      if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+      if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
       if (vendor.wallet.earnings < withdrawal.amount) {
         return res.status(400).json({

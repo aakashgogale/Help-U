@@ -39,7 +39,7 @@ const Dashboard = memo(() => {
     rating: 0,
   });
   const [vendorProfile, setVendorProfile] = useState({
-    name: 'Vendor Name',
+    name: 'Worker Name',
     businessName: 'Business Name',
     photo: null,
     service: [],
@@ -204,7 +204,7 @@ const Dashboard = memo(() => {
     // Load vendor profile from localStorage (once)
     const profile = JSON.parse(localStorage.getItem('vendorData') || '{}');
     setVendorProfile({
-      name: profile.name || 'Vendor Name',
+      name: profile.name || 'Worker Name',
       businessName: profile.businessName || 'Business Name',
       photo: profile.profilePhoto || null,
       service: profile.service || [],
@@ -372,7 +372,7 @@ const Dashboard = memo(() => {
       title: 'Active Jobs',
       icon: FiBriefcase,
       color: '#00a6a6',
-      path: '/vendor/jobs',
+      path: '/worker/jobs',
       count: stats.activeJobs,
       subtitle: `${stats.activeJobs} running`,
     },
@@ -380,7 +380,7 @@ const Dashboard = memo(() => {
       title: 'Wallet',
       icon: FaWallet,
       color: '#F59E0B',
-      path: '/vendor/wallet',
+      path: '/worker/wallet',
       subtitle: `₹${stats.totalEarnings.toLocaleString()} total`,
     },
   ], [stats.activeJobs, stats.totalEarnings]);
@@ -473,7 +473,7 @@ const Dashboard = memo(() => {
         <div className="px-4 pt-4 pb-2">
           <div
             className="rounded-2xl p-4 cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
-            onClick={() => navigate('/vendor/profile')}
+            onClick={() => navigate('/worker/profile')}
             style={{
               background: themeColors.button,
               border: `2px solid ${themeColors.button}`,
@@ -559,7 +559,7 @@ const Dashboard = memo(() => {
         {(!vendorProfile.service || vendorProfile.service.length === 0) && (
           <div className="px-4 pt-2 -mb-2">
             <div
-              onClick={() => navigate('/vendor/profile')}
+              onClick={() => navigate('/worker/profile')}
               className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r shadow-sm cursor-pointer hover:bg-orange-100 transition-colors"
             >
               <div className="flex items-center">
@@ -697,7 +697,7 @@ const Dashboard = memo(() => {
           {/* Refer & Earn Promotional Card */}
           {globalConfig.vendorReferralEnabled !== false && (
             <div
-              onClick={() => navigate('/vendor/refer-earn')}
+              onClick={() => navigate('/worker/refer-earn')}
               className="rounded-2xl p-4 bg-gradient-to-r from-[#2b6573] to-[#347989] text-white shadow-lg cursor-pointer active:scale-98 transition-all relative overflow-hidden flex items-center justify-between"
             >
               <div className="flex items-center gap-3.5 z-10">
@@ -709,7 +709,7 @@ const Dashboard = memo(() => {
                     Refer & Earn
                   </span>
                   <h3 className="text-sm font-extrabold text-white mt-1">
-                    Invite Vendors & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
+                    Invite Workers & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
                   </h3>
                   <p className="text-[11px] text-teal-100 font-medium">Get cash reward directly into your wallet</p>
                 </div>
@@ -726,7 +726,7 @@ const Dashboard = memo(() => {
               <h2 className="text-lg font-bold text-gray-800">Active Jobs</h2>
               {recentJobs.length > 0 && (
                 <button
-                  onClick={() => navigate('/vendor/jobs')}
+                  onClick={() => navigate('/worker/jobs')}
                   className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 active:scale-95"
                   style={{
                     background: `linear-gradient(135deg, ${themeColors.button} 0%, ${themeColors.button}dd 100%)`,
@@ -756,7 +756,7 @@ const Dashboard = memo(() => {
                   return (
                     <div
                       key={job.id}
-                      onClick={() => navigate(`/vendor/booking/${job.id}`)}
+                      onClick={() => navigate(`/worker/booking/${job.id}`)}
                       className="bg-white rounded-xl shadow-lg cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
                       style={{
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.08)',
@@ -842,7 +842,7 @@ const Dashboard = memo(() => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/vendor/booking/${job.id}`);
+                              navigate(`/worker/booking/${job.id}`);
                             }}
                             className="p-2 rounded-lg flex-shrink-0 transition-all duration-300 active:scale-95"
                             style={{

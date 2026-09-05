@@ -59,7 +59,7 @@ const ReferEarn = () => {
 
   const getShareLink = () => {
     const origin = window.location.origin;
-    return `${origin}/vendor/signup?ref=${data.referralCode}`;
+    return `${origin}/worker/signup?ref=${data.referralCode}`;
   };
 
   const handleCopyCode = () => {
@@ -71,19 +71,19 @@ const ReferEarn = () => {
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Hey! Join Help U as a verified vendor to get more bookings and grow your business.\n\nUse my Referral Code: *${data.referralCode}*\nSign up here: ${getShareLink()}`;
+    const text = `Hey! Join Help U as a verified worker to get more bookings and grow your business.\n\nUse my Referral Code: *${data.referralCode}*\nSign up here: ${getShareLink()}`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
   const handleNativeShare = async () => {
-    const text = `Join Help U as a verified service vendor! Use my referral code: ${data.referralCode}`;
+    const text = `Join Help U as a verified service worker partner! Use my referral code: ${data.referralCode}`;
     const link = getShareLink();
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join Help U as a Vendor',
+          title: 'Join Help U as a Worker Partner',
           text,
           url: link
         });
@@ -112,7 +112,7 @@ const ReferEarn = () => {
           </button>
           <div>
             <h1 className="text-lg font-black text-gray-900 leading-tight">Refer & Earn</h1>
-            <p className="text-[11px] text-gray-500 font-medium">Invite vendors & earn rewards</p>
+            <p className="text-[11px] text-gray-500 font-medium">Invite workers & earn rewards</p>
           </div>
         </div>
         <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
@@ -135,11 +135,11 @@ const ReferEarn = () => {
 
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-amber-300 border border-white/20">
-              <FiAward className="w-3.5 h-3.5" /> Vendor Referral Program
+              <FiAward className="w-3.5 h-3.5" /> Worker Referral Program
             </div>
 
             <h2 className="text-2xl font-black leading-tight">
-              Earn <span className="text-amber-300">₹{data.rewardPerReferral}</span> for every vendor you invite!
+              Earn <span className="text-amber-300">₹{data.rewardPerReferral}</span> for every worker you invite!
             </h2>
 
             <p className="text-xs text-teal-100 font-medium leading-relaxed">
@@ -226,7 +226,7 @@ const ReferEarn = () => {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-gray-900">Share your referral code</h4>
-                <p className="text-[11px] text-gray-500">Send your link or code to other service vendors & contractors.</p>
+                <p className="text-[11px] text-gray-500">Send your link or code to other service workers & technicians.</p>
               </div>
             </div>
 
@@ -235,7 +235,7 @@ const ReferEarn = () => {
                 2
               </div>
               <div>
-                <h4 className="text-xs font-bold text-gray-900">New vendor registers</h4>
+                <h4 className="text-xs font-bold text-gray-900">New worker registers</h4>
                 <p className="text-[11px] text-gray-500">They register using your code and upload required documents.</p>
               </div>
             </div>
@@ -277,7 +277,7 @@ const ReferEarn = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-bold text-gray-900 truncate">
-                        {item.referredVendor?.name || 'Registered Vendor'}
+                        {item.referredVendor?.name || 'Registered Worker'}
                       </p>
                       <span className="text-[10px] text-gray-400 font-medium">
                         {item.referredVendor?.phone ? `(${item.referredVendor.phone})` : ''}

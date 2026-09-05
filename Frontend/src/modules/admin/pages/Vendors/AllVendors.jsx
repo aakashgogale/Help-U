@@ -47,11 +47,11 @@ const AllVendors = () => {
         }));
         setVendors(transformedVendors);
       } else {
-        toast.error(response.message || 'Failed to load vendors');
+        toast.error(response.message || 'Failed to load workers');
       }
     } catch (error) {
-      console.error('Error loading vendors:', error);
-      toast.error('Failed to load vendors. Please try again.');
+      console.error('Error loading workers:', error);
+      toast.error('Failed to load workers. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -82,13 +82,13 @@ const AllVendors = () => {
         setVendors(prev => prev.map(v =>
           v.id === vendorId ? { ...v, approvalStatus: 'approved' } : v
         ));
-        toast.success('Vendor approved successfully!');
+        toast.success('Worker approved successfully!');
       } else {
-        toast.error(response.message || 'Failed to approve vendor');
+        toast.error(response.message || 'Failed to approve worker');
       }
     } catch (error) {
-      console.error('Error approving vendor:', error);
-      toast.error('Failed to approve vendor. Please try again.');
+      console.error('Error approving worker:', error);
+      toast.error('Failed to approve worker. Please try again.');
     }
   };
 
@@ -99,13 +99,13 @@ const AllVendors = () => {
         setVendors(prev => prev.map(v =>
           v.id === vendorId ? { ...v, approvalStatus: 'rejected' } : v
         ));
-        toast.success('Vendor rejected successfully.');
+        toast.success('Worker rejected successfully.');
       } else {
-        toast.error(response.message || 'Failed to reject vendor');
+        toast.error(response.message || 'Failed to reject worker');
       }
     } catch (error) {
-      console.error('Error rejecting vendor:', error);
-      toast.error('Failed to reject vendor. Please try again.');
+      console.error('Error rejecting worker:', error);
+      toast.error('Failed to reject worker. Please try again.');
     }
   };
 
@@ -117,18 +117,18 @@ const AllVendors = () => {
         setVendors(prev => prev.map(v =>
           v.id === vendorId ? { ...v, isActive: newStatus } : v
         ));
-        toast.success(`Vendor ${newStatus ? 'activated' : 'deactivated'} successfully`);
+        toast.success(`Worker ${newStatus ? 'activated' : 'deactivated'} successfully`);
       } else {
-        toast.error(response.message || 'Failed to update vendor status');
+        toast.error(response.message || 'Failed to update worker status');
       }
     } catch (error) {
-      console.error('Error toggling vendor status:', error);
+      console.error('Error toggling worker status:', error);
       toast.error('Failed to update status');
     }
   };
 
   const handleDelete = async (vendorId) => {
-    if (!window.confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this worker? This action cannot be undone.')) {
       return;
     }
 
@@ -136,13 +136,13 @@ const AllVendors = () => {
       const response = await adminVendorService.deleteVendor(vendorId);
       if (response.success) {
         setVendors(prev => prev.filter(v => v.id !== vendorId));
-        toast.success('Vendor deleted successfully');
+        toast.success('Worker deleted successfully');
       } else {
-        toast.error(response.message || 'Failed to delete vendor');
+        toast.error(response.message || 'Failed to delete worker');
       }
     } catch (error) {
-      console.error('Error deleting vendor:', error);
-      toast.error('Failed to delete vendor');
+      console.error('Error deleting worker:', error);
+      toast.error('Failed to delete worker');
     }
   };
 
@@ -173,8 +173,8 @@ const AllVendors = () => {
     <div className="space-y-4">
       <CardShell
         icon={FiFilter}
-        title="Vendor Management"
-        subtitle="Manage and verify platform vendors"
+        title="Worker Management"
+        subtitle="Manage and verify platform workers"
       >
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -198,7 +198,7 @@ const AllVendors = () => {
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search vendors..."
+              placeholder="Search workers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-xs"
@@ -226,8 +226,8 @@ const AllVendors = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vendor Details</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Business Info</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Worker Details</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Business / Skill Info</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -235,11 +235,11 @@ const AllVendors = () => {
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr>
-                    <td colSpan="4" className="px-4 py-8 text-center text-xs text-gray-500">Loading vendors...</td>
+                    <td colSpan="4" className="px-4 py-8 text-center text-xs text-gray-500">Loading workers...</td>
                   </tr>
                 ) : filteredVendors.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="px-4 py-8 text-center text-xs text-gray-500">No vendors found</td>
+                    <td colSpan="4" className="px-4 py-8 text-center text-xs text-gray-500">No workers found</td>
                   </tr>
                 ) : (
                   filteredVendors.map((vendor) => (
@@ -307,11 +307,11 @@ const AllVendors = () => {
                             </>
                           )}
 
-                          {/* Delete Vendor */}
+                          {/* Delete Worker */}
                           <button
                             onClick={() => handleDelete(vendor.id)}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Vendor"
+                            title="Delete Worker"
                           >
                             <FiTrash2 className="w-3.5 h-3.5" />
                           </button>
@@ -326,25 +326,25 @@ const AllVendors = () => {
         </div>
       </CardShell >
 
-      {/* View Vendor Details Modal */}
+      {/* View Worker Details Modal */}
       < Modal
         isOpen={isViewModalOpen}
         onClose={() => {
           setIsViewModalOpen(false);
           setSelectedVendor(null);
         }}
-        title="Vendor Details"
+        title="Worker Details"
         size="lg"
       >
         {selectedVendor && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Business Name</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Business / Agency Name</label>
                 <div className="text-gray-900">{selectedVendor.businessName || 'N/A'}</div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Owner Name</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Worker Name</label>
                 <div className="text-gray-900">{selectedVendor.name}</div>
               </div>
               <div>
@@ -360,7 +360,7 @@ const AllVendors = () => {
                 <div className="text-gray-900 font-mono font-medium">{selectedVendor.pan || 'N/A'}</div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">GSTIN</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">GSTIN (Optional)</label>
                 <div className="text-gray-900 font-mono font-medium">{selectedVendor.gstin || 'Not Provided (Optional)'}</div>
               </div>
               <div>
@@ -452,7 +452,7 @@ const AllVendors = () => {
                   className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <FiCheck className="w-5 h-5" />
-                  Approve Vendor
+                  Approve Worker
                 </button>
                 <button
                   onClick={async () => {
@@ -463,7 +463,7 @@ const AllVendors = () => {
                   className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <FiX className="w-5 h-5" />
-                  Reject Vendor
+                  Reject Worker
                 </button>
               </div>
             )}

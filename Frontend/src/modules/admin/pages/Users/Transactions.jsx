@@ -225,7 +225,7 @@ const Transactions = () => {
                             {tx.userId?.name || tx.bookingId?.userId?.name || tx.vendorId?.businessName || tx.vendorId?.name || 'Guest'}
                           </span>
                           {(tx.userId || tx.bookingId?.userId) && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
-                          {tx.vendorId && <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">Vendor</span>}
+                          {tx.vendorId && <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">Worker</span>}
                         </div>
                         <span className="text-xs text-gray-500">
                           {tx.userId?.email || tx.vendorId?.email || ''}

@@ -23,7 +23,7 @@ const BankDetails = () => {
   const [bankDetails, setBankDetails] = useState(emptyBankDetails);
   const [qrFile, setQrFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const redirectTo = location.state?.redirectTo || '/vendor/profile';
+  const redirectTo = location.state?.redirectTo || '/worker/profile';
 
   useLayoutEffect(() => {
     const html = document.documentElement;

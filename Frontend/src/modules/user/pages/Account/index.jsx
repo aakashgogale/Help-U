@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
 import { userAuthService } from '../../../../services/authService';
+import { useConfig } from '../../../../context/ConfigContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { motion } from 'framer-motion';
 import {
@@ -30,6 +31,7 @@ import NotificationBell from '../../components/common/NotificationBell';
 
 const Account = () => {
   const navigate = useNavigate();
+  const { isScrapEnabled } = useConfig();
   const [userProfile, setUserProfile] = useState({
     name: 'Verified Customer',
     phone: '',
@@ -370,11 +372,13 @@ const Account = () => {
           {/* Shopping */}
           <motion.div variants={itemVariants} className="mb-6">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2">Shopping</h3>
-            <MenuItem
-              icon={FiShoppingBag}
-              label="Scrap Deals"
-              onClick={() => navigate('/user/scrap')}
-            />
+            {isScrapEnabled && (
+              <MenuItem
+                icon={FiShoppingBag}
+                label="Scrap Deals"
+                onClick={() => navigate('/user/scrap')}
+              />
+            )}
             <MenuItem
               icon={FiFileText}
               label="My Plans"

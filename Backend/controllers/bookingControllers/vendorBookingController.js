@@ -6,6 +6,10 @@ const { createNotification } = require('../notificationControllers/notificationC
 const { sendNotificationToUser, sendNotificationToVendor } = require('../../services/firebaseAdmin');
 
 const ADVANCE_REQUEST_ALLOWED_STATUSES = [
+  BOOKING_STATUS.CONFIRMED,
+  BOOKING_STATUS.ACCEPTED,
+  BOOKING_STATUS.ASSIGNED,
+  BOOKING_STATUS.JOURNEY_STARTED,
   BOOKING_STATUS.VISITED,
   BOOKING_STATUS.IN_PROGRESS
 ];
@@ -238,7 +242,7 @@ const acceptBooking = async (req, res) => {
         }
         return res.status(409).json({ // 409 Conflict
           success: false,
-          message: 'Sorry, this job has already been accepted by another vendor.'
+          message: 'Sorry, this job has already been accepted by another worker.'
         });
       }
       return res.status(400).json({
@@ -312,7 +316,7 @@ const acceptBooking = async (req, res) => {
       io.to(`user_${booking.userId}`).emit('booking_updated', {
         bookingId: booking._id,
         status: booking.status,
-        message: 'Vendor has accepted your request'
+        message: 'Worker has accepted your request'
       });
     }
 
@@ -428,14 +432,14 @@ const rejectBooking = async (req, res) => {
       booking.status = BOOKING_STATUS.REJECTED;
       booking.cancelledAt = new Date();
       booking.cancelledBy = 'system';
-      booking.cancellationReason = 'No vendors available';
+      booking.cancellationReason = 'No workers available';
 
-      // Notify user that no vendors are available
+      // Notify user that no workers are available
       await createNotification({
         userId: booking.userId,
         type: 'booking_rejected',
-        title: 'No Vendors Available',
-        message: `Sorry, no vendors are available for booking ${booking.bookingNumber}. Please try again later.`,
+        title: 'No Workers Available',
+        message: `Sorry, no workers are available for booking ${booking.bookingNumber}. Please try again later.`,
         relatedId: booking._id,
         relatedType: 'booking',
         pushData: {
@@ -648,15 +652,9 @@ const startSelfJob = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    if (booking.status !== BOOKING_STATUS.CONFIRMED && booking.status !== BOOKING_STATUS.ASSIGNED) {
-      // Allow ASSIGNED if we consider "Self Assigned" as a state? 
-      // But lets allow generic flow.
-    }
-
-    // Status Check
-    const allowed = [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.ASSIGNED, BOOKING_STATUS.AWAITING_PAYMENT];
-    if (!allowed.includes(booking.status) && booking.status !== BOOKING_STATUS.ACCEPTED) { // flexible
-      // check strict
+    // If journey already started, return current state
+    if (booking.status === BOOKING_STATUS.JOURNEY_STARTED) {
+      return res.status(200).json({ success: true, message: 'Journey already started', data: booking });
     }
 
     // Generate Visit OTP
@@ -666,7 +664,7 @@ const startSelfJob = async (req, res) => {
     booking.status = BOOKING_STATUS.JOURNEY_STARTED;
     booking.journeyStartedAt = new Date();
     booking.visitOtp = otp;
-    booking.assignedAt = new Date(); // Implicitly assigned to self now
+    booking.assignedAt = booking.assignedAt || new Date();
 
     await booking.save();
 
@@ -675,8 +673,8 @@ const startSelfJob = async (req, res) => {
     await createNotification({
       userId: booking.userId,
       type: 'journey_started',
-      title: 'Vendor Started Journey',
-      message: `Vendor is on the way! OTP for verification: ${otp}.`,
+      title: 'Worker Started Journey',
+      message: `Worker is on the way! OTP for verification: ${otp}.`,
       relatedId: booking._id,
       relatedType: 'booking',
       priority: 'high',
@@ -688,10 +686,6 @@ const startSelfJob = async (req, res) => {
       }
     });
 
-    // Send FCM push notification to user
-    // Manual push removed - auto handled by createNotification
-    // sendNotificationToUser(booking.userId, { ... });
-
     const io = req.app.get('io');
     if (io) {
       io.to(`user_${booking.userId}`).emit('booking_updated', {
@@ -699,7 +693,6 @@ const startSelfJob = async (req, res) => {
         status: BOOKING_STATUS.JOURNEY_STARTED,
         visitOtp: otp
       });
-      // Socket notification removed - createNotification already handles this
     }
 
     res.status(200).json({ success: true, message: 'Journey started, OTP sent', data: booking });
@@ -725,19 +718,23 @@ const vendorReachedLocation = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    if (booking.status !== BOOKING_STATUS.JOURNEY_STARTED) {
-      return res.status(400).json({ success: false, message: 'Journey not started yet' });
+    let otp = booking.visitOtp;
+    if (!otp) {
+      otp = Math.floor(1000 + Math.random() * 9000).toString();
+      booking.visitOtp = otp;
+      if (booking.status !== BOOKING_STATUS.JOURNEY_STARTED && booking.status !== BOOKING_STATUS.VISITED) {
+        booking.status = BOOKING_STATUS.JOURNEY_STARTED;
+      }
+      await booking.save();
     }
-
-    const otp = booking.visitOtp;
 
     // Notify user
     const { createNotification } = require('../notificationControllers/notificationController');
     await createNotification({
       userId: booking.userId,
       type: 'vendor_reached',
-      title: 'Vendor has Reached!',
-      message: `Vendor has reached your location. Please share this OTP: ${otp}`,
+      title: 'Worker has Reached!',
+      message: `Worker has reached your location. Please share this OTP: ${otp}`,
       relatedId: booking._id,
       relatedType: 'booking',
       priority: 'high',
@@ -749,9 +746,21 @@ const vendorReachedLocation = async (req, res) => {
       }
     });
 
-    // Socket notification removed - createNotification already handles this
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${booking.userId}`).emit('booking_updated', {
+        bookingId: booking._id,
+        status: BOOKING_STATUS.JOURNEY_STARTED,
+        visitOtp: otp,
+        vendorReached: true
+      });
+      io.to(`user_${booking.userId}`).emit('vendor_reached', {
+        bookingId: booking._id,
+        visitOtp: otp
+      });
+    }
 
-    res.status(200).json({ success: true, message: 'User notified that vendor reached' });
+    res.status(200).json({ success: true, message: 'User notified that worker reached', visitOtp: otp });
   } catch (error) {
     console.error('Vendor reached location error:', error);
     res.status(500).json({ success: false, message: 'Failed to notify user' });
@@ -1005,8 +1014,9 @@ const completeSelfJob = async (req, res) => {
     booking.vendorBillId = bill._id;
 
     // Reuse existing Payment OTP for cash collection or generate new one
-    const payOtp = booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
+    const payOtp = booking.customerConfirmationOTP || booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
     booking.paymentOtp = payOtp;
+    booking.customerConfirmationOTP = payOtp;
 
     if (workPhotos) booking.workPhotos = workPhotos;
 
@@ -1107,10 +1117,11 @@ const collectSelfCash = async (req, res) => {
     const { id } = req.params;
     const { otp } = req.body;
 
-    const booking = await Booking.findOne({ _id: id, vendorId }).select('+paymentOtp');
+    const booking = await Booking.findOne({ _id: id, vendorId }).select('+paymentOtp +customerConfirmationOTP');
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     if (booking.status !== BOOKING_STATUS.WORK_DONE) return res.status(400).json({ success: false, message: 'Work not done yet' });
-    if (booking.paymentOtp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    const expectedOtp = booking.customerConfirmationOTP || booking.paymentOtp;
+    if (expectedOtp && expectedOtp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP. Please check code with customer.' });
 
     // ── Fetch the VendorBill (single source of truth) ──
     const VendorBill = require('../../models/VendorBill');
@@ -1130,6 +1141,7 @@ const collectSelfCash = async (req, res) => {
     booking.cashCollectedAt = new Date();
     booking.completedAt = new Date();
     booking.paymentOtp = undefined;
+    booking.customerConfirmationOTP = undefined;
     await booking.save();
 
     // ── Update VendorBill status ──
@@ -1220,6 +1232,20 @@ const collectSelfCash = async (req, res) => {
       priority: 'high'
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${booking.userId}`).emit('booking_updated', {
+        bookingId: booking._id,
+        status: BOOKING_STATUS.COMPLETED,
+        paymentStatus: PAYMENT_STATUS.COLLECTED_BY_VENDOR
+      });
+      io.to(`user_${booking.userId}`).emit('payment_success', {
+        bookingId: booking._id,
+        amount: grandTotal,
+        paymentMethod: 'cash'
+      });
+    }
+
     res.status(200).json({ success: true, message: 'Cash collected, job completed', data: booking });
   } catch (error) {
     console.error('Collect self cash error:', error);
@@ -1257,13 +1283,6 @@ const requestAdvancePayment = async (req, res) => {
       });
     }
 
-    if (booking.advancePayment?.status === 'requested') {
-      return res.status(400).json({
-        success: false,
-        message: 'An advance payment request is already pending for this booking'
-      });
-    }
-
     if (booking.advancePayment?.status === 'paid') {
       return res.status(400).json({
         success: false,
@@ -1279,12 +1298,14 @@ const requestAdvancePayment = async (req, res) => {
       });
     }
 
+    const isUpdate = booking.advancePayment?.status === 'requested';
+
     booking.advancePayment = {
       status: 'requested',
       requestedAmount,
       paidAmount: 0,
-      reason: reason?.trim() || 'Advance requested for costly parts',
-      partsDescription: partsDescription?.trim() || null,
+      reason: reason?.trim() || (isUpdate ? booking.advancePayment?.reason : 'Advance requested for costly parts'),
+      partsDescription: partsDescription?.trim() || (isUpdate ? booking.advancePayment?.partsDescription : null),
       requestedAt: new Date(),
       requestedBy: vendorId,
       paidAt: null,
@@ -1296,33 +1317,34 @@ const requestAdvancePayment = async (req, res) => {
 
     await booking.save();
 
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`user_${booking.userId}`).emit('booking_updated', {
-        bookingId: booking._id,
-        advancePayment: booking.advancePayment,
-        message: 'Your service provider requested an advance payment for parts.'
-      });
-    }
-
+    // ── Notify user ──
     await createNotification({
       userId: booking.userId,
       type: 'advance_payment_requested',
       title: 'Advance Payment Requested',
-      message: `Advance payment of ₹${requestedAmount} requested for booking ${booking.bookingNumber}.`,
+      message: `Worker has requested an advance payment of ₹${requestedAmount}. Please review and pay.`,
       relatedId: booking._id,
       relatedType: 'booking',
       priority: 'high',
       pushData: {
         type: 'advance_payment_requested',
         bookingId: booking._id.toString(),
+        amount: requestedAmount.toString(),
         link: `/user/booking/${booking._id}`
       }
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${booking.userId}`).emit('booking_updated', {
+        bookingId: booking._id,
+        advancePayment: booking.advancePayment
+      });
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Advance payment request sent successfully',
+      message: isUpdate ? 'Advance payment request updated' : 'Advance payment request sent successfully',
       data: booking.advancePayment
     });
   } catch (error) {

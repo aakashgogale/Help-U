@@ -15,7 +15,8 @@ const Payments = () => {
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<PaymentOverview />} />
           <Route path="users" element={<UserPayments />} />
-          <Route path="vendors" element={<VendorPayments />} />
+          <Route path="workers" element={<VendorPayments />} />
+          <Route path="vendors" element={<Navigate to="../workers" replace />} />
           <Route path="revenue" element={<AdminRevenue />} />
           <Route path="reports" element={<PaymentReports />} />
           <Route path="*" element={<Navigate to="overview" replace />} />

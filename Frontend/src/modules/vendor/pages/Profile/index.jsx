@@ -21,13 +21,13 @@ const Profile = () => {
   };
 
   const menuItems = [
-    { id: 2, label: 'Wallet', icon: FaWallet, path: '/vendor/wallet' },
-    { id: 3, label: 'Refer & Earn', icon: FiGift, path: '/vendor/refer-earn', badge: 'Earn ₹100' },
-    { id: 5, label: 'My Ratings', icon: FiStar, path: '/vendor/my-ratings' },
-    { id: 6, label: 'Bank Details & QR', icon: FiCreditCard, path: '/vendor/bank-details' },
-    { id: 7, label: 'Manage Address', icon: FiMapPin, path: '/vendor/address-management' },
-    { id: 8, label: 'Settings', icon: FiSettings, path: '/vendor/settings' },
-    { id: 9, label: 'About Help U', icon: null, customIcon: 'H', path: '/vendor/about-helpu' },
+    { id: 2, label: 'Wallet', icon: FaWallet, path: '/worker/wallet' },
+    { id: 3, label: 'Refer & Earn', icon: FiGift, path: '/worker/refer-earn', badge: 'Earn ₹100' },
+    { id: 5, label: 'My Ratings', icon: FiStar, path: '/worker/my-ratings' },
+    { id: 6, label: 'Bank Details & QR', icon: FiCreditCard, path: '/worker/bank-details' },
+    { id: 7, label: 'Manage Address', icon: FiMapPin, path: '/worker/address-management' },
+    { id: 8, label: 'Settings', icon: FiSettings, path: '/worker/settings' },
+    { id: 9, label: 'About Help U', icon: null, customIcon: 'H', path: '/worker/about-helpu' },
   ];
 
   const [profile, setProfile] = useState(null);
@@ -57,7 +57,7 @@ const Profile = () => {
       const storedVendorData = JSON.parse(localStorage.getItem('vendorData') || '{}');
       if (storedVendorData && Object.keys(storedVendorData).length > 0) {
         setProfile({
-          name: storedVendorData.name || 'Vendor Name',
+          name: storedVendorData.name || 'Worker Name',
           businessName: storedVendorData.businessName || null,
           phone: storedVendorData.phone || '',
           email: storedVendorData.email || '',
@@ -90,7 +90,7 @@ const Profile = () => {
             : 'Not set';
 
           setProfile({
-            name: vendorData.name || 'Vendor Name',
+            name: vendorData.name || 'Worker Name',
             businessName: vendorData.businessName || null,
             phone: vendorData.phone || '',
             email: vendorData.email || '',
@@ -248,7 +248,7 @@ const Profile = () => {
 
               {/* Navigate Button */}
               <button
-                onClick={() => navigate('/vendor/profile/details')}
+                onClick={() => navigate('/worker/profile/details')}
                 className="p-3.5 rounded-xl flex-shrink-0 transition-all duration-300 active:scale-95 mt-1"
                 style={{
                   background: 'rgba(255, 255, 255, 0.28)',
@@ -278,7 +278,7 @@ const Profile = () => {
           <div className="grid grid-cols-3 gap-3">
             {/* Active Jobs */}
             <button
-              onClick={() => navigate('/vendor/jobs')}
+              onClick={() => navigate('/worker/jobs')}
               className="flex flex-col items-center justify-center p-4 rounded-2xl active:scale-95 transition-all duration-300 relative overflow-hidden bg-white"
               style={{
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05)',
@@ -311,7 +311,7 @@ const Profile = () => {
 
             {/* Wallet */}
             <button
-              onClick={() => navigate('/vendor/wallet')}
+              onClick={() => navigate('/worker/wallet')}
               className="flex flex-col items-center justify-center p-4 rounded-2xl active:scale-95 transition-all duration-300 relative overflow-hidden bg-white"
               style={{
                 boxShadow: '0 4px 12px rgba(0, 166, 166, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05)',
@@ -405,13 +405,13 @@ const Profile = () => {
               try {
                 await vendorAuthService.logout();
                 toast.success('Logged out successfully');
-                navigate('/vendor/login');
+                navigate('/worker/login');
               } catch (error) {
                 localStorage.removeItem('vendorAccessToken');
                 localStorage.removeItem('vendorRefreshToken');
                 localStorage.removeItem('vendorData');
                 toast.success('Logged out successfully');
-                navigate('/vendor/login');
+                navigate('/worker/login');
               }
             }}
             className="w-full font-semibold py-3 rounded-xl active:scale-98 transition-all text-white flex items-center justify-center gap-2"

@@ -67,7 +67,7 @@ const ProfileDetails = () => {
 
           setProfile(prev => ({
             ...prev,
-            name: storedData.name || 'Vendor Name',
+            name: storedData.name || 'Worker Name',
             businessName: storedData.businessName || null,
             phone: storedData.phone || '',
             email: storedData.email || '',
@@ -131,7 +131,7 @@ const ProfileDetails = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-900 text-lg">Profile Information</h3>
           <button
-            onClick={() => navigate('/vendor/profile/edit')}
+            onClick={() => navigate('/worker/profile/edit')}
             className="p-2 rounded-lg hover:scale-105 transition-all flex items-center gap-1.5"
             style={{
               background: `linear-gradient(135deg, ${themeColors.button} 0%, ${themeColors.icon} 100%)`,

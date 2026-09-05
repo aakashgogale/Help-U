@@ -53,11 +53,11 @@ const Header = memo(({
   };
 
   const handleNotifications = () => {
-    navigate('/vendor/notifications');
+    navigate('/worker/notifications');
   };
 
   const handleLogoClick = () => {
-    navigate('/vendor/dashboard');
+    navigate('/worker/dashboard');
   };
 
   return (
@@ -94,7 +94,7 @@ const Header = memo(({
               <Logo className="h-14 w-auto" />
             </motion.div>
           )}
-          {showBack && <h1 className="text-lg font-bold text-gray-800">{title || 'Vendor'}</h1>}
+          {showBack && <h1 className="text-lg font-bold text-gray-800">{title || 'Worker'}</h1>}
         </div>
 
         {/* Right: Search and Notifications */}
@@ -102,7 +102,7 @@ const Header = memo(({
           {showSearch && (
             <button
               className="p-2 rounded-full hover:bg-white/30 transition-colors active:scale-95"
-              onClick={() => navigate('/vendor/jobs')}
+              onClick={() => navigate('/worker/jobs')}
             >
               <FiSearch className="w-5 h-5" style={{ color: themeColors.button }} />
             </button>

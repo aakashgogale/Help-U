@@ -230,7 +230,7 @@ const Earnings = () => {
         {/* View Wallet Button */}
         <div className="mt-6">
           <button
-            onClick={() => navigate('/vendor/wallet')}
+            onClick={() => navigate('/worker/wallet')}
             className="w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-95"
             style={{
               background: themeColors.button,

@@ -173,6 +173,10 @@ const settingsSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isScrapEnabled: {
+    type: Boolean,
+    default: true
+  },
 
   // Vendor Referral Program Settings
   vendorReferralEnabled: {

@@ -136,7 +136,7 @@ const VendorPartsPage = () => {
 
   return (
     <div className="space-y-6">
-      <CardShell title="Vendor Parts Catalog" icon={FiPlus}>
+      <CardShell title="Worker Parts Catalog" icon={FiPlus}>
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
           <div className="flex gap-4 w-full sm:w-auto flex-1">
             <div className="relative w-full sm:w-64">
@@ -221,7 +221,7 @@ const VendorPartsPage = () => {
         )}
       </CardShell>
 
-      <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Vendor Part" : "Add Vendor Part"}>
+      <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Worker Part" : "Add Worker Part"}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold mb-1">Category</label>

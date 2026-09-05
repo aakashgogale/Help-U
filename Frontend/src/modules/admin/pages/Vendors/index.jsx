@@ -20,15 +20,15 @@ const Vendors = () => {
   const location = useLocation();
 
   const navTabs = [
-    { name: 'All Vendors', path: '/admin/vendors/all', icon: FiUsers },
-    { name: 'Vendor Bookings', path: '/admin/vendors/bookings', icon: FiBriefcase },
-    { name: 'Vendor Referrals', path: '/admin/vendors/referrals', icon: FiGift },
-    { name: 'Vendor Analytics', path: '/admin/vendors/analytics', icon: FiActivity },
+    { name: 'All Workers', path: '/admin/workers/all', icon: FiUsers },
+    { name: 'Worker Bookings', path: '/admin/workers/bookings', icon: FiBriefcase },
+    { name: 'Worker Referrals', path: '/admin/workers/referrals', icon: FiGift },
+    { name: 'Worker Analytics', path: '/admin/workers/analytics', icon: FiActivity },
   ];
 
   const getPageTitle = () => {
-    const currentTab = navTabs.find(tab => location.pathname === tab.path);
-    return currentTab ? currentTab.name : 'Vendor Management';
+    const currentTab = navTabs.find(tab => location.pathname === tab.path || location.pathname.startsWith(tab.path));
+    return currentTab ? currentTab.name : 'Worker Management';
   };
 
   return (

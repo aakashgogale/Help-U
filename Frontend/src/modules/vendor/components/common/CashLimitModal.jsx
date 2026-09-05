@@ -82,7 +82,7 @@ const CashLimitModal = () => {
         <button
           onClick={() => {
             setShow(false);
-            navigate('/vendor/wallet/settle');
+            navigate('/worker/wallet/settle');
           }}
           className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-200 hover:bg-red-700 transition-all active:scale-95"
         >

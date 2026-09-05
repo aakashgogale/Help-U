@@ -40,6 +40,7 @@ const BOOKING_STATUS = {
   WORK_DONE: 'work_done',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+  NO_VENDORS: 'cancelled',
   REJECTED: 'rejected'
 };
 
