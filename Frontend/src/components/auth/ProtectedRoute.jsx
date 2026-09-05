@@ -110,7 +110,7 @@ const ProtectedRoute = ({ children, userType = 'user', redirectTo = null }) => {
     // Determine redirect path
     const defaultRedirects = {
       user: '/user/login',
-      vendor: '/vendor/login',
+      vendor: '/worker/login',
       admin: '/admin/login'
     };
 

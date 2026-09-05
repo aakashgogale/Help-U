@@ -53,7 +53,7 @@ const authenticate = async (req, res, next) => {
         if (user && user.approvalStatus !== 'approved') {
           return res.status(403).json({
             success: false,
-            message: 'Your vendor account is pending approval or has been rejected.'
+            message: 'Your worker account is pending approval or has been rejected.'
           });
         }
 

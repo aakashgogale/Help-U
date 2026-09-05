@@ -16,6 +16,7 @@
 
 const Booking = require('../models/Booking');
 const Vendor = require('../models/Vendor');
+const mongoose = require('mongoose');
 const { BOOKING_STATUS } = require('../utils/constants');
 const { createNotification } = require('../controllers/notificationControllers/notificationController');
 
@@ -87,6 +88,10 @@ class BookingScheduler {
    */
   async processWaves() {
     try {
+      if (mongoose.connection.readyState !== 1) {
+        return false; // Skip if database is not connected yet
+      }
+
       const BookingRequest = require('../models/BookingRequest');
 
       // --- REFRESH SETTINGS ---
@@ -143,8 +148,9 @@ class BookingScheduler {
 
               await Booking.findByIdAndUpdate(booking._id, {
                 $set: {
-                  status: BOOKING_STATUS.NO_VENDORS,
-                  cancellationReason: 'No vendor accepted within time limit'
+                  status: BOOKING_STATUS.CANCELLED || 'cancelled',
+                  waveStartedAt: null,
+                  cancellationReason: 'No worker accepted within time limit'
                 }
               });
 
@@ -152,7 +158,7 @@ class BookingScheduler {
               if (this.io) {
                 this.io.to(`user_${booking.userId}`).emit('booking_search_failed', {
                   bookingId: booking._id,
-                  message: 'No vendors available at the moment. Please try again later.'
+                  message: 'No workers available at the moment. Please try again later.'
                 });
               }
 

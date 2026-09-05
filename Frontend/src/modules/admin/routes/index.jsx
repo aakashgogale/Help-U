@@ -55,7 +55,8 @@ const AdminRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users/*" element={<Users />} />
-          <Route path="vendors/*" element={<Vendors />} />
+          <Route path="workers/*" element={<Vendors />} />
+          <Route path="vendors/*" element={<Navigate to="/admin/workers" replace />} />
           <Route path="bookings" element={<Bookings />} />
           <Route path="bookings/tracking" element={<BookingTracking />} />
           <Route path="bookings/notifications" element={<BookingNotifications />} />

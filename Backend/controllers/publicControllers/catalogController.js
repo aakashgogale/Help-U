@@ -2,6 +2,7 @@ const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
 const Service = require('../../models/UserService');
 const HomeContent = require('../../models/HomeContent');
+const Settings = require('../../models/Settings');
 
 /**
  * Public Catalog Controllers
@@ -301,10 +302,13 @@ const getPublicHomeContent = async (req, res) => {
       });
     }
 
-    // Used for backwards compatibility, we might need to update this to refer to Brands?
-    // For now keeping as is, but assuming targetServiceId will point to Brand ID essentially.
+    const [contentObjDoc, settings] = await Promise.all([
+      homeContent,
+      Settings.findOne({ type: 'global' }).lean().catch(() => null)
+    ]);
 
-    const contentObj = homeContent.toObject();
+    const contentObj = contentObjDoc.toObject();
+    const isGlobalScrapEnabled = settings ? settings.isScrapEnabled !== false : true;
 
     const formattedContent = {
       banners: (contentObj.banners || []).map(item => ({
@@ -355,12 +359,14 @@ const getPublicHomeContent = async (req, res) => {
       isNoteworthyVisible: contentObj.isNoteworthyVisible ?? true,
       isBookedVisible: contentObj.isBookedVisible ?? true,
       isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
-      isCategoriesVisible: contentObj.isCategoriesVisible ?? true
+      isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+      isScrapVisible: isGlobalScrapEnabled
     };
 
     res.status(200).json({
       success: true,
-      homeContent: formattedContent
+      homeContent: formattedContent,
+      isScrapEnabled: isGlobalScrapEnabled
     });
 
   } catch (error) {
@@ -379,14 +385,17 @@ const getPublicHomeData = async (req, res) => {
   try {
     const { cityId } = req.query;
 
-    // Fetch both in parallel
-    const [categoriesRes, homeContent] = await Promise.all([
+    // Fetch in parallel
+    const [categoriesRes, homeContent, settings] = await Promise.all([
       Category.find({ status: 'active', cityIds: cityId ? cityId : { $exists: true } })
         .select('title slug homeIconUrl homeBadge hasSaleBadge')
         .sort({ homeOrder: 1 })
         .lean(),
-      HomeContent.getHomeContent(cityId)
+      HomeContent.getHomeContent(cityId),
+      Settings.findOne({ type: 'global' }).lean().catch(() => null)
     ]);
+
+    const isGlobalScrapEnabled = settings ? settings.isScrapEnabled !== false : true;
 
     const formattedCategories = categoriesRes.map(cat => ({
       id: cat._id.toString(),
@@ -451,14 +460,16 @@ const getPublicHomeData = async (req, res) => {
         isNoteworthyVisible: contentObj.isNoteworthyVisible ?? true,
         isBookedVisible: contentObj.isBookedVisible ?? true,
         isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
-        isCategoriesVisible: contentObj.isCategoriesVisible ?? true
+        isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+        isScrapVisible: isGlobalScrapEnabled
       };
     }
 
     res.status(200).json({
       success: true,
       categories: formattedCategories,
-      homeContent: formattedContent
+      homeContent: formattedContent,
+      isScrapEnabled: isGlobalScrapEnabled
     });
   } catch (error) {
     console.error('Get public home data error:', error);

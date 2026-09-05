@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle } from 'react-icons/fi';
 import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus } from '../../services/settingsService';
 import { cityService } from '../../services/cityService';
+import { publicCatalogService } from '../../../../services/catalogService';
 import CityManagement from '../Cities';
 import { toast } from 'react-hot-toast';
 
 const AdminSettings = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [settings, setSettings] = useState({
   });
 
@@ -23,7 +28,8 @@ const AdminSettings = () => {
     maxSearchTime: 5,
     waveDuration: 60,
     searchRadius: 10,
-    isOnlinePaymentEnabled: true
+    isOnlinePaymentEnabled: true,
+    isScrapEnabled: true
   });
 
   // Billing Configuration State
@@ -73,6 +79,33 @@ const AdminSettings = () => {
 
   const isSuperAdmin = profile.role === 'super_admin';
 
+  // Sync activeView with route path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/settings/system')) {
+      setActiveView('system');
+    } else if (path.includes('/settings/financial') || path.includes('/settings/service-config')) {
+      setActiveView('financial');
+    } else if (path.includes('/settings/profile') || path.includes('/settings/general')) {
+      setActiveView('profile');
+    } else if (path.includes('/settings/admins')) {
+      setActiveView('admins');
+    } else if (path.includes('/settings/cities')) {
+      setActiveView('cities');
+    } else if (path === '/admin/settings' || path === '/admin/settings/') {
+      setActiveView('main');
+    }
+  }, [location.pathname]);
+
+  const changeView = (view) => {
+    setActiveView(view);
+    if (view === 'main') {
+      navigate('/admin/settings');
+    } else {
+      navigate(`/admin/settings/${view}`);
+    }
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -120,7 +153,8 @@ const AdminSettings = () => {
             vendorCashLimit: res.settings.vendorCashLimit || 10000,
             cancellationPenalty: res.settings.cancellationPenalty !== undefined ? res.settings.cancellationPenalty : 49,
             searchRadius: res.settings.searchRadius || 10,
-            isOnlinePaymentEnabled: res.settings.isOnlinePaymentEnabled !== undefined ? res.settings.isOnlinePaymentEnabled : true
+            isOnlinePaymentEnabled: res.settings.isOnlinePaymentEnabled !== undefined ? res.settings.isOnlinePaymentEnabled : true,
+            isScrapEnabled: res.settings.isScrapEnabled !== undefined ? res.settings.isScrapEnabled : true
           });
           // Load billing settings
           setBillingSettings({
@@ -151,6 +185,14 @@ const AdminSettings = () => {
     loadProfile();
     loadSettings();
     loadFinancialSettings();
+
+    const handleSync = () => loadFinancialSettings();
+    window.addEventListener('systemConfigUpdated', handleSync);
+    window.addEventListener('adminSettingsUpdated', handleSync);
+    return () => {
+      window.removeEventListener('systemConfigUpdated', handleSync);
+      window.removeEventListener('adminSettingsUpdated', handleSync);
+    };
   }, []);
 
   const loadAdmins = async () => {
@@ -199,6 +241,47 @@ const AdminSettings = () => {
       ...prev,
       [name]: Number(value)
     }));
+  };
+
+  const handleToggleScrap = async () => {
+    const currentEnabled = financialSettings.isScrapEnabled !== false;
+    const nextVal = !currentEnabled;
+    setFinancialSettings(prev => ({ ...prev, isScrapEnabled: nextVal }));
+    try {
+      await updateSettings({ isScrapEnabled: nextVal });
+      try {
+        const currentConfig = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+        localStorage.setItem('app_public_config', JSON.stringify({ ...currentConfig, isScrapEnabled: nextVal }));
+      } catch (e) {}
+      publicCatalogService.invalidateCache();
+      toast.success(nextVal ? 'Scrap selling feature turned ON' : 'Scrap selling feature turned OFF');
+      window.dispatchEvent(new Event('systemConfigUpdated'));
+      window.dispatchEvent(new Event('adminSettingsUpdated'));
+    } catch (err) {
+      console.error('Failed to update scrap feature state:', err);
+      setFinancialSettings(prev => ({ ...prev, isScrapEnabled: currentEnabled }));
+      toast.error('Failed to update scrap feature state');
+    }
+  };
+
+  const handleToggleOnlinePayment = async () => {
+    const currentEnabled = financialSettings.isOnlinePaymentEnabled !== false;
+    const nextVal = !currentEnabled;
+    setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: nextVal }));
+    try {
+      await updateSettings({ isOnlinePaymentEnabled: nextVal });
+      try {
+        const currentConfig = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+        localStorage.setItem('app_public_config', JSON.stringify({ ...currentConfig, isOnlinePaymentEnabled: nextVal }));
+      } catch (e) {}
+      toast.success(nextVal ? 'Online payments turned ON' : 'Online payments turned OFF');
+      window.dispatchEvent(new Event('systemConfigUpdated'));
+      window.dispatchEvent(new Event('adminSettingsUpdated'));
+    } catch (err) {
+      console.error('Failed to update online payment state:', err);
+      setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: currentEnabled }));
+      toast.error('Failed to update online payment state');
+    }
   };
 
   const handleProfileChange = (e) => {
@@ -424,64 +507,157 @@ const AdminSettings = () => {
 
   // Render Function for Main Settings Menu
   const renderMainMenu = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Profile Settings Card */}
-      <div onClick={() => setActiveView('profile')}
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-        <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
-          <FiUser className="w-6 h-6 text-blue-600" />
+    <div className="space-y-6">
+      {/* Quick Feature Controls Top Card */}
+      <div className="bg-gradient-to-r from-emerald-50 via-white to-blue-50 border border-emerald-200/80 rounded-2xl p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-emerald-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm">
+                <FiTrash2 />
+              </span>
+              Scrap Feature & Platform Controls
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Instantly toggle live user-facing features across User App and website
+            </p>
+          </div>
+          <button
+            onClick={() => changeView('system')}
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-100/70 hover:bg-emerald-200/70 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 w-fit"
+          >
+            Full System Settings →
+          </button>
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Profile Settings</h3>
-        <p className="text-sm text-gray-500">Manage your personal account details and password</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Scrap Toggle Card */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-gray-900">Scrap Selling Feature</span>
+                <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
+                  financialSettings.isScrapEnabled !== false
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : 'bg-red-100 text-red-800 border-red-200'
+                }`}>
+                  {financialSettings.isScrapEnabled !== false ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {financialSettings.isScrapEnabled !== false
+                  ? 'Active on Home banner, Bottom Nav, & Selling flow'
+                  : 'Completely hidden from User App with 0 space'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleScrap}
+              className={`relative w-13 h-7 rounded-full transition-all duration-300 shrink-0 ${
+                financialSettings.isScrapEnabled !== false ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+            >
+              <div
+                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${
+                  financialSettings.isScrapEnabled !== false ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Online Payments Card */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-gray-900">Online Payments</span>
+                <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
+                  financialSettings.isOnlinePaymentEnabled !== false
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : 'bg-red-100 text-red-800 border-red-200'
+                }`}>
+                  {financialSettings.isOnlinePaymentEnabled !== false ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Accept Razorpay / digital payments at checkout
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleOnlinePayment}
+              className={`relative w-13 h-7 rounded-full transition-all duration-300 shrink-0 ${
+                financialSettings.isOnlinePaymentEnabled !== false ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+            >
+              <div
+                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${
+                  financialSettings.isOnlinePaymentEnabled !== false ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Financial Settings Card - Super Admin Only */}
-      {isSuperAdmin && (
-        <div onClick={() => setActiveView('financial')}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Profile Settings Card */}
+        <div onClick={() => changeView('profile')}
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-          <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
-            <FiDollarSign className="w-6 h-6 text-green-600" />
+          <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+            <FiUser className="w-6 h-6 text-blue-600" />
           </div>
-          <h3 className="text-lg font-bold text-gray-800 mb-2">Financial Info</h3>
-          <p className="text-sm text-gray-500">Configure charges, commissions, and billing details</p>
+          <h3 className="text-lg font-bold text-gray-800 mb-2">Profile Settings</h3>
+          <p className="text-sm text-gray-500">Manage your personal account details and password</p>
         </div>
-      )}
 
-      {/* System Settings Card - Super Admin Only */}
-      {isSuperAdmin && (
-        <div onClick={() => setActiveView('system')}
+        {/* Financial Settings Card - Super Admin Only */}
+        {isSuperAdmin && (
+          <div onClick={() => changeView('financial')}
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
+              <FiDollarSign className="w-6 h-6 text-green-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Financial Info</h3>
+            <p className="text-sm text-gray-500">Configure charges, commissions, and billing details</p>
+          </div>
+        )}
+
+        {/* System Settings Card - Accessible to all admins */}
+        <div onClick={() => changeView('system')}
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
           <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
             <FiSettings className="w-6 h-6 text-purple-600" />
           </div>
           <h3 className="text-lg font-bold text-gray-800 mb-2">System & Support</h3>
-          <p className="text-sm text-gray-500">Manage auto-assignment and help contact info</p>
+          <p className="text-sm text-gray-500">Manage feature toggles, scrap service, and help contact info</p>
         </div>
-      )}
 
-      {/* City Management Card - Super Admin Only */}
-      {isSuperAdmin && (
-        <div onClick={() => setActiveView('cities')}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-          <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
-            <FiMapPin className="w-6 h-6 text-teal-600" />
+        {/* City Management Card - Super Admin Only */}
+        {isSuperAdmin && (
+          <div onClick={() => changeView('cities')}
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
+              <FiMapPin className="w-6 h-6 text-teal-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">City Management</h3>
+            <p className="text-sm text-gray-500">Manage operational cities and default location</p>
           </div>
-          <h3 className="text-lg font-bold text-gray-800 mb-2">City Management</h3>
-          <p className="text-sm text-gray-500">Manage operational cities and default location</p>
-        </div>
-      )}
+        )}
 
-      {/* Admin Management Card - Super Admin Only */}
-      {isSuperAdmin && (
-        <div onClick={() => setActiveView('admins')}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-          <div className="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
-            <FiUsers className="w-6 h-6 text-amber-600" />
+        {/* Admin Management Card - Super Admin Only */}
+        {isSuperAdmin && (
+          <div onClick={() => changeView('admins')}
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
+              <FiUsers className="w-6 h-6 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Manage Admins</h3>
+            <p className="text-sm text-gray-500">Add, remove, and view all system administrators</p>
           </div>
-          <h3 className="text-lg font-bold text-gray-800 mb-2">Manage Admins</h3>
-          <p className="text-sm text-gray-500">Add, remove, and view all system administrators</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 
@@ -490,7 +666,7 @@ const AdminSettings = () => {
 
       {/* Header / Breadcrumb */}
       {activeView !== 'main' && (
-        <button onClick={() => setActiveView('main')}
+        <button onClick={() => changeView('main')}
           className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-4 transition-colors">
           <span className="text-lg">←</span> Back to Settings
         </button>
@@ -589,7 +765,7 @@ const AdminSettings = () => {
                       <p className="text-[10px] text-gray-400 mt-1">This is the convenience fee shown on user checkout</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Vendor Cash Limit (₹)</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Worker Cash Limit (₹)</label>
                       <input type="number" name="vendorCashLimit" value={financialSettings.vendorCashLimit} onChange={handleFinancialChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
                     </div>
@@ -612,14 +788,14 @@ const AdminSettings = () => {
                       <input type="number" name="servicePayoutPercentage" value={financialSettings.servicePayoutPercentage} onChange={handleFinancialChange}
                         min="0" max="100"
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 mt-1">Vendor keeps this % of service charges</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Worker keeps this % of service charges</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Parts Payout (%)</label>
                       <input type="number" name="partsPayoutPercentage" value={financialSettings.partsPayoutPercentage} onChange={handleFinancialChange}
                         min="0" max="100"
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 mt-1">Vendor keeps this % of parts charges</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Worker keeps this % of parts charges</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">TDS Percentage (%)</label>
@@ -630,7 +806,7 @@ const AdminSettings = () => {
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Platform Fee (%)</label>
                       <input type="number" name="platformFeePercentage" value={financialSettings.platformFeePercentage} onChange={handleFinancialChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 mt-1">Fee charged on vendor withdrawals</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Fee charged on worker withdrawals</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Cancellation Penalty (₹)</label>
@@ -644,19 +820,19 @@ const AdminSettings = () => {
                           <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Max Global Search Time (Mins)</label>
                           <input type="number" name="maxSearchTime" value={financialSettings.maxSearchTime} onChange={handleFinancialChange}
                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Total time to find a vendor before search is auto-cancelled</p>
+                          <p className="text-[10px] text-gray-400 mt-1">Total time to find a worker before search is auto-cancelled</p>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Wave Alert Threshold (Secs)</label>
                           <input type="number" name="waveDuration" value={financialSettings.waveDuration} onChange={handleFinancialChange}
                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Time waited before alerting the next batch of vendors</p>
+                          <p className="text-[10px] text-gray-400 mt-1">Time waited before alerting the next batch of workers</p>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Global Search Radius (Km)</label>
                           <input type="number" name="searchRadius" value={financialSettings.searchRadius} onChange={handleFinancialChange}
                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                          <p className="text-[10px] text-gray-400 mt-1">Default distance to hunt for vendors around booking location</p>
+                          <p className="text-[10px] text-gray-400 mt-1">Default distance to hunt for workers around booking location</p>
                         </div>
                       </div>
                     </div>
@@ -801,13 +977,43 @@ const AdminSettings = () => {
                       <p className="font-semibold text-gray-800">Online Payments</p>
                       <p className="text-xs text-gray-500 mt-1">Enable digital payment methods for users</p>
                     </div>
-                    <button onClick={() => {
-                        const newValue = !financialSettings.isOnlinePaymentEnabled;
-                        setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: newValue }));
-                        updateSettings({ isOnlinePaymentEnabled: newValue });
-                      }}
-                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${financialSettings.isOnlinePaymentEnabled ? 'bg-green-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${financialSettings.isOnlinePaymentEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    <button
+                      type="button"
+                      onClick={handleToggleOnlinePayment}
+                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${financialSettings.isOnlinePaymentEnabled !== false ? 'bg-green-600' : 'bg-gray-200'}`}>
+                      <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${financialSettings.isOnlinePaymentEnabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  {/* Scrap Feature Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-800">Scrap Selling Feature</p>
+                        <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
+                          financialSettings.isScrapEnabled !== false
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : 'bg-red-100 text-red-800 border-red-200'
+                        }`}>
+                          {financialSettings.isScrapEnabled !== false ? 'ON' : 'OFF'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Turn ON/OFF Scrap Selling banner, navigation, and service access in User App
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleScrap}
+                      className={`relative w-12 h-7 rounded-full transition-all duration-300 shrink-0 ${
+                        financialSettings.isScrapEnabled !== false ? 'bg-green-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${
+                          financialSettings.isScrapEnabled !== false ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
                     </button>
                   </div>
 

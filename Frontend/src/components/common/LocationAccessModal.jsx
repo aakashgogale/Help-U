@@ -36,7 +36,7 @@ const LocationAccessModal = ({
     }
     return {
       title: "ALLOW GPS LOCATION",
-      subtitle: "Help U needs your location to show available services and vendors near you.",
+      subtitle: "Help U needs your location to show available services and workers near you.",
       icon: FiNavigation
     };
   };

@@ -175,7 +175,7 @@ const VendorReferrals = () => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
           <FiSettings className="w-5 h-5 text-blue-600" />
-          <h3 className="text-base font-bold text-gray-900">Vendor Referral Program Settings</h3>
+          <h3 className="text-base font-bold text-gray-900">Worker Referral Program Settings</h3>
         </div>
 
         <form onSubmit={handleSaveSettings} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
@@ -255,7 +255,7 @@ const VendorReferrals = () => {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search vendor, code, phone..."
+                placeholder="Search worker, code, phone..."
                 className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-300 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -273,8 +273,8 @@ const VendorReferrals = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50/60 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Referrer Vendor</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Referred Vendor (New)</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Referrer Worker</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Referred Worker (New)</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Referral Code</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Reward (₹)</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -309,10 +309,10 @@ const VendorReferrals = () => {
                       </div>
                     </td>
 
-                    {/* Referred Vendor */}
+                    {/* Referred Worker */}
                     <td className="px-4 py-3">
                       <div>
-                        <p className="text-xs font-bold text-gray-900">{item.referredVendorId?.name || 'New Vendor'}</p>
+                        <p className="text-xs font-bold text-gray-900">{item.referredVendorId?.name || 'New Worker'}</p>
                         <p className="text-[10px] text-gray-500">{item.referredVendorId?.phone}</p>
                         <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
                           item.referredVendorId?.approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'

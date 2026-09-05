@@ -20,7 +20,7 @@ const BookingCard = ({ booking, onClick }) => {
     if (onClick) {
       onClick(booking);
     } else {
-      navigate(`/vendor/booking/${booking.id}`);
+      navigate(`/worker/booking/${booking.id}`);
     }
   };
 

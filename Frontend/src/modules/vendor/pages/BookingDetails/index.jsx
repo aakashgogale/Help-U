@@ -392,7 +392,7 @@ export default function BookingDetails() {
       setIsCashModalOpen(true);
     } else {
       // Navigate to the full page billing flow
-      navigate(`/vendor/booking/${booking.id || id}/billing`);
+      navigate(`/worker/booking/${booking.id || id}/billing`);
     }
   };
 
@@ -463,30 +463,24 @@ export default function BookingDetails() {
   };
 
   const handleViewTimeline = () => {
-    navigate(`/vendor/booking/${booking.id}/timeline`);
+    navigate(`/worker/booking/${booking.id}/timeline`);
   };
 
   const handleStartJourney = async () => {
-    // If self-job, call the start API first
-    if (booking.assignedTo?.name === 'You (Self)') {
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
+      if (booking.status !== 'journey_started') {
         await startSelfJob(id);
-        toast.success('Journey Started');
-        // Refresh to update status
-        const response = await getBookingById(id);
-        const apiData = response.data || response;
-        setBooking(prev => ({ ...prev, status: apiData.status }));
-      } catch (error) {
-        console.error('Error starting self journey:', error);
-        toast.error('Failed to start journey');
-        return;
-      } finally {
-        setLoading(false);
+        toast.success('Journey Started! OTP sent to customer.');
       }
+      navigate(`/worker/booking/${booking.id || id}/map`);
+    } catch (error) {
+      console.error('Error starting journey:', error);
+      // Navigate to map even if already started
+      navigate(`/worker/booking/${booking.id || id}/map`);
+    } finally {
+      setLoading(false);
     }
-
-    navigate(`/vendor/booking/${booking.id || id}/map`);
   };
 
 
@@ -638,7 +632,7 @@ export default function BookingDetails() {
           </div>
 
           {/* Map Embed */}
-          <div className="w-full h-48 rounded-lg overflow-hidden mb-3 bg-gray-200 relative group cursor-pointer" onClick={() => navigate(`/vendor/booking/${booking.id}/map`)}>
+          <div className="w-full h-48 rounded-lg overflow-hidden mb-3 bg-gray-200 relative group cursor-pointer" onClick={() => navigate(`/worker/booking/${booking.id}/map`)}>
             {(() => {
               const hasCoordinates = booking.location.lat && booking.location.lng && booking.location.lat !== 0 && booking.location.lng !== 0;
               const mapQuery = hasCoordinates
@@ -669,7 +663,7 @@ export default function BookingDetails() {
 
           <div className="flex gap-3 mt-4">
             <button
-              onClick={() => navigate(`/vendor/booking/${booking.id || id}/map`)}
+              onClick={() => navigate(`/worker/booking/${booking.id || id}/map`)}
               className="flex-1 py-3.5 rounded-xl font-bold border-2 flex items-center justify-center gap-2 transition-all active:scale-95 bg-white"
               style={{
                 borderColor: themeColors.button,
@@ -1138,7 +1132,7 @@ export default function BookingDetails() {
 
               <div className="flex flex-col gap-3 w-full">
                 <button
-                  onClick={() => navigate(`/vendor/booking/${booking.id || id}/billing`)}
+                  onClick={() => navigate(`/worker/booking/${booking.id || id}/billing`)}
                   disabled={loading}
                   className="w-full py-4 rounded-xl font-bold bg-blue-600 text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}
@@ -1252,7 +1246,7 @@ export default function BookingDetails() {
           {/* Vendor Operational Buttons */}
           {(
             <div className="space-y-3 pt-2">
-              {(booking.status === 'confirmed' || booking.status === 'assigned') && (
+              {(booking.status === 'confirmed' || booking.status === 'assigned' || booking.status === 'accepted' || booking.status === 'pending') && (
                 <button
                   onClick={handleStartJourney}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"

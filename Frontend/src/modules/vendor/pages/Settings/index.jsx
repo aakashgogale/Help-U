@@ -87,14 +87,14 @@ const Settings = () => {
     try {
       await vendorAuthService.logout();
       toast.success('Logged out successfully');
-      navigate('/vendor/login');
+      navigate('/worker/login');
     } catch (error) {
       // Even if API call fails, clear local storage
       localStorage.removeItem('vendorAccessToken');
       localStorage.removeItem('vendorRefreshToken');
       localStorage.removeItem('vendorData');
       toast.success('Logged out successfully');
-      navigate('/vendor/login');
+      navigate('/worker/login');
     }
   };
 
@@ -174,7 +174,7 @@ const Settings = () => {
           style={{
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
           }}
-          onClick={() => navigate('/vendor/address-management')}
+          onClick={() => navigate('/worker/address-management')}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ const Settings = () => {
 
           <div className="space-y-3">
             <p className="text-sm text-gray-600">App Version: 1.0.0</p>
-            <p className="text-sm text-gray-600">Vendor App</p>
+            <p className="text-sm text-gray-600">Worker App</p>
           </div>
         </div>
 

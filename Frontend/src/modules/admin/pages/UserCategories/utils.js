@@ -105,8 +105,17 @@ export const ensureIds = (catalog) => {
         : [],
       newAndNoteworthy: Array.isArray(catalog?.home?.newAndNoteworthy)
         ? catalog.home.newAndNoteworthy.map((s) => ({
+          ...s,
           id: s.id || `hnnw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
           title: s.title || "",
+          subtitle: s.subtitle || "",
+          badge: s.badge || "",
+          rating: s.rating || "",
+          reviews: s.reviews || "",
+          price: s.price || "",
+          originalPrice: s.originalPrice || "",
+          discount: s.discount || "",
+          duration: s.duration || "",
           imageUrl: s.imageUrl || "",
           targetCategoryId: s.targetCategoryId || getTargetCategoryIdFromRoute(s.routePath),
           slug: s.slug || "",

@@ -1,5 +1,12 @@
 const HomeContent = require('../../models/HomeContent');
+const Settings = require('../../models/Settings');
 const { validationResult } = require('express-validator');
+
+// Single source of truth for the scrap feature.
+const isScrapEnabledGlobally = async () => {
+  const settings = await Settings.findOne({ type: 'global' }) || await Settings.findOne();
+  return settings ? settings.isScrapEnabled !== false : true;
+};
 
 /**
  * Get Home Content
@@ -10,6 +17,7 @@ const getHomeContent = async (req, res) => {
     const { cityId } = req.query;
     // Use the static method which handles default/creation
     let homeContent = await HomeContent.getHomeContent(cityId);
+    const scrapEnabled = await isScrapEnabledGlobally();
 
     res.status(200).json({
       success: true,
@@ -31,6 +39,7 @@ const getHomeContent = async (req, res) => {
         isBookedVisible: homeContent.isBookedVisible ?? true,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible ?? true,
         isCategoriesVisible: homeContent.isCategoriesVisible ?? true,
+        isScrapVisible: scrapEnabled,
         createdAt: homeContent.createdAt,
         updatedAt: homeContent.updatedAt
       }
@@ -126,8 +135,13 @@ const updateHomeContent = async (req, res) => {
     if (req.body.isBookedVisible !== undefined) homeContent.isBookedVisible = req.body.isBookedVisible;
     if (req.body.isCategorySectionsVisible !== undefined) homeContent.isCategorySectionsVisible = req.body.isCategorySectionsVisible;
     if (req.body.isCategoriesVisible !== undefined) homeContent.isCategoriesVisible = req.body.isCategoriesVisible;
+    // Scrap visibility is owned exclusively by Settings.isScrapEnabled and is never
+    // written from a home-content save. Accepting it here let any unrelated home-page
+    // edit push a stale value back and silently re-enable a disabled feature.
 
     await homeContent.save();
+
+    const scrapEnabled = await isScrapEnabledGlobally();
 
     res.status(200).json({
       success: true,
@@ -141,7 +155,6 @@ const updateHomeContent = async (req, res) => {
         noteworthy: homeContent.noteworthy,
         booked: homeContent.booked,
         categorySections: homeContent.categorySections,
-        categorySections: homeContent.categorySections,
         isActive: homeContent.isActive,
         isBannersVisible: homeContent.isBannersVisible,
         isPromosVisible: homeContent.isPromosVisible,
@@ -149,7 +162,8 @@ const updateHomeContent = async (req, res) => {
         isNoteworthyVisible: homeContent.isNoteworthyVisible,
         isBookedVisible: homeContent.isBookedVisible,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible,
-        isCategoriesVisible: homeContent.isCategoriesVisible
+        isCategoriesVisible: homeContent.isCategoriesVisible,
+        isScrapVisible: scrapEnabled
       }
     });
   } catch (error) {

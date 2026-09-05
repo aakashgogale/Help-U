@@ -5,10 +5,16 @@ const Vendor = require('../../models/Vendor');
 exports.getSettings = async (req, res, next) => {
   try {
     let settings = await Settings.findOne({ type: 'global' });
+    if (!settings) {
+      settings = await Settings.findOne();
+    }
 
     // If no settings exist yet, create default
     if (!settings) {
       settings = await Settings.create({ type: 'global' });
+    } else if (!settings.type) {
+      settings.type = 'global';
+      await settings.save();
     }
 
     res.status(200).json({
@@ -50,10 +56,15 @@ exports.updateSettings = async (req, res, next) => {
       // Booking Timing
       maxSearchTime, waveDuration, searchRadius,
       // Payment Control
-      isOnlinePaymentEnabled
+      isOnlinePaymentEnabled,
+      // Scrap Control
+      isScrapEnabled
     } = req.body;
 
     let settings = await Settings.findOne({ type: 'global' });
+    if (!settings) {
+      settings = await Settings.findOne();
+    }
 
     if (!settings) {
       settings = await Settings.create({
@@ -72,9 +83,12 @@ exports.updateSettings = async (req, res, next) => {
         razorpayWebhookSecret,
         cloudinaryCloudName,
         cloudinaryApiKey,
-        cloudinaryApiSecret
+        cloudinaryApiSecret,
+        isOnlinePaymentEnabled: isOnlinePaymentEnabled !== undefined ? isOnlinePaymentEnabled : true,
+        isScrapEnabled: isScrapEnabled !== undefined ? isScrapEnabled : true
       });
     } else {
+      if (!settings.type) settings.type = 'global';
       // Update fields if provided
       if (visitedCharges !== undefined) settings.visitedCharges = visitedCharges;
       if (serviceGstPercentage !== undefined) settings.serviceGstPercentage = serviceGstPercentage;
@@ -90,8 +104,6 @@ exports.updateSettings = async (req, res, next) => {
       if (razorpayWebhookSecret !== undefined) settings.razorpayWebhookSecret = razorpayWebhookSecret;
       if (cloudinaryCloudName !== undefined) settings.cloudinaryCloudName = cloudinaryCloudName;
       if (cloudinaryApiKey !== undefined) settings.cloudinaryApiKey = cloudinaryApiKey;
-      if (cloudinaryApiSecret !== undefined) settings.cloudinaryApiSecret = cloudinaryApiSecret;
-
       if (cloudinaryApiSecret !== undefined) settings.cloudinaryApiSecret = cloudinaryApiSecret;
 
       // Billing update
@@ -116,9 +128,24 @@ exports.updateSettings = async (req, res, next) => {
       if (maxSearchTime !== undefined) settings.maxSearchTime = maxSearchTime;
       if (waveDuration !== undefined) settings.waveDuration = waveDuration;
       if (searchRadius !== undefined) settings.searchRadius = searchRadius;
-      if (isOnlinePaymentEnabled !== undefined) settings.isOnlinePaymentEnabled = isOnlinePaymentEnabled;
+      if (isOnlinePaymentEnabled !== undefined) settings.isOnlinePaymentEnabled = Boolean(isOnlinePaymentEnabled);
+      if (isScrapEnabled !== undefined) settings.isScrapEnabled = Boolean(isScrapEnabled);
 
       await settings.save();
+    }
+
+    // Broadcast updated configuration to all connected clients via Socket.io
+    try {
+      const { getIO } = require('../../sockets');
+      const io = getIO();
+      if (io) {
+        io.emit('system_config_updated', {
+          isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
+          isScrapEnabled: settings.isScrapEnabled !== false
+        });
+      }
+    } catch (socketErr) {
+      // Non-blocking socket broadcast error
     }
 
     // Propagate vendorCashLimit to all existing vendors if it was changed
@@ -152,19 +179,39 @@ exports.updateSettings = async (req, res, next) => {
     });
   }
 };
-// Get Public Settings (Visited Charges, GST)
+// Get Public Settings (Visited Charges, GST, Features)
 exports.getPublicSettings = async (req, res, next) => {
   try {
-    let settings = await Settings.findOne({ type: 'global' }).select('visitedCharges serviceGstPercentage partsGstPercentage supportEmail supportPhone supportWhatsapp cancellationPenalty companyName companyAddress companyCity companyState companyPincode companyPhone companyEmail isOnlinePaymentEnabled');
+    let settings = await Settings.findOne({ type: 'global' });
+    if (!settings) {
+      settings = await Settings.findOne();
+    }
 
     // Default if not found (fallback values)
     if (!settings) {
-      settings = { visitedCharges: 29, serviceGstPercentage: 18, partsGstPercentage: 18 };
+      settings = { visitedCharges: 29, serviceGstPercentage: 18, partsGstPercentage: 18, isScrapEnabled: true, isOnlinePaymentEnabled: true };
     }
 
     res.status(200).json({
       success: true,
-      settings
+      settings: {
+        visitedCharges: settings.visitedCharges || 0,
+        serviceGstPercentage: settings.serviceGstPercentage ?? 18,
+        partsGstPercentage: settings.partsGstPercentage ?? 18,
+        supportEmail: settings.supportEmail || '',
+        supportPhone: settings.supportPhone || '',
+        supportWhatsapp: settings.supportWhatsapp || '',
+        cancellationPenalty: settings.cancellationPenalty ?? 49,
+        companyName: settings.companyName || 'TodayMyDream',
+        companyAddress: settings.companyAddress || '',
+        companyCity: settings.companyCity || '',
+        companyState: settings.companyState || '',
+        companyPincode: settings.companyPincode || '',
+        companyPhone: settings.companyPhone || '',
+        companyEmail: settings.companyEmail || '',
+        isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
+        isScrapEnabled: settings.isScrapEnabled !== false
+      }
     });
   } catch (error) {
     console.error('Error fetching public settings:', error);

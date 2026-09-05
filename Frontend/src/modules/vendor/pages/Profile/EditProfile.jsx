@@ -373,7 +373,7 @@ const EditProfile = () => {
           window.dispatchEvent(new Event('vendorProfileUpdated'));
           window.dispatchEvent(new Event('vendorDataUpdated'));
 
-          navigate('/vendor/profile');
+          navigate('/worker/profile');
         } else {
           throw new Error(response.message || 'Failed to update profile');
         }
@@ -730,7 +730,7 @@ const EditProfile = () => {
         {/* Action Buttons */}
         <div className="mt-8 flex gap-3">
           <button
-            onClick={() => navigate('/vendor/profile')}
+            onClick={() => navigate('/worker/profile')}
             className="flex-1 py-4 rounded-xl font-semibold text-gray-700 bg-white border-2 border-gray-200 transition-all active:scale-95"
             style={{
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',

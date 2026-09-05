@@ -7,13 +7,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import BottomNav from '../../components/layout/BottomNav';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
 import { themeColors } from '../../../../theme';
-import NotificationBell from '../../components/common/NotificationBell';
 import { uploadToCloudinary } from '../../../../utils/cloudinaryUpload';
 import flutterBridge from '../../../../utils/flutterBridge';
+import { useConfig } from '../../../../context/ConfigContext';
+import NotificationBell from '../../components/common/NotificationBell';
 
 
 const UserScrapPage = () => {
   const navigate = useNavigate();
+  const { isScrapEnabled, configLoaded } = useConfig();
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history'
   const [scraps, setScraps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +23,10 @@ const UserScrapPage = () => {
   const [respondingToOffer, setRespondingToOffer] = useState(false);
 
   useEffect(() => {
-    fetchMyScrap();
-  }, []);
+    if (configLoaded && isScrapEnabled) {
+      fetchMyScrap();
+    }
+  }, [configLoaded, isScrapEnabled]);
 
   const fetchMyScrap = async () => {
     try {
@@ -87,6 +91,31 @@ const UserScrapPage = () => {
 
   const activeScraps = scraps.filter(s => s.status === 'pending' || s.status === 'offered' || s.status === 'accepted');
   const historyScraps = scraps.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'rejected');
+
+  if (!configLoaded) {
+    return <div className="min-h-screen bg-white" />;
+  }
+
+  if (!isScrapEnabled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white">
+        <div className="w-20 h-20 rounded-3xl bg-amber-50 flex items-center justify-center text-4xl mb-4 shadow-sm border border-amber-100">
+          ♻️
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Scrap Service Unavailable</h2>
+        <p className="text-sm text-gray-500 max-w-xs mb-6 font-medium">
+          The scrap selling feature is currently disabled by administrator. Please check back later!
+        </p>
+        <button
+          onClick={() => navigate('/user')}
+          className="px-6 py-2.5 rounded-xl font-bold text-white text-sm shadow-md hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: themeColors.brand?.teal || '#347989' }}
+        >
+          Return to Home
+        </button>
+      </div>
+    );
+  }
 
   // Inside return:
   return (

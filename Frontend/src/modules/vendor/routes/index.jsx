@@ -75,7 +75,9 @@ const VendorRoutes = () => {
 
   // Check if current route should hide bottom nav (auth routes or map)
   // Check if current route should hide bottom nav (auth routes or map or booking alert)
-  const shouldHideBottomNav = location.pathname === '/vendor/login' ||
+  const shouldHideBottomNav = location.pathname === '/worker/login' ||
+    location.pathname === '/worker/signup' ||
+    location.pathname === '/vendor/login' ||
     location.pathname === '/vendor/signup' ||
     location.pathname.endsWith('/map') ||
     location.pathname.includes('/booking-alert/');

@@ -173,7 +173,7 @@ const BookingTimeline = () => {
       setActionLoading(true);
       await startSelfJob(id);
       toast.success('Journey Started');
-      navigate(`/vendor/booking/${id}/map`);
+      navigate(`/worker/booking/${id}/map`);
     } catch (error) {
       toast.error('Failed to start journey');
     } finally {
@@ -269,7 +269,7 @@ const BookingTimeline = () => {
         if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') return null;
 
         if (booking?.isSelfJob && currentStage === 7) {
-          return () => navigate(`/vendor/booking/${id}/billing`);
+          return () => navigate(`/worker/booking/${id}/billing`);
         }
 
         if (!booking?.isSelfJob && currentStage === 7) {

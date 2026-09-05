@@ -80,7 +80,7 @@ const Tracking = () => {
 
   const steps = [
     { title: 'Booking Placed', icon: FiClipboard, key: 'pending' },
-    { title: 'Vendor Assigned', icon: FiClipboard, key: 'assigned' },
+    { title: 'Worker Assigned', icon: FiClipboard, key: 'assigned' },
     { title: 'Journey Started', icon: FiTruck, key: 'journey_started' },
     { title: 'Work In Progress', icon: FiPackage, key: 'in_progress' },
     { title: 'Work Done', icon: FiCheckCircle, key: 'work_done' },

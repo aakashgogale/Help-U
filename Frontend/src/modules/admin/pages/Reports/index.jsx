@@ -134,12 +134,12 @@ const ReportsOverview = () => {
           </CardShell>
         </Link>
 
-        <Link to="/admin/reports/vendors" className="group">
+        <Link to="/admin/reports/workers" className="group">
           <CardShell className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-amber-100 font-bold uppercase tracking-wider text-[10px]">Partner Insights</p>
-                <h3 className="text-lg font-black mt-0.5">Vendor Reports</h3>
+                <h3 className="text-lg font-black mt-0.5">Worker Reports</h3>
               </div>
               <div className="bg-white/20 p-2.5 rounded-xl">
                 <FiBriefcase size={20} />
@@ -252,7 +252,7 @@ const ReportsOverview = () => {
                 <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
                 <Area type="monotone" dataKey="users" name="New Users" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.1} strokeWidth={3} />
-                <Area type="monotone" dataKey="vendors" name="New Vendors" stroke="#EC4899" fill="#EC4899" fillOpacity={0.1} strokeWidth={3} />
+                <Area type="monotone" dataKey="vendors" name="New Workers" stroke="#EC4899" fill="#EC4899" fillOpacity={0.1} strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -270,7 +270,8 @@ const Reports = () => {
     switch (currentPath) {
       case 'revenue': return 'Revenue Report';
       case 'bookings': return 'Booking Report';
-      case 'vendors': return 'Vendor Report';
+      case 'vendors':
+      case 'workers': return 'Worker Report';
       default: return 'Analytics & Reports';
     }
   };
@@ -279,7 +280,7 @@ const Reports = () => {
     { name: 'Overview', path: '/admin/reports', icon: FiActivity, exact: true },
     { name: 'Revenue', path: '/admin/reports/revenue', icon: FiDollarSign },
     { name: 'Bookings', path: '/admin/reports/bookings', icon: FiShoppingBag },
-    { name: 'Vendors', path: '/admin/reports/vendors', icon: FiUsers },
+    { name: 'Workers', path: '/admin/reports/workers', icon: FiUsers },
   ];
 
   const isTabActive = (tab) => {
@@ -293,7 +294,8 @@ const Reports = () => {
         <Route index element={<ReportsOverview />} />
         <Route path="revenue" element={<RevenueReport />} />
         <Route path="bookings" element={<BookingReport />} />
-        <Route path="vendors" element={<VendorReport />} />
+        <Route path="workers" element={<VendorReport />} />
+        <Route path="vendors" element={<Navigate to="/admin/reports/workers" replace />} />
       </Routes>
     </div>
   );

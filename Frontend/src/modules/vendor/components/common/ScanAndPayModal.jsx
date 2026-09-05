@@ -7,7 +7,8 @@ const ScanAndPayModal = ({
   onClose, 
   qrImageUrl, 
   amount, 
-  onCheckStatus 
+  onCheckStatus,
+  onSwitchToOtp
 }) => {
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -40,18 +41,28 @@ const ScanAndPayModal = ({
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <button
                 onClick={onCheckStatus}
-                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-gray-900 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
               >
-                <FiCheckCircle className="w-5 h-5" />
+                <FiCheckCircle className="w-4 h-4" />
                 Paid? Check Status
               </button>
+
+              {onSwitchToOtp && (
+                <button
+                  onClick={onSwitchToOtp}
+                  className="w-full py-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-2xl font-bold transition-all text-xs flex items-center justify-center gap-2 border border-emerald-200 active:scale-95"
+                >
+                  <FiCheckCircle className="w-4 h-4 text-emerald-600" />
+                  Or Verify via Customer OTP
+                </button>
+              )}
               
               <button
                 onClick={onClose}
-                className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm"
+                className="w-full py-2 text-gray-500 font-bold hover:text-gray-700 transition-colors text-xs"
               >
                 Cancel
               </button>

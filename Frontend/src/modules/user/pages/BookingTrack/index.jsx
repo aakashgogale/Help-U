@@ -3,7 +3,7 @@ import { db } from '../../../../firebase';
 import { ref, onValue, off } from 'firebase/database';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleMap, useJsApiLoader, DirectionsRenderer, OverlayView, PolylineF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, OverlayView, PolylineF } from '@react-google-maps/api';
 import { FiArrowLeft, FiNavigation, FiMapPin, FiCrosshair, FiPhone, FiUser, FiStar, FiShield, FiKey, FiCheckCircle, FiLoader, FiDollarSign, FiMaximize, FiMinimize, FiClock } from 'react-icons/fi';
 import { bookingService } from '../../../../services/bookingService';
 import { paymentService } from '../../../../services/paymentService';
@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
+import { computeRoute, formatDistance, formatDuration } from '../../../../utils/googleRoutes';
 
 
 const toAssetUrl = (url) => {
@@ -53,7 +54,6 @@ const BookingTrack = () => {
   const [coords, setCoords] = useState(null);
   const [map, setMap] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null); // Rider Location
-  const [directions, setDirections] = useState(null);
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
   const [routePath, setRoutePath] = useState([]);
@@ -474,30 +474,23 @@ const BookingTrack = () => {
     if (isLoaded && currentLocation && coords && map && !directionsCalculatedRef.current) {
       directionsCalculatedRef.current = true; // Prevent recalculation
 
-      const directionsService = new window.google.maps.DirectionsService();
-      directionsService.route(
-        {
-          origin: currentLocation,
-          destination: coords,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            setDirections(result);
-            const leg = result.routes[0].legs[0];
-            setDistance(leg.distance.text);
-            setDuration(leg.duration.text);
+      computeRoute(currentLocation, coords)
+        .then(({ distanceMeters, durationSeconds, path }) => {
+          setDistance(formatDistance(distanceMeters));
+          setDuration(formatDuration(durationSeconds));
 
-            // Store full path and set initial state
-            fullRoutePathRef.current = result.routes[0].overview_path;
-            setRoutePath(result.routes[0].overview_path);
+          // Store full path and set initial state
+          fullRoutePathRef.current = path;
+          setRoutePath(path);
 
-            // Center on rider
-            map.setCenter(currentLocation);
-            map.setZoom(15);
-          }
-        }
-      );
+          // Center on rider
+          map.setCenter(currentLocation);
+          map.setZoom(15);
+        })
+        .catch((error) => {
+          console.error('[BookingTrack] Route calculation failed:', error);
+          directionsCalculatedRef.current = false;
+        });
     }
   }, [isLoaded, coords, map, currentLocation]);
 
@@ -707,25 +700,16 @@ const BookingTrack = () => {
         >
           {currentLocation ? (
             <>
-              {directions && (
-                <>
-                  <DirectionsRenderer
-                    directions={directions}
-                    options={{
-                      suppressMarkers: true,
-                      suppressPolylines: true
-                    }}
-                  />
-                  <PolylineF
-                    path={routePath}
-                    options={{
-                      strokeColor: "#0F766E",
-                      strokeWeight: 8,
-                      strokeOpacity: 1,
-                      zIndex: 50
-                    }}
-                  />
-                </>
+              {routePath && routePath.length > 0 && (
+                <PolylineF
+                  path={routePath}
+                  options={{
+                    strokeColor: "#0F766E",
+                    strokeWeight: 8,
+                    strokeOpacity: 1,
+                    zIndex: 50
+                  }}
+                />
               )}
               {riderMarker}
             </>

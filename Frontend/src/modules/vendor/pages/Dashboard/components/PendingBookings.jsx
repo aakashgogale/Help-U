@@ -46,7 +46,7 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
     if (loadingAction.id) return;
     setLoadingAction({ id: bId, type: 'reject' });
     try {
-      const response = await rejectBooking(bId, 'Vendor Dashboard Reject');
+      const response = await rejectBooking(bId, 'Worker Dashboard Reject');
 
       if (response.success) {
         setPendingBookings(prev => prev.filter(b => String(b.id || b._id) !== String(bId)));
@@ -71,7 +71,7 @@ const PendingBookings = memo(({ bookings, setPendingBookings, setActiveAlertBook
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-bold text-gray-800">Pending Alerts</h2>
         <button
-          onClick={() => navigate('/vendor/booking-alerts')}
+          onClick={() => navigate('/worker/booking-alerts')}
           className="text-sm font-medium"
           style={{ color: themeColors.button }}
         >

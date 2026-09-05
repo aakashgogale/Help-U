@@ -860,6 +860,43 @@ const BookingDetails = () => {
             </div>
           )}
 
+          {/* Advance Payment Requested Card */}
+          {booking.advancePayment?.status === 'requested' && (
+            <div className="relative overflow-hidden rounded-3xl shadow-lg border border-amber-200 mb-6 active:scale-[0.99] transition-all">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 opacity-95"></div>
+              <div className="relative z-10 p-6 text-white">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                    <FiDollarSign className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white tracking-tight">Advance Payment Requested</h3>
+                    <p className="text-xs text-amber-100 font-medium">{booking.advancePayment.reason || 'Requested for spare parts / materials'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 border border-white/20 mb-4 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-amber-100 font-bold uppercase tracking-wider">Requested Advance</p>
+                    <p className="text-2xl font-black text-white">₹{Number(booking.advancePayment.requestedAmount || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  {booking.advancePayment.partsDescription && (
+                    <p className="text-xs text-amber-50 max-w-[50%] text-right truncate">{booking.advancePayment.partsDescription}</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleOnlinePayment('advance')}
+                  disabled={paying}
+                  className="w-full py-3.5 bg-white text-orange-600 rounded-2xl font-black text-sm shadow-xl hover:bg-amber-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <FiDollarSign className="w-4 h-4" />
+                  Pay Advance ₹{Number(booking.advancePayment.requestedAmount || 0).toLocaleString('en-IN')}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Waiting for Vendor to initiate Payment */}
           {!booking.customerConfirmationOTP && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-teal-100 mb-6 flex items-center gap-4 relative overflow-hidden">
@@ -918,7 +955,7 @@ const BookingDetails = () => {
             )}
 
           {/* Payment Card - Show when work is done AND bill is finalized (OTP exists) or paid */}
-          {(booking.customerConfirmationOTP || booking.paymentStatus === 'success') && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
+          {(booking.customerConfirmationOTP || booking.paymentOtp || booking.paymentStatus === 'success') && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
             <div
               onClick={() => setShowPaymentModal(true)}
               className={`relative overflow-hidden rounded-3xl shadow-lg border cursor-pointer active:scale-[0.98] transition-all ${booking.paymentStatus === 'success' ? 'border-green-100' : 'border-orange-100'

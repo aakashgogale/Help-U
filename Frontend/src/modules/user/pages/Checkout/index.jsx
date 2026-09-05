@@ -429,7 +429,7 @@ const Checkout = () => {
         setAcceptedVendor(vendorData);
         setCurrentStep('accepted');
         setSearchingVendors(false);
-        toast.success(`${vendorData.businessName} accepted your booking!`);
+        toast.success(`${vendorData.businessName || vendorData.name || 'Worker'} accepted your booking!`);
 
         // Close modal after 2 seconds and navigate to confirmation
         setTimeout(() => {
@@ -445,12 +445,12 @@ const Checkout = () => {
       if (data.bookingId === bookingRequest._id) {
         setSearchingVendors(false);
         setCurrentStep('failed');
-        toast.error(data.message || 'No vendors available at the moment.');
+        toast.error(data.message || 'No workers available at the moment.');
 
         // Auto-cancel and refresh on failure
         const handleAutoCancel = async () => {
           try {
-            await bookingService.cancel(bookingRequest._id, 'No vendors found after search timeout');
+            await bookingService.cancel(bookingRequest._id, 'No workers found after search timeout');
             setTimeout(() => {
               window.location.reload();
             }, 3000); // 3 second delay to let the user see the error
@@ -542,7 +542,7 @@ const Checkout = () => {
       }
 
       // Create booking request
-      toast.loading('Searching for nearby vendors...');
+      toast.loading('Searching for nearby workers...');
 
       // Ensure serviceId is a string (handle populated cart data)
       const serviceId = typeof firstItem.serviceId === 'object'
@@ -597,7 +597,7 @@ const Checkout = () => {
 
       if (!bookingResponse.success) {
         toast.dismiss();
-        toast.error(bookingResponse.message || 'Failed to search for vendors');
+        toast.error(bookingResponse.message || 'Failed to search for workers');
         setCurrentStep('details');
         setSearchingVendors(false);
         setShowVendorModal(false);
@@ -632,12 +632,12 @@ const Checkout = () => {
         setShowVendorModal(false);
 
         if (bookingId) {
-          toast.error('No vendors currently available for this service.');
+          toast.error('No workers currently available for this service.');
 
           // Auto-cancel and refresh
           const cancelAndRefresh = async () => {
             try {
-              await bookingService.cancel(bookingId, 'Initial search found no available vendors');
+              await bookingService.cancel(bookingId, 'Initial search found no available workers');
               setTimeout(() => {
                 window.location.reload();
               }, 2000);
@@ -656,7 +656,7 @@ const Checkout = () => {
       } else {
         // Move to waiting state - alerts sent to nearby vendors
         setCurrentStep('waiting');
-        toast.success('Finding nearby vendors... Alerts sent to vendors within 10km!');
+        toast.success('Finding nearby workers... Alerts sent to workers within 10km!');
       }
 
       // REMOVED local setCartItems([]) - The summary should remain visible while searching
@@ -664,8 +664,8 @@ const Checkout = () => {
 
     } catch (error) {
       toast.dismiss();
-      console.error('Search vendors error:', error);
-      toast.error('Failed to search for vendors. Please try again.');
+      console.error('Search workers error:', error);
+      toast.error('Failed to search for workers. Please try again.');
       setCurrentStep('details');
       setSearchingVendors(false);
       setShowVendorModal(false);
@@ -676,7 +676,7 @@ const Checkout = () => {
   const handleOnlinePayment = async () => {
     try {
       if (!acceptedVendor || !bookingRequest) {
-        toast.error('No vendor selected or booking not created');
+        toast.error('No worker selected or booking not created');
         return;
       }
 

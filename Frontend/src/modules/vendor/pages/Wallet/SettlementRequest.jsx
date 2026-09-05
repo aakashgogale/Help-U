@@ -88,7 +88,7 @@ const SettlementRequest = () => {
         amount: Math.round(Number(orderData.amount) * 100),
         currency: orderData.currency || 'INR',
         name: 'Help U Admin Settlement',
-        description: 'Vendor settlement payment',
+        description: 'Worker settlement payment',
         order_id: orderData.orderId,
         prefill: {},
         theme: { color: themeColors.button },
@@ -104,7 +104,7 @@ const SettlementRequest = () => {
 
             if (verifyRes.success) {
               toast.success('Settlement completed successfully');
-              navigate('/vendor/wallet');
+              navigate('/worker/wallet');
               return;
             }
 
@@ -143,7 +143,7 @@ const SettlementRequest = () => {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: themeColors.backgroundGradient }}>
-      <Header title="Pay to Admin" showBack={true} onBack={() => navigate('/vendor/wallet')} />
+      <Header title="Pay to Admin" showBack={true} onBack={() => navigate('/worker/wallet')} />
 
       <main className="px-4 py-6">
         <div
@@ -203,7 +203,7 @@ const SettlementRequest = () => {
             </div>
             <div className="text-sm">
               <p className="font-bold text-amber-900">Payment mode</p>
-              <p className="text-amber-700 text-xs mt-1">Razorpay will let the vendor pay using UPI, card, net banking, or supported methods directly to admin settlement flow.</p>
+              <p className="text-amber-700 text-xs mt-1">Razorpay will let you pay using UPI, card, net banking, or supported methods directly to admin settlement flow.</p>
             </div>
           </div>
         </div>

@@ -341,7 +341,7 @@ const createBooking = async (req, res) => {
     // Send immediate response to the client. All subsequent operations will run in the background.
     res.status(201).json({
       success: true,
-      message: 'Booking created successfully. We are finding vendors for you.',
+      message: 'Booking created successfully. We are finding workers for you.',
       data: {
         _id: booking._id,
         bookingNumber: booking.bookingNumber,
@@ -620,7 +620,7 @@ const getBookingById = async (req, res) => {
     const { id } = req.params;
 
     const booking = await Booking.findOne({ _id: id, userId })
-      .select('+visitOtp +paymentOtp') // Include secure OTPs for the user
+      .select('+visitOtp +paymentOtp +customerConfirmationOTP') // Include secure OTPs for the user
       .populate('userId', 'name phone email')
       .populate('vendorId', 'name businessName phone email address profilePhoto')
       .populate('serviceId', 'title description iconUrl images')
@@ -643,6 +643,10 @@ const getBookingById = async (req, res) => {
     if (bill) {
       bookingData.bill = bill;
     }
+
+    // Ensure OTP consistency for user display
+    bookingData.customerConfirmationOTP = booking.customerConfirmationOTP || booking.paymentOtp;
+    bookingData.paymentOtp = bookingData.customerConfirmationOTP;
 
     res.status(200).json({
       success: true,

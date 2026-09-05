@@ -201,7 +201,7 @@ export const SocketProvider = ({ children }) => {
             toast.dismiss(t.id);
             // Optional: navigate based on relatedId
             if (data.relatedId) {
-              if (userType === 'vendor') navigate(`/vendor/booking/${data.relatedId}`);
+              if (userType === 'vendor') navigate(`/worker/booking/${data.relatedId}`);
               else navigate(`/user/booking/${data.relatedId}`);
             }
           }}
@@ -308,7 +308,7 @@ export const SocketProvider = ({ children }) => {
         }
 
         // Show toast notification
-        toast.error(data.message || 'Job taken by another vendor', { icon: '⚡' });
+        toast.error(data.message || 'Job taken by another worker', { icon: '⚡' });
 
         // Dispatch specific remove event for instant UI update
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: takenBookingId } }));

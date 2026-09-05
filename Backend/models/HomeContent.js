@@ -122,6 +122,38 @@ const homeContentSchema = new mongoose.Schema({
       required: false,
       default: ''
     },
+    subtitle: {
+      type: String,
+      default: ''
+    },
+    badge: {
+      type: String,
+      default: ''
+    },
+    rating: {
+      type: String,
+      default: ''
+    },
+    reviews: {
+      type: String,
+      default: ''
+    },
+    price: {
+      type: String,
+      default: ''
+    },
+    originalPrice: {
+      type: String,
+      default: ''
+    },
+    discount: {
+      type: String,
+      default: ''
+    },
+    duration: {
+      type: String,
+      default: ''
+    },
     imageUrl: {
       type: String,
       default: ''
@@ -260,7 +292,8 @@ const homeContentSchema = new mongoose.Schema({
   isNoteworthyVisible: { type: Boolean, default: true },
   isBookedVisible: { type: Boolean, default: true },
   isCategorySectionsVisible: { type: Boolean, default: true },
-  isCategoriesVisible: { type: Boolean, default: true }
+  isCategoriesVisible: { type: Boolean, default: true },
+  isScrapVisible: { type: Boolean, default: true }
 }, {
   timestamps: true
 });

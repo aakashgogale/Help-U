@@ -254,11 +254,11 @@ const Notifications = () => {
                       <button
                         onClick={() => {
                           if (notif.relatedType === 'booking' && notif.relatedId) {
-                            navigate(`/vendor/booking/${notif.relatedId}`);
+                            navigate(`/worker/booking/${notif.relatedId}`);
                           } else if (notif.action === 'view_booking' && notif.bookingId) {
-                            navigate(`/vendor/booking/${notif.bookingId}`);
+                            navigate(`/worker/booking/${notif.bookingId}`);
                           } else if (notif.action === 'view_wallet') {
-                            navigate('/vendor/wallet');
+                            navigate('/worker/wallet');
                           }
                         }}
                         className="mt-3 text-sm font-bold flex items-center gap-1"
