@@ -6,7 +6,6 @@
 const USER_ROLES = {
   USER: 'USER',
   VENDOR: 'VENDOR',
-  WORKER: 'WORKER',
   ADMIN: 'ADMIN'
 };
 
@@ -24,15 +23,6 @@ const VENDOR_STATUS = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   SUSPENDED: 'suspended'
-};
-
-// Worker Status
-const WORKER_STATUS = {
-  ACTIVE: 'active',
-  INACTIVE: 'inactive',
-  SUSPENDED: 'suspended',
-  ONLINE: 'ONLINE',
-  OFFLINE: 'OFFLINE'
 };
 
 // Booking Status
@@ -82,7 +72,6 @@ module.exports = {
   USER_ROLES,
   TOKEN_TYPES,
   VENDOR_STATUS,
-  WORKER_STATUS,
   BOOKING_STATUS,
   PAYMENT_STATUS,
   SERVICE_STATUS,

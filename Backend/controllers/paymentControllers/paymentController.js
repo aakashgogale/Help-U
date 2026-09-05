@@ -328,7 +328,7 @@ const verifyPaymentWebhook = async (req, res) => {
       priority: 'high'
     });
 
-    // Notify vendor & worker
+    // Notify vendor
     let vendorTitle = 'Booking Confirmed';
     let vendorMsg = `Payment received for booking ${booking.bookingNumber}. The service is now confirmed.`;
 
@@ -349,17 +349,6 @@ const verifyPaymentWebhook = async (req, res) => {
       });
     }
 
-    if (booking.workerId) {
-      await createNotification({
-        workerId: booking.workerId,
-        type: 'payment_success',
-        title: vendorTitle,
-        message: vendorMsg,
-        relatedId: booking._id,
-        relatedType: 'booking',
-        priority: 'high'
-      });
-    }
 
     res.status(200).json({
       success: true,
@@ -599,7 +588,7 @@ const processWalletPayment = async (req, res) => {
       priority: 'high'
     });
 
-    // Notify vendor & worker
+    // Notify vendor
     let vendorTitle = 'Booking Confirmed';
     let vendorMsg = `Payment received for booking ${booking.bookingNumber}. The service is now confirmed.`;
 
@@ -620,17 +609,6 @@ const processWalletPayment = async (req, res) => {
       });
     }
 
-    if (booking.workerId) {
-      await createNotification({
-        workerId: booking.workerId,
-        type: 'payment_success',
-        title: vendorTitle,
-        message: vendorMsg,
-        relatedId: booking._id,
-        relatedType: 'booking',
-        priority: 'high'
-      });
-    }
 
     res.status(200).json({
       success: true,

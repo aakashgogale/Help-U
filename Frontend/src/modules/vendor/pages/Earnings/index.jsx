@@ -211,9 +211,6 @@ const Earnings = () => {
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">{item.serviceType || 'Service'}</p>
                       <p className="text-sm text-gray-600">{item.date}</p>
-                      {item.worker && (
-                        <p className="text-xs text-gray-500 mt-1">Worker: {item.worker}</p>
-                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold" style={{ color: themeColors.button }}>

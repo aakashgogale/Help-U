@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiStar, FiX, FiCheck, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
 import { themeColors } from '../../../../theme';
 
-const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, workerName }) => {
+const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, providerName }) => {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState('');

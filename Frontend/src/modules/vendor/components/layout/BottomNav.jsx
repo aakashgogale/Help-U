@@ -41,7 +41,6 @@ const BottomNav = memo(() => {
     return [
       { path: '/vendor/dashboard', icon: FiHome, activeIcon: HiHome, label: 'Home' },
       { path: '/vendor/jobs', icon: FiBriefcase, activeIcon: HiBriefcase, label: 'Jobs', badge: badgeCount },
-      { path: '/vendor/workers', icon: FiUsers, activeIcon: HiUsers, label: 'Workers' },
       { path: '/vendor/wallet', icon: FaWallet, activeIcon: FaWallet, label: 'Wallet' },
       { path: '/vendor/profile', icon: FiUser, activeIcon: HiUser, label: 'Profile' },
     ];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { acceptBooking, rejectBooking, assignWorker } from '../../services/bookingService';
+import { acceptBooking, rejectBooking } from '../../services/bookingService';
 import BookingAlertModal from '../../components/bookings/BookingAlertModal';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../../../context/SocketContext'; // Import socket context
@@ -66,7 +66,6 @@ const BookingAlert = () => {
   const handleAccept = async () => {
     try {
       await acceptBooking(id);
-      await assignWorker(id, 'SELF');
 
       // Update local storage states
       const pendingJobs = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
@@ -99,25 +98,6 @@ const BookingAlert = () => {
     }
   };
 
-  const handleAssign = async () => {
-    try {
-      await acceptBooking(id);
-
-      // Update local storage states
-      const pendingJobs = JSON.parse(localStorage.getItem('vendorPendingJobs') || '[]');
-      const updatedPending = pendingJobs.filter(job => job.id !== id);
-      localStorage.setItem('vendorPendingJobs', JSON.stringify(updatedPending));
-
-      window.dispatchEvent(new Event('vendorJobsUpdated'));
-      toast.success('Booking accepted! Redirecting to assign...');
-      navigate(`/vendor/booking/${id}/assign-worker`, { replace: true });
-    } catch (error) {
-      console.error('Error accepting:', error);
-      toast.error('Failed to accept booking.');
-      navigate('/vendor/dashboard', { replace: true });
-    }
-  };
-
   if (loading) return null;
 
   return (
@@ -125,7 +105,6 @@ const BookingAlert = () => {
       isOpen={true}
       booking={booking}
       onAccept={handleAccept}
-      onAssign={handleAssign}
       onReject={handleReject}
       onMinimize={() => navigate('/vendor/dashboard', { replace: true })}
       maxSearchTimeMins={maxSearchTime}

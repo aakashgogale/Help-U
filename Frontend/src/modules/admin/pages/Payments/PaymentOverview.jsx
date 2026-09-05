@@ -293,14 +293,13 @@ const PaymentOverview = () => {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-800">
-                            {tx.userId?.name || tx.vendorId?.businessName || tx.vendorId?.name || tx.workerId?.name || 'Unknown'}
+                            {tx.userId?.name || tx.vendorId?.businessName || tx.vendorId?.name || 'Unknown'}
                           </span>
                           {tx.userId && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">User</span>}
                           {tx.vendorId && <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">Vendor</span>}
-                          {tx.workerId && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-medium">Worker</span>}
                         </div>
                         <span className="text-xs text-gray-400">
-                          {tx.userId?.email || tx.vendorId?.email || tx.workerId?.email || ''}
+                          {tx.userId?.email || tx.vendorId?.email || ''}
                         </span>
                       </div>
                     </td>

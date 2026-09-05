@@ -702,7 +702,7 @@ const BookingDetails = () => {
           </div>
 
           {/* Broadcast/Searching State Card */}
-          {!booking.workerId && !booking.assignedTo && ['requested', 'searching'].includes(booking.status?.toLowerCase()) && (
+          {!booking.assignedTo && ['requested', 'searching'].includes(booking.status?.toLowerCase()) && (
             <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-amber-100 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -translate-y-16 translate-x-16 blur-3xl opacity-50 group-hover:opacity-80 transition-opacity"></div>
 
@@ -732,7 +732,7 @@ const BookingDetails = () => {
           )}
 
           {/* Service Partner Card */}
-          {(booking.workerId || booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
+          {(booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
             <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
               <div className="flex justify-between items-start mb-4">
                 {['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase()) ? (
@@ -758,10 +758,10 @@ const BookingDetails = () => {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full p-1 bg-gradient-to-tr from-gray-100 to-gray-50 shrink-0">
                   <div className="w-full h-full rounded-full overflow-hidden relative bg-white">
-                    {(booking.workerId?.profileImage || booking.workerId?.profilePhoto || booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto) ? (
+                    {(booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto) ? (
                       <>
                         <img
-                          src={toAssetUrl(booking.workerId?.profileImage || booking.workerId?.profilePhoto || booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto)}
+                          src={toAssetUrl(booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto)}
                           alt="Professional"
                           className="w-full h-full object-cover"
                           onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.querySelector('.fallback-icon').style.display = 'block'; }}
@@ -776,14 +776,14 @@ const BookingDetails = () => {
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-gray-900 text-lg truncate">
-                    {booking.workerId?.name || booking.assignedTo?.name || booking.vendorId?.name || 'Service Partner'}
+                    {booking.assignedTo?.name || booking.vendorId?.name || 'Service Partner'}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-1">
                     <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100">
                       <FiStar className="w-3 h-3 text-yellow-500 fill-current" />
                       <span className="text-xs font-bold text-yellow-700">
-                        {(booking.workerId?.rating || booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
-                          ? (booking.workerId?.rating || booking.assignedTo?.rating || booking.vendorId?.rating).toFixed(1)
+                        {(booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
+                          ? (booking.assignedTo?.rating || booking.vendorId?.rating).toFixed(1)
                           : 'New'}
                       </span>
                     </div>
@@ -792,9 +792,9 @@ const BookingDetails = () => {
                 </div>
 
                 {/* Quick Call Action */}
-                {(booking.workerId?.phone || booking.assignedTo?.phone || booking.vendorId?.phone) && (
+                {(booking.assignedTo?.phone || booking.vendorId?.phone) && (
                   <a
-                    href={`tel:${booking.workerId?.phone || booking.assignedTo?.phone || booking.vendorId?.phone}`}
+                    href={`tel:${booking.assignedTo?.phone || booking.vendorId?.phone}`}
                     className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center hover:bg-green-100 transition-colors active:scale-95 border border-green-100"
                   >
                     <FiPhone className="w-5 h-5" />
@@ -1513,7 +1513,7 @@ const BookingDetails = () => {
           }}
           onSubmit={handleRateSubmit}
           bookingName={booking.serviceName || booking.serviceCategory || 'Service'}
-          workerName={booking.workerId?.name || (booking.assignedTo?.name === 'You (Self)' ? 'Service Provider' : (booking.assignedTo?.name || 'Worker'))}
+          providerName={booking.vendorId?.name || booking.assignedTo?.name || 'Service Provider'}
         />
 
         {/* Payment Verification Modal */}

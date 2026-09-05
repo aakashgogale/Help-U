@@ -161,7 +161,6 @@ export const stopAlertRing = () => {
 export const isSoundEnabled = (userType = 'vendor') => {
   let storageKey = 'vendorData';
   if (userType === 'user') storageKey = 'userData';
-  else if (userType === 'worker') storageKey = 'workerData';
   else if (userType === 'admin') storageKey = 'adminData';
 
   const dataString = localStorage.getItem(storageKey);

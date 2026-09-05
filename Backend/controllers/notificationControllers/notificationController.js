@@ -1,6 +1,6 @@
 const Notification = require('../../models/Notification');
 const { validationResult } = require('express-validator');
-const { sendNotificationToUser, sendNotificationToVendor, sendNotificationToWorker } = require('../../services/firebaseAdmin');
+const { sendNotificationToUser, sendNotificationToVendor } = require('../../services/firebaseAdmin');
 
 /**
  * Create notification (internal use)
@@ -8,7 +8,6 @@ const { sendNotificationToUser, sendNotificationToVendor, sendNotificationToWork
 const createNotification = async ({
   userId = null,
   vendorId = null,
-  workerId = null,
   adminId = null,
   type,
   title,
@@ -26,7 +25,7 @@ const createNotification = async ({
     const { getRedis, isRedisConnected } = require('../../services/redisService');
 
     // Build a deterministic dedup key from the notification fingerprint
-    const dedupTarget = userId || vendorId || workerId || adminId || 'unknown';
+    const dedupTarget = userId || vendorId || adminId || 'unknown';
     const dedupKey = `notif:dedup:${type}:${String(relatedId || '')}:${String(dedupTarget)}`;
 
     if (isRedisConnected()) {
@@ -42,7 +41,6 @@ const createNotification = async ({
       };
       if (userId) duplicateQuery.userId = userId;
       if (vendorId) duplicateQuery.vendorId = vendorId;
-      if (workerId) duplicateQuery.workerId = workerId;
       if (adminId) duplicateQuery.adminId = adminId;
       if (relatedId) duplicateQuery.relatedId = relatedId;
 
@@ -59,7 +57,6 @@ const createNotification = async ({
     const notification = await Notification.create({
       userId,
       vendorId,
-      workerId,
       adminId,
       type,
       title,
@@ -80,7 +77,6 @@ const createNotification = async ({
 
       if (userId) room = `user_${userId.toString()}`;
       else if (vendorId) room = `vendor_${vendorId.toString()}`;
-      else if (workerId) room = `worker_${workerId.toString()}`;
       else if (adminId) room = `admin_${adminId.toString()}`;
 
       if (io && room) {
@@ -137,7 +133,6 @@ const createNotification = async ({
       try {
         if (userId) await sendNotificationToUser(userId, payload);
         if (vendorId) await sendNotificationToVendor(vendorId, payload);
-        if (workerId) await sendNotificationToWorker(workerId, payload);
         if (adminId) {
           const { sendNotificationToAdmin } = require('../../services/firebaseAdmin');
           await sendNotificationToAdmin(adminId, payload);
@@ -257,55 +252,6 @@ const getVendorNotifications = async (req, res) => {
 };
 
 /**
- * Get worker notifications
- */
-const getWorkerNotifications = async (req, res) => {
-  try {
-    const workerId = req.user.id;
-    const { isRead, page = 1, limit = 20 } = req.query;
-
-    // Build query
-    const query = { workerId };
-    if (isRead !== undefined) {
-      query.isRead = isRead === 'true';
-    }
-
-    // Pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Get notifications
-    const notifications = await Notification.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Get total count
-    const total = await Notification.countDocuments(query);
-
-    // Get unread count
-    const unreadCount = await Notification.countDocuments({ workerId, isRead: false });
-
-    res.status(200).json({
-      success: true,
-      data: notifications,
-      unreadCount,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit))
-      }
-    });
-  } catch (error) {
-    console.error('Get worker notifications error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch notifications. Please try again.'
-    });
-  }
-};
-
-/**
  * Get admin notifications
  */
 const getAdminNotifications = async (req, res) => {
@@ -367,7 +313,6 @@ const markAsRead = async (req, res) => {
     let query = { _id: id };
     if (userRole === 'USER') query.userId = userId;
     else if (userRole === 'VENDOR') query.vendorId = userId;
-    else if (userRole === 'WORKER') query.workerId = userId;
     else if (userRole === 'ADMIN') query.adminId = userId;
 
     const notification = await Notification.findOne(query);
@@ -409,7 +354,6 @@ const markAllAsRead = async (req, res) => {
     let query = { isRead: false };
     if (userRole === 'USER') query.userId = userId;
     else if (userRole === 'VENDOR') query.vendorId = userId;
-    else if (userRole === 'WORKER') query.workerId = userId;
     else if (userRole === 'ADMIN') query.adminId = userId;
 
     await Notification.updateMany(query, {
@@ -443,7 +387,6 @@ const deleteNotification = async (req, res) => {
     let query = { _id: id };
     if (userRole === 'USER') query.userId = userId;
     else if (userRole === 'VENDOR') query.vendorId = userId;
-    else if (userRole === 'WORKER') query.workerId = userId;
     else if (userRole === 'ADMIN') query.adminId = userId;
 
     const notification = await Notification.findOneAndDelete(query);
@@ -480,7 +423,6 @@ const deleteAllNotifications = async (req, res) => {
     let query = {};
     if (userRole === 'USER' || userRole === 'user') query.userId = userId;
     else if (userRole === 'VENDOR' || userRole === 'vendor') query.vendorId = userId;
-    else if (userRole === 'WORKER' || userRole === 'worker') query.workerId = userId;
     else if (userRole === 'ADMIN' || userRole === 'admin' || userRole === 'super_admin') query.adminId = userId;
     else {
       console.log('Role mismatch in deleteAllNotifications:', userRole);
@@ -510,7 +452,6 @@ module.exports = {
   createNotification,
   getUserNotifications,
   getVendorNotifications,
-  getWorkerNotifications,
   getAdminNotifications,
   markAsRead,
   markAllAsRead,

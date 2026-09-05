@@ -42,7 +42,6 @@ const Footer = () => {
         { label: 'My Wallet', path: '/user/wallet' },
         { label: 'My Plan', path: '/user/my-plan' },
         { label: 'Register as Vendor', path: '/vendor/signup' },
-        { label: 'Register as Worker', path: '/worker/signup' },
       ]
     },
     {

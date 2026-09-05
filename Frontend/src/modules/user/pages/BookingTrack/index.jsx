@@ -225,7 +225,7 @@ const BookingTrack = () => {
 
           // 2. Source (Provider Location) - ONLY on first load if no socket location received yet
           if (isFirstLoad && !locationFromSocketRef.current) {
-            const provider = response.data.workerId || response.data.assignedTo || response.data.vendorId || {};
+            const provider = response.data.assignedTo || response.data.vendorId || {};
             if (provider.location && provider.location.lat && provider.location.lng) {
               setCurrentLocation({ lat: parseFloat(provider.location.lat), lng: parseFloat(provider.location.lng) });
             } else if (response.data.vendorId && provider.address && provider.address.lat && provider.address.lng) {
@@ -622,8 +622,8 @@ const BookingTrack = () => {
 
   if (!isLoaded || loading || !booking) return <LogoLoader />;
 
-  // Determine active provider based on priority: Worker -> Assigned -> Vendor
-  const provider = booking?.workerId || booking?.assignedTo || booking?.vendorId || {};
+  // Determine active provider based on priority: Assigned -> Vendor
+  const provider = booking?.assignedTo || booking?.vendorId || {};
 
   return (
     <div className="h-screen flex flex-col relative bg-white overflow-hidden">

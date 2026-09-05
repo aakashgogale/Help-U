@@ -53,7 +53,7 @@ const Services = () => {
     setCategories(updated);
     localStorage.setItem('serviceCategories', JSON.stringify(updated));
 
-    // Update vendor and worker themes if needed
+    // Update vendor themes if needed
     window.dispatchEvent(new Event('serviceCategoriesUpdated'));
 
     setNewCategory({ name: '', skills: [] });

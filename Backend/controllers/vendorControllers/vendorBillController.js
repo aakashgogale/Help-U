@@ -30,11 +30,10 @@ const createOrUpdateBill = async (req, res) => {
 
     const { USER_ROLES } = require('../../utils/constants');
 
-    // Auth check: Vendor or assigned Worker
+    // Auth check: Vendor
     const isVendorAuth = booking.vendorId.toString() === req.user.id && req.userRole === USER_ROLES.VENDOR;
-    const isWorkerAuth = booking.workerId?.toString() === req.user.id && req.userRole === USER_ROLES.WORKER;
 
-    if (!isVendorAuth && !isWorkerAuth) {
+    if (!isVendorAuth) {
       return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 
@@ -116,7 +115,7 @@ const createOrUpdateBill = async (req, res) => {
         const pGstPct = catalogItem ? (catalogItem.gstPercentage || partsGstPct) : (Number(item.gstPercentage) || partsGstPct);
 
         const base = unitBasePrice * quantity;
-        // Honour the worker's GST toggle — if applyPartsGST=false, force zero GST
+        // Honour the vendor's GST toggle — if applyPartsGST=false, force zero GST
         const effectivePGstPct = applyPartsGST ? pGstPct : 0;
         const gst = applyPartsGST ? parseFloat(((base * pGstPct) / 100).toFixed(2)) : 0;
 
@@ -149,7 +148,7 @@ const createOrUpdateBill = async (req, res) => {
         const cGstPct = Number(item.gstPercentage) || partsGstPct;
 
         const base = unitBasePrice * quantity;
-        // Honour the worker's GST toggle — if applyPartsGST=false, force zero GST on custom items too
+        // Honour the vendor's GST toggle — if applyPartsGST=false, force zero GST on custom items too
         const effectiveCGstPct = applyPartsGST ? cGstPct : 0;
         const gst = applyPartsGST ? parseFloat(((base * cGstPct) / 100).toFixed(2)) : 0;
 
@@ -297,9 +296,8 @@ const getBillByBookingId = async (req, res) => {
     const { USER_ROLES } = require('../../utils/constants');
 
     const isVendorAuth = booking.vendorId.toString() === req.user.id && req.userRole === USER_ROLES.VENDOR;
-    const isWorkerAuth = booking.workerId?.toString() === req.user.id && req.userRole === USER_ROLES.WORKER;
 
-    if (!isVendorAuth && !isWorkerAuth) {
+    if (!isVendorAuth) {
       return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 

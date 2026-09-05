@@ -7,7 +7,7 @@ import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
 import LogoLoader from '../../../../components/common/LogoLoader';
 
-import { getBookings, assignWorker as assignWorkerApi } from '../../services/bookingService';
+import { getBookings } from '../../services/bookingService';
 import { ConfirmDialog } from '../../components/common';
 
 const ActiveJobs = memo(() => {
@@ -62,7 +62,7 @@ const ActiveJobs = memo(() => {
         },
         price: (job.finalAmount ? job.finalAmount * 0.9 : 0).toFixed(2),
         status: job.status,
-        assignedTo: job.workerId ? { name: job.workerId.name } : (job.assignedAt ? { name: 'You (Self)' } : null),
+        assignedTo: job.assignedAt ? { name: 'You (Self)' } : null,
         timeSlot: {
           date: job.scheduledDate ? new Date(job.scheduledDate).toLocaleDateString() : 'Date',
           time: job.scheduledTime || 'Time'
@@ -96,27 +96,6 @@ const ActiveJobs = memo(() => {
   // filteredJobs is now just the jobs from the server
   const filteredJobs = jobs;
 
-  const handleAssignToSelf = async (jobId) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Assign to Self',
-      message: 'Are you sure you want to do this job yourself?',
-      onConfirm: async () => {
-        try {
-          const response = await assignWorkerApi(jobId, 'SELF');
-          if (response && response.success) {
-            toast.success("Assigned to yourself!");
-            // Refresh jobs list instead of full page reload
-            loadJobs(filter, searchQuery);
-          }
-        } catch (error) {
-          console.error("Error assigning to self:", error);
-          toast.error("Failed to assign to yourself");
-        }
-      }
-    });
-  };
-
   const hexToRgba = useCallback((hex, alpha) => {
     if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
@@ -132,7 +111,6 @@ const ActiveJobs = memo(() => {
       'JOURNEY_STARTED': '#F59E0B',
       'VISITED': '#8B5CF6',
       'WORK_DONE': '#10B981',
-      'WORKER_PAID': '#06B6D4',
       'SETTLEMENT_PENDING': '#F97316',
       'COMPLETED': '#059669',
     };
@@ -331,40 +309,6 @@ const ActiveJobs = memo(() => {
                       </div>
                     </div>
 
-                    {/* Quick Action Button for Unassigned Jobs */}
-                    {['ACCEPTED', 'CONFIRMED'].includes(job.status?.toUpperCase()) && !job.assignedTo && (
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAssignToSelf(job.id);
-                          }}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5"
-                          style={{
-                            background: 'white',
-                            color: themeColors.button,
-                            border: `1.5px solid ${themeColors.button}`,
-                          }}
-                        >
-                          <FiUser className="w-3.5 h-3.5" />
-                          Do it Myself
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/vendor/booking/${job.id}/assign-worker`);
-                          }}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-all active:scale-95 flex items-center justify-center gap-1.5"
-                          style={{
-                            background: themeColors.button,
-                            boxShadow: `0 2px 8px ${themeColors.button}30`,
-                          }}
-                        >
-                          <FiUser className="w-3.5 h-3.5" />
-                          Assign Worker
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               );

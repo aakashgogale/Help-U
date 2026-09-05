@@ -5,7 +5,6 @@ const { isAdmin } = require('../../middleware/roleMiddleware');
 const {
   getBookingReport,
   getVendorReport,
-  getWorkerReport,
   getRevenueReport,
   getCustomerReport
 } = require('../../controllers/adminControllers/adminReportController');
@@ -16,7 +15,6 @@ router.use(authenticate, isAdmin);
 // Report routes
 router.get('/reports/bookings', getBookingReport);
 router.get('/reports/vendors', getVendorReport);
-router.get('/reports/workers', getWorkerReport);
 router.get('/reports/revenue', getRevenueReport);
 router.get('/reports/customers', getCustomerReport);
 

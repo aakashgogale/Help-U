@@ -451,7 +451,6 @@ const LandingPage = () => {
             {[
               { to: "/user", icon: <FaUser />, title: "As a User", btn: "Book Service" },
               { to: "/vendor/login", icon: <FaStore />, title: "Vendor Partner", btn: "Partner Now" },
-              { to: "/worker/login", icon: <FaHammer />, title: "As an Xpert", btn: "Start Earning" },
             ].map((box, idx) => (
               <Link key={idx} to={box.to} className="group p-8 sm:p-12 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] transition-all duration-700 hover:bg-white hover:shadow-2xl hover:-translate-y-2 flex flex-col items-center">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 text-white rounded-[1.5rem] sm:rounded-3xl flex items-center justify-center mb-6 sm:mb-10 transition-all duration-500 group-hover:bg-brand group-hover:text-white group-hover:rotate-6">

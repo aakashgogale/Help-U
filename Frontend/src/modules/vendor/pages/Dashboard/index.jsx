@@ -5,7 +5,7 @@ import { FaWallet } from 'react-icons/fa';
 import { vendorTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import { vendorDashboardService } from '../../services/dashboardService';
-import { acceptBooking, rejectBooking, assignWorker } from '../../services/bookingService';
+import { acceptBooking, rejectBooking } from '../../services/bookingService';
 // Booking alert handled globally
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
@@ -34,7 +34,6 @@ const Dashboard = memo(() => {
     todayEarnings: 0,
     activeJobs: 0,
     pendingAlerts: 0,
-    workersOnline: 0,
     totalEarnings: 0,
     completedJobs: 0,
     rating: 0,
@@ -181,7 +180,6 @@ const Dashboard = memo(() => {
       totalEarnings: apiStats.totalEarnings || apiStats.totalRevenue || 0,
       activeJobs: apiStats.activeJobs || apiStats.inProgressBookings || 0,
       pendingAlerts: mergedPending.length,
-      workersOnline: apiStats.workersOnline || 0,
       completedJobs: apiStats.completedJobs || apiStats.completedBookings || 0,
       rating: apiStats.rating || apiStats.averageRating || 0,
     });
@@ -199,7 +197,7 @@ const Dashboard = memo(() => {
         time: booking.scheduledTime || 'Time not set'
       },
       status: booking.status,
-      assignedTo: booking.workerId ? { name: booking.workerId.name } : null,
+      assignedTo: booking.assignedAt ? { name: 'You (Self)' } : null,
     }));
     setRecentJobs(recentJobsData);
 
@@ -368,10 +366,6 @@ const Dashboard = memo(() => {
     }
   };
 
-  const handleAssignAlert = async (bookingId) => {
-    navigate('/vendor/workers', { state: { bookingId } });
-  };
-
   // Memoize quickActions to prevent recreation on every render
   const quickActions = useMemo(() => [
     {
@@ -383,21 +377,13 @@ const Dashboard = memo(() => {
       subtitle: `${stats.activeJobs} running`,
     },
     {
-      title: 'Manage Workers',
-      icon: FiUsers,
-      color: '#29ad81',
-      path: '/vendor/workers',
-      count: stats.workersOnline,
-      subtitle: `${stats.workersOnline} online`,
-    },
-    {
       title: 'Wallet',
       icon: FaWallet,
       color: '#F59E0B',
       path: '/vendor/wallet',
       subtitle: `₹${stats.totalEarnings.toLocaleString()} total`,
     },
-  ], [stats.activeJobs, stats.workersOnline, stats.totalEarnings]);
+  ], [stats.activeJobs, stats.totalEarnings]);
 
   const getStatusColor = (status) => {
     const s = String(status).toLowerCase();
@@ -410,7 +396,6 @@ const Dashboard = memo(() => {
       'in_progress': '#F59E0B',
       'work_done': '#10B981',
       'completed': '#10B981',
-      'worker_paid': '#06B6D4',
       'settlement_pending': '#F97316',
     };
     return statusColors[s] || '#6B7280';
@@ -429,7 +414,6 @@ const Dashboard = memo(() => {
       'in_progress': 'In Progress',
       'work_done': 'Work Done',
       'completed': 'Completed',
-      'worker_paid': 'Payment Done',
       'settlement_pending': 'Settlement',
       'cancelled': 'Cancelled',
       'rejected': 'Rejected'

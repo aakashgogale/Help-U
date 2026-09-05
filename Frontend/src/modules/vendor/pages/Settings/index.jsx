@@ -103,7 +103,6 @@ const Settings = () => {
       // Clear all vendor data
       localStorage.removeItem('vendorProfile');
       localStorage.removeItem('vendorSettings');
-      localStorage.removeItem('vendorWorkers');
       localStorage.removeItem('vendorAcceptedBookings');
       localStorage.removeItem('vendorWallet');
       localStorage.removeItem('vendorTransactions');

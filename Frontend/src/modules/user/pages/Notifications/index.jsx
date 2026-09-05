@@ -127,7 +127,7 @@ const Notifications = () => {
     }
 
     if (filter === 'jobs') { // Mapped to 'Bookings' in UI
-      return ['booking_', 'job_', 'worker_', 'visit_', 'work_', 'journey_', 'vendor_'].some(prefix => type.includes(prefix));
+      return ['booking_', 'job_', 'visit_', 'work_', 'journey_', 'vendor_'].some(prefix => type.includes(prefix));
     }
 
     if (filter === 'alerts') {

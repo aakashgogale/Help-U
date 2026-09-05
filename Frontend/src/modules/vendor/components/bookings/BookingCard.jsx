@@ -79,7 +79,7 @@ const BookingCard = ({ booking, onClick }) => {
             <span className="text-sm font-semibold text-gray-900">
               {typeof booking.assignedTo === 'string' 
                 ? booking.assignedTo 
-                : booking.assignedTo.workerName || 'Self'}
+                : 'Self'}
             </span>
           </div>
         )}

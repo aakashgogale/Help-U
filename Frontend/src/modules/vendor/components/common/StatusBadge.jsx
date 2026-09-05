@@ -28,11 +28,6 @@ const StatusBadge = ({ status, size = 'md' }) => {
       color: '#059669',
       bgColor: '#A7F3D0',
     },
-    WORKER_PAID: {
-      label: 'Worker Paid',
-      color: '#0284C7',
-      bgColor: '#BAE6FD',
-    },
     SETTLEMENT_PENDING: {
       label: 'Settlement Pending',
       color: '#F97316',

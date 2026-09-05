@@ -204,7 +204,6 @@ async function removeInvalidTokens(tokens) {
     console.log(`[FCM Cleanup] Removing ${tokens.length} invalid tokens...`);
     const User = require('../models/User');
     const Vendor = require('../models/Vendor');
-    const Worker = require('../models/Worker');
 
     const updateQuery = {
       $pull: {
@@ -216,8 +215,7 @@ async function removeInvalidTokens(tokens) {
     // We run updates in parallel for all collections as a token might belong to any
     await Promise.all([
       User.updateMany({ $or: [{ fcmTokens: { $in: tokens } }, { fcmTokenMobile: { $in: tokens } }] }, updateQuery),
-      Vendor.updateMany({ $or: [{ fcmTokens: { $in: tokens } }, { fcmTokenMobile: { $in: tokens } }] }, updateQuery),
-      Worker.updateMany({ $or: [{ fcmTokens: { $in: tokens } }, { fcmTokenMobile: { $in: tokens } }] }, updateQuery)
+      Vendor.updateMany({ $or: [{ fcmTokens: { $in: tokens } }, { fcmTokenMobile: { $in: tokens } }] }, updateQuery)
     ]);
 
     console.log('[FCM Cleanup] ✅ Invalid tokens removed from database');
@@ -261,7 +259,7 @@ async function sendNotificationToUser(userId, payload, includeMobile = true) {
     const finalPayload = {
       ...payload,
       highPriority: payload.priority === 'high' ||
-        ['booking_accepted', 'worker_started', 'journey_started', 'work_done', 'work_completed', 'booking_completed', 'vendor_reached', 'visit_verified', 'payment_success', 'payment_received', 'work_started', 'in_progress', 'worker_accepted'].includes(payload.data?.type),
+        ['booking_accepted', 'journey_started', 'work_done', 'work_completed', 'booking_completed', 'vendor_reached', 'visit_verified', 'payment_success', 'payment_received', 'work_started', 'in_progress'].includes(payload.data?.type),
       dataOnly: false // Explicitly disable dataOnly to force system tray notification
     };
 
@@ -310,48 +308,6 @@ async function sendNotificationToVendor(vendorId, payload, includeMobile = true)
     await sendPushNotification(tokens, finalPayload);
   } catch (error) {
     console.error(`[FCM] ❌ Error sending notification to vendor ${vendorId}:`, error);
-  }
-}
-
-/**
- * Send notification to a specific worker
- * @param {string} workerId - Worker's MongoDB _id
- * @param {Object} payload - Notification payload
- * @param {boolean} includeMobile - Include mobile tokens (default: true)
- */
-async function sendNotificationToWorker(workerId, payload, includeMobile = true) {
-  try {
-    const Worker = require('../models/Worker');
-    const worker = await Worker.findById(workerId);
-
-    if (!worker) {
-      console.log(`[FCM] ❌ Worker not found for notification: ${workerId}`);
-      return;
-    }
-
-    let tokens = [];
-    if (worker.fcmTokens && worker.fcmTokens.length > 0) {
-      tokens = [...tokens, ...worker.fcmTokens];
-    }
-    if (includeMobile && worker.fcmTokenMobile && worker.fcmTokenMobile.length > 0) {
-      tokens = [...tokens, ...worker.fcmTokenMobile];
-    }
-
-    if (tokens.length === 0) {
-      console.log(`[FCM] ⚠️ No FCM tokens found for worker: ${workerId}`);
-      return;
-    }
-
-    console.log(`[FCM] 📤 Sending notification to worker ${worker.name} (${workerId}) on ${tokens.length} devices`);
-
-    const finalPayload = {
-      ...payload,
-      title: `👷 [Pro] ${payload.title}` // Add identification
-    };
-
-    await sendPushNotification(tokens, finalPayload);
-  } catch (error) {
-    console.error(`[FCM] ❌ Error sending notification to worker ${workerId}:`, error);
   }
 }
 
@@ -406,6 +362,5 @@ module.exports = {
   sendPushNotification,
   sendNotificationToUser,
   sendNotificationToVendor,
-  sendNotificationToWorker,
   sendNotificationToAdmin
 };

@@ -9,7 +9,6 @@ const {
   getBookingById,
   acceptBooking,
   rejectBooking,
-  assignWorker,
   updateBookingStatus,
   addVendorNotes,
   startSelfJob,
@@ -18,7 +17,6 @@ const {
   completeSelfJob,
   collectSelfCash,
   requestAdvancePayment,
-  payWorker,
   getVendorRatings,
   getPendingBookings
 } = require('../../controllers/bookingControllers/vendorBookingController');
@@ -26,14 +24,6 @@ const {
 // Validation rules
 const rejectBookingValidation = [
   body('reason').optional().trim()
-];
-
-const assignWorkerValidation = [
-  body('workerId').custom((value) => {
-    if (value === 'SELF') return true;
-    if (mongoose.Types.ObjectId.isValid(value)) return true;
-    throw new Error('Valid worker ID or "SELF" is required');
-  })
 ];
 
 const updateStatusValidation = [
@@ -58,7 +48,6 @@ router.get('/', authenticate, isVendor, getVendorBookings);
 router.get('/:id', authenticate, isVendor, getBookingById);
 router.post('/:id/accept', authenticate, isVendor, acceptBooking);
 router.post('/:id/reject', authenticate, isVendor, rejectBookingValidation, rejectBooking);
-router.post('/:id/assign-worker', authenticate, isVendor, assignWorkerValidation, assignWorker);
 router.put('/:id/status', authenticate, isVendor, updateStatusValidation, updateBookingStatus);
 router.post('/:id/notes', authenticate, isVendor, addNotesValidation, addVendorNotes);
 
@@ -69,9 +58,6 @@ router.post('/:id/self/visit/verify', authenticate, isVendor, verifySelfVisit);
 router.post('/:id/self/complete', authenticate, isVendor, completeSelfJob);
 router.post('/:id/self/payment/collect', authenticate, isVendor, collectSelfCash);
 router.post('/:id/advance-payment-request', authenticate, isVendor, requestAdvancePaymentValidation, requestAdvancePayment);
-
-// Payment Route
-router.post('/:id/pay-worker', authenticate, isVendor, payWorker);
 
 module.exports = router;
 

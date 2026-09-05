@@ -34,19 +34,6 @@ export const vendorDashboardService = {
     }
   },
 
-  /**
-   * Get worker performance statistics
-   * @returns {Promise<Object>} Worker performance data
-   */
-  getWorkerPerformance: async () => {
-    try {
-      const response = await api.get('/vendors/dashboard/workers');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching worker performance:', error);
-      throw error;
-    }
-  },
 
   /**
    * Get service performance metrics

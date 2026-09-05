@@ -42,16 +42,6 @@ export const adminTransactionService = {
     }
   },
 
-  // Worker Payment endpoints
-  getWorkerPaymentsSummary: async () => {
-    try {
-      const response = await api.get('/admin/workers/payments');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching worker payments summary:', error);
-      throw error;
-    }
-  },
 
   // Reports
   getPaymentReports: async (params) => {

@@ -1,6 +1,5 @@
 const Booking = require('../../models/Booking');
 const Vendor = require('../../models/Vendor');
-const Worker = require('../../models/Worker');
 const User = require('../../models/User');
 const Service = require('../../models/UserService');
 const { BOOKING_STATUS, PAYMENT_STATUS, VENDOR_STATUS } = require('../../utils/constants');
@@ -237,60 +236,6 @@ exports.getVendorReport = async (req, res) => {
   } catch (error) {
     console.error('Vendor report error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch vendor report' });
-  }
-};
-
-/**
- * Get Worker Report Data
- */
-exports.getWorkerReport = async (req, res) => {
-  try {
-    // Top workers by jobs completed
-    const topWorkers = await Booking.aggregate([
-      { $match: { status: BOOKING_STATUS.COMPLETED, workerId: { $ne: null } } },
-      {
-        $group: {
-          _id: '$workerId',
-          completedJobs: { $sum: 1 },
-          avgRating: { $avg: '$rating' }
-        }
-      },
-      { $sort: { completedJobs: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: 'workers',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'worker'
-        }
-      },
-      { $unwind: '$worker' },
-      {
-        $project: {
-          name: '$worker.name',
-          phone: '$worker.phone',
-          completedJobs: 1,
-          avgRating: 1
-        }
-      }
-    ]);
-
-    // Worker availability distribution
-    const availabilityDistribution = await Worker.aggregate([
-      { $group: { _id: '$isAvailable', count: { $sum: 1 } } }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        topWorkers,
-        availabilityDistribution
-      }
-    });
-  } catch (error) {
-    console.error('Worker report error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch worker report' });
   }
 };
 

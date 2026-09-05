@@ -6,7 +6,6 @@
  * Usage:
  * - User module: import { userTheme } from '../../../../theme'
  * - Vendor module: import { vendorTheme } from '../../../../theme'
- * - Worker module: import { workerTheme } from '../../../../theme'
  */
 
 // Help U LOGO Core Brand Colors
@@ -45,21 +44,11 @@ const vendorTheme = {
   brand: brand
 };
 
-// Worker Theme Colors
-const workerTheme = {
-  backgroundGradient: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-  gradient: brand.gradient,
-  headerGradient: brand.navy,
-  button: brand.navy,
-  icon: brand.navy,
-  brand: brand
-};
-
 // Default theme (for backward compatibility)
 const themeColors = userTheme;
 
 // Export all themes
-export { userTheme, vendorTheme, workerTheme, brand };
+export { userTheme, vendorTheme, brand };
 export default themeColors;
 
 

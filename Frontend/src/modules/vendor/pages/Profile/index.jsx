@@ -342,38 +342,6 @@ const Profile = () => {
               </span>
             </button>
 
-            {/* Workers */}
-            <button
-              onClick={() => navigate('/vendor/workers')}
-              className="flex flex-col items-center justify-center p-4 rounded-2xl active:scale-95 transition-all duration-300 relative overflow-hidden bg-white"
-              style={{
-                boxShadow: '0 4px 12px rgba(0, 166, 166, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05)',
-                border: '1.5px solid rgba(0, 166, 166, 0.15)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 166, 166, 0.15), 0 3px 8px rgba(0, 0, 0, 0.08)';
-                e.currentTarget.style.borderColor = hexToRgba(themeColors.button, 0.25);
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05)';
-                e.currentTarget.style.borderColor = hexToRgba(themeColors.button, 0.15);
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center mb-2"
-                style={{
-                  backgroundColor: hexToRgba(themeColors.button, 0.12),
-                  boxShadow: `0 2px 8px ${hexToRgba(themeColors.button, 0.2)}`,
-                }}
-              >
-                <FiUser className="w-5 h-5" style={{ color: themeColors.button }} />
-              </div>
-              <span className="text-[11px] font-bold text-gray-800 text-center leading-tight">
-                Workers
-              </span>
-            </button>
           </div>
         </div>
 

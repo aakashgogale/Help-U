@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { vendorTheme as themeColors } from '../../../../theme';
 import { playAlertRing, stopAlertRing } from '../../../../utils/notificationSound';
 
-const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTimeMins = 1 }) => {
+const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }) => {
   // Calculate initial time synchronously instead of relying solely on useEffect
   const calculateInitialRemaining = () => {
     try {
@@ -232,15 +232,8 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
           </button>
           <button
             disabled={!!loadingAction}
-            onClick={() => handleAction(onAssign, 'assign')}
-            className="w-full py-2.5 rounded-xl text-white font-black text-[11px] shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-            style={{ background: themeColors.button }}>
-            <FiUsers className="w-3.5 h-3.5" /> {loadingAction === 'assign' ? '...' : 'Forward'}
-          </button>
-          <button
-            disabled={!!loadingAction}
             onClick={() => handleAction(onReject, 'reject')}
-            className="w-full py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 font-bold text-[11px] active:scale-95 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-50">
+            className="w-full py-2.5 rounded-xl col-span-2 bg-red-50 border border-red-100 text-red-500 font-bold text-[11px] active:scale-95 transition-all uppercase flex items-center justify-center gap-1.5 disabled:opacity-50">
             {loadingAction === 'reject' ? '...' : <><FiX className="w-3.5 h-3.5" /> Decline</>}
           </button>
         </div>
@@ -249,7 +242,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, onAssign, maxSearchTime
   );
 };
 
-const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onAssign, onMinimize, maxSearchTimeMins = 1 }) => {
+const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onMinimize, maxSearchTimeMins = 1 }) => {
   const alertsArray = bookings || (booking ? [booking] : []);
 
   return (
@@ -279,7 +272,6 @@ const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onAs
                   booking={b}
                   onAccept={onAccept}
                   onReject={onReject}
-                  onAssign={onAssign}
                   maxSearchTimeMins={maxSearchTimeMins}
                 />
               ))}

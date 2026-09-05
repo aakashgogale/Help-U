@@ -11,7 +11,7 @@ const LocationAccessModal = ({
   onSuccess,
   onManualSearch,
   initialLocationDisabled = false,
-  userType = 'user' // 'user' | 'vendor' | 'worker'
+  userType = 'user' // 'user' | 'vendor'
 }) => {
   const [requesting, setRequesting] = useState(false);
   const [locationDisabled, setLocationDisabled] = useState(initialLocationDisabled);
@@ -19,7 +19,6 @@ const LocationAccessModal = ({
   const getTheme = () => {
     switch (userType) {
       case 'vendor': return themeColors.vendor || themeColors;
-      case 'worker': return themeColors.worker || themeColors;
       default: return themeColors.user || themeColors;
     }
   };

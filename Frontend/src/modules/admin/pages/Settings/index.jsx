@@ -8,7 +8,6 @@ import { toast } from 'react-hot-toast';
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
-    workerAutoAssignment: true,
   });
 
   const [financialSettings, setFinancialSettings] = useState({
@@ -796,16 +795,6 @@ const AdminSettings = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800">Auto-Assign Workers</p>
-                      <p className="text-xs text-gray-500 mt-1">Automatically find new worker if booking is rejected</p>
-                    </div>
-                    <button onClick={() => handleToggle('workerAutoAssignment')}
-                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${settings.workerAutoAssignment ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${settings.workerAutoAssignment ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
 
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <div className="flex-1">

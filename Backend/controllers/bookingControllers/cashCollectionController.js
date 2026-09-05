@@ -66,7 +66,7 @@ exports.initiateOnlineCollection = async (req, res) => {
       booking.bookingNumber,
       {
         bookingId: booking._id.toString(),
-        type: 'worker_initiated_online'
+        type: 'vendor_initiated_online'
       }
     );
 
@@ -250,7 +250,7 @@ exports.initiateCashCollection = async (req, res) => {
 };
 
 /**
- * Confirm Cash Collection (by Vendor/Worker)
+ * Confirm Cash Collection (by Vendor)
  * Uses VendorBill as the single source of truth for earnings.
  */
 exports.confirmCashCollection = async (req, res) => {
@@ -345,7 +345,7 @@ exports.confirmCashCollection = async (req, res) => {
     booking.userPayableAmount = collectionAmount;
     booking.cashCollected = true;
     booking.cashCollectedAt = new Date();
-    booking.cashCollectedBy = userRole === 'vendor' ? 'vendor' : 'worker';
+    booking.cashCollectedBy = 'vendor';
     booking.cashCollectorId = userId;
 
     if (booking.paymentMethod === 'plan_benefit') {

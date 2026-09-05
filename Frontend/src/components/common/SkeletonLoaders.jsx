@@ -59,7 +59,7 @@ export const SkeletonList = ({ count = 3, cardHeight = '100px', className = '' }
   </div>
 );
 
-// Profile Header Skeleton (specific to worker dashboard)
+// Profile Header Skeleton
 export const SkeletonProfileHeader = () => (
   <div className="px-4 pt-4 pb-2">
     <div

@@ -25,7 +25,6 @@ import CardShell from '../UserCategories/components/CardShell';
 import RevenueReport from './RevenueReport';
 import BookingReport from './BookingReport';
 import VendorReport from './VendorReport';
-import WorkerReport from './WorkerReport';
 
 const ReportsOverview = () => {
   const [loading, setLoading] = useState(true);
@@ -102,7 +101,7 @@ const ReportsOverview = () => {
       icon: FiUsers,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
-      link: '/admin/reports/workers' // Just as an example link
+      link: '/admin/reports/vendors'
     }
   ];
 
@@ -152,22 +151,6 @@ const ReportsOverview = () => {
           </CardShell>
         </Link>
 
-        <Link to="/admin/reports/workers" className="group">
-          <CardShell className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-indigo-100 font-bold uppercase tracking-wider text-[10px]">Force Analytics</p>
-                <h3 className="text-lg font-black mt-0.5">Worker Reports</h3>
-              </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <FiUsers size={20} />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-xs font-bold">
-              View Details <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
-            </div>
-          </CardShell>
-        </Link>
       </div>
 
       {/* Overview Filters */}
@@ -288,7 +271,6 @@ const Reports = () => {
       case 'revenue': return 'Revenue Report';
       case 'bookings': return 'Booking Report';
       case 'vendors': return 'Vendor Report';
-      case 'workers': return 'Worker Report';
       default: return 'Analytics & Reports';
     }
   };
@@ -298,7 +280,6 @@ const Reports = () => {
     { name: 'Revenue', path: '/admin/reports/revenue', icon: FiDollarSign },
     { name: 'Bookings', path: '/admin/reports/bookings', icon: FiShoppingBag },
     { name: 'Vendors', path: '/admin/reports/vendors', icon: FiUsers },
-    { name: 'Workers', path: '/admin/reports/workers', icon: FiBriefcase },
   ];
 
   const isTabActive = (tab) => {
@@ -313,7 +294,6 @@ const Reports = () => {
         <Route path="revenue" element={<RevenueReport />} />
         <Route path="bookings" element={<BookingReport />} />
         <Route path="vendors" element={<VendorReport />} />
-        <Route path="workers" element={<WorkerReport />} />
       </Routes>
     </div>
   );

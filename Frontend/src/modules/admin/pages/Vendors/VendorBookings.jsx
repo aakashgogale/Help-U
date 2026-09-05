@@ -127,7 +127,6 @@ const VendorBookings = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <FiUser className="w-4 h-4 text-green-500" />
-                            <span>Worker: <span className="font-medium text-gray-800">{booking.workerId?.name || 'Pending Assignment'}</span></span>
                           </div>
                         </div>
                       </div>
