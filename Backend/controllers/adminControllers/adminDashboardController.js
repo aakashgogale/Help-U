@@ -1,6 +1,5 @@
 const User = require('../../models/User');
 const Vendor = require('../../models/Vendor');
-const Worker = require('../../models/Worker');
 const Booking = require('../../models/Booking');
 const Withdrawal = require('../../models/Withdrawal');
 const Settlement = require('../../models/Settlement');
@@ -49,28 +48,15 @@ const getDashboardStats = async (req, res) => {
       }
     }
 
-    const workerPaymentDateFilter = {};
-    if (startDate || endDate) {
-      workerPaymentDateFilter.createdAt = {};
-      if (startDate) workerPaymentDateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        workerPaymentDateFilter.createdAt.$lte = end;
-      }
-    }
-
     const [
       totalUsers,
       totalVendors,
-      totalWorkers,
       totalBookings,
       pendingBookings,
       completedBookings,
       cancelledBookings,
       revenueResult,
       vendorBillRevenueResult,
-      workerPaymentResult,
       pendingVendors,
       approvedVendors,
       pendingWithdrawals,
@@ -80,7 +66,6 @@ const getDashboardStats = async (req, res) => {
     ] = await Promise.all([
       User.countDocuments({ isActive: true, ...dateFilter }),
       Vendor.countDocuments({ isActive: true, ...dateFilter }),
-      Worker.countDocuments({ isActive: true, ...dateFilter }),
       Booking.countDocuments(dateFilter),
       Booking.countDocuments({
         ...dateFilter,
@@ -98,7 +83,7 @@ const getDashboardStats = async (req, res) => {
         {
           $match: {
             status: BOOKING_STATUS.COMPLETED,
-            paymentStatus: { $in: [PAYMENT_STATUS.SUCCESS, PAYMENT_STATUS.COLLECTED_BY_VENDOR, 'success', 'collected_by_vendor', 'collected_by_worker', 'paid'] },
+            paymentStatus: { $in: [PAYMENT_STATUS.SUCCESS, PAYMENT_STATUS.COLLECTED_BY_VENDOR, 'success', 'collected_by_vendor', 'paid'] },
             ...revenueDateFilter
           }
         },
@@ -126,21 +111,6 @@ const getDashboardStats = async (req, res) => {
           }
         }
       ]),
-      Transaction.aggregate([
-        {
-          $match: {
-            type: 'worker_payment',
-            status: 'completed',
-            ...workerPaymentDateFilter
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalWorkerEarnings: { $sum: '$amount' }
-          }
-        }
-      ]),
       Vendor.countDocuments({ approvalStatus: VENDOR_STATUS.PENDING, ...dateFilter }),
       Vendor.countDocuments({ approvalStatus: VENDOR_STATUS.APPROVED, ...dateFilter }),
       Withdrawal.countDocuments({ status: 'pending', ...dateFilter }),
@@ -160,7 +130,6 @@ const getDashboardStats = async (req, res) => {
       totalVendorEarnings: 0,
       totalGSTCollected: 0
     };
-    const workerPaymentStats = workerPaymentResult[0] || { totalWorkerEarnings: 0 };
     const platformCommission = vendorBillRevenue.totalPlatformFeeCollected || (revenue.totalRevenue * 0.2);
 
     const recentBookings = recentActivityDocs.map(b => ({
@@ -174,8 +143,7 @@ const getDashboardStats = async (req, res) => {
       acceptedAt: b.acceptedAt,
       assignedAt: b.assignedAt,
       visitedAt: b.visitedAt,
-      completedAt: b.completedAt,
-      workerPaymentStatus: b.workerPaymentStatus
+      completedAt: b.completedAt
     }));
 
     res.status(200).json({
@@ -184,7 +152,6 @@ const getDashboardStats = async (req, res) => {
         stats: {
           totalUsers,
           totalVendors,
-          totalWorkers,
           totalBookings,
           pendingBookings,
           completedBookings,
@@ -193,7 +160,6 @@ const getDashboardStats = async (req, res) => {
           platformCommission,
           totalPlatformFeeCollected: vendorBillRevenue.totalPlatformFeeCollected || 0,
           totalVendorEarnings: vendorBillRevenue.totalVendorEarnings || 0,
-          totalWorkerEarnings: workerPaymentStats.totalWorkerEarnings || 0,
           totalGSTCollected: vendorBillRevenue.totalGSTCollected || 0,
           pendingVendors,
           approvedVendors,
@@ -240,7 +206,7 @@ const getRevenueAnalytics = async (req, res) => {
       {
         $match: {
           status: BOOKING_STATUS.COMPLETED,
-          paymentStatus: { $in: [PAYMENT_STATUS.SUCCESS, PAYMENT_STATUS.COLLECTED_BY_VENDOR, 'success', 'collected_by_vendor', 'collected_by_worker', 'paid'] },
+          paymentStatus: { $in: [PAYMENT_STATUS.SUCCESS, PAYMENT_STATUS.COLLECTED_BY_VENDOR, 'success', 'collected_by_vendor', 'paid'] },
           ...dateFilter
         }
       },

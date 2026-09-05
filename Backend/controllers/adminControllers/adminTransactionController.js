@@ -3,7 +3,6 @@ const Booking = require('../../models/Booking');
 const VendorBill = require('../../models/VendorBill');
 const User = require('../../models/User');
 const Vendor = require('../../models/Vendor');
-const Worker = require('../../models/Worker');
 const PlatformEarning = require('../../models/PlatformEarning');
 
 /**
@@ -129,7 +128,7 @@ const getAllTransactions = async (req, res) => {
 
     }
 
-    // --- STANDARD LOGIC FOR OTHERS (User, Vendor, Worker, All) ---
+    // --- STANDARD LOGIC FOR OTHERS (User, Vendor, All) ---
     const skip = (parseInt(page) - 1) * parseInt(limit);
     let query = {};
 
@@ -153,26 +152,22 @@ const getAllTransactions = async (req, res) => {
         ];
       } else if (entity === 'vendor') {
         query.vendorId = { $ne: null };
-      } else if (entity === 'worker') {
-        query.workerId = { $ne: null };
       }
     }
 
-    // Apply search filter (Transaction ID, Order ID, or Customer/Vendor/Worker Name/Email)
+    // Apply search filter (Transaction ID, Order ID, or Customer/Vendor Name/Email)
     if (search) {
       const searchRegex = new RegExp(search, 'i');
 
-      // We need to find matching users, vendors, workers and bookings first
-      const [users, vendors, workers, bookings] = await Promise.all([
+      // We need to find matching users, vendors and bookings first
+      const [users, vendors, bookings] = await Promise.all([
         User.find({ $or: [{ name: searchRegex }, { email: searchRegex }] }).select('_id'),
         Vendor.find({ $or: [{ name: searchRegex }, { email: searchRegex }] }).select('_id'),
-        Worker.find({ $or: [{ name: searchRegex }, { email: searchRegex }] }).select('_id'),
         Booking.find({ bookingNumber: searchRegex }).select('_id')
       ]);
 
       const userIds = users.map(u => u._id);
       const vendorIds = vendors.map(v => v._id);
-      const workerIds = workers.map(w => w._id);
       const bookingIds = bookings.map(b => b._id);
 
       // Find bookings where the USER matches the search (for indirect transactions like cash_collected)
@@ -183,7 +178,6 @@ const getAllTransactions = async (req, res) => {
         { referenceId: searchRegex },
         { userId: { $in: userIds } },
         { vendorId: { $in: vendorIds } },
-        { workerId: { $in: workerIds } },
         { bookingId: { $in: allBookingIds } }
       ];
 
@@ -196,7 +190,6 @@ const getAllTransactions = async (req, res) => {
     const transactions = await Transaction.find(query)
       .populate('userId', 'name email phone')
       .populate('vendorId', 'name email phone')
-      .populate('workerId', 'name email phone')
       .populate({
         path: 'bookingId',
         select: 'bookingNumber userId',
@@ -275,7 +268,6 @@ const getTransactionStats = async (req, res) => {
     if (entity) {
       if (entity === 'user') matchQuery.userId = { $ne: null };
       if (entity === 'vendor') matchQuery.vendorId = { $ne: null };
-      if (entity === 'worker') matchQuery.workerId = { $ne: null };
     }
 
     // We count 'completed' transactions for revenue

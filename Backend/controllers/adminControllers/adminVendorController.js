@@ -65,7 +65,7 @@ const getAllVendors = async (req, res) => {
     console.error('Get all vendors error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendors. Please try again.'
+      message: 'Failed to fetch workers. Please try again.'
     });
   }
 };
@@ -82,7 +82,7 @@ const getVendorDetails = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -128,7 +128,7 @@ const getVendorDetails = async (req, res) => {
     console.error('Get vendor details error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendor details. Please try again.'
+      message: 'Failed to fetch worker details. Please try again.'
     });
   }
 };
@@ -145,7 +145,7 @@ const approveVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -157,22 +157,22 @@ const approveVendor = async (req, res) => {
     await createNotification({
       vendorId: vendor._id,
       type: 'vendor_approved',
-      title: 'Vendor Registration Approved',
-      message: 'Your vendor registration has been approved. You can now start accepting bookings.',
+      title: 'Worker Registration Approved',
+      message: 'Your worker registration has been approved. You can now start accepting bookings.',
       relatedId: vendor._id,
       relatedType: 'vendor'
     });
 
     res.status(200).json({
       success: true,
-      message: 'Vendor approved successfully',
+      message: 'Worker approved successfully',
       data: vendor
     });
   } catch (error) {
     console.error('Approve vendor error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to approve vendor. Please try again.'
+      message: 'Failed to approve worker. Please try again.'
     });
   }
 };
@@ -199,7 +199,7 @@ const rejectVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -211,22 +211,22 @@ const rejectVendor = async (req, res) => {
     await createNotification({
       vendorId: vendor._id,
       type: 'vendor_rejected',
-      title: 'Vendor Registration Rejected',
-      message: `Your vendor registration has been rejected. Reason: ${vendor.rejectedReason}`,
+      title: 'Worker Registration Rejected',
+      message: `Your worker registration has been rejected. Reason: ${vendor.rejectedReason}`,
       relatedId: vendor._id,
       relatedType: 'vendor'
     });
 
     res.status(200).json({
       success: true,
-      message: 'Vendor rejected successfully',
+      message: 'Worker rejected successfully',
       data: vendor
     });
   } catch (error) {
     console.error('Reject vendor error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to reject vendor. Please try again.'
+      message: 'Failed to reject worker. Please try again.'
     });
   }
 };
@@ -243,7 +243,7 @@ const suspendVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -253,14 +253,14 @@ const suspendVendor = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Vendor suspended successfully',
+      message: 'Worker suspended successfully',
       data: vendor
     });
   } catch (error) {
     console.error('Suspend vendor error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to suspend vendor. Please try again.'
+      message: 'Failed to suspend worker. Please try again.'
     });
   }
 };
@@ -286,7 +286,6 @@ const getVendorBookings = async (req, res) => {
     const bookings = await Booking.find(query)
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')
-      .populate('workerId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -307,7 +306,7 @@ const getVendorBookings = async (req, res) => {
     console.error('Get vendor bookings error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendor bookings. Please try again.'
+      message: 'Failed to fetch worker bookings. Please try again.'
     });
   }
 };
@@ -358,7 +357,7 @@ const getVendorEarnings = async (req, res) => {
     console.error('Get vendor earnings error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendor earnings. Please try again.'
+      message: 'Failed to fetch worker earnings. Please try again.'
     });
   }
 };
@@ -396,7 +395,6 @@ const getAllVendorBookings = async (req, res) => {
       .populate('vendorId', 'name businessName phone profileImage')
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')
-      .populate('workerId', 'name phone')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -417,7 +415,7 @@ const getAllVendorBookings = async (req, res) => {
     console.error('Get all vendor bookings error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch all vendor bookings.'
+      message: 'Failed to fetch all worker bookings.'
     });
   }
 };
@@ -442,7 +440,7 @@ const getVendorPaymentsSummary = async (req, res) => {
     console.error('Get vendor payments summary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch vendor payments summary.'
+      message: 'Failed to fetch worker payments summary.'
     });
   }
 };
@@ -460,7 +458,7 @@ const toggleVendorStatus = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -472,14 +470,14 @@ const toggleVendorStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Vendor ${isActive ? 'activated' : 'deactivated'} successfully`,
+      message: `Worker ${isActive ? 'activated' : 'deactivated'} successfully`,
       data: vendor
     });
   } catch (error) {
     console.error('Toggle vendor status error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update vendor status'
+      message: 'Failed to update worker status'
     });
   }
 };
@@ -496,19 +494,19 @@ const deleteVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Vendor deleted successfully'
+      message: 'Worker deleted successfully'
     });
   } catch (error) {
     console.error('Delete vendor error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete vendor'
+      message: 'Failed to delete worker'
     });
   }
 };

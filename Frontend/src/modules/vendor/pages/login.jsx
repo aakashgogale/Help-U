@@ -41,7 +41,7 @@ const VendorLogin = () => {
   useEffect(() => {
     // Redirect if already logged in
     if (localStorage.getItem('vendorAccessToken')) {
-      navigate('/vendor', { replace: true });
+      navigate('/worker/dashboard', { replace: true });
       return;
     }
 
@@ -139,7 +139,7 @@ const VendorLogin = () => {
 
         if (response.isNewUser) {
           toast.success('Phone verified! Please complete registration.');
-          navigate('/vendor/signup', {
+          navigate('/worker/signup', {
             state: { phone: phoneNumber.replace(/\D/g, ''), verificationToken: response.verificationToken }
           });
         } else {
@@ -159,11 +159,11 @@ const VendorLogin = () => {
           toast.success(
             <div className="flex flex-col">
               <span className="font-bold">Welcome Back!</span>
-              <span className="text-xs">Successfully logged into your vendor account.</span>
+              <span className="text-xs">Successfully logged into your worker account.</span>
             </div>,
             { icon: <FiCheckCircle className="text-green-500" /> }
           );
-          navigate('/vendor', { replace: true });
+          navigate('/worker/dashboard', { replace: true });
         }
       } else {
         setIsLoading(false);
@@ -191,7 +191,7 @@ const VendorLogin = () => {
           <Logo className="h-20 sm:h-24 w-auto object-contain transition-transform duration-300 hover:scale-105" />
         </div>
         <h1 className="text-[26px] sm:text-[30px] font-bold text-slate-900 tracking-[-0.025em]">
-          {step === 'phone' ? 'Vendor Sign In' : 'Verify Identity'}
+          {step === 'phone' ? 'Worker Sign In' : 'Verify Identity'}
         </h1>
         <p className="mt-1.5 text-[14px] sm:text-[15px] text-slate-500 font-normal leading-relaxed animate-stagger-1 animate-fade-in">
           {step === 'phone' ? 'Manage your services and bookings' : `We've sent a 6-digit code to ${phoneNumber}`}
@@ -328,8 +328,8 @@ const VendorLogin = () => {
         </div>
 
         <p className="mt-6 text-center text-[14px] text-slate-500 animate-fade-in animate-stagger-5">
-          Don't have a vendor account?{' '}
-          <Link to="/vendor/signup" className="font-semibold text-[#163B66] hover:text-[#D68F35] transition-colors duration-200">
+          Don't have a worker account?{' '}
+          <Link to="/worker/signup" className="font-semibold text-[#163B66] hover:text-[#D68F35] transition-colors duration-200">
             Register Now
           </Link>
         </p>

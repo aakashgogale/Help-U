@@ -139,7 +139,7 @@ const VendorServicesPage = () => {
 
   return (
     <div className="space-y-6">
-      <CardShell title="Vendor Services Catalog" icon={FiPlus}>
+      <CardShell title="Worker Services Catalog" icon={FiPlus}>
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
           <div className="flex gap-4 w-full sm:w-auto flex-1">
             <div className="relative w-full sm:w-64">
@@ -217,7 +217,7 @@ const VendorServicesPage = () => {
         )}
       </CardShell>
 
-      <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Vendor Service" : "Add Vendor Service"}>
+      <Modal isOpen={isModalOpen} onClose={reset} title={editingId ? "Edit Worker Service" : "Add Worker Service"}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold mb-1">Category</label>

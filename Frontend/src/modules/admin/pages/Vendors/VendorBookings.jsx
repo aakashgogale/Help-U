@@ -27,8 +27,8 @@ const VendorBookings = () => {
         setPagination(response.pagination);
       }
     } catch (error) {
-      console.error('Error loading vendor bookings:', error);
-      toast.error('Failed to load vendor bookings');
+      console.error('Error loading worker bookings:', error);
+      toast.error('Failed to load worker bookings');
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ const VendorBookings = () => {
             </div>
             <input
               type="text"
-              placeholder="Search by business name, owner or phone..."
+              placeholder="Search by worker name, business or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -115,7 +115,7 @@ const VendorBookings = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <FiBriefcase className="w-4 h-4" />
-                            <span>Vendor: <span className="font-medium text-gray-800">{booking.vendorId?.businessName || booking.vendorId?.name || 'Unassigned'}</span></span>
+                            <span>Worker: <span className="font-medium text-gray-800">{booking.vendorId?.businessName || booking.vendorId?.name || 'Unassigned'}</span></span>
                           </div>
                           <div className="flex items-center gap-2">
                             <FiUser className="w-4 h-4 text-blue-500" />
@@ -127,7 +127,6 @@ const VendorBookings = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <FiUser className="w-4 h-4 text-green-500" />
-                            <span>Worker: <span className="font-medium text-gray-800">{booking.workerId?.name || 'Pending Assignment'}</span></span>
                           </div>
                         </div>
                       </div>

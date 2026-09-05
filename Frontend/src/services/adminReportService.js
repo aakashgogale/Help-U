@@ -17,19 +17,10 @@ const adminReportService = {
       const response = await api.get('/admin/reports/vendors', { params });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch vendor report' };
-    }
-  },
-
-  // Get Worker Report
-  getWorkerReport: async (params) => {
-    try {
-      const response = await api.get('/admin/reports/workers', { params });
-      return response.data;
-    } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch worker report' };
     }
   },
+
 
   // Get Customer/User Report
   getCustomerReport: async (params) => {

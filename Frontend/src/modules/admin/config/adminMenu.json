@@ -22,20 +22,6 @@
     ]
   },
   {
-    "title": "Vendors",
-    "route": "/admin/vendors",
-    "allowedRoles": [
-      "super_admin",
-      "admin"
-    ],
-    "children": [
-      "All Vendors",
-      "Vendor Bookings",
-      "Vendor Referrals",
-      "Vendor Analytics"
-    ]
-  },
-  {
     "title": "Workers",
     "route": "/admin/workers",
     "allowedRoles": [
@@ -44,7 +30,8 @@
     ],
     "children": [
       "All Workers",
-      "Worker Jobs",
+      "Worker Bookings",
+      "Worker Referrals",
       "Worker Analytics"
     ]
   },
@@ -80,7 +67,6 @@
       "Payment Overview",
       "User Payments",
       "Worker Payments",
-      "Vendor Payments",
       "Admin Revenue",
       "Payment Reports"
     ]
@@ -94,7 +80,7 @@
     "children": [
       "Pending",
       "Withdrawals",
-      "Vendors with Due",
+      "Workers with Due",
       "History"
     ]
   },
@@ -113,8 +99,8 @@
     ]
   },
   {
-    "title": "Vendor Services",
-    "route": "/admin/user-categories/vendor-services",
+    "title": "Worker Services",
+    "route": "/admin/user-categories/worker-services",
     "allowedRoles": [
       "super_admin",
       "admin"
@@ -122,8 +108,8 @@
     "children": []
   },
   {
-    "title": "Vendor Parts",
-    "route": "/admin/user-categories/vendor-parts",
+    "title": "Worker Parts",
+    "route": "/admin/user-categories/worker-parts",
     "allowedRoles": [
       "super_admin",
       "admin"

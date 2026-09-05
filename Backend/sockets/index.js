@@ -9,7 +9,7 @@ const initializeSocket = (server) => {
     pingTimeout: 60000,
     pingInterval: 25000,
     cors: {
-      origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'].filter(Boolean),
+      origin: [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'].filter(Boolean),
       credentials: true,
       methods: ["GET", "POST"]
     },
@@ -48,10 +48,6 @@ const initializeSocket = (server) => {
       socket.join(`vendor_${socket.userId.toString()}`);
       // Update vendor online status
       updateVendorOnlineStatus(socket.userId, true, socket.id);
-    } else if (socket.userRole === 'WORKER') {
-      socket.join(`worker_${socket.userId.toString()}`);
-      // Update worker online status
-      updateWorkerOnlineStatus(socket.userId, true, socket.id);
     } else if (socket.userRole === 'ADMIN') {
       socket.join(`admin_${socket.userId.toString()}`);
     }
@@ -70,13 +66,6 @@ const initializeSocket = (server) => {
       if (socket.userRole === 'USER' && socket.userId.toString() === userId.toString()) {
         socket.join(`user_${userId.toString()}`);
         console.log(`Socket ${socket.id} explicitly joined room user_${userId}`);
-      }
-    });
-
-    socket.on('join_worker_room', (workerId) => {
-      if (socket.userRole === 'WORKER' && socket.userId === workerId) {
-        socket.join(`worker_${workerId}`);
-        console.log(`Socket ${socket.id} explicitly joined room worker_${workerId}`);
       }
     });
 
@@ -112,19 +101,14 @@ const initializeSocket = (server) => {
       }
     });
 
-    // Worker/Vendor sets availability
+    // Vendor sets availability
     socket.on('set_availability', async (data) => {
       try {
         const Vendor = require('../models/Vendor');
-        const Worker = require('../models/Worker');
 
         if (socket.userRole === 'VENDOR') {
           await Vendor.findByIdAndUpdate(socket.userId, {
             availability: data.status // 'AVAILABLE', 'BUSY', etc.
-          });
-        } else if (socket.userRole === 'WORKER') {
-          await Worker.findByIdAndUpdate(socket.userId, {
-            status: data.status // 'ONLINE', 'BUSY', etc.
           });
         }
         console.log(`[Socket] ${socket.userRole} ${socket.userId} set availability to ${data.status}`);
@@ -182,7 +166,6 @@ const initializeSocket = (server) => {
       // 3. Save latest location to Database (for initial tracking load)
       try {
         const Vendor = require('../models/Vendor');
-        const Worker = require('../models/Worker');
 
         const updateData = {
           location: {
@@ -199,8 +182,6 @@ const initializeSocket = (server) => {
 
         if (socket.userRole === 'VENDOR') {
           await Vendor.findByIdAndUpdate(socket.userId, updateData);
-        } else if (socket.userRole === 'WORKER') {
-          await Worker.findByIdAndUpdate(socket.userId, updateData);
         }
       } catch (error) {
         console.error('Error saving live location:', error);
@@ -212,8 +193,6 @@ const initializeSocket = (server) => {
       // Update online status
       if (socket.userRole === 'VENDOR') {
         updateVendorOnlineStatus(socket.userId, false, null);
-      } else if (socket.userRole === 'WORKER') {
-        updateWorkerOnlineStatus(socket.userId, false, null);
       }
     });
   });
@@ -249,29 +228,6 @@ const updateVendorOnlineStatus = async (vendorId, isOnline, socketId) => {
     console.log(`[Socket] Vendor ${vendorId} is now ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
   } catch (error) {
     console.error('[Socket] Error updating vendor online status:', error);
-  }
-};
-
-// Helper function to update worker online status
-const updateWorkerOnlineStatus = async (workerId, isOnline, socketId) => {
-  try {
-    const Worker = require('../models/Worker');
-
-    const updateData = {
-      status: isOnline ? 'ONLINE' : 'OFFLINE',
-      // currentSocketId: socketId // Add to model if needed
-    };
-
-    if (!isOnline) {
-      updateData.lastSeenAt = new Date(); // Add to model if needed
-    }
-
-    // Update MongoDB
-    await Worker.findByIdAndUpdate(workerId, updateData);
-
-    console.log(`[Socket] Worker ${workerId} is now ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
-  } catch (error) {
-    console.error('[Socket] Error updating worker online status:', error);
   }
 };
 

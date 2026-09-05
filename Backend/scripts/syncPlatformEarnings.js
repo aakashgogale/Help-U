@@ -39,7 +39,6 @@ const syncPlatformEarnings = async () => {
           PAYMENT_STATUS.COLLECTED_BY_VENDOR,
           'success',
           'collected_by_vendor',
-          'collected_by_worker',
           'paid'
         ]
       }

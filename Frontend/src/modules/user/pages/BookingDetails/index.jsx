@@ -702,7 +702,7 @@ const BookingDetails = () => {
           </div>
 
           {/* Broadcast/Searching State Card */}
-          {!booking.workerId && !booking.assignedTo && ['requested', 'searching'].includes(booking.status?.toLowerCase()) && (
+          {!booking.assignedTo && ['requested', 'searching'].includes(booking.status?.toLowerCase()) && (
             <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-amber-100 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -translate-y-16 translate-x-16 blur-3xl opacity-50 group-hover:opacity-80 transition-opacity"></div>
 
@@ -732,7 +732,7 @@ const BookingDetails = () => {
           )}
 
           {/* Service Partner Card */}
-          {(booking.workerId || booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
+          {(booking.assignedTo || booking.vendorId) && ['confirmed', 'assigned', 'journey_started', 'visited', 'in_progress', 'work_done'].includes(booking.status?.toLowerCase()) && (
             <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
               <div className="flex justify-between items-start mb-4">
                 {['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase()) ? (
@@ -758,10 +758,10 @@ const BookingDetails = () => {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full p-1 bg-gradient-to-tr from-gray-100 to-gray-50 shrink-0">
                   <div className="w-full h-full rounded-full overflow-hidden relative bg-white">
-                    {(booking.workerId?.profileImage || booking.workerId?.profilePhoto || booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto) ? (
+                    {(booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto) ? (
                       <>
                         <img
-                          src={toAssetUrl(booking.workerId?.profileImage || booking.workerId?.profilePhoto || booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto)}
+                          src={toAssetUrl(booking.assignedTo?.profileImage || booking.assignedTo?.profilePhoto || booking.vendorId?.profileImage || booking.vendorId?.profilePhoto)}
                           alt="Professional"
                           className="w-full h-full object-cover"
                           onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.querySelector('.fallback-icon').style.display = 'block'; }}
@@ -776,14 +776,14 @@ const BookingDetails = () => {
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-gray-900 text-lg truncate">
-                    {booking.workerId?.name || booking.assignedTo?.name || booking.vendorId?.name || 'Service Partner'}
+                    {booking.assignedTo?.name || booking.vendorId?.name || 'Service Partner'}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-1">
                     <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100">
                       <FiStar className="w-3 h-3 text-yellow-500 fill-current" />
                       <span className="text-xs font-bold text-yellow-700">
-                        {(booking.workerId?.rating || booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
-                          ? (booking.workerId?.rating || booking.assignedTo?.rating || booking.vendorId?.rating).toFixed(1)
+                        {(booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
+                          ? (booking.assignedTo?.rating || booking.vendorId?.rating).toFixed(1)
                           : 'New'}
                       </span>
                     </div>
@@ -792,9 +792,9 @@ const BookingDetails = () => {
                 </div>
 
                 {/* Quick Call Action */}
-                {(booking.workerId?.phone || booking.assignedTo?.phone || booking.vendorId?.phone) && (
+                {(booking.assignedTo?.phone || booking.vendorId?.phone) && (
                   <a
-                    href={`tel:${booking.workerId?.phone || booking.assignedTo?.phone || booking.vendorId?.phone}`}
+                    href={`tel:${booking.assignedTo?.phone || booking.vendorId?.phone}`}
                     className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center hover:bg-green-100 transition-colors active:scale-95 border border-green-100"
                   >
                     <FiPhone className="w-5 h-5" />
@@ -860,6 +860,43 @@ const BookingDetails = () => {
             </div>
           )}
 
+          {/* Advance Payment Requested Card */}
+          {booking.advancePayment?.status === 'requested' && (
+            <div className="relative overflow-hidden rounded-3xl shadow-lg border border-amber-200 mb-6 active:scale-[0.99] transition-all">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 opacity-95"></div>
+              <div className="relative z-10 p-6 text-white">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                    <FiDollarSign className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white tracking-tight">Advance Payment Requested</h3>
+                    <p className="text-xs text-amber-100 font-medium">{booking.advancePayment.reason || 'Requested for spare parts / materials'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 border border-white/20 mb-4 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-amber-100 font-bold uppercase tracking-wider">Requested Advance</p>
+                    <p className="text-2xl font-black text-white">₹{Number(booking.advancePayment.requestedAmount || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  {booking.advancePayment.partsDescription && (
+                    <p className="text-xs text-amber-50 max-w-[50%] text-right truncate">{booking.advancePayment.partsDescription}</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleOnlinePayment('advance')}
+                  disabled={paying}
+                  className="w-full py-3.5 bg-white text-orange-600 rounded-2xl font-black text-sm shadow-xl hover:bg-amber-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <FiDollarSign className="w-4 h-4" />
+                  Pay Advance ₹{Number(booking.advancePayment.requestedAmount || 0).toLocaleString('en-IN')}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Waiting for Vendor to initiate Payment */}
           {!booking.customerConfirmationOTP && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-teal-100 mb-6 flex items-center gap-4 relative overflow-hidden">
@@ -918,7 +955,7 @@ const BookingDetails = () => {
             )}
 
           {/* Payment Card - Show when work is done AND bill is finalized (OTP exists) or paid */}
-          {(booking.customerConfirmationOTP || booking.paymentStatus === 'success') && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
+          {(booking.customerConfirmationOTP || booking.paymentOtp || booking.paymentStatus === 'success') && ['work_done'].includes(booking.status?.toLowerCase()) && !booking.cashCollected && (
             <div
               onClick={() => setShowPaymentModal(true)}
               className={`relative overflow-hidden rounded-3xl shadow-lg border cursor-pointer active:scale-[0.98] transition-all ${booking.paymentStatus === 'success' ? 'border-green-100' : 'border-orange-100'
@@ -1513,7 +1550,7 @@ const BookingDetails = () => {
           }}
           onSubmit={handleRateSubmit}
           bookingName={booking.serviceName || booking.serviceCategory || 'Service'}
-          workerName={booking.workerId?.name || (booking.assignedTo?.name === 'You (Self)' ? 'Service Provider' : (booking.assignedTo?.name || 'Worker'))}
+          providerName={booking.vendorId?.name || booking.assignedTo?.name || 'Service Provider'}
         />
 
         {/* Payment Verification Modal */}

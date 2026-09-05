@@ -12,7 +12,7 @@ const getProfile = async (req, res) => {
 
     const vendor = await Vendor.findById(vendorId).select('-password -__v');
     if (!vendor) {
-      return res.status(404).json({ success: false, message: 'Vendor not found' });
+      return res.status(404).json({ success: false, message: 'Worker not found' });
     }
 
     // Use stored rating if available (and > 0), otherwise calculate
@@ -90,7 +90,7 @@ const updateProfile = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -274,7 +274,7 @@ const updateAddress = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -359,7 +359,7 @@ const updateStatus = async (req, res) => {
     );
 
     if (!vendor) {
-      return res.status(404).json({ success: false, message: 'Vendor not found' });
+      return res.status(404).json({ success: false, message: 'Worker not found' });
     }
 
     res.status(200).json({

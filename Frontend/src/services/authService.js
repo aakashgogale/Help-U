@@ -4,7 +4,7 @@ import { registerFCMToken, removeFCMToken } from './pushNotificationService';
 /**
  * Notify Flutter WebView about successful login
  * This directly calls Flutter's captureLoginResponse handler
- * @param {object} responseData - The login response data containing accessToken and user/vendor/worker info
+ * @param {object} responseData - The login response data containing accessToken and user/vendor info
  */
 function notifyFlutterLogin(responseData) {
   try {
@@ -198,89 +198,6 @@ export const vendorAuthService = {
     const response = await api.put('/vendors/profile', data);
     if (response.data.vendor) {
       localStorage.setItem('vendorData', JSON.stringify(response.data.vendor));
-    }
-    return response.data;
-  }
-};
-
-/**
- * Worker Authentication Service
- */
-export const workerAuthService = {
-  // Send OTP
-  sendOTP: async (phone, email = null) => {
-    const response = await api.post('/workers/auth/send-otp', { phone, email });
-    return response.data;
-  },
-
-  // Verify Login (Unified Flow)
-  verifyLogin: async (data) => {
-    const response = await api.post('/workers/auth/verify-login', data);
-    if (response.data.success && !response.data.isNewUser && response.data.accessToken) {
-      localStorage.setItem('workerAccessToken', response.data.accessToken);
-      localStorage.setItem('workerRefreshToken', response.data.refreshToken);
-      localStorage.setItem('workerData', JSON.stringify(response.data.worker));
-      notifyFlutterLogin(response.data);
-      registerFCMToken('worker', true).catch(console.error);
-    }
-    return response.data;
-  },
-
-  // Register
-  register: async (data) => {
-    const response = await api.post('/workers/auth/register', data);
-    if (response.data.accessToken) {
-      localStorage.setItem('workerAccessToken', response.data.accessToken);
-      localStorage.setItem('workerRefreshToken', response.data.refreshToken);
-      localStorage.setItem('workerData', JSON.stringify(response.data.worker));
-      notifyFlutterLogin(response.data);
-    }
-    return response.data;
-  },
-
-  // Login
-  login: async (data) => {
-    // Remove email from login payload if present
-    const { email, ...loginData } = data;
-    const response = await api.post('/workers/auth/login', loginData);
-    if (response.data.accessToken) {
-      localStorage.setItem('workerAccessToken', response.data.accessToken);
-      localStorage.setItem('workerRefreshToken', response.data.refreshToken);
-      localStorage.setItem('workerData', JSON.stringify(response.data.worker));
-      notifyFlutterLogin(response.data);
-      registerFCMToken('worker', true).catch(console.error);
-    }
-    return response.data;
-  },
-
-  // Logout
-  logout: async () => {
-    // Remove FCM token before logout
-    await removeFCMToken('worker');
-    try {
-      await api.post('/workers/auth/logout', { platform: getPlatformType() });
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    localStorage.removeItem('workerAccessToken');
-    localStorage.removeItem('workerRefreshToken');
-    localStorage.removeItem('workerData');
-  },
-
-  // Get profile
-  getProfile: async () => {
-    const response = await api.get('/workers/profile');
-    if (response.data.worker) {
-      localStorage.setItem('workerData', JSON.stringify(response.data.worker));
-    }
-    return response.data;
-  },
-
-  // Update profile
-  updateProfile: async (data) => {
-    const response = await api.put('/workers/profile', data);
-    if (response.data.worker) {
-      localStorage.setItem('workerData', JSON.stringify(response.data.worker));
     }
     return response.data;
   }

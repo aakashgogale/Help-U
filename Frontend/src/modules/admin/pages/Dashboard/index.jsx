@@ -5,7 +5,6 @@ import { FiUser, FiBriefcase, FiUsers, FiShoppingBag, FiDollarSign, FiActivity, 
 import RevenueLineChart from '../../components/dashboard/RevenueLineChart';
 import BookingsBarChart from '../../components/dashboard/BookingsBarChart';
 import BookingStatusPieChart from '../../components/dashboard/BookingStatusPieChart';
-import PaymentBreakdownPieChart from '../../components/dashboard/PaymentBreakdownPieChart';
 import RevenueVsBookingsChart from '../../components/dashboard/RevenueVsBookingsChart';
 import TimePeriodFilter from '../../components/dashboard/TimePeriodFilter';
 import { formatCurrency } from '../../utils/adminHelpers';
@@ -26,13 +25,11 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalVendors: 0,
-    totalWorkers: 0,
     activeBookings: 0,
     completedBookings: 0,
     totalRevenue: 0,
     totalPlatformFeeCollected: 0,
     totalVendorEarnings: 0,
-    totalWorkerEarnings: 0,
     totalGSTCollected: 0,
     todayRevenue: 0,
   });
@@ -78,13 +75,11 @@ const AdminDashboard = () => {
           setStats({
             totalUsers: s.totalUsers,
             totalVendors: s.totalVendors,
-            totalWorkers: s.totalWorkers,
             activeBookings: s.pendingBookings,
             completedBookings: s.completedBookings,
             totalRevenue: s.totalRevenue,
             totalPlatformFeeCollected: s.totalPlatformFeeCollected || s.platformCommission || 0,
             totalVendorEarnings: s.totalVendorEarnings || 0,
-            totalWorkerEarnings: s.totalWorkerEarnings || 0,
             totalGSTCollected: s.totalGSTCollected || 0,
             todayRevenue: 0,
           });
@@ -172,24 +167,13 @@ const AdminDashboard = () => {
       link: '/admin/reports/revenue'
     },
     {
-      title: 'Vendor Earnings',
+      title: 'Worker Earnings',
       value: formatCurrency(stats.totalVendorEarnings || 0),
       change: 0,
       icon: FiBriefcase,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-cyan-500 to-sky-600',
       cardBg: 'bg-gradient-to-br from-cyan-50 to-sky-50',
-      iconBg: 'bg-white/20',
-      link: '/admin/vendors/analytics'
-    },
-    {
-      title: 'Worker Earnings',
-      value: formatCurrency(stats.totalWorkerEarnings || 0),
-      change: 0,
-      icon: FiCreditCard,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-fuchsia-500 to-pink-600',
-      cardBg: 'bg-gradient-to-br from-fuchsia-50 to-pink-50',
       iconBg: 'bg-white/20',
       link: '/admin/workers/analytics'
     },
@@ -238,24 +222,13 @@ const AdminDashboard = () => {
       link: '/admin/users/analytics'
     },
     {
-      title: 'New Vendors',
+      title: 'New Workers',
       value: (stats.totalVendors || 0).toLocaleString(),
       change: 0,
       icon: FiBriefcase,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-teal-500 to-cyan-600',
       cardBg: 'bg-gradient-to-br from-teal-50 to-cyan-50',
-      iconBg: 'bg-white/20',
-      link: '/admin/vendors/analytics'
-    },
-    {
-      title: 'New Workers',
-      value: (stats.totalWorkers || 0).toLocaleString(),
-      change: 0,
-      icon: FiUsers,
-      color: 'text-white',
-      bgColor: 'bg-gradient-to-br from-rose-500 to-pink-600',
-      cardBg: 'bg-gradient-to-br from-rose-50 to-pink-50',
       iconBg: 'bg-white/20',
       link: '/admin/workers/analytics'
     },
@@ -326,7 +299,6 @@ const AdminDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BookingStatusPieChart bookings={recentBookingsList} />
-        <PaymentBreakdownPieChart bookings={recentBookingsList} />
       </div>
 
       <div className="grid grid-cols-1 gap-4">

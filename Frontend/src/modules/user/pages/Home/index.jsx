@@ -7,6 +7,7 @@ import ServiceCategories from './components/ServiceCategories';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { useCart } from '../../../../context/CartContext';
 import { useCity } from '../../../../context/CityContext';
+import { useConfig } from '../../../../context/ConfigContext';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
 import { motion } from 'framer-motion';
@@ -65,6 +66,7 @@ const Home = () => {
 
   const { cartCount, addToCart } = useCart();
   const { currentCity, cities, selectCity, loading: cityLoading } = useCity();
+  const { isScrapEnabled } = useConfig();
 
   // Clean up legacy storage keys on mount
   useEffect(() => {
@@ -351,7 +353,18 @@ const Home = () => {
         return;
       }
     }
-    // Fallback if no targetCategoryId but has slug/title, we no longer navigate to slug
+    // Fallback: match category by title/keywords if targetCategoryId is not explicitly configured
+    if (service.title && categories.length > 0) {
+      const serviceTitleLower = service.title.toLowerCase();
+      const matchCat = categories.find(c => {
+        const catTitleLower = (c.title || '').toLowerCase();
+        return catTitleLower && (serviceTitleLower.includes(catTitleLower) || catTitleLower.includes(serviceTitleLower));
+      });
+      if (matchCat) {
+        handleCategoryClick(matchCat);
+        return;
+      }
+    }
   };
 
   const handleAddClick = async (service) => {
@@ -468,7 +481,7 @@ const Home = () => {
           </div>
         </motion.div>
 
-        <main className="pt-4 space-y-6 max-w-screen-xl mx-auto w-full">
+        <main className="pt-3 flex flex-col gap-5 sm:gap-6 max-w-screen-xl mx-auto w-full pb-20">
           {!isLocationSupported ? (
             <div className="flex flex-col items-center justify-center pt-20 pb-10 px-6 text-center min-h-[60vh]">
               <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
@@ -495,7 +508,7 @@ const Home = () => {
           ) : (
             <>
               {/* Hero Section - Promo Carousel */}
-              {homeContent?.isPromosVisible !== false && (
+              {homeContent?.isPromosVisible !== false && (homeContent?.promos || []).length > 0 && (
                 <motion.section variants={itemVariants} className="relative z-0">
                   <PromoCarousel
                     promos={(homeContent?.promos || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(promo => ({
@@ -516,7 +529,7 @@ const Home = () => {
               )}
 
               {/* Categories Section */}
-              {homeContent?.isCategoriesVisible !== false && (
+              {homeContent?.isCategoriesVisible !== false && (categories || []).length > 0 && (
                 <motion.section variants={itemVariants} className="relative overflow-visible">
                   <ServiceCategories
                     categories={categories}
@@ -527,23 +540,28 @@ const Home = () => {
               )}
 
               {/* Scrap Promotion Section */}
-              <motion.section variants={itemVariants} className="pt-3 sm:pt-4">
-                <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
-              </motion.section>
-
+              {isScrapEnabled && (
+                <motion.section variants={itemVariants}>
+                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
+                </motion.section>
+              )}
 
               {/* Curated Services */}
-              {homeContent?.isCuratedVisible !== false && (
+              {homeContent?.isCuratedVisible !== false && (homeContent?.curated || []).filter(item => item.title && (item.gifUrl || item.imageUrl || item.youtubeUrl)).length > 0 && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                     <CuratedServices
-                      services={(homeContent?.curated || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(item => ({
-                        id: item.id || item._id,
-                        title: item.title,
-                        gif: toAssetUrl(item.gifUrl),
-                        slug: item.slug,
-                        targetCategoryId: item.targetCategoryId
-                      }))}
+                      services={(homeContent?.curated || [])
+                        .filter(item => item.title && (item.gifUrl || item.imageUrl || item.youtubeUrl))
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .map(item => ({
+                          id: item.id || item._id,
+                          title: item.title,
+                          gif: toAssetUrl(item.gifUrl || item.imageUrl),
+                          youtubeUrl: item.youtubeUrl || '',
+                          slug: item.slug,
+                          targetCategoryId: item.targetCategoryId
+                        }))}
                       onServiceClick={handleServiceClick}
                     />
                   </Suspense>
@@ -551,25 +569,35 @@ const Home = () => {
               )}
 
               {/* New & Noteworthy */}
-              {homeContent?.isNoteworthyVisible !== false && (
+              {homeContent?.isNoteworthyVisible !== false && (homeContent?.noteworthy || []).length > 0 && (
                 <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                  <Suspense fallback={<div className="h-44 bg-gray-50 animate-pulse rounded-2xl mx-4" />}>
                     <NewAndNoteworthy
                       services={(homeContent?.noteworthy || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(item => ({
                         id: item.id || item._id,
                         title: item.title,
+                        subtitle: item.subtitle,
+                        badge: item.badge,
+                        rating: item.rating,
+                        reviews: item.reviews,
+                        price: item.price,
+                        originalPrice: item.originalPrice,
+                        discount: item.discount,
+                        duration: item.duration,
                         image: toAssetUrl(item.imageUrl),
                         slug: item.slug,
-                        targetCategoryId: item.targetCategoryId
+                        targetCategoryId: item.targetCategoryId,
+                        targetServiceId: item.targetServiceId
                       }))}
                       onServiceClick={handleServiceClick}
+                      onBookClick={handleServiceClick}
                     />
                   </Suspense>
                 </motion.div>
               )}
 
               {/* Most Booked */}
-              {homeContent?.isBookedVisible !== false && (
+              {homeContent?.isBookedVisible !== false && (homeContent?.booked || []).length > 0 && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                     <MostBookedServices
@@ -593,7 +621,7 @@ const Home = () => {
               )}
 
               {/* Dynamic Banner 1 */}
-              {homeContent?.isBannersVisible !== false && (
+              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[0]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="w-[calc(100%-32px)] aspect-[16/8.5] sm:aspect-[21/9] bg-slate-100 animate-pulse rounded-2xl sm:rounded-3xl mx-4 mb-6" />}>
                     <Banner
@@ -615,7 +643,7 @@ const Home = () => {
               )}
 
               {/* Dynamic Sections */}
-              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => (
+              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).filter(s => (s.cards || []).length > 0).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => (
                 <motion.div key={section._id || sIdx} variants={itemVariants}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                     <ServiceSectionWithRating
@@ -650,7 +678,7 @@ const Home = () => {
               ))}
 
               {/* Dynamic Banner 2 */}
-              {homeContent?.isBannersVisible !== false && (
+              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[1]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="w-[calc(100%-32px)] aspect-[16/8.5] sm:aspect-[21/9] bg-slate-100 animate-pulse rounded-2xl sm:rounded-3xl mx-4 mb-6" />}>
                     <Banner

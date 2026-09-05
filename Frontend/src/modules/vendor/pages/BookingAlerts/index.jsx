@@ -134,7 +134,7 @@ const BookingAlerts = () => {
       localStorage.setItem('vendorPendingJobs', JSON.stringify(updatedPending));
 
       // Show toast
-      toast.error(data.message || 'This job was accepted by another vendor.', { icon: '⚡' });
+      toast.error(data.message || 'This job was accepted by another worker.', { icon: '⚡' });
 
       // Trigger global update
       window.dispatchEvent(new Event('vendorStatsUpdated'));
@@ -236,7 +236,7 @@ const BookingAlerts = () => {
             <h3 className="text-lg font-bold text-gray-800 mb-2">No Pending Alerts</h3>
             <p className="text-gray-500">You're all caught up! No new booking requests at the moment.</p>
             <button
-              onClick={() => navigate('/vendor/dashboard')}
+              onClick={() => navigate('/worker/dashboard')}
               className="mt-6 text-primary font-semibold hover:underline"
             >
               Back to Dashboard
@@ -249,7 +249,7 @@ const BookingAlerts = () => {
               booking={alert}
               onAccept={handleAccept}
               onReject={handleReject}
-              onClick={() => navigate('/vendor/dashboard', { state: { openBookingId: alert._id || alert.id } })}
+              onClick={() => navigate('/worker/dashboard', { state: { openBookingId: alert._id || alert.id } })}
               loadingAction={loadingAction.id === (alert._id || alert.id) ? loadingAction.type : null}
               showTimer={true}
               maxSearchTimeMins={globalConfig.maxSearchTime}

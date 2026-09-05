@@ -148,7 +148,7 @@ const Wallet = () => {
             </div>
 
             <button
-              onClick={() => navigate('/vendor/wallet/withdraw')}
+              onClick={() => navigate('/worker/wallet/withdraw')}
               className="w-full bg-white text-green-700 py-3 rounded-xl font-bold text-sm hover:bg-green-50 active:scale-95 transition-all shadow-sm"
             >
               Request Withdrawal
@@ -174,7 +174,7 @@ const Wallet = () => {
 
             {wallet.dues > 0 ? (
               <button
-                onClick={() => navigate('/vendor/wallet/settle')}
+                onClick={() => navigate('/worker/wallet/settle')}
                 className="w-full bg-white text-red-700 py-3 rounded-xl font-bold text-sm hover:bg-red-50 active:scale-95 transition-all shadow-sm"
               >
                 Pay Now
@@ -227,7 +227,7 @@ const Wallet = () => {
                   {wallet.blockReason || 'Your account is blocked due to excessive dues.'}
                 </p>
                 <button
-                  onClick={() => navigate('/vendor/wallet/settle')}
+                  onClick={() => navigate('/worker/wallet/settle')}
                   className="text-xs font-bold uppercase tracking-wider text-white bg-red-600 px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
                 >
                   Pay Now to Unblock
@@ -364,7 +364,7 @@ const Wallet = () => {
 
         {/* View Settlements Link */}
         <button
-          onClick={() => navigate('/vendor/wallet/settlements')}
+          onClick={() => navigate('/worker/wallet/settlements')}
           className="w-full mt-6 py-3 rounded-xl font-semibold text-gray-700 bg-white border border-gray-200 flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           View Settlement History

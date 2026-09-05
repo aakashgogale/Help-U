@@ -55,20 +55,10 @@ const SearchBar = ({ onInputClick }) => {
             style={{ background: `linear-gradient(90deg, ${themeColors.brand.teal}1A, ${themeColors.brand.orange}1A)` }}
           />
 
-          {/* Gradient Definition */}
-          <svg width="0" height="0" className="absolute">
-            <linearGradient id="helpu-search-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={themeColors.brand.teal} />
-              <stop offset="50%" stopColor={themeColors.brand.yellow} />
-              <stop offset="100%" stopColor={themeColors.brand.orange} />
-            </linearGradient>
-          </svg>
-
           {/* Search icon */}
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
             <FiSearch
-              className="w-5 h-5 transition-colors duration-300"
-              style={{ stroke: 'url(#helpu-search-gradient)' }}
+              className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors duration-300"
             />
           </div>
 
@@ -82,16 +72,10 @@ const SearchBar = ({ onInputClick }) => {
             {/* Placeholder text with typing animation */}
             <span className="text-[15px] text-gray-400 tracking-wide font-light">
               Search for <span
-                className="font-medium inline-block min-w-[2px]"
-                style={{
-                  background: themeColors.gradient,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  color: 'transparent'
-                }}
+                className="font-medium text-gray-700 inline-block min-w-[2px]"
               >
                 {displayedText}
-                <span className="animate-pulse ml-0.5" style={{ color: themeColors.brand.teal }}>|</span>
+                <span className="animate-pulse ml-0.5 text-teal-600">|</span>
               </span>
             </span>
           </div>

@@ -54,8 +54,8 @@ const VendorAnalytics = () => {
         if (isManual) toast.success('Analytics refreshed');
       }
     } catch (error) {
-      console.error('Vendor analytics error:', error);
-      toast.error('Failed to load vendor analytics');
+      console.error('Worker analytics error:', error);
+      toast.error('Failed to load worker analytics');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -89,7 +89,7 @@ const VendorAnalytics = () => {
 
   const allVendors = data.allVendorsAnalytics || data.topVendors || [];
 
-  // Filter vendors based on tab and search
+  // Filter workers based on tab and search
   const filteredVendors = allVendors.filter(v => {
     const matchesSearch = (v.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (v.businessName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -120,9 +120,9 @@ const VendorAnalytics = () => {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">Vendor Performance & Intelligence</h1>
+          <h1 className="text-2xl font-black tracking-tight text-white">Worker Performance & Intelligence</h1>
           <p className="text-xs text-slate-300 max-w-xl mt-1">
-            Comprehensive real-time tracking of vendor earnings, ratings, service completion, and network growth.
+            Comprehensive real-time tracking of worker earnings, ratings, service completion, and network growth.
           </p>
         </div>
         <div className="flex items-center gap-3 relative z-10">
@@ -139,10 +139,10 @@ const VendorAnalytics = () => {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Vendors */}
+        {/* Total Workers */}
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Vendors</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Workers</span>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <FiUsers className="w-5 h-5" />
             </div>
@@ -218,7 +218,7 @@ const VendorAnalytics = () => {
         <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Vendor Verification Status</h3>
+              <h3 className="text-base font-bold text-slate-900">Worker Verification Status</h3>
               <p className="text-xs text-slate-400">Distribution of registered partners</p>
             </div>
             <div className="p-2 rounded-lg bg-slate-50 text-slate-500">
@@ -245,7 +245,7 @@ const VendorAnalytics = () => {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value, name) => [`${value} Vendors`, `${name}`]}
+                    formatter={(value, name) => [`${value} Workers`, `${name}`]}
                     contentStyle={{ borderRadius: '12px', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                   />
                 </PieChart>
@@ -310,7 +310,7 @@ const VendorAnalytics = () => {
         <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Top Performing Partners</h3>
+              <h3 className="text-base font-bold text-slate-900">Top Performing Workers</h3>
               <p className="text-xs text-slate-400">Ranked by revenue generation & customer ratings</p>
             </div>
             <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -367,7 +367,7 @@ const VendorAnalytics = () => {
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Vendor Acquisition Trajectory</h3>
+            <h3 className="text-base font-bold text-slate-900">Worker Acquisition Trajectory</h3>
             <p className="text-xs text-slate-400">Monthly breakdown of new partner onboarding</p>
           </div>
           <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
@@ -398,7 +398,7 @@ const VendorAnalytics = () => {
                 allowDecimals={false}
               />
               <Tooltip
-                formatter={(value) => [`${value} Partners`, 'New Registrations']}
+                formatter={(value) => [`${value} Workers`, 'New Registrations']}
                 contentStyle={{
                   borderRadius: '12px',
                   backgroundColor: '#0F172A',
@@ -422,12 +422,12 @@ const VendorAnalytics = () => {
         </div>
       </div>
 
-      {/* Comprehensive Vendor Performance Table with Filters */}
+      {/* Comprehensive Worker Performance Table with Filters */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">All Vendor Metrics</h3>
-            <p className="text-xs text-slate-400">Detailed performance records across all registered vendors</p>
+            <h3 className="text-base font-bold text-slate-900">All Worker Metrics</h3>
+            <p className="text-xs text-slate-400">Detailed performance records across all registered workers</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -464,7 +464,7 @@ const VendorAnalytics = () => {
               <FiSearch className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by name, business, phone..."
+                placeholder="Search by worker name, business, phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full sm:w-64 pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50 hover:bg-white transition-colors"
@@ -477,7 +477,7 @@ const VendorAnalytics = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 text-[10px] uppercase font-extrabold text-slate-400 border-b border-slate-100 tracking-wider">
-                <th className="px-6 py-3.5">Vendor / Business</th>
+                <th className="px-6 py-3.5">Worker / Business</th>
                 <th className="px-6 py-3.5">Customer Rating</th>
                 <th className="px-6 py-3.5">Total Revenue</th>
                 <th className="px-6 py-3.5">Monthly Revenue</th>
@@ -492,13 +492,13 @@ const VendorAnalytics = () => {
                   <td colSpan="7" className="px-6 py-12 text-center text-slate-400 font-medium">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <FiUsers className="w-8 h-8 text-slate-300" />
-                      <p>No vendors matched your filter or search query</p>
+                      <p>No workers matched your filter or search query</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredVendors.map((v, idx) => {
-                  const initial = (v.businessName || v.name || 'V').charAt(0).toUpperCase();
+                  const initial = (v.businessName || v.name || 'W').charAt(0).toUpperCase();
                   const bgColors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-purple-100 text-purple-700', 'bg-amber-100 text-amber-700'];
                   const avatarColor = bgColors[idx % bgColors.length];
 

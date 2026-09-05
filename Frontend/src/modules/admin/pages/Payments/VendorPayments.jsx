@@ -81,8 +81,8 @@ const VendorPayments = () => {
         setStats(statsRes.data);
       }
     } catch (error) {
-      console.error('Error fetching vendor transactions:', error);
-      toast.error('Failed to load vendor transactions');
+      console.error('Error fetching worker transactions:', error);
+      toast.error('Failed to load worker transactions');
     } finally {
       setLoading(false);
     }
@@ -152,10 +152,10 @@ const VendorPayments = () => {
       toast.error('No transactions to export');
       return;
     }
-    exportToCSV(transactions, 'vendor_transactions', [
+    exportToCSV(transactions, 'worker_transactions', [
       { key: '_id', label: 'Transaction ID' },
-      { key: 'vendorId.businessName', label: 'Business Name' },
-      { key: 'vendorId.name', label: 'Vendor Name' },
+      { key: 'vendorId.businessName', label: 'Business / Agency Name' },
+      { key: 'vendorId.name', label: 'Worker Name' },
       { key: 'vendorId.phone', label: 'Phone' },
       { key: 'type', label: 'Type' },
       { key: 'amount', label: 'Amount', type: 'currency' },
@@ -242,7 +242,7 @@ const VendorPayments = () => {
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by ID, vendor, or phone..."
+            placeholder="Search by ID, worker, or phone..."
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
@@ -291,7 +291,7 @@ const VendorPayments = () => {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaction ID</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendor</th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Worker</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>

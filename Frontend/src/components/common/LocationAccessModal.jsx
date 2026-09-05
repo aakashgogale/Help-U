@@ -11,7 +11,7 @@ const LocationAccessModal = ({
   onSuccess,
   onManualSearch,
   initialLocationDisabled = false,
-  userType = 'user' // 'user' | 'vendor' | 'worker'
+  userType = 'user' // 'user' | 'vendor'
 }) => {
   const [requesting, setRequesting] = useState(false);
   const [locationDisabled, setLocationDisabled] = useState(initialLocationDisabled);
@@ -19,7 +19,6 @@ const LocationAccessModal = ({
   const getTheme = () => {
     switch (userType) {
       case 'vendor': return themeColors.vendor || themeColors;
-      case 'worker': return themeColors.worker || themeColors;
       default: return themeColors.user || themeColors;
     }
   };
@@ -37,7 +36,7 @@ const LocationAccessModal = ({
     }
     return {
       title: "ALLOW GPS LOCATION",
-      subtitle: "Help U needs your location to show available services and vendors near you.",
+      subtitle: "Help U needs your location to show available services and workers near you.",
       icon: FiNavigation
     };
   };

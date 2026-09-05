@@ -68,25 +68,6 @@ export const getEarningsByServiceType = async (filters = {}) => {
 };
 
 /**
- * Get earnings breakdown by worker
- * @param {Object} filters - Filter options (date range, etc.)
- * @returns {Promise<Array>} Earnings breakdown by worker
- */
-export const getEarningsByWorker = async (filters = {}) => {
-  try {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/earnings/by-worker?${new URLSearchParams(filters)}`);
-    // return await response.json();
-
-    // Mock implementation
-    return [];
-  } catch (error) {
-    console.error('Error fetching earnings by worker:', error);
-    throw error;
-  }
-};
-
-/**
  * Get payout breakdown
  * @param {Object} filters - Filter options (date range, etc.)
  * @returns {Promise<Object>} Payout details

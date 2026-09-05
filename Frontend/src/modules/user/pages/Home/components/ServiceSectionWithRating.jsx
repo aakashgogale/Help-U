@@ -79,22 +79,28 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
 
   return (
     <div ref={sectionRef} className="mb-6">
-      <div ref={titleRef} className="px-4 mb-5 flex items-center justify-between" style={{ opacity: 1 }}>
+      <div ref={titleRef} className="px-4 mb-3 flex items-center justify-between" style={{ opacity: 1 }}>
         <div>
-          <h2
-            className="text-xl font-bold mb-1 text-gray-900 tracking-tight"
-          >
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-sm font-medium text-gray-500">
+            <p className="text-xs font-medium text-gray-500 mt-0.5">
               {subtitle}
             </p>
           )}
         </div>
+        {onSeeAllClick && (
+          <button
+            onClick={onSeeAllClick}
+            className="text-xs font-bold text-[#163B66] hover:underline"
+          >
+            See all
+          </button>
+        )}
       </div>
 
-      <div ref={cardsRef} className="flex gap-4 overflow-x-auto px-4 lg:px-4 pb-4 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible -mx-0">
+      <div ref={cardsRef} className="flex gap-3.5 overflow-x-auto px-4 pb-3 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
         {services.map((service) => (
           <ServiceWithRatingCard
             key={service.id}

@@ -125,7 +125,7 @@ const Notifications = () => {
     }
 
     if (filter === 'jobs') {
-      return ['booking_', 'job_', 'worker_', 'visit_', 'work_', 'journey_', 'vendor_'].some(prefix => type.includes(prefix));
+      return ['booking_', 'job_', 'visit_', 'work_', 'journey_', 'vendor_'].some(prefix => type.includes(prefix));
     }
 
     if (filter === 'alerts') {
@@ -254,11 +254,11 @@ const Notifications = () => {
                       <button
                         onClick={() => {
                           if (notif.relatedType === 'booking' && notif.relatedId) {
-                            navigate(`/vendor/booking/${notif.relatedId}`);
+                            navigate(`/worker/booking/${notif.relatedId}`);
                           } else if (notif.action === 'view_booking' && notif.bookingId) {
-                            navigate(`/vendor/booking/${notif.bookingId}`);
+                            navigate(`/worker/booking/${notif.bookingId}`);
                           } else if (notif.action === 'view_wallet') {
-                            navigate('/vendor/wallet');
+                            navigate('/worker/wallet');
                           }
                         }}
                         className="mt-3 text-sm font-bold flex items-center gap-1"

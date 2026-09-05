@@ -5,7 +5,7 @@ import { FaWallet } from 'react-icons/fa';
 import { vendorTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import { vendorDashboardService } from '../../services/dashboardService';
-import { acceptBooking, rejectBooking, assignWorker } from '../../services/bookingService';
+import { acceptBooking, rejectBooking } from '../../services/bookingService';
 // Booking alert handled globally
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
@@ -34,13 +34,12 @@ const Dashboard = memo(() => {
     todayEarnings: 0,
     activeJobs: 0,
     pendingAlerts: 0,
-    workersOnline: 0,
     totalEarnings: 0,
     completedJobs: 0,
     rating: 0,
   });
   const [vendorProfile, setVendorProfile] = useState({
-    name: 'Vendor Name',
+    name: 'Worker Name',
     businessName: 'Business Name',
     photo: null,
     service: [],
@@ -181,7 +180,6 @@ const Dashboard = memo(() => {
       totalEarnings: apiStats.totalEarnings || apiStats.totalRevenue || 0,
       activeJobs: apiStats.activeJobs || apiStats.inProgressBookings || 0,
       pendingAlerts: mergedPending.length,
-      workersOnline: apiStats.workersOnline || 0,
       completedJobs: apiStats.completedJobs || apiStats.completedBookings || 0,
       rating: apiStats.rating || apiStats.averageRating || 0,
     });
@@ -199,14 +197,14 @@ const Dashboard = memo(() => {
         time: booking.scheduledTime || 'Time not set'
       },
       status: booking.status,
-      assignedTo: booking.workerId ? { name: booking.workerId.name } : null,
+      assignedTo: booking.assignedAt ? { name: 'You (Self)' } : null,
     }));
     setRecentJobs(recentJobsData);
 
     // Load vendor profile from localStorage (once)
     const profile = JSON.parse(localStorage.getItem('vendorData') || '{}');
     setVendorProfile({
-      name: profile.name || 'Vendor Name',
+      name: profile.name || 'Worker Name',
       businessName: profile.businessName || 'Business Name',
       photo: profile.profilePhoto || null,
       service: profile.service || [],
@@ -368,36 +366,24 @@ const Dashboard = memo(() => {
     }
   };
 
-  const handleAssignAlert = async (bookingId) => {
-    navigate('/vendor/workers', { state: { bookingId } });
-  };
-
   // Memoize quickActions to prevent recreation on every render
   const quickActions = useMemo(() => [
     {
       title: 'Active Jobs',
       icon: FiBriefcase,
       color: '#00a6a6',
-      path: '/vendor/jobs',
+      path: '/worker/jobs',
       count: stats.activeJobs,
       subtitle: `${stats.activeJobs} running`,
-    },
-    {
-      title: 'Manage Workers',
-      icon: FiUsers,
-      color: '#29ad81',
-      path: '/vendor/workers',
-      count: stats.workersOnline,
-      subtitle: `${stats.workersOnline} online`,
     },
     {
       title: 'Wallet',
       icon: FaWallet,
       color: '#F59E0B',
-      path: '/vendor/wallet',
+      path: '/worker/wallet',
       subtitle: `₹${stats.totalEarnings.toLocaleString()} total`,
     },
-  ], [stats.activeJobs, stats.workersOnline, stats.totalEarnings]);
+  ], [stats.activeJobs, stats.totalEarnings]);
 
   const getStatusColor = (status) => {
     const s = String(status).toLowerCase();
@@ -410,7 +396,6 @@ const Dashboard = memo(() => {
       'in_progress': '#F59E0B',
       'work_done': '#10B981',
       'completed': '#10B981',
-      'worker_paid': '#06B6D4',
       'settlement_pending': '#F97316',
     };
     return statusColors[s] || '#6B7280';
@@ -429,7 +414,6 @@ const Dashboard = memo(() => {
       'in_progress': 'In Progress',
       'work_done': 'Work Done',
       'completed': 'Completed',
-      'worker_paid': 'Payment Done',
       'settlement_pending': 'Settlement',
       'cancelled': 'Cancelled',
       'rejected': 'Rejected'
@@ -489,7 +473,7 @@ const Dashboard = memo(() => {
         <div className="px-4 pt-4 pb-2">
           <div
             className="rounded-2xl p-4 cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
-            onClick={() => navigate('/vendor/profile')}
+            onClick={() => navigate('/worker/profile')}
             style={{
               background: themeColors.button,
               border: `2px solid ${themeColors.button}`,
@@ -575,7 +559,7 @@ const Dashboard = memo(() => {
         {(!vendorProfile.service || vendorProfile.service.length === 0) && (
           <div className="px-4 pt-2 -mb-2">
             <div
-              onClick={() => navigate('/vendor/profile')}
+              onClick={() => navigate('/worker/profile')}
               className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r shadow-sm cursor-pointer hover:bg-orange-100 transition-colors"
             >
               <div className="flex items-center">
@@ -713,7 +697,7 @@ const Dashboard = memo(() => {
           {/* Refer & Earn Promotional Card */}
           {globalConfig.vendorReferralEnabled !== false && (
             <div
-              onClick={() => navigate('/vendor/refer-earn')}
+              onClick={() => navigate('/worker/refer-earn')}
               className="rounded-2xl p-4 bg-gradient-to-r from-[#2b6573] to-[#347989] text-white shadow-lg cursor-pointer active:scale-98 transition-all relative overflow-hidden flex items-center justify-between"
             >
               <div className="flex items-center gap-3.5 z-10">
@@ -725,7 +709,7 @@ const Dashboard = memo(() => {
                     Refer & Earn
                   </span>
                   <h3 className="text-sm font-extrabold text-white mt-1">
-                    Invite Vendors & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
+                    Invite Workers & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
                   </h3>
                   <p className="text-[11px] text-teal-100 font-medium">Get cash reward directly into your wallet</p>
                 </div>
@@ -742,7 +726,7 @@ const Dashboard = memo(() => {
               <h2 className="text-lg font-bold text-gray-800">Active Jobs</h2>
               {recentJobs.length > 0 && (
                 <button
-                  onClick={() => navigate('/vendor/jobs')}
+                  onClick={() => navigate('/worker/jobs')}
                   className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 active:scale-95"
                   style={{
                     background: `linear-gradient(135deg, ${themeColors.button} 0%, ${themeColors.button}dd 100%)`,
@@ -772,7 +756,7 @@ const Dashboard = memo(() => {
                   return (
                     <div
                       key={job.id}
-                      onClick={() => navigate(`/vendor/booking/${job.id}`)}
+                      onClick={() => navigate(`/worker/booking/${job.id}`)}
                       className="bg-white rounded-xl shadow-lg cursor-pointer active:scale-98 transition-all duration-200 relative overflow-hidden"
                       style={{
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.08)',
@@ -858,7 +842,7 @@ const Dashboard = memo(() => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/vendor/booking/${job.id}`);
+                              navigate(`/worker/booking/${job.id}`);
                             }}
                             className="p-2 rounded-lg flex-shrink-0 transition-all duration-300 active:scale-95"
                             style={{

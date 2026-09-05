@@ -49,26 +49,9 @@ const uploadVendorDocument = async (fileBuffer, documentType, vendorId) => {
 };
 
 /**
- * Upload worker document (Aadhar)
- * @param {Buffer} fileBuffer - File buffer
- * @param {String} workerId - Worker ID
- * @returns {Promise<String>} - Cloudinary URL
- */
-const uploadWorkerDocument = async (fileBuffer, workerId) => {
-  try {
-    const folder = `homster/documents/workers/${workerId}`;
-    const result = await uploadToCloudinary(fileBuffer, folder, 'auto');
-    return result.secure_url;
-  } catch (error) {
-    console.error('Error uploading worker document:', error);
-    throw new Error('Failed to upload document');
-  }
-};
-
-/**
  * Upload profile photo
  * @param {Buffer} fileBuffer - File buffer
- * @param {String} userType - 'user', 'vendor', 'worker'
+ * @param {String} userType - 'user', 'vendor'
  * @param {String} userId - User ID
  * @returns {Promise<String>} - Cloudinary URL
  */
@@ -131,7 +114,6 @@ const uploadPaymentScreenshot = async (base64Data, transactionId) => {
 module.exports = {
   uploadToCloudinary,
   uploadVendorDocument,
-  uploadWorkerDocument,
   uploadProfilePhoto,
   deleteFromCloudinary,
   uploadPaymentScreenshot

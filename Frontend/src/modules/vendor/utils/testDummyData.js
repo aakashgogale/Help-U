@@ -16,7 +16,6 @@ if (typeof window !== 'undefined') {
     // Clear existing data
     localStorage.removeItem('vendorProfile');
     localStorage.removeItem('vendorStats');
-    localStorage.removeItem('vendorWorkers');
     localStorage.removeItem('vendorAcceptedBookings');
     localStorage.removeItem('vendorPendingJobs');
     localStorage.removeItem('vendorWallet');
@@ -46,7 +45,6 @@ if (typeof window !== 'undefined') {
     return {
       profile: localStorage.getItem('vendorProfile'),
       stats: localStorage.getItem('vendorStats'),
-      workers: localStorage.getItem('vendorWorkers'),
       bookings: localStorage.getItem('vendorAcceptedBookings'),
       pending: localStorage.getItem('vendorPendingJobs'),
       wallet: localStorage.getItem('vendorWallet'),

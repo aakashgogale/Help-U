@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 /**
  * Notification Model
- * Stores notifications for users, vendors, workers, and admins
+ * Stores notifications for users, vendors, and admins
  */
 const notificationSchema = new mongoose.Schema({
   // Recipient Information
@@ -15,12 +15,6 @@ const notificationSchema = new mongoose.Schema({
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vendor',
-    default: null,
-    index: true
-  },
-  workerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Worker',
     default: null,
     index: true
   },
@@ -47,9 +41,6 @@ const notificationSchema = new mongoose.Schema({
       'job_accepted',
       'job_rejected',
       'job_cancelled',
-      'worker_assigned',
-      'worker_started',
-      'worker_completed',
       'work_done',
       'work_completed',       // Added for vendor self completion
       'vendor_reached',
@@ -96,7 +87,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedType: {
     type: String,
-    enum: ['booking', 'payment', 'user', 'vendor', 'worker', 'service', 'scrap', 'withdrawal'],
+    enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal'],
     default: null
   },
   // Notification Status
@@ -121,7 +112,6 @@ const notificationSchema = new mongoose.Schema({
 // Indexes for faster queries
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ vendorId: 1, isRead: 1, createdAt: -1 });
-notificationSchema.index({ workerId: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ adminId: 1, isRead: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

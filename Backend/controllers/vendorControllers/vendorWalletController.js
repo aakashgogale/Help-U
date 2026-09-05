@@ -3,7 +3,6 @@ const Transaction = require('../../models/Transaction');
 const Settlement = require('../../models/Settlement');
 const Withdrawal = require('../../models/Withdrawal');
 const Booking = require('../../models/Booking');
-const Worker = require('../../models/Worker');
 const { uploadPaymentScreenshot } = require('../../utils/cloudinaryUpload');
 const { validationResult } = require('express-validator');
 const { createOrder, verifyPayment } = require('../../services/razorpayService');
@@ -60,7 +59,7 @@ const getWallet = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -201,7 +200,7 @@ const recordCashCollection = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -214,7 +213,7 @@ const recordCashCollection = async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found or does not belong to this vendor'
+        message: 'Booking not found or does not belong to this worker'
       });
     }
 
@@ -378,7 +377,7 @@ const requestSettlement = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -491,7 +490,7 @@ const createSettlementOrder = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -603,7 +602,7 @@ const verifySettlementPayment = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -692,7 +691,7 @@ const requestWithdrawal = async (req, res) => {
     }
 
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     const currentEarnings = vendor.wallet?.earnings || 0;
 
@@ -813,7 +812,7 @@ const getWalletSummary = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 
@@ -887,144 +886,6 @@ const getWalletSummary = async (req, res) => {
 };
 
 /**
- * Pay worker for a booking
- */
-const payWorker = async (req, res) => {
-  try {
-    const vendorId = req.user.id;
-    const { bookingId, amount, notes, transactionId, screenshot, paymentMethod = 'cash' } = req.body;
-
-    if (!bookingId || !amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid booking ID and amount are required'
-      });
-    }
-
-    const booking = await Booking.findOne({ _id: bookingId, vendorId });
-
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found or not authorized'
-      });
-    }
-
-    if (!booking.workerId) {
-      return res.status(400).json({
-        success: false,
-        message: 'No worker assigned to this booking'
-      });
-    }
-
-    if (booking.workerPaymentStatus === 'PAID') {
-      return res.status(400).json({
-        success: false,
-        message: 'Worker already paid for this booking'
-      });
-    }
-
-    const worker = await Worker.findById(booking.workerId);
-    if (!worker) {
-      return res.status(404).json({
-        success: false,
-        message: 'Worker not found'
-      });
-    }
-
-    // Upload screenshot to Cloudinary if provided
-    let screenshotUrl = null;
-    if (screenshot) {
-      try {
-        // Check if screenshot is base64
-        if (screenshot.startsWith('data:image')) {
-          screenshotUrl = await uploadPaymentScreenshot(screenshot, bookingId);
-          console.log('Payment screenshot uploaded to Cloudinary:', screenshotUrl);
-        } else {
-          // If already a URL, use it as is
-          screenshotUrl = screenshot;
-        }
-      } catch (uploadError) {
-        console.error('Failed to upload payment screenshot:', uploadError);
-        // Continue without screenshot rather than failing the entire payment
-        screenshotUrl = null;
-      }
-    }
-
-    // Record Transaction
-    const transaction = new Transaction({
-      vendorId,
-      workerId: worker._id,
-      bookingId: booking._id,
-      type: 'worker_payment',
-      amount: parseFloat(amount),
-      status: 'completed',
-      paymentMethod: paymentMethod || 'cash',
-      description: `Payment for booking #${booking.bookingNumber}. ${notes || ''}`,
-      referenceId: transactionId || null,
-      metadata: {
-        notes,
-        transactionId,
-        screenshot: screenshotUrl, // Store Cloudinary URL instead of base64
-        paymentMethod
-      }
-    });
-
-    // Update Worker balance (optional - depends on if we track worker earnings in wallet)
-    if (!worker.wallet) worker.wallet = { balance: 0 };
-    worker.wallet.balance += parseFloat(amount);
-
-    // Update Booking
-    booking.workerPaymentStatus = 'PAID';
-    booking.isWorkerPaid = true;
-    booking.workerPaidAt = new Date();
-    booking.status = 'completed'; // Job is fully done and paid
-    booking.completedAt = booking.completedAt || new Date();
-
-    await Promise.all([
-      transaction.save(),
-      worker.save(),
-      booking.save()
-    ]);
-
-    // Notify worker about payment
-    const { createNotification } = require('../notificationControllers/notificationController');
-    await createNotification({
-      workerId: worker._id,
-      type: 'payment_received',
-      title: '💰 Payment Received',
-      message: `You received ₹${amount.toLocaleString()} from ${booking.vendorId?.businessName || 'vendor'} for booking #${booking.bookingNumber}`,
-      relatedId: booking._id,
-      relatedType: 'booking',
-      priority: 'high',
-      pushData: {
-        type: 'payment_received',
-        bookingId: booking._id.toString(),
-        amount: parseFloat(amount),
-        link: `/worker/wallet`
-      }
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Payment of ₹${amount} recorded for ${worker.name}`,
-      data: {
-        bookingId: booking._id,
-        workerName: worker.name,
-        amount: parseFloat(amount),
-        screenshotUploaded: !!screenshotUrl
-      }
-    });
-  } catch (error) {
-    console.error('Pay worker error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to record payment'
-    });
-  }
-};
-
-/**
  * Get vendor's withdrawal history
  */
 const getWithdrawals = async (req, res) => {
@@ -1072,7 +933,6 @@ module.exports = {
   verifySettlementPayment,
   getSettlements,
   getWalletSummary,
-  payWorker,
   requestWithdrawal,
   getWithdrawals
 };

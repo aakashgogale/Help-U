@@ -12,17 +12,9 @@ const {
   verifySettlementPayment,
   getSettlements,
   getWalletSummary,
-  payWorker,
   requestWithdrawal,
   getWithdrawals
 } = require('../../controllers/vendorControllers/vendorWalletController');
-
-// Validation rules
-const payWorkerValidation = [
-  body('bookingId').notEmpty().withMessage('Booking ID is required'),
-  body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('notes').optional().trim()
-];
 
 // Validation rules
 const cashCollectionValidation = [
@@ -58,9 +50,6 @@ router.post('/wallet/settlement/verify', authenticate, isVendor, [
   body('razorpay_signature').notEmpty().withMessage('Razorpay signature is required'),
   body('notes').optional().trim()
 ], verifySettlementPayment);
-
-// Pay worker for a booking
-router.post('/wallet/pay-worker', authenticate, isVendor, payWorkerValidation, payWorker);
 
 // Get settlement history
 router.get('/wallet/settlements', authenticate, isVendor, getSettlements);

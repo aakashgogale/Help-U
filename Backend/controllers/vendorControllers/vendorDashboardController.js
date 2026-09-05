@@ -1,9 +1,8 @@
 const Booking = require('../../models/Booking');
 const VendorBill = require('../../models/VendorBill');
-const Worker = require('../../models/Worker');
 const Service = require('../../models/UserService');
 const Settings = require('../../models/Settings');
-const { BOOKING_STATUS, PAYMENT_STATUS, WORKER_STATUS } = require('../../utils/constants');
+const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 
 /**
  * Get vendor dashboard stats
@@ -21,7 +20,7 @@ const getDashboardStats = async (req, res) => {
     ];
 
     // ─── SINGLE PARALLEL BLAST ───────────────────────────────────────────────
-    const [bookingData, workersOnline, earningsResult, bookingEarningsResult] = await Promise.all([
+    const [bookingData, earningsResult, bookingEarningsResult] = await Promise.all([
       // 1. ALL BOOKING DATA (Counts + Recent List + Rating) in ONE round-trip
       Booking.aggregate([
         {
@@ -106,7 +105,6 @@ const getDashboardStats = async (req, res) => {
                   vendorEarnings: 1,
                   'address.addressLine1': 1,
                   userId: 1,
-                  workerId: 1,
                   serviceId: 1,
                   potentialVendors: 1,
                   serviceCategory: 1,
@@ -122,8 +120,6 @@ const getDashboardStats = async (req, res) => {
         }
       ]),
 
-      // 2. Workers online count
-      Worker.countDocuments({ vendorId: vId, status: WORKER_STATUS.ONLINE }),
 
       // 3. Total Earnings from VendorBill
       VendorBill.aggregate([
@@ -190,7 +186,6 @@ const getDashboardStats = async (req, res) => {
     // Minimal population for recent bookings (Lean)
     await Booking.populate(recentBookings, [
       { path: 'userId', select: 'name phone', options: { lean: true } },
-      { path: 'workerId', select: 'name', options: { lean: true } },
       {
         path: 'serviceId',
         select: 'title iconUrl categoryId',
@@ -229,7 +224,6 @@ const getDashboardStats = async (req, res) => {
           todayEarnings: Math.round(todayEarnings),
           referralReward,
           vendorReferralEnabled,
-          workersOnline,
           rating: parseFloat(Number(avgRatingVal).toFixed(1)),
           averageRating: parseFloat(Number(avgRatingVal).toFixed(1))
         },
@@ -293,82 +287,6 @@ const getRevenueAnalytics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch revenue analytics. Please try again.'
-    });
-  }
-};
-
-/**
- * Get worker performance
- */
-const getWorkerPerformance = async (req, res) => {
-  try {
-    const vendorId = req.user.id;
-
-    // Get workers for this vendor
-    const workers = await Worker.find({ vendorId })
-      .select('name phone rating totalJobs completedJobs');
-
-    // Get booking stats per worker
-    const workerStats = await Booking.aggregate([
-      {
-        $match: {
-          vendorId: vendorId,
-          workerId: { $ne: null }
-        }
-      },
-      {
-        $group: {
-          _id: '$workerId',
-          totalJobs: { $sum: 1 },
-          completedJobs: {
-            $sum: {
-              $cond: [{ $eq: ['$status', BOOKING_STATUS.COMPLETED] }, 1, 0]
-            }
-          },
-          totalRevenue: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', BOOKING_STATUS.COMPLETED] },
-                    { $eq: ['$paymentStatus', PAYMENT_STATUS.SUCCESS] }
-                  ]
-                },
-                '$finalAmount',
-                0
-              ]
-            }
-          }
-        }
-      }
-    ]);
-
-    // Combine worker data with stats
-    const performance = workers.map(worker => {
-      const stats = workerStats.find(s => s._id.toString() === worker._id.toString());
-      return {
-        workerId: worker._id,
-        name: worker.name,
-        phone: worker.phone,
-        rating: worker.rating || 0,
-        totalJobs: stats?.totalJobs || 0,
-        completedJobs: stats?.completedJobs || 0,
-        totalRevenue: stats?.totalRevenue || 0,
-        completionRate: stats?.totalJobs
-          ? ((stats.completedJobs / stats.totalJobs) * 100).toFixed(2)
-          : 0
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      data: performance
-    });
-  } catch (error) {
-    console.error('Get worker performance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch worker performance. Please try again.'
     });
   }
 };
@@ -452,7 +370,6 @@ const getServicePerformance = async (req, res) => {
 module.exports = {
   getDashboardStats,
   getRevenueAnalytics,
-  getWorkerPerformance,
   getServicePerformance
 };
 

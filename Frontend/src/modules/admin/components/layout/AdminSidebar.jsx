@@ -26,13 +26,16 @@ import dashboardService from "../../services/dashboardService";
 const iconMap = {
   Dashboard: FiHome,
   Users: FiUsers,
+  Workers: FiBriefcase,
   Vendors: FiBriefcase,
+  "Worker Referrals": FiGift,
   "Vendor Referrals": FiGift,
   Referrals: FiGift,
-  Workers: FiUser,
   Bookings: FiShoppingBag,
   "User Catalog": FiGrid,
+  "Worker Services": FiGrid,
   "Vendor Services": FiGrid,
+  "Worker Parts": FiPackage,
   "Vendor Parts": FiPackage,
   Payments: FiDollarSign,
   Reports: FiFileText,
@@ -53,16 +56,22 @@ const getChildRoute = (parentRoute, childName) => {
       "Transactions": "/admin/users/transactions",
       "User Analytics": "/admin/users/analytics",
     },
-    "/admin/vendors": {
-      "All Vendors": "/admin/vendors/all",
-      "Vendor Bookings": "/admin/vendors/bookings",
-      "Vendor Referrals": "/admin/vendors/referrals",
-      "Vendor Analytics": "/admin/vendors/analytics",
-      "Vendor Payments": "/admin/vendors/payments",
-    },
     "/admin/workers": {
       "All Workers": "/admin/workers/all",
-      "Worker Jobs": "/admin/workers/jobs",
+      "Worker Bookings": "/admin/workers/bookings",
+      "Worker Referrals": "/admin/workers/referrals",
+      "Worker Analytics": "/admin/workers/analytics",
+      "Worker Payments": "/admin/workers/payments",
+    },
+    "/admin/vendors": {
+      "All Vendors": "/admin/workers/all",
+      "Vendor Bookings": "/admin/workers/bookings",
+      "Vendor Referrals": "/admin/workers/referrals",
+      "Vendor Analytics": "/admin/workers/analytics",
+      "Vendor Payments": "/admin/workers/payments",
+      "All Workers": "/admin/workers/all",
+      "Worker Bookings": "/admin/workers/bookings",
+      "Worker Referrals": "/admin/workers/referrals",
       "Worker Analytics": "/admin/workers/analytics",
       "Worker Payments": "/admin/workers/payments",
     },
@@ -81,13 +90,15 @@ const getChildRoute = (parentRoute, childName) => {
       "Payment Overview": "/admin/payments/overview",
       "User Payments": "/admin/payments/users",
       "Worker Payments": "/admin/payments/workers",
-      "Vendor Payments": "/admin/payments/vendors",
+      "Vendor Payments": "/admin/payments/workers",
       "Admin Revenue": "/admin/payments/revenue",
       "Payment Reports": "/admin/payments/reports",
     },
     "/admin/reports": {
       "Revenue Report": "/admin/reports/revenue",
       "Booking Report": "/admin/reports/bookings",
+      "Worker Report": "/admin/reports/vendors",
+      "Vendor Report": "/admin/reports/vendors",
       "Payment Report": "/admin/payments/reports",
     },
     "/admin/notifications": {
@@ -97,14 +108,14 @@ const getChildRoute = (parentRoute, childName) => {
     },
     "/admin/settings": {
       "General Settings": "/admin/settings/general",
-      "Worker Assignment": "/admin/settings/worker-assignment",
       "Service Configuration": "/admin/settings/service-config",
       "System Settings": "/admin/settings/system",
     },
     "/admin/settlements": {
       "Pending": "/admin/settlements/pending",
       "Withdrawals": "/admin/settlements/withdrawals",
-      "Vendors with Due": "/admin/settlements/vendors",
+      "Workers with Due": "/admin/settlements/workers",
+      "Vendors with Due": "/admin/settlements/workers",
       "History": "/admin/settlements/history",
     },
   };
@@ -196,7 +207,9 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   }, [location.pathname]); // Remove onClose to prevent re-triggering when parent re-renders
 
   const isVendorCatalogSubroute = (pathname) =>
+    pathname.startsWith("/admin/user-categories/worker-services") ||
     pathname.startsWith("/admin/user-categories/vendor-services") ||
+    pathname.startsWith("/admin/user-categories/worker-parts") ||
     pathname.startsWith("/admin/user-categories/vendor-parts");
 
   // Auto-expand menu items when their route is active
@@ -231,7 +244,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       return location.pathname === "/admin/dashboard";
     }
 
-    // Special case for User Catalog to avoid overlap with Vendor Services/Parts
+    // Special case for User Catalog to avoid overlap with Worker/Vendor Services/Parts
     if (route === "/admin/user-categories") {
       if (isVendorCatalogSubroute(location.pathname)) {
         return false;
@@ -310,7 +323,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               {counts.bookings > 99 ? '99+' : counts.bookings}
             </span>
           )}
-          {item.title === "Vendors" && counts.vendors > 0 && (
+          {(item.title === "Workers" || item.title === "Vendors") && counts.vendors > 0 && (
             <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse mr-2">
               {counts.vendors > 99 ? '99+' : counts.vendors}
             </span>

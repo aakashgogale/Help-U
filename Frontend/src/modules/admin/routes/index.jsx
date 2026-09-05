@@ -14,7 +14,6 @@ const Settings = lazy(() => import('../pages/Settings'));
 const UserCategories = lazy(() => import('../pages/UserCategories'));
 const Users = lazy(() => import('../pages/Users'));
 const Vendors = lazy(() => import('../pages/Vendors'));
-const Workers = lazy(() => import('../pages/Workers'));
 const Bookings = lazy(() => import('../pages/Bookings'));
 const BookingTracking = lazy(() => import('../pages/Bookings/Tracking'));
 const BookingNotifications = lazy(() => import('../pages/Bookings/BookingNotifications'));
@@ -56,8 +55,8 @@ const AdminRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users/*" element={<Users />} />
-          <Route path="vendors/*" element={<Vendors />} />
-          <Route path="workers/*" element={<Workers />} />
+          <Route path="workers/*" element={<Vendors />} />
+          <Route path="vendors/*" element={<Navigate to="/admin/workers" replace />} />
           <Route path="bookings" element={<Bookings />} />
           <Route path="bookings/tracking" element={<BookingTracking />} />
           <Route path="bookings/notifications" element={<BookingNotifications />} />

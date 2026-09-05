@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 // Import module routes
 import UserRoutes from '../modules/user/routes';
 import VendorRoutes from '../modules/vendor/routes';
-import WorkerRoutes from '../modules/worker/routes';
 import AdminRoutes from '../modules/admin/routes';
 
 import LandingPage from '../modules/landing/pages/LandingPage';
@@ -21,11 +20,12 @@ const AppRoutes = () => {
       {/* User Routes */}
       <Route path="/user/*" element={<UserRoutes />} />
 
-      {/* Vendor Routes */}
-      <Route path="/vendor/*" element={<VendorRoutes />} />
-
       {/* Worker Routes */}
-      <Route path="/worker/*" element={<WorkerRoutes />} />
+      <Route path="/worker/*" element={<VendorRoutes />} />
+
+      {/* Legacy /vendor Redirect to /worker */}
+      <Route path="/vendor/*" element={<Navigate to="/worker" replace />} />
+
 
       {/* Admin Routes */}
       <Route path="/admin/*" element={<AdminRoutes />} />

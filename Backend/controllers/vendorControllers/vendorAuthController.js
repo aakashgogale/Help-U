@@ -206,7 +206,7 @@ const register = async (req, res) => {
     // Check existing
     const existing = await Vendor.findOne({ $or: [{ phone }, { email }] });
     if (existing) {
-      return res.status(400).json({ success: false, message: 'Vendor already exists. Login.' });
+      return res.status(400).json({ success: false, message: 'Worker already exists. Login.' });
     }
 
     // Check referral code if provided
@@ -303,7 +303,7 @@ const register = async (req, res) => {
         await createNotification({
           adminId: admin._id,
           type: 'vendor_approval_request',
-          title: '👤 New Vendor Registration',
+          title: '👤 New Worker Registration',
           message: `${vendor.name} (${vendor.phone}) has registered${referrer ? ` (Referred by ${referrer.name})` : ''}`,
           relatedId: vendor._id,
           relatedType: 'vendor',
@@ -365,7 +365,7 @@ const login = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found. Please sign up first.'
+        message: 'Worker not found. Please sign up first.'
       });
     }
 
@@ -492,7 +492,7 @@ const refreshToken = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Worker not found'
       });
     }
 

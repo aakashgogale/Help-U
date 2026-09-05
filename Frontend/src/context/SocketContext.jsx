@@ -76,7 +76,6 @@ export const SocketProvider = ({ children }) => {
   // Determine user type based on path
   const getUserType = (path) => {
     if (path.startsWith('/vendor')) return 'vendor';
-    if (path.startsWith('/worker')) return 'worker';
     if (path.startsWith('/admin')) return 'admin';
     if (path.startsWith('/user')) return 'user';
     return null;
@@ -97,9 +96,6 @@ export const SocketProvider = ({ children }) => {
     switch (userType) {
       case 'vendor':
         tokenKey = 'vendorAccessToken';
-        break;
-      case 'worker':
-        tokenKey = 'workerAccessToken';
         break;
       case 'admin':
         tokenKey = 'adminAccessToken';
@@ -205,8 +201,7 @@ export const SocketProvider = ({ children }) => {
             toast.dismiss(t.id);
             // Optional: navigate based on relatedId
             if (data.relatedId) {
-              if (userType === 'vendor') navigate(`/vendor/booking/${data.relatedId}`);
-              else if (userType === 'worker') navigate(`/worker/job/${data.relatedId}`);
+              if (userType === 'vendor') navigate(`/worker/booking/${data.relatedId}`);
               else navigate(`/user/booking/${data.relatedId}`);
             }
           }}
@@ -218,7 +213,6 @@ export const SocketProvider = ({ children }) => {
       });
 
       // Dispatch update events to refresh UI components
-      if (userType === 'worker') window.dispatchEvent(new Event('workerJobsUpdated'));
       if (userType === 'vendor') {
         window.dispatchEvent(new Event('vendorJobsUpdated'));
         window.dispatchEvent(new Event('vendorNotificationsUpdated'));
@@ -234,7 +228,6 @@ export const SocketProvider = ({ children }) => {
       // console.log('Booking Updated:', data);
       if (userType === 'user') window.dispatchEvent(new Event('userBookingsUpdated'));
       if (userType === 'vendor') window.dispatchEvent(new Event('vendorJobsUpdated'));
-      if (userType === 'worker') window.dispatchEvent(new Event('workerJobsUpdated'));
     });
 
     // Listen for special Vendor Booking Requests
@@ -315,7 +308,7 @@ export const SocketProvider = ({ children }) => {
         }
 
         // Show toast notification
-        toast.error(data.message || 'Job taken by another vendor', { icon: '⚡' });
+        toast.error(data.message || 'Job taken by another worker', { icon: '⚡' });
 
         // Dispatch specific remove event for instant UI update
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: takenBookingId } }));
@@ -345,47 +338,6 @@ export const SocketProvider = ({ children }) => {
         window.dispatchEvent(new CustomEvent('removeVendorBooking', { detail: { id: bookingId } }));
         window.dispatchEvent(new Event('vendorJobsUpdated'));
         window.dispatchEvent(new Event('vendorStatsUpdated'));
-      });
-    }
-
-    // Listen for special Worker Job Assignments
-    if (userType === 'worker') {
-      newSocket.on('new_job_assigned', (data) => {
-        // Play urgent alert ring
-        playAlertRing();
-
-        const newJob = {
-          id: data.bookingId,
-          _id: data.bookingId,
-          serviceType: data.serviceName || 'Service',
-          customerName: data.customerName,
-          customerPhone: data.customerPhone,
-          location: {
-            address: data.address?.addressLine1 || 'Location shared',
-          },
-          price: data.price,
-          scheduledDate: data.scheduledDate,
-          scheduledTime: data.scheduledTime,
-          timeSlot: {
-            date: new Date(data.scheduledDate).toLocaleDateString(),
-            time: data.scheduledTime
-          },
-          status: 'ASSIGNED',
-          createdAt: new Date().toISOString()
-        };
-
-        const pendingJobs = JSON.parse(localStorage.getItem('workerPendingJobs') || '[]');
-        if (!pendingJobs.find(job => String(job.id || job._id) === String(newJob.id))) {
-          pendingJobs.unshift(newJob);
-          localStorage.setItem('workerPendingJobs', JSON.stringify(pendingJobs));
-        }
-
-        // Notify app components to refresh
-        window.dispatchEvent(new Event('workerJobsUpdated'));
-
-        // Always show the global alert 
-        const event = new CustomEvent('showWorkerJobAlert', { detail: newJob });
-        window.dispatchEvent(event);
       });
     }
 

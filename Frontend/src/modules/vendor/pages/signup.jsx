@@ -16,8 +16,7 @@ const vendorSignupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phoneNumber: z.string().regex(/^\d{10}$/, "Please enter a valid 10-digit phone number"),
   aadhar: z.string().regex(/^\d{12}$/, "Aadhar number must be exactly 12 digits"),
-  pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format (e.g. ABCDE1234F)"),
-  gstin: z.string().optional()
+  pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format (e.g. ABCDE1234F)")
 });
 
 const VendorSignup = () => {
@@ -30,7 +29,6 @@ const VendorSignup = () => {
     phoneNumber: '',
     aadhar: '',
     pan: '',
-    gstin: '',
     service: '',
     referralCode: '',
     documents: []
@@ -231,7 +229,6 @@ const VendorSignup = () => {
           phone: formData.phoneNumber.trim(),
           aadhar: formData.aadhar.trim(),
           pan: formData.pan.trim(),
-          gstin: formData.gstin?.trim() || undefined,
           service: [],
           aadharDocument: aadharDoc,
           aadharBackDocument: aadharBackDoc,
@@ -247,11 +244,11 @@ const VendorSignup = () => {
           toast.success(
             <div className="flex flex-col">
               <span className="font-bold">Application Submitted!</span>
-              <span className="text-xs">Your vendor account is pending admin approval.</span>
+              <span className="text-xs">Your worker account is pending admin approval.</span>
             </div>,
             { icon: <FiCheckCircle className="text-[#D68F35]" />, duration: 5000 }
           );
-          navigate('/vendor/login');
+          navigate('/worker/login');
         } else {
           toast.error(response.message || 'Registration failed');
         }
@@ -330,7 +327,6 @@ const VendorSignup = () => {
         phone: formData.phoneNumber,
         aadhar: formData.aadhar,
         pan: formData.pan,
-        gstin: formData.gstin?.trim() || undefined,
         service: formData.service,
         aadharDocument: aadharDoc,
         aadharBackDocument: aadharBackDoc,
@@ -346,7 +342,7 @@ const VendorSignup = () => {
       if (response.success) {
         setIsLoading(false);
         toast.success('Registration successful! Pending admin approval.');
-        navigate('/vendor/login');
+        navigate('/worker/login');
       } else {
         setIsLoading(false);
         toast.error(response.message || 'Registration failed');
@@ -370,10 +366,10 @@ const VendorSignup = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl text-center mb-8 relative z-10 animate-fade-in">
         <Logo className="h-24 w-auto mx-auto transform hover:scale-110 transition-transform duration-500" />
         <h2 className="mt-4 text-3xl font-extrabold text-gray-900 tracking-tight">
-          {step === 'details' ? 'Vendor Registration' : 'Verify Identity'}
+          {step === 'details' ? 'Worker Registration' : 'Verify Identity'}
         </h2>
         <p className="mt-2 text-sm text-gray-600 animate-stagger-1 animate-fade-in">
-          Partner with Help U and grow your business
+          Join Help U as a Worker Partner and grow your business
         </p>
       </div>
 
@@ -427,7 +423,7 @@ const VendorSignup = () => {
                           fieldErrors.email ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                         }`}
                         style={{ '--tw-ring-color': fieldErrors.email ? '#EF4444' : brandColor }}
-                        placeholder="vendor@example.com"
+                        placeholder="worker@example.com"
                       />
                     </div>
                     {fieldErrors.email && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.email}</p>}
@@ -507,35 +503,10 @@ const VendorSignup = () => {
                     {fieldErrors.pan && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.pan}</p>}
                   </div>
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.55s' }}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GSTIN <span className="text-gray-400 text-xs font-normal">(Optional - If available)</span>
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
-                        <FiFileText className="text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        name="gstin"
-                        value={formData.gstin}
-                        onChange={(e) => {
-                          setFormData(p => ({ ...p, gstin: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15) }));
-                          if (fieldErrors.gstin) setFieldErrors(p => ({ ...p, gstin: '' }));
-                        }}
-                        className={`block w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-offset-2 transition-all duration-300 outline-none font-medium tracking-wider uppercase placeholder:normal-case placeholder:font-normal placeholder:tracking-normal ${
-                          fieldErrors.gstin ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                        style={{ '--tw-ring-color': fieldErrors.gstin ? '#EF4444' : brandColor }}
-                        placeholder="e.g. 27ABCDE1234F1Z5"
-                      />
-                    </div>
-                    {fieldErrors.gstin && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.gstin}</p>}
-                  </div>
 
                   <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Referral Code <span className="text-gray-400 text-xs font-normal">(Optional - If referred by a vendor)</span>
+                      Referral Code <span className="text-gray-400 text-xs font-normal">(Optional - If referred by a worker)</span>
                     </label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
@@ -762,7 +733,7 @@ const VendorSignup = () => {
 
         <p className="mt-8 text-center text-sm text-gray-600 animate-fade-in animate-stagger-4">
           Already a partner?{' '}
-          <Link to="/vendor/login" className="font-bold hover:text-[#D68F35] transition-colors" style={{ color: brandColor }}>
+          <Link to="/worker/login" className="font-bold hover:text-[#D68F35] transition-colors" style={{ color: brandColor }}>
             Login here
           </Link>
         </p>

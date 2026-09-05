@@ -30,8 +30,8 @@ const SettlementManagement = () => {
   // Determine active tab from URL
   useEffect(() => {
     const path = location.pathname.split('/').pop();
-    if (['pending', 'vendors', 'history', 'withdrawals'].includes(path)) {
-      setActiveTab(path);
+    if (['pending', 'vendors', 'workers', 'history', 'withdrawals'].includes(path)) {
+      setActiveTab(path === 'vendors' ? 'workers' : path);
     } else {
       setActiveTab('pending');
     }
@@ -54,7 +54,7 @@ const SettlementManagement = () => {
       if (activeTab === 'pending') {
         const res = await adminSettlementService.getPendingSettlements();
         if (res.success) setPendingSettlements(res.data || []);
-      } else if (activeTab === 'vendors') {
+      } else if (activeTab === 'vendors' || activeTab === 'workers') {
         const res = await adminSettlementService.getVendorBalances({ filterDue: 'true' });
         if (res.success) setVendors(res.data || []);
       } else if (activeTab === 'history') {
@@ -171,7 +171,7 @@ const SettlementManagement = () => {
       setActionLoading(true);
       const res = await adminSettlementService.blockVendor(selectedItem._id, modalInput);
       if (res.success) {
-        toast.success('Vendor blocked');
+        toast.success('Worker blocked');
         loadData();
         closeModals();
       }
@@ -204,7 +204,7 @@ const SettlementManagement = () => {
       setActionLoading(true);
       const res = await adminSettlementService.unblockVendor(selectedItem._id);
       if (res.success) {
-        toast.success('Vendor unblocked');
+        toast.success('Worker unblocked');
         loadData();
         closeModals();
       }
@@ -276,18 +276,18 @@ const SettlementManagement = () => {
   const handleExport = () => {
     if (activeTab === 'history' && history.length > 0) {
       exportToCSV(history, 'settlement_history', [
-        { key: 'vendorId.name', label: 'Vendor Name' },
-        { key: 'vendorId.businessName', label: 'Business Name' },
+        { key: 'vendorId.name', label: 'Worker Name' },
+        { key: 'vendorId.businessName', label: 'Business / Agency Name' },
         { key: 'amount', label: 'Amount', type: 'currency' },
         { key: 'paymentMethod', label: 'Payment Method' },
         { key: 'paymentReference', label: 'Reference' },
         { key: 'status', label: 'Status' },
         { key: 'createdAt', label: 'Date', type: 'datetime' }
       ]);
-    } else if (activeTab === 'vendors' && vendors.length > 0) {
-      exportToCSV(vendors, 'vendor_dues', [
-        { key: 'name', label: 'Vendor Name' },
-        { key: 'businessName', label: 'Business Name' },
+    } else if ((activeTab === 'vendors' || activeTab === 'workers') && vendors.length > 0) {
+      exportToCSV(vendors, 'worker_dues', [
+        { key: 'name', label: 'Worker Name' },
+        { key: 'businessName', label: 'Business / Agency Name' },
         { key: 'phone', label: 'Phone', type: 'phone' },
         { key: 'amountDue', label: 'Amount Due', type: 'currency' },
         { key: 'cashLimit', label: 'Cash Limit', type: 'currency' },
@@ -295,16 +295,16 @@ const SettlementManagement = () => {
       ]);
     } else if (activeTab === 'withdrawals' && withdrawals.length > 0) {
       exportToCSV(withdrawals, 'withdrawal_requests', [
-        { key: 'vendorId.name', label: 'Vendor Name' },
-        { key: 'vendorId.businessName', label: 'Business Name' },
+        { key: 'vendorId.name', label: 'Worker Name' },
+        { key: 'vendorId.businessName', label: 'Business / Agency Name' },
         { key: 'amount', label: 'Amount', type: 'currency' },
         { key: 'status', label: 'Status' },
         { key: 'requestDate', label: 'Request Date', type: 'date' }
       ]);
     } else if (activeTab === 'pending' && pendingSettlements.length > 0) {
       exportToCSV(pendingSettlements, 'pending_settlements', [
-        { key: 'vendorId.name', label: 'Vendor Name' },
-        { key: 'vendorId.businessName', label: 'Business Name' },
+        { key: 'vendorId.name', label: 'Worker Name' },
+        { key: 'vendorId.businessName', label: 'Business / Agency Name' },
         { key: 'amount', label: 'Amount', type: 'currency' },
         { key: 'paymentMethod', label: 'Payment Method' },
         { key: 'paymentReference', label: 'Reference' },
@@ -361,8 +361,8 @@ const SettlementManagement = () => {
           border: 'border-purple-100'
         }
       ];
-    } else if (activeTab === 'vendors') {
-      // Vendor Payables stats
+    } else if (activeTab === 'vendors' || activeTab === 'workers') {
+      // Worker Payables stats
       const totalVendors = vendors.length;
       const totalDue = vendors.reduce((sum, v) => sum + (v.amountDue || 0), 0);
       const blockedCount = vendors.filter(v => v.isBlocked).length;
@@ -370,7 +370,7 @@ const SettlementManagement = () => {
 
       cards = [
         {
-          title: 'Total Due from Vendors',
+          title: 'Total Due from Workers',
           value: `₹${totalDue.toLocaleString()}`,
           icon: FiDollarSign,
           color: 'text-red-600',
@@ -378,7 +378,7 @@ const SettlementManagement = () => {
           border: 'border-red-100'
         },
         {
-          title: 'Vendors with Dues',
+          title: 'Workers with Dues',
           value: totalVendors,
           icon: FiUsers,
           color: 'text-blue-600',
@@ -386,7 +386,7 @@ const SettlementManagement = () => {
           border: 'border-blue-100'
         },
         {
-          title: 'Blocked Vendors',
+          title: 'Blocked Workers',
           value: blockedCount,
           icon: FiAlertCircle,
           color: 'text-orange-600',
@@ -503,7 +503,8 @@ const SettlementManagement = () => {
   const getPageTitle = () => {
     switch (activeTab) {
       case 'pending': return 'Pending Settlements';
-      case 'vendors': return 'Vendor Balances & Limits';
+      case 'vendors':
+      case 'workers': return 'Worker Balances & Limits';
       case 'history': return 'Settlement History';
       case 'withdrawals': return 'Withdrawal Requests';
       default: return 'Settlements';
@@ -525,7 +526,7 @@ const SettlementManagement = () => {
             <div className="flex justify-between items-start gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-gray-900">{settlement.vendorId?.name || 'Unknown Vendor'}</h3>
+                  <h3 className="font-bold text-gray-900">{settlement.vendorId?.name || 'Unknown Worker'}</h3>
                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{settlement.vendorId?.businessName}</span>
                 </div>
 
@@ -581,14 +582,14 @@ const SettlementManagement = () => {
     vendors.length === 0 ? (
       <div className="text-center py-10">
         <FiCheck className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-        <p className="text-gray-500 text-sm font-medium">All vendors are settled!</p>
+        <p className="text-gray-500 text-sm font-medium">All workers are settled!</p>
       </div>
     ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Vendor Details</th>
+              <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Worker Details</th>
               <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Cash Limit Status</th>
               <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Amount Due</th>
               <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
@@ -798,8 +799,8 @@ const SettlementManagement = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Vendor</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Business</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Worker</th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Business / Agency</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Amount</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Available</th>
               <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Request Date</th>
@@ -816,7 +817,7 @@ const SettlementManagement = () => {
                       {getInitials(request.vendorId?.name)}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900 text-sm">{request.vendorId?.name || 'Unknown Vendor'}</p>
+                      <p className="font-bold text-gray-900 text-sm">{request.vendorId?.name || 'Unknown Worker'}</p>
                       <p className="text-xs text-gray-500">{request.vendorId?.phone || 'No phone'}</p>
                     </div>
                   </div>
@@ -963,11 +964,11 @@ const SettlementManagement = () => {
         </div>
       </Modal>
 
-      {/* Block Vendor Modal */}
+      {/* Block Worker Modal */}
       <Modal
         isOpen={activeModal === 'block_vendor'}
         onClose={closeModals}
-        title="Block Vendor"
+        title="Block Worker"
         size="sm"
       >
         <div className="space-y-4">
@@ -988,17 +989,17 @@ const SettlementManagement = () => {
               isLoading={actionLoading}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Block Vendor
+              Block Worker
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Unblock Vendor Modal */}
+      {/* Unblock Worker Modal */}
       <Modal
         isOpen={activeModal === 'unblock_vendor'}
         onClose={closeModals}
-        title="Unblock Vendor"
+        title="Unblock Worker"
         size="sm"
       >
         <div className="space-y-4">
@@ -1061,7 +1062,7 @@ const SettlementManagement = () => {
               {getInitials(selectedItem?.vendorId?.name)}
             </div>
             <div>
-              <p className="font-bold text-gray-900">{selectedItem?.vendorId?.name || 'Unknown Vendor'}</p>
+              <p className="font-bold text-gray-900">{selectedItem?.vendorId?.name || 'Unknown Worker'}</p>
               <p className="text-sm text-gray-500">{selectedItem?.vendorId?.businessName || '-'}</p>
               <p className="text-xs text-gray-400">{selectedItem?.vendorId?.phone || 'No phone'}</p>
             </div>

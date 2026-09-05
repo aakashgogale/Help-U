@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import AppRoutes from './routes';
 import { SocketProvider } from './context/SocketContext';
+import { ConfigProvider } from './context/ConfigContext';
 import { CartProvider } from './context/CartContext';
 import { CityProvider } from './context/CityContext';
 import { initializePushNotifications, setupForegroundNotificationHandler } from './services/pushNotificationService';
@@ -21,7 +22,6 @@ function App() {
       // Dispatch update events for listening components to refresh UI
       window.dispatchEvent(new Event('vendorJobsUpdated'));
       window.dispatchEvent(new Event('vendorStatsUpdated'));
-      window.dispatchEvent(new Event('workerJobsUpdated'));
       window.dispatchEvent(new Event('userBookingsUpdated'));
 
       // Also dispatch generic one if needed
@@ -42,11 +42,12 @@ function App() {
   return (
     <BrowserRouter>
       <SocketProvider>
-        <CityProvider>
-          <CartProvider>
-            <div className="App">
-              <AppRoutes />
-              <LocationPermissionChecker />
+        <ConfigProvider>
+          <CityProvider>
+            <CartProvider>
+              <div className="App">
+                <AppRoutes />
+                <LocationPermissionChecker />
               <Toaster
                 position="top-center"
                 reverseOrder={false}
@@ -75,9 +76,10 @@ function App() {
             </div>
           </CartProvider>
         </CityProvider>
-      </SocketProvider>
-    </BrowserRouter>
-  );
+      </ConfigProvider>
+    </SocketProvider>
+  </BrowserRouter>
+);
 }
 
 export default App;

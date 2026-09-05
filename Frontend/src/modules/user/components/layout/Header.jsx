@@ -10,11 +10,13 @@ import { themeColors } from '../../../../theme';
 
 import CitySelectorModal from '../common/CitySelectorModal';
 import { useCity } from '../../../../context/CityContext';
+import { useConfig } from '../../../../context/ConfigContext';
 import { HiChevronDown } from 'react-icons/hi';
 
 const Header = ({ location, onLocationClick }) => {
   const logoRef = useRef(null);
   const { currentCity } = useCity();
+  const { isScrapEnabled } = useConfig();
   const [isCityModalOpen, setIsCityModalOpen] = React.useState(false);
 
   useEffect(() => {
@@ -65,7 +67,9 @@ const Header = ({ location, onLocationClick }) => {
             <nav className="hidden lg:flex items-center gap-8 ml-10">
               <Link to="/user" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Home</Link>
               <Link to="/user/my-bookings" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Bookings</Link>
-              <Link to="/user/scrap" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Scrap</Link>
+              {isScrapEnabled && (
+                <Link to="/user/scrap" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Scrap</Link>
+              )}
               <Link to="/user/cart" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Cart</Link>
               <Link to="/user/account" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Account</Link>
             </nav>
@@ -76,25 +80,12 @@ const Header = ({ location, onLocationClick }) => {
 
 
               {/* Location Selector */}
-              <div className="flex flex-col items-end cursor-pointer" onClick={onLocationClick}>
-                <div className="flex items-center gap-1 mb-0.5">
-                  {/* Gradient Definition for Icons */}
-                  <svg width="0" height="0" className="absolute">
-                    <linearGradient id="helpu-location-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={themeColors.brand.teal} />
-                      <stop offset="50%" stopColor={themeColors.brand.yellow} />
-                      <stop offset="100%" stopColor={themeColors.brand.orange} />
-                    </linearGradient>
-                  </svg>
+              <div className="flex flex-col items-end cursor-pointer group" onClick={onLocationClick}>
+                <div className="flex items-center gap-1.5 mb-0.5">
                   <HiLocationMarker
-                    className="w-4 h-4 shrink-0"
-                    style={{ fill: 'url(#helpu-location-gradient)' }}
+                    className="w-4 h-4 shrink-0 text-teal-600 group-hover:scale-110 transition-transform"
                   />
-                  <span className="text-sm font-bold truncate max-w-[160px]" style={{
-                    background: themeColors.gradient,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}>
+                  <span className="text-sm font-bold text-gray-900 truncate max-w-[160px] tracking-tight">
                     {location && location !== '...' ? location.split('-')[0].trim() : 'Select Location'}
                   </span>
                 </div>

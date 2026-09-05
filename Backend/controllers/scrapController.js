@@ -1,12 +1,22 @@
 const Scrap = require('../models/Scrap');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
+const Settings = require('../models/Settings');
 const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationControllers/notificationController');
 
 // Create a new scrap item (User)
 exports.createScrap = async (req, res) => {
   try {
+    // Check if scrap feature is enabled globally
+    const settings = await Settings.findOne({ type: 'global' });
+    if (settings && settings.isScrapEnabled === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Scrap selling feature is currently disabled by administrator.'
+      });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -32,7 +42,7 @@ exports.createScrap = async (req, res) => {
       userId: req.user.id,
       type: 'scrap_listed',
       title: 'Scrap Listed Successfully',
-      message: `Your scrap item "${scrap.title}" has been listed. Vendors in your area will be notified.`,
+      message: `Your scrap item "${scrap.title}" has been listed. Workers in your area will be notified.`,
       relatedId: scrap._id,
       relatedType: 'scrap'
     });

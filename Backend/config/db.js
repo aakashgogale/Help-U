@@ -18,21 +18,32 @@ const configureDnsForMongoSrv = (mongoUri) => {
  * Connect to MongoDB
  */
 const connectDB = async () => {
-  try {
-    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 
-    if (!mongoUri) {
-      throw new Error('MONGODB_URI is not set');
-    }
-
-    configureDnsForMongoSrv(mongoUri);
-
-    const conn = await mongoose.connect(mongoUri);
-
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error('MongoDB connection error:', error.message);
+  if (!mongoUri) {
+    console.error('MONGODB_URI is not set');
     process.exit(1);
+  }
+
+  try {
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 8000
+    });
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (initialError) {
+    console.warn(`Initial MongoDB connection failed (${initialError.message}). Retrying with alternate DNS lookup...`);
+    try {
+      if (mongoUri.startsWith('mongodb+srv://')) {
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+      }
+      const conn = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000
+      });
+      console.log(`MongoDB Connected (via DNS fallback): ${conn.connection.host}`);
+    } catch (fallbackError) {
+      console.error('MongoDB connection error:', fallbackError.message);
+      process.exit(1);
+    }
   }
 };
 

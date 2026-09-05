@@ -6,7 +6,6 @@
 const USER_ROLES = {
   USER: 'USER',
   VENDOR: 'VENDOR',
-  WORKER: 'WORKER',
   ADMIN: 'ADMIN'
 };
 
@@ -26,15 +25,6 @@ const VENDOR_STATUS = {
   SUSPENDED: 'suspended'
 };
 
-// Worker Status
-const WORKER_STATUS = {
-  ACTIVE: 'active',
-  INACTIVE: 'inactive',
-  SUSPENDED: 'suspended',
-  ONLINE: 'ONLINE',
-  OFFLINE: 'OFFLINE'
-};
-
 // Booking Status
 const BOOKING_STATUS = {
   SEARCHING: 'searching', // Initial search phase
@@ -50,6 +40,7 @@ const BOOKING_STATUS = {
   WORK_DONE: 'work_done',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+  NO_VENDORS: 'cancelled',
   REJECTED: 'rejected'
 };
 
@@ -82,7 +73,6 @@ module.exports = {
   USER_ROLES,
   TOKEN_TYPES,
   VENDOR_STATUS,
-  WORKER_STATUS,
   BOOKING_STATUS,
   PAYMENT_STATUS,
   SERVICE_STATUS,

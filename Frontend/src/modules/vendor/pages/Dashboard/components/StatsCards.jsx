@@ -20,7 +20,7 @@ const StatsCards = memo(({ stats = {} }) => {
       icon: FaWallet,
       gradient: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
       textColor: 'text-amber-400',
-      onClick: () => navigate('/vendor/wallet')
+      onClick: () => navigate('/worker/wallet')
     },
     {
       title: "Monthly Earnings",
@@ -29,7 +29,7 @@ const StatsCards = memo(({ stats = {} }) => {
       icon: FiCalendar,
       gradient: 'linear-gradient(135deg, #0A3641 0%, #155E75 100%)',
       textColor: 'text-emerald-400',
-      onClick: () => navigate('/vendor/wallet')
+      onClick: () => navigate('/worker/wallet')
     }
   ];
 
@@ -41,7 +41,7 @@ const StatsCards = memo(({ stats = {} }) => {
       color: "text-amber-500",
       bg: "bg-amber-50",
       border: "border-amber-100",
-      onClick: () => navigate('/vendor/ratings')
+      onClick: () => navigate('/worker/ratings')
     },
     {
       title: "Completed",
@@ -50,7 +50,7 @@ const StatsCards = memo(({ stats = {} }) => {
       color: "text-emerald-600",
       bg: "bg-emerald-50",
       border: "border-emerald-100",
-      onClick: () => navigate('/vendor/jobs?tab=completed')
+      onClick: () => navigate('/worker/jobs?tab=completed')
     },
     {
       title: "Pending",
@@ -59,7 +59,7 @@ const StatsCards = memo(({ stats = {} }) => {
       color: "text-blue-600",
       bg: "bg-blue-50",
       border: "border-blue-100",
-      onClick: () => navigate('/vendor/booking-alerts')
+      onClick: () => navigate('/worker/booking-alerts')
     }
   ];
 

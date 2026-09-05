@@ -4,9 +4,9 @@ import { FiCheck, FiClock, FiUser, FiMapPin, FiTool, FiDollarSign, FiFileText, F
 import { vendorTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
-import { getBookingById, updateBookingStatus, startSelfJob, verifySelfVisit, completeSelfJob, collectSelfCash, payWorker } from '../../services/bookingService';
+import { getBookingById, updateBookingStatus, startSelfJob, verifySelfVisit, completeSelfJob, collectSelfCash } from '../../services/bookingService';
 import { CashCollectionModal, ConfirmDialog } from '../../components/common';
-import { WorkCompletionModal } from '../../../worker/components/common';
+import { WorkCompletionModal } from '../../components/common';
 import vendorWalletService from '../../../../services/vendorWalletService';
 import { toast } from 'react-hot-toast';
 
@@ -52,12 +52,12 @@ const BookingTimeline = () => {
         const response = await getBookingById(id);
         const apiData = response.data || response;
 
-        const isSelfJob = apiData.assignedAt && !apiData.workerId;
+        const isSelfJob = true; // vendor always performs the job
         const mappedBooking = {
           ...apiData,
           id: apiData._id || apiData.id,
           isSelfJob,
-          assignedTo: apiData.workerId ? { name: apiData.workerId.name } : (apiData.assignedAt ? { name: 'You (Self)' } : null),
+          assignedTo: apiData.assignedAt ? { name: 'You (Self)' } : null,
           location: {
             address: apiData.address?.addressLine1 || apiData.location?.address || 'Address not available',
             lat: apiData.address?.lat || apiData.location?.lat,
@@ -89,15 +89,13 @@ const BookingTimeline = () => {
           'completed': 8,
         };
 
-        const isActuallyPaid = apiData.isWorkerPaid || apiData.workerPaymentStatus === 'PAID' || apiData.workerPaymentStatus === 'SUCCESS';
         const isSettled = apiData.finalSettlementStatus === 'DONE';
 
         // Custom logic for later stages
         let stage = statusMap[apiData.status] || 2;
         if (apiData.status === 'completed') {
           if (isSettled) stage = 10; // Booking Complete
-          else if (isActuallyPaid || isSelfJob) stage = 9; // Final Settlement (Skip Pay Worker for self)
-          else stage = 8; // Pay Worker
+          else stage = 9; // Final Settlement
         }
 
         setCurrentStage(stage);
@@ -124,37 +122,11 @@ const BookingTimeline = () => {
   }, [booking?.paymentStatus]);
 
   /* Handlers */
-  const handleWorkerPayment = async () => {
-    // Determine payment type
-    const confirmMsg = booking?.cashCollected
-      ? `Worker has collected ₹${booking.finalAmount}. Confirm payment of ₹${booking.vendorEarnings} to worker?`
-      : `Confirm payment of ₹${booking.vendorEarnings} to the worker?`;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Pay Worker',
-      message: confirmMsg,
-      type: 'info',
-      onConfirm: async () => {
-        try {
-          setActionLoading(true);
-          await payWorker(id);
-          toast.success('Worker payment processed successfully');
-          window.location.reload();
-        } catch (e) {
-          toast.error(e.response?.data?.message || 'Payment failed');
-        } finally {
-          setActionLoading(false);
-        }
-      }
-    });
-  };
-
   const handleApproveWork = async () => {
     setConfirmDialog({
       isOpen: true,
       title: 'Approve Work',
-      message: "Approve worker's work and proceed to settlement?",
+      message: 'Approve the work and proceed to settlement?',
       type: 'info',
       onConfirm: async () => {
         try {
@@ -201,7 +173,7 @@ const BookingTimeline = () => {
       setActionLoading(true);
       await startSelfJob(id);
       toast.success('Journey Started');
-      navigate(`/vendor/booking/${id}/map`);
+      navigate(`/worker/booking/${id}/map`);
     } catch (error) {
       toast.error('Failed to start journey');
     } finally {
@@ -214,7 +186,7 @@ const BookingTimeline = () => {
     if (otp.length !== 4) return toast.error('Enter 4-digit OTP');
 
     setActionLoading(true);
-    // Location check for vendor? Optional or same as worker.
+    // Location check for vendor.
     if (!navigator.geolocation) return toast.error('Geolocation required');
 
     navigator.geolocation.getCurrentPosition(async (position) => {
@@ -265,15 +237,15 @@ const BookingTimeline = () => {
       id: 3,
       title: 'Assigned',
       icon: FiUser,
-      action: currentStage === 2 ? () => navigate(`/vendor/booking/${id}/assign-worker`) : null,
-      description: booking?.assignedTo ? `Assigned to ${booking.assignedTo.name}` : 'Assign worker or start yourself',
+      action: null,
+      description: booking?.assignedTo ? `Assigned to ${booking.assignedTo.name}` : 'Assigned to you',
     },
     {
       id: 4,
       title: 'Journey Started',
       icon: FiMapPin,
       action: (currentStage === 3 && booking?.isSelfJob) ? handleStartSelfJob : null,
-      description: booking?.isSelfJob ? 'You started journey' : (booking?.assignedTo ? 'Worker started journey' : 'Waiting for journey start'),
+      description: 'You started journey',
     },
     {
       id: 5,
@@ -291,13 +263,13 @@ const BookingTimeline = () => {
     },
     {
       id: 7,
-      title: booking?.isSelfJob ? 'Collect Payment' : 'Approve Worker Work',
+      title: 'Collect Payment',
       icon: FiCheckCircle,
       action: (() => {
         if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') return null;
 
         if (booking?.isSelfJob && currentStage === 7) {
-          return () => navigate(`/vendor/booking/${id}/billing`);
+          return () => navigate(`/worker/booking/${id}/billing`);
         }
 
         if (!booking?.isSelfJob && currentStage === 7) {
@@ -305,14 +277,7 @@ const BookingTimeline = () => {
         }
         return null;
       })(),
-      description: booking?.isSelfJob ? 'Collect cash and complete booking' : 'Review and approve worker work',
-    },
-    {
-      id: 8,
-      title: 'Pay Worker',
-      icon: FiDollarSign,
-      action: (currentStage === 8 && !(booking?.isWorkerPaid || booking?.workerPaymentStatus === 'PAID' || booking?.workerPaymentStatus === 'SUCCESS')) ? handleWorkerPayment : null,
-      description: (booking?.isWorkerPaid || booking?.workerPaymentStatus === 'PAID' || booking?.workerPaymentStatus === 'SUCCESS') ? 'Worker Paid' : 'Settle payment with worker',
+      description: 'Collect cash and complete booking',
     },
     {
       id: 9,
@@ -328,11 +293,7 @@ const BookingTimeline = () => {
       action: null,
       description: 'Booking successfully finalized',
     },
-  ].filter(stage => {
-    // Hide worker-specific stages for self jobs
-    if (booking?.isSelfJob && stage.id === 8) return false;
-    return true;
-  });
+  ];
 
   // Auto-verify as last digit enters
   useEffect(() => {
@@ -468,16 +429,15 @@ const BookingTimeline = () => {
                             boxShadow: `0 2px 8px ${themeColors.button}40`,
                           }}
                         >
-                          {stage.id === 3 ? 'Assign Worker' :
+                          {stage.id === 3 ? 'Continue' :
                             stage.id === 4 ? 'Start Journey' :
                               stage.id === 5 ? 'Mark Arrived' :
                                 stage.id === 6 ? 'Mark workdone' :
                                   stage.id === 7 ? (
                                     (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid')
                                       ? 'Online Payment Done'
-                                      : (booking?.isSelfJob ? 'Collect Cash' : 'Approve Work')
+                                      : 'Collect Cash'
                                   ) :
-                                    stage.id === 8 ? 'Pay Worker' :
                                       stage.id === 9 ? 'Final Settlement' : 'Continue'}
                         </button>
                       )}

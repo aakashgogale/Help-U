@@ -17,16 +17,6 @@ const isVendor = (req, res, next) => {
   if (req.userRole !== USER_ROLES.VENDOR) {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Vendor role required.'
-    });
-  }
-  next();
-};
-
-const isWorker = (req, res, next) => {
-  if (req.userRole !== USER_ROLES.WORKER) {
-    return res.status(403).json({
-      success: false,
       message: 'Access denied. Worker role required.'
     });
   }
@@ -47,7 +37,7 @@ const isAdminOrVendor = (req, res, next) => {
   if (req.userRole !== USER_ROLES.ADMIN && req.userRole !== 'super_admin' && req.userRole !== USER_ROLES.VENDOR) {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Admin or Vendor role required.'
+      message: 'Access denied. Admin or Worker role required.'
     });
   }
   next();
@@ -86,7 +76,6 @@ const isSuperAdmin = async (req, res, next) => {
 module.exports = {
   isUser,
   isVendor,
-  isWorker,
   isAdmin,
   isAdminOrVendor,
   isSuperAdmin

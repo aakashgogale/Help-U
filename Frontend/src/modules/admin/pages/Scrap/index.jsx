@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { FiTrash2, FiSearch, FiFilter, FiDollarSign, FiX, FiCheck, FiClock, FiMapPin, FiPhone, FiUser } from 'react-icons/fi';
+import { FiTrash2, FiSearch, FiFilter, FiDollarSign, FiX, FiCheck, FiClock, FiMapPin, FiPhone, FiUser, FiPower } from 'react-icons/fi';
 import api from '../../../../services/api';
+import { getSettings, updateSettings } from '../../services/settingsService';
+import { publicCatalogService } from '../../../../services/catalogService';
 import { toast } from 'react-hot-toast';
 
 const AdminScrapPage = () => {
   const [scraps, setScraps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [isScrapEnabled, setIsScrapEnabled] = useState(true);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Modal State for Price Offer
   const [offerModalOpen, setOfferModalOpen] = useState(false);
@@ -17,7 +21,54 @@ const AdminScrapPage = () => {
 
   useEffect(() => {
     fetchScrap();
+    fetchFeatureStatus();
+
+    const handleSync = () => fetchFeatureStatus();
+    window.addEventListener('systemConfigUpdated', handleSync);
+    window.addEventListener('adminSettingsUpdated', handleSync);
+    return () => {
+      window.removeEventListener('systemConfigUpdated', handleSync);
+      window.removeEventListener('adminSettingsUpdated', handleSync);
+    };
   }, []);
+
+  const fetchFeatureStatus = async () => {
+    try {
+      const res = await getSettings();
+      if (res.success && res.settings) {
+        const enabled = res.settings.isScrapEnabled !== undefined ? res.settings.isScrapEnabled : true;
+        setIsScrapEnabled(enabled);
+        try {
+          const current = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+          localStorage.setItem('app_public_config', JSON.stringify({ ...current, isScrapEnabled: enabled }));
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+    }
+  };
+
+  const handleToggleFeature = async () => {
+    const newValue = !isScrapEnabled;
+    setIsScrapEnabled(newValue);
+    setTogglingStatus(true);
+    try {
+      await updateSettings({ isScrapEnabled: newValue });
+      try {
+        const currentConfig = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+        localStorage.setItem('app_public_config', JSON.stringify({ ...currentConfig, isScrapEnabled: newValue }));
+      } catch (e) {}
+      publicCatalogService.invalidateCache();
+      toast.success(newValue ? 'Scrap selling feature turned ON' : 'Scrap selling feature turned OFF');
+      window.dispatchEvent(new Event('systemConfigUpdated'));
+      window.dispatchEvent(new Event('adminSettingsUpdated'));
+    } catch (err) {
+      setIsScrapEnabled(!newValue);
+      toast.error('Failed to update feature status');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
 
   const fetchScrap = async () => {
     try {
@@ -131,6 +182,48 @@ const AdminScrapPage = () => {
 
   return (
     <div className="space-y-4">
+      {/* Top Feature Status Banner */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+            isScrapEnabled ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
+          }`}>
+            <FiTrash2 />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-gray-900">Scrap Selling Feature</h2>
+              <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
+                isScrapEnabled
+                  ? 'bg-green-100 text-green-800 border-green-200'
+                  : 'bg-red-100 text-red-800 border-red-200'
+              }`}>
+                {isScrapEnabled ? 'ACTIVE (ON)' : 'DISABLED (OFF)'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {isScrapEnabled
+                ? 'Visible in User App Home banner, Bottom Navigation, and Account menu.'
+                : 'Completely hidden and disabled across User App.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={togglingStatus}
+          onClick={handleToggleFeature}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm ${
+            isScrapEnabled
+              ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+              : 'bg-green-600 text-white hover:bg-green-700 shadow-green-100'
+          }`}
+        >
+          <FiPower className="w-3.5 h-3.5" />
+          {isScrapEnabled ? 'Turn Feature OFF' : 'Turn Feature ON'}
+        </button>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Filters */}
         <div className="p-3 border-b border-gray-100 flex gap-2 overflow-x-auto bg-gray-50/50">

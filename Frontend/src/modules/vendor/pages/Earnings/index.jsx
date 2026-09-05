@@ -211,9 +211,6 @@ const Earnings = () => {
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">{item.serviceType || 'Service'}</p>
                       <p className="text-sm text-gray-600">{item.date}</p>
-                      {item.worker && (
-                        <p className="text-xs text-gray-500 mt-1">Worker: {item.worker}</p>
-                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold" style={{ color: themeColors.button }}>
@@ -233,7 +230,7 @@ const Earnings = () => {
         {/* View Wallet Button */}
         <div className="mt-6">
           <button
-            onClick={() => navigate('/vendor/wallet')}
+            onClick={() => navigate('/worker/wallet')}
             className="w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-95"
             style={{
               background: themeColors.button,

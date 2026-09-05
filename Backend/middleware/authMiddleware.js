@@ -1,7 +1,6 @@
 const { verifyAccessToken } = require('../utils/tokenService');
 const User = require('../models/User');
 const Vendor = require('../models/Vendor');
-const Worker = require('../models/Worker');
 const Admin = require('../models/Admin');
 const { USER_ROLES } = require('../utils/constants');
 
@@ -54,7 +53,7 @@ const authenticate = async (req, res, next) => {
         if (user && user.approvalStatus !== 'approved') {
           return res.status(403).json({
             success: false,
-            message: 'Your vendor account is pending approval or has been rejected.'
+            message: 'Your worker account is pending approval or has been rejected.'
           });
         }
 
@@ -64,13 +63,6 @@ const authenticate = async (req, res, next) => {
             success: false,
             message: 'Account logged in on another device. Please login again.'
           });
-        }
-        break;
-      case USER_ROLES.WORKER:
-        user = await Worker.findById(decoded.userId).select('-password').lean();
-        // SINGLE DEVICE LOGOUT Logic
-        if (user && user.loginSessionId && decoded.loginSessionId && user.loginSessionId !== decoded.loginSessionId) {
-          return res.status(401).json({ success: false, message: 'Account logged in on another device. Please login again.' });
         }
         break;
       case USER_ROLES.ADMIN:

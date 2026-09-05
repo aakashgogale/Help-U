@@ -23,11 +23,6 @@ const PublicRoute = ({ children, userType = 'user', redirectTo = null }) => {
           refreshTokenKey = 'vendorRefreshToken';
           dataKey = 'vendorData';
           break;
-        case 'worker':
-          tokenKey = 'workerAccessToken';
-          refreshTokenKey = 'workerRefreshToken';
-          dataKey = 'workerData';
-          break;
         case 'admin':
           tokenKey = 'adminAccessToken';
           refreshTokenKey = 'adminRefreshToken';
@@ -66,7 +61,6 @@ const PublicRoute = ({ children, userType = 'user', redirectTo = null }) => {
             const roleMap = {
               user: 'user',
               vendor: 'vendor',
-              worker: 'worker',
               admin: 'admin'
             };
 
@@ -110,8 +104,7 @@ const PublicRoute = ({ children, userType = 'user', redirectTo = null }) => {
     // Determine redirect path
     const defaultRedirects = {
       user: '/user',
-      vendor: '/vendor/dashboard',
-      worker: '/worker/dashboard',
+      vendor: '/worker/dashboard',
       admin: '/admin/dashboard'
     };
 

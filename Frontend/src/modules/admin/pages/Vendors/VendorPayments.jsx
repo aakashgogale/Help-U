@@ -21,8 +21,8 @@ const VendorPayments = () => {
         setVendors(response.data);
       }
     } catch (error) {
-      console.error('Error loading vendor payments:', error);
-      toast.error('Failed to load vendor payments');
+      console.error('Error loading worker payments:', error);
+      toast.error('Failed to load worker payments');
     } finally {
       setLoading(false);
     }
@@ -41,7 +41,7 @@ const VendorPayments = () => {
           <h3 className="text-3xl font-bold mb-1">
             ₹{vendors.reduce((acc, v) => acc + (v.wallet?.balance || 0), 0).toLocaleString()}
           </h3>
-          <p className="text-blue-100 text-sm">Across {vendors.length} vendors</p>
+          <p className="text-blue-100 text-sm">Across {vendors.length} workers</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
@@ -49,7 +49,7 @@ const VendorPayments = () => {
             <div className="p-2 bg-green-50 rounded-lg text-green-600">
               <FiArrowUpRight className="w-5 h-5" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total Vendor Earnings</span>
+            <span className="text-sm font-medium text-gray-500">Total Worker Earnings</span>
           </div>
           <div className="text-2xl font-bold text-gray-900">
             ₹{vendors.reduce((acc, v) => acc + (v.wallet?.totalEarnings || 0), 0).toLocaleString()}
@@ -79,12 +79,12 @@ const VendorPayments = () => {
               <span className="text-gray-600">Loading payment data...</span>
             </div>
           ) : vendors.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No vendor payment data available</div>
+            <div className="text-center py-12 text-gray-500">No worker payment data available</div>
           ) : (
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Worker</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Current Balance</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Earnings</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>

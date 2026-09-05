@@ -6,7 +6,8 @@ import Modal from "../components/Modal";
 import ToggleSwitch from "../components/ToggleSwitch"; // Import ToggleSwitch
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
-import { homeContentService, serviceService, categoryService } from "../../../../../services/catalogService";
+import { homeContentService, serviceService, categoryService, publicCatalogService } from "../../../../../services/catalogService";
+import { getSettings, updateSettings } from "../../../services/settingsService";
 
 const RedirectionSelector = ({
   targetCategoryId,
@@ -151,7 +152,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   const [editingCuratedId, setEditingCuratedId] = useState(null);
 
   const [isNoteworthyModalOpen, setIsNoteworthyModalOpen] = useState(false);
-  const [noteworthyForm, setNoteworthyForm] = useState({ title: "", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "" });
+  const [noteworthyForm, setNoteworthyForm] = useState({ title: "", subtitle: "", badge: "", rating: "", reviews: "", price: "", originalPrice: "", discount: "", duration: "", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "" });
   const [editingNoteworthyId, setEditingNoteworthyId] = useState(null);
 
   const [isBookedModalOpen, setIsBookedModalOpen] = useState(false);
@@ -181,6 +182,60 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isScrapEnabled, setIsScrapEnabled] = useState(true);
+
+  // Fetch Scrap feature status
+  useEffect(() => {
+    const fetchScrapStatus = async () => {
+      try {
+        const res = await getSettings();
+        if (res.success && res.settings) {
+          const enabled = res.settings.isScrapEnabled !== false;
+          setIsScrapEnabled(enabled);
+          try {
+            const current = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+            localStorage.setItem('app_public_config', JSON.stringify({ ...current, isScrapEnabled: enabled }));
+          } catch (e) {}
+        }
+      } catch (err) {
+        console.error("Failed to load scrap setting:", err);
+      }
+    };
+    fetchScrapStatus();
+
+    const handleSync = () => fetchScrapStatus();
+    window.addEventListener("systemConfigUpdated", handleSync);
+    window.addEventListener("adminSettingsUpdated", handleSync);
+    return () => {
+      window.removeEventListener("systemConfigUpdated", handleSync);
+      window.removeEventListener("adminSettingsUpdated", handleSync);
+    };
+  }, []);
+
+  const handleToggleScrap = async () => {
+    const newValue = !isScrapEnabled;
+    setIsScrapEnabled(newValue);
+    try {
+      await updateSettings({ isScrapEnabled: newValue });
+      setCatalog(prev => {
+        const next = { ...prev, home: { ...(prev.home || {}), isScrapVisible: newValue } };
+        saveCatalog(next);
+        return next;
+      });
+      try {
+        const currentConfig = JSON.parse(localStorage.getItem('app_public_config') || '{}');
+        localStorage.setItem('app_public_config', JSON.stringify({ ...currentConfig, isScrapEnabled: newValue }));
+      } catch (e) {}
+      publicCatalogService.invalidateCache();
+      toast.success(newValue ? "Scrap feature enabled (ON)" : "Scrap feature disabled (OFF)");
+      window.dispatchEvent(new Event("systemConfigUpdated"));
+      window.dispatchEvent(new Event("adminSettingsUpdated"));
+    } catch (err) {
+      console.error("Failed to toggle scrap:", err);
+      setIsScrapEnabled(!newValue);
+      toast.error("Failed to update scrap feature state");
+    }
+  };
 
   const categories = useMemo(() => {
     const list = ensureIds(catalog).categories || [];
@@ -239,7 +294,8 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             isNoteworthyVisible: hc.isNoteworthyVisible ?? true,
             isBookedVisible: hc.isBookedVisible ?? true,
             isCategorySectionsVisible: hc.isCategorySectionsVisible ?? true,
-            isCategoriesVisible: hc.isCategoriesVisible ?? true
+            isCategoriesVisible: hc.isCategoriesVisible ?? true,
+            isScrapVisible: hc.isScrapVisible ?? true
           };
           setCatalog(next);
           saveCatalog(next);
@@ -437,7 +493,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   // Noteworthy handlers
   const resetNoteworthyForm = () => {
     setEditingNoteworthyId(null);
-    setNoteworthyForm({ title: "", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "" });
+    setNoteworthyForm({ title: "", subtitle: "", badge: "", rating: "", reviews: "", price: "", originalPrice: "", discount: "", duration: "", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "" });
     setIsNoteworthyModalOpen(false);
   };
 
@@ -883,6 +939,79 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
           </div>
         )}
 
+        {/* Scrap Selling Promotion Section */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b border-gray-200">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-base">
+                  <FiTrash2 />
+                </div>
+                <div className="text-xl font-bold text-gray-900">Scrap Selling Promotion Banner</div>
+                <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
+                  isScrapEnabled
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : 'bg-red-100 text-red-800 border-red-200'
+                }`}>
+                  {isScrapEnabled ? 'ENABLED (ON)' : 'DISABLED (OFF)'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Controls the Scrap Selling card on User App Home, Bottom Navigation tab, and selling flow.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <ToggleSwitch
+                label={isScrapEnabled ? "Feature ON" : "Feature OFF"}
+                checked={isScrapEnabled}
+                onChange={handleToggleScrap}
+              />
+            </div>
+          </div>
+
+          {/* Live Preview Card */}
+          <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2.5 flex items-center justify-between">
+              <span>User App Home Preview</span>
+              <span className={`text-[11px] font-semibold ${isScrapEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {isScrapEnabled ? '● Section Visible' : '○ Section Hidden (0 blank space)'}
+              </span>
+            </div>
+
+            <div className={`transition-all duration-300 rounded-2xl p-5 text-white relative overflow-hidden shadow-sm ${
+              isScrapEnabled 
+                ? 'bg-gradient-to-br from-[#2E7D32] to-[#1B5E20] opacity-100' 
+                : 'bg-gradient-to-br from-gray-400 to-gray-600 opacity-50 grayscale'
+            }`}>
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1.5 max-w-md">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-xs font-bold backdrop-blur-sm">
+                    <span>♻️</span> Instant Cash • Doorstep Pickup
+                  </div>
+                  <h3 className="text-lg font-black tracking-tight">Turn trash into cash! Sell Scrap Online</h3>
+                  <p className="text-xs text-green-100 line-clamp-2">
+                    Best rates for Paper, Plastic, Metals, E-Waste & more. Free doorstep pickup & instant digital payment.
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <span className="inline-block px-4 py-2 bg-white text-[#2E7D32] font-bold text-xs rounded-xl shadow-md">
+                    Sell Scrap Now →
+                  </span>
+                </div>
+              </div>
+
+              {!isScrapEnabled && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-20">
+                  <span className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg uppercase tracking-wider shadow-lg">
+                    Feature Turned OFF in Admin
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* New & Noteworthy */}
         <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3 pb-3 mb-4 border-b border-gray-200">
@@ -945,7 +1074,13 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                           )}
                         </td>
                         <td className="py-4 px-4">
-                          <div className="text-sm font-semibold text-gray-900">{s.title || "—"}</div>
+                          <div className="text-sm font-bold text-gray-900">{s.title || "—"}</div>
+                          {s.subtitle && <div className="text-xs text-gray-500 line-clamp-1">{s.subtitle}</div>}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {s.badge && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">{s.badge}</span>}
+                            {s.price && <span className="text-xs font-bold text-emerald-700">₹{s.price}</span>}
+                            {s.rating && <span className="text-xs text-amber-600 font-semibold">★ {s.rating}</span>}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
                           <div className="text-sm text-gray-600">
@@ -1721,6 +1856,79 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
               placeholder="Bathroom & Kitchen Cleaning"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Badge (Optional)</label>
+              <input
+                value={noteworthyForm.badge || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, badge: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="Trending / 25% OFF / New"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Duration / Time</label>
+              <input
+                value={noteworthyForm.duration || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, duration: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="30-45 mins"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Subtitle / Tagline (Optional)</label>
+            <input
+              value={noteworthyForm.subtitle || ""}
+              onChange={(e) => setNoteworthyForm((p) => ({ ...p, subtitle: e.target.value }))}
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+              placeholder="Doorstep service by verified experts"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Price (₹)</label>
+              <input
+                value={noteworthyForm.price || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, price: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="299"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Original Price (₹)</label>
+              <input
+                value={noteworthyForm.originalPrice || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, originalPrice: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="499"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Rating</label>
+              <input
+                value={noteworthyForm.rating || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, rating: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="4.8"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Reviews Count</label>
+              <input
+                value={noteworthyForm.reviews || ""}
+                onChange={(e) => setNoteworthyForm((p) => ({ ...p, reviews: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                placeholder="1.2k+"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-base font-bold text-gray-900 mb-2">Image</label>

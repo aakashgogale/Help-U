@@ -95,7 +95,7 @@ async function getFCMToken() {
 
 /**
  * Register FCM token with backend
- * @param {string} userType - 'user', 'vendor', or 'worker'
+ * @param {string} userType - 'user' or 'vendor'
  * @param {boolean} forceUpdate - Force token update
  * @returns {Promise<string|null>}
  */
@@ -135,10 +135,6 @@ async function registerFCMToken(userType = 'user', forceUpdate = false) {
       case 'vendor':
         endpoint = '/vendors/fcm-tokens/save';
         authTokenKey = 'vendorAccessToken';
-        break;
-      case 'worker':
-        endpoint = '/workers/fcm-tokens/save';
-        authTokenKey = 'workerAccessToken';
         break;
       case 'user':
         endpoint = '/users/fcm-tokens/save';
@@ -192,7 +188,7 @@ async function registerFCMToken(userType = 'user', forceUpdate = false) {
 
 /**
  * Remove FCM token from backend (removes specific token for current device)
- * @param {string} userType - 'user', 'vendor', or 'worker'
+ * @param {string} userType - 'user' or 'vendor'
  */
 async function removeFCMToken(userType = 'user') {
   try {
@@ -215,10 +211,6 @@ async function removeFCMToken(userType = 'user') {
       case 'vendor':
         endpoint = '/vendors/fcm-tokens/remove';
         authTokenKey = 'vendorAccessToken';
-        break;
-      case 'worker':
-        endpoint = '/workers/fcm-tokens/remove';
-        authTokenKey = 'workerAccessToken';
         break;
       default:
         endpoint = '/users/fcm-tokens/remove';

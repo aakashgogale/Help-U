@@ -91,7 +91,7 @@ const SettlementHistory = () => {
       <Header
         title="Settlement History"
         showBack={true}
-        onBack={() => navigate('/vendor/wallet')}
+        onBack={() => navigate('/worker/wallet')}
       />
 
       <main className="px-4 py-6">

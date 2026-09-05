@@ -5,12 +5,11 @@ const Category = require('../../models/Category');
 const Cart = require('../../models/Cart');
 const User = require('../../models/User');
 const Vendor = require('../../models/Vendor');
-const Worker = require('../../models/Worker');
 const Review = require('../../models/Review');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { createNotification } = require('../notificationControllers/notificationController');
-const { sendNotificationToUser, sendNotificationToVendor, sendNotificationToWorker } = require('../../services/firebaseAdmin');
+const { sendNotificationToUser, sendNotificationToVendor } = require('../../services/firebaseAdmin');
 
 /**
  * Create a new booking
@@ -342,7 +341,7 @@ const createBooking = async (req, res) => {
     // Send immediate response to the client. All subsequent operations will run in the background.
     res.status(201).json({
       success: true,
-      message: 'Booking created successfully. We are finding vendors for you.',
+      message: 'Booking created successfully. We are finding workers for you.',
       data: {
         _id: booking._id,
         bookingNumber: booking.bookingNumber,
@@ -585,7 +584,6 @@ const getUserBookings = async (req, res) => {
       .populate('vendorId', 'name businessName phone profilePhoto')
       .populate('serviceId', 'title iconUrl')
       .populate('categoryId', 'title slug')
-      .populate('workerId', 'name phone profilePhoto')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -622,12 +620,11 @@ const getBookingById = async (req, res) => {
     const { id } = req.params;
 
     const booking = await Booking.findOne({ _id: id, userId })
-      .select('+visitOtp +paymentOtp') // Include secure OTPs for the user
+      .select('+visitOtp +paymentOtp +customerConfirmationOTP') // Include secure OTPs for the user
       .populate('userId', 'name phone email')
       .populate('vendorId', 'name businessName phone email address profilePhoto')
       .populate('serviceId', 'title description iconUrl images')
       .populate('categoryId', 'title slug')
-      .populate('workerId', 'name phone rating totalJobs location profilePhoto')
       .lean();
 
     if (!booking) {
@@ -646,6 +643,10 @@ const getBookingById = async (req, res) => {
     if (bill) {
       bookingData.bill = bill;
     }
+
+    // Ensure OTP consistency for user display
+    bookingData.customerConfirmationOTP = booking.customerConfirmationOTP || booking.paymentOtp;
+    bookingData.paymentOtp = bookingData.customerConfirmationOTP;
 
     res.status(200).json({
       success: true,
@@ -725,7 +726,7 @@ const cancelBooking = async (req, res) => {
     const isCash = booking.paymentMethod === 'cash';
 
     if (hasStartedJourney) {
-      // SCENARIO: Worker/Vendor already started journey
+      // SCENARIO: Vendor already started journey
 
       const hasReached = !!booking.visitedAt || booking.status === 'visited';
 
@@ -841,24 +842,6 @@ const cancelBooking = async (req, res) => {
           type: 'booking_cancelled',
           bookingId: booking._id.toString(),
           link: `/vendor/bookings/${booking._id}`
-        }
-      });
-      // Manual FCM push removed
-    }
-
-    // Notify worker if assigned
-    if (booking.workerId) {
-      await createNotification({
-        workerId: booking.workerId,
-        type: 'booking_cancelled',
-        title: 'Booking Cancelled',
-        message: `Job ${booking.bookingNumber} has been cancelled by the customer.`,
-        relatedId: booking._id,
-        relatedType: 'booking',
-        pushData: {
-          type: 'job_cancelled',
-          bookingId: booking._id.toString(),
-          link: `/worker/job/${booking._id}`
         }
       });
       // Manual FCM push removed
@@ -1022,7 +1005,6 @@ const addReview = async (req, res) => {
         userId: booking.userId,
         serviceId: booking.serviceId,
         vendorId: booking.vendorId,
-        workerId: booking.workerId,
         rating: rating,
         review: review || '',
         images: reviewImages || [],
@@ -1056,11 +1038,6 @@ const addReview = async (req, res) => {
     // Update Vendor Rating (Always)
     if (booking.vendorId) {
       await updateCumulativeRating(Vendor, booking.vendorId, rating);
-    }
-
-    // Update Worker Rating (Only if worker was assigned)
-    if (booking.workerId) {
-      await updateCumulativeRating(Worker, booking.workerId, rating);
     }
 
     // Send notification to vendor
@@ -1101,7 +1078,6 @@ const getUserRatings = async (req, res) => {
     const bookings = await Booking.find({ userId, rating: { $ne: null } })
       .populate('vendorId', 'name businessName profilePhoto')
       .populate('serviceId', 'title iconUrl')
-      .populate('workerId', 'name profilePhoto')
       .sort({ reviewedAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
