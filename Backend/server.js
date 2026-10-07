@@ -32,9 +32,9 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://www.homster.in',
-  'https://homster.in',
-  'https://api.homster.in'
+  'https://www.help-u.in',
+  'https://help-u.in',
+  'https://api.help-u.in'
 ];
 
 if (process.env.FRONTEND_URL) {
@@ -52,22 +52,25 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow allowedOrigins or any Vercel preview URL for this project
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('.vercel.app')) {
+    // Normalize trailing slash before comparing
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
+    // Allow allowedOrigins (www/non-www interchangeable) or any Vercel preview URL for this project
+    const isAllowed = allowedOrigins.some(
+      (allowed) => normalizedOrigin === allowed || normalizedOrigin === allowed.replace('https://www.', 'https://')
+    );
+
+    if (isAllowed || normalizedOrigin.includes('.vercel.app')) {
       callback(null, true);
     } else {
-      console.log('BLOCKED CORS ORIGIN:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// CORS configuration finished above
-
-// CORS configuration finished above
 
 // Body parser middleware
 app.use(express.json({ limit: '50mb' }));
@@ -257,6 +260,11 @@ app.use((req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  if (err.message && err.message.startsWith('Not allowed by CORS')) {
+    console.error(err.message);
+    return res.status(403).json({ success: false, message: err.message });
+  }
+
   console.error('Error:', err);
   res.status(err.status || 500).json({
     success: false,
