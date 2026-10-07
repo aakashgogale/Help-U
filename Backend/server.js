@@ -52,15 +52,12 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Normalize trailing slash before comparing
-    const normalizedOrigin = origin.replace(/\/$/, '');
+    const isAllowed = allowedOrigins.includes(origin);
 
-    // Allow allowedOrigins (www/non-www interchangeable) or any Vercel preview URL for this project
-    const isAllowed = allowedOrigins.some(
-      (allowed) => normalizedOrigin === allowed || normalizedOrigin === allowed.replace('https://www.', 'https://')
-    );
+    // Vercel preview deployments only (full-origin match, not a substring match)
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
 
-    if (isAllowed || normalizedOrigin.includes('.vercel.app')) {
+    if (isAllowed || isVercelPreview) {
       callback(null, true);
     } else {
       console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${allowedOrigins.join(', ')}`);
