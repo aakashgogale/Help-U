@@ -34,7 +34,11 @@ const allowedOrigins = [
   'http://localhost:5174',
   'https://www.help-u.in',
   'https://help-u.in',
-  'https://api.help-u.in'
+  'https://api.help-u.in',
+  // Legacy domain, kept until the homster.in -> help-u.in migration is complete
+  'https://www.homster.in',
+  'https://homster.in',
+  'https://api.homster.in'
 ];
 
 if (process.env.FRONTEND_URL) {
