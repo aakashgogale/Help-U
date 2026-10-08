@@ -71,17 +71,20 @@ export const ConfigProvider = ({ children }) => {
     try {
       const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
       socket = io(SOCKET_URL, { transports: ['websocket', 'polling'], withCredentials: true });
-      socket.on('system_config_updated', (data) => {
-        if (data) {
-          setConfig(prev => {
-            const updated = { ...prev, ...data };
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            } catch (e) {}
-            return updated;
-          });
-        }
-      });
+      const applyUpdate = (data) => {
+        if (!data) return;
+        setConfig(prev => {
+          const updated = { ...prev, ...data };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      };
+
+      socket.on('system_config_updated', applyUpdate);
+      // Customization toggles (maintenance mode, payment methods, booking types)
+      socket.on('customization_toggles_updated', applyUpdate);
     } catch (e) {
       console.warn('Socket connection for config failed:', e);
     }
@@ -103,10 +106,28 @@ export const ConfigProvider = ({ children }) => {
   const isOnlinePaymentEnabled = config?.isOnlinePaymentEnabled !== false;
   const configLoaded = config != null;
 
+  // Maintenance fails OPEN: it only shows once the backend has actually said the
+  // flag is on. A missing or unreachable config must never lock users out.
+  const isUnderMaintenance = config?.isUnderMaintenance === true;
+
+  // Customization toggles. Each defaults to enabled so a config that has not
+  // loaded yet never hides a feature that is in fact available.
+  const isCashEnabled = config?.isCashEnabled !== false;
+  const isWalletPaymentEnabled = config?.isWalletPaymentEnabled !== false;
+  const isInstantBookingEnabled = config?.isInstantBookingEnabled !== false;
+  const isScheduledBookingEnabled = config?.isScheduledBookingEnabled !== false;
+  const isVendorRegistrationEnabled = config?.isVendorRegistrationEnabled !== false;
+
   const value = {
     config,
     isScrapEnabled,
     isOnlinePaymentEnabled,
+    isUnderMaintenance,
+    isCashEnabled,
+    isWalletPaymentEnabled,
+    isInstantBookingEnabled,
+    isScheduledBookingEnabled,
+    isVendorRegistrationEnabled,
     configLoaded,
     loading,
     refreshConfig: fetchConfig,
@@ -137,6 +158,12 @@ export const useConfig = () => {
       config: null,
       isScrapEnabled: false,
       isOnlinePaymentEnabled: true,
+      isUnderMaintenance: false,
+      isCashEnabled: true,
+      isWalletPaymentEnabled: true,
+      isInstantBookingEnabled: true,
+      isScheduledBookingEnabled: true,
+      isVendorRegistrationEnabled: true,
       configLoaded: false,
       loading: false,
       refreshConfig: () => {},

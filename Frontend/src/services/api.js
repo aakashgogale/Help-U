@@ -148,6 +148,15 @@ api.interceptors.response.use(
       // Removed automatic logout to prevent login loops during debugging
     }
 
+    // Maintenance mode turned on mid-session. Tell ConfigProvider to re-read the
+    // public config so the maintenance screen appears without a manual reload.
+    if (
+      error.response?.status === 503 &&
+      error.response?.data?.code === 'UNDER_MAINTENANCE'
+    ) {
+      window.dispatchEvent(new Event('systemConfigUpdated'));
+    }
+
     return Promise.reject(error);
   }
 );

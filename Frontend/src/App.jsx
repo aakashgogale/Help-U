@@ -8,7 +8,7 @@ import { ConfigProvider } from './context/ConfigContext';
 import { CartProvider } from './context/CartContext';
 import { CityProvider } from './context/CityContext';
 import { initializePushNotifications, setupForegroundNotificationHandler } from './services/pushNotificationService';
-import { LocationPermissionChecker } from './components/common';
+import { LocationPermissionChecker, MaintenanceGate } from './components/common';
 
 function App() {
   // Initialize push notifications on app load
@@ -46,8 +46,10 @@ function App() {
           <CityProvider>
             <CartProvider>
               <div className="App">
-                <AppRoutes />
-                <LocationPermissionChecker />
+                <MaintenanceGate>
+                  <AppRoutes />
+                  <LocationPermissionChecker />
+                </MaintenanceGate>
               <Toaster
                 position="top-center"
                 reverseOrder={false}
