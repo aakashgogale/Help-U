@@ -12,6 +12,7 @@ import {
   FiFileText,
   FiBell,
   FiSettings,
+  FiSliders,
   FiChevronDown,
   FiX,
   FiPackage,
@@ -45,6 +46,7 @@ const iconMap = {
   Settlements: FiDollarSign,
   Settings: FiSettings,
   Plans: FiPackage,
+  Customization: FiSliders,
 };
 
 // Helper function to convert child name to route path

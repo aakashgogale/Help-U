@@ -11,6 +11,7 @@ import Login from '../pages/login';
 // Lazy load admin pages for code splitting
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Settings = lazy(() => import('../pages/Settings'));
+const Customization = lazy(() => import('../pages/Customization'));
 const UserCategories = lazy(() => import('../pages/UserCategories'));
 const Users = lazy(() => import('../pages/Users'));
 const Vendors = lazy(() => import('../pages/Vendors'));
@@ -69,6 +70,7 @@ const AdminRoutes = () => {
           <Route path="reviews" element={<Reviews />} />
           <Route path="settlements/*" element={<Settlements />} />
           <Route path="settings/*" element={<Settings />} />
+          <Route path="customization" element={<Customization />} />
         </Route>
       </Routes>
     </Suspense>

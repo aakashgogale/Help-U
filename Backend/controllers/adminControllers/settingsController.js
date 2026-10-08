@@ -1,5 +1,6 @@
 const Settings = require('../../models/Settings');
 const Vendor = require('../../models/Vendor');
+const { getAllFlags, invalidateFlagCache, FLAG_DEFAULTS } = require('../../utils/featureFlags');
 
 // Get Global Settings
 exports.getSettings = async (req, res, next) => {
@@ -210,7 +211,11 @@ exports.getPublicSettings = async (req, res, next) => {
         companyPhone: settings.companyPhone || '',
         companyEmail: settings.companyEmail || '',
         isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
-        isScrapEnabled: settings.isScrapEnabled !== false
+        isScrapEnabled: settings.isScrapEnabled !== false,
+
+        // Customization toggles. Read through getAllFlags so a field missing
+        // from the stored document resolves to the same default the guards use.
+        ...(await getAllFlags())
       }
     });
   } catch (error) {
@@ -218,6 +223,142 @@ exports.getPublicSettings = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch settings'
+    });
+  }
+};
+
+// ==========================================
+// CUSTOMIZATION TOGGLES
+// ==========================================
+
+/**
+ * Get all customization toggles for the admin panel.
+ */
+exports.getCustomizationToggles = async (req, res) => {
+  try {
+    const flags = await getAllFlags();
+    res.status(200).json({ success: true, toggles: flags });
+  } catch (error) {
+    console.error('Error fetching customization toggles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch customization toggles'
+    });
+  }
+};
+
+/**
+ * Update customization toggles.
+ *
+ * Accepts a partial payload: only the keys present are written, so the admin UI
+ * can send a single toggle without resending the rest. Unknown keys are ignored
+ * rather than written through to the document.
+ */
+exports.updateCustomizationToggles = async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const updates = {};
+
+    // Only accept keys that are real flags.
+    for (const name of Object.keys(FLAG_DEFAULTS)) {
+      if (payload[name] !== undefined) {
+        updates[name] = Boolean(payload[name]);
+      }
+    }
+
+    // Non-boolean companions to the flags.
+    if (payload.maintenanceMessage !== undefined) {
+      updates.maintenanceMessage = String(payload.maintenanceMessage).trim();
+    }
+    if (payload.defaultCityId !== undefined) {
+      updates.defaultCityId = payload.defaultCityId || null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid toggle values were provided'
+      });
+    }
+
+    let settings = await Settings.findOne({ type: 'global' });
+    if (!settings) {
+      settings = new Settings({ type: 'global' });
+    }
+
+    // Guard: at least one booking type must stay available, otherwise customers
+    // would be unable to book at all.
+    const nextInstant =
+      updates.isInstantBookingEnabled ?? settings.isInstantBookingEnabled !== false;
+    const nextScheduled =
+      updates.isScheduledBookingEnabled ?? settings.isScheduledBookingEnabled !== false;
+
+    if (!nextInstant && !nextScheduled) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one booking type (instant or scheduled) must stay enabled'
+      });
+    }
+
+    // Guard: turning off every payment method would leave checkout unusable.
+    const nextCash = updates.isCashEnabled ?? settings.isCashEnabled !== false;
+    const nextWallet =
+      updates.isWalletPaymentEnabled ?? settings.isWalletPaymentEnabled !== false;
+    const nextOnline =
+      updates.isOnlinePaymentEnabled ?? settings.isOnlinePaymentEnabled !== false;
+
+    if (!nextCash && !nextWallet && !nextOnline) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one payment method must stay enabled'
+      });
+    }
+
+    // Guard: default location mode needs a city to fall back to.
+    const nextUseDefault = updates.useDefaultLocation ?? settings.useDefaultLocation === true;
+    const nextCityId =
+      updates.defaultCityId !== undefined ? updates.defaultCityId : settings.defaultCityId;
+
+    if (nextUseDefault && !nextCityId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select a default city before enabling default location mode'
+      });
+    }
+
+    Object.assign(settings, updates);
+    await settings.save();
+
+    // The guards read through a short-lived cache; drop it so the change is
+    // enforced on the very next request instead of up to 10s later.
+    invalidateFlagCache();
+
+    const flags = await getAllFlags();
+
+    // Push to connected clients so open apps react without a reload.
+    try {
+      const { getIO } = require('../../sockets');
+      const io = getIO();
+      if (io) {
+        io.emit('customization_toggles_updated', flags);
+      }
+    } catch (socketErr) {
+      // Broadcast is best-effort; the HTTP response is the source of truth.
+    }
+
+    const changed = Object.keys(updates).join(', ');
+    console.log(`[Toggles] Updated by admin ${req.user?.id || 'unknown'}: ${changed}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Customization settings updated',
+      toggles: flags
+    });
+  } catch (error) {
+    console.error('Error updating customization toggles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update customization settings'
     });
   }
 };

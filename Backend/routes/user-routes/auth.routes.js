@@ -14,18 +14,18 @@ const { authenticate } = require('../../middleware/authMiddleware');
 const { isUser } = require('../../middleware/roleMiddleware');
 
 const sendOTPValidation = [
-  body('phone').trim().notEmpty().withMessage('Phone number is required')
+  body('phone').customSanitizer(val => String(val || '').trim().replace(/\D/g, '').slice(-10)).notEmpty().withMessage('Phone number is required')
     .isLength({ min: 10, max: 10 }).withMessage('Phone number must be 10 digits')
 ];
 
 const verifyLoginValidation = [
-  body('phone').trim().notEmpty().withMessage('Phone number is required').isLength({ min: 10, max: 10 }).withMessage('Phone number must be 10 digits'),
-  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+  body('phone').customSanitizer(val => String(val || '').trim().replace(/\D/g, '').slice(-10)).notEmpty().withMessage('Phone number is required').isLength({ min: 10, max: 10 }).withMessage('Phone number must be 10 digits'),
+  body('otp').customSanitizer(val => String(val || '').trim()).isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
 ];
 
 const loginValidation = [
-  body('phone').trim().notEmpty().withMessage('Phone number is required'),
-  body('otp').trim().notEmpty().withMessage('OTP is required'),
+  body('phone').customSanitizer(val => String(val || '').trim().replace(/\D/g, '').slice(-10)).notEmpty().withMessage('Phone number is required'),
+  body('otp').customSanitizer(val => String(val || '').trim()).notEmpty().withMessage('OTP is required'),
   body('token').trim().notEmpty().withMessage('Verification Session ID is required')
 ];
 

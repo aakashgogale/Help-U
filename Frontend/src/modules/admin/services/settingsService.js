@@ -81,3 +81,22 @@ export const toggleAdminStatus = async (id) => {
     throw error;
   }
 };
+
+// Customization Toggles
+export const getCustomizationToggles = async () => {
+  try {
+    const response = await api.get('/admin/customization');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateCustomizationToggles = async (toggles) => {
+  try {
+    const response = await api.put('/admin/customization', toggles);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

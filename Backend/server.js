@@ -8,6 +8,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const rateLimiter = require('./middleware/rateLimiter');
+const maintenanceMode = require('./middleware/maintenanceMiddleware');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -117,6 +118,10 @@ if (process.env.NODE_ENV === 'development') {
 
 // Rate limiting
 app.use('/api', rateLimiter);
+
+// Maintenance mode: returns 503 for app traffic while the flag is on.
+// Mounted after rate limiting so admin routes and /api/public/config stay open.
+app.use('/api', maintenanceMode);
 
 // Health check route
 app.get('/health', (req, res) => {

@@ -152,5 +152,13 @@
       "admin"
     ],
     "children": []
+  },
+  {
+    "title": "Customization",
+    "route": "/admin/customization",
+    "allowedRoles": [
+      "super_admin"
+    ],
+    "children": []
   }
 ]

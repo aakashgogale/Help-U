@@ -3,6 +3,7 @@ const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isUser } = require('../../middleware/roleMiddleware');
+const { validatePaymentMethod, validateBookingType } = require('../../middleware/featureGuard');
 const {
   createBooking,
   getUserBookings,
@@ -51,7 +52,15 @@ const addReviewValidation = [
 
 // Routes
 router.get('/ratings', authenticate, isUser, getUserRatings);
-router.post('/', authenticate, isUser, createBookingValidation, createBooking);
+router.post(
+  '/',
+  authenticate,
+  isUser,
+  validateBookingType,
+  validatePaymentMethod,
+  createBookingValidation,
+  createBooking
+);
 router.get('/', authenticate, isUser, getUserBookings);
 router.get('/:id', authenticate, isUser, getBookingById);
 router.post('/:id/cancel', authenticate, isUser, cancelBookingValidation, cancelBooking);

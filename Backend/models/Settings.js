@@ -192,6 +192,63 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     enum: ['MANUAL_ADMIN_APPROVAL', 'ON_APPROVAL'],
     default: 'MANUAL_ADMIN_APPROVAL'
+  },
+
+  // ==========================================
+  // CUSTOMIZATION TOGGLES
+  // Every toggle defaults to the platform's existing behaviour, so adding
+  // one of these fields never changes how a running deployment works.
+  // ==========================================
+
+  // When ON, the user and vendor apps show a maintenance screen.
+  // The admin panel stays reachable so the toggle can be turned back off.
+  isUnderMaintenance: {
+    type: Boolean,
+    default: false
+  },
+  maintenanceMessage: {
+    type: String,
+    default: 'We are performing scheduled maintenance. Please check back shortly.'
+  },
+
+  // Master switch for cash payment across the platform.
+  isCashEnabled: {
+    type: Boolean,
+    default: true
+  },
+
+  // Controls whether wallet balance can be used at checkout.
+  isWalletPaymentEnabled: {
+    type: Boolean,
+    default: true
+  },
+
+  // When OFF, new vendor sign-ups are refused. Existing vendors are unaffected.
+  isVendorRegistrationEnabled: {
+    type: Boolean,
+    default: true
+  },
+
+  // Booking types offered to customers. At least one must stay enabled —
+  // the settings controller rejects an update that would disable both.
+  isInstantBookingEnabled: {
+    type: Boolean,
+    default: true
+  },
+  isScheduledBookingEnabled: {
+    type: Boolean,
+    default: true
+  },
+
+  // When ON, the apps skip the device location prompt and use defaultCityId.
+  useDefaultLocation: {
+    type: Boolean,
+    default: false
+  },
+  defaultCityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'City',
+    default: null
   }
 }, { timestamps: true });
 
