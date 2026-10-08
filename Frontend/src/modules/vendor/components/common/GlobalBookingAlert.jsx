@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { BookingAlertModal } from '../bookings';
-import { acceptBooking, rejectBooking } from '../../services/bookingService';
+import { acceptBooking, rejectBooking, getBookings } from '../../services/bookingService';
 import { playAlertRing, stopAlertRing } from '../../../../utils/notificationSound';
 
 export default function GlobalBookingAlert() {
@@ -24,7 +24,6 @@ export default function GlobalBookingAlert() {
         const token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken');
         if (token && (forceServerSync || (Math.random() > 0.8))) {
           try {
-            const { getBookings } = await import('../../services/bookingService');
             const response = await getBookings();
             if (response.success && response.data) {
               const vendorData = JSON.parse(localStorage.getItem('vendorData') || '{}');

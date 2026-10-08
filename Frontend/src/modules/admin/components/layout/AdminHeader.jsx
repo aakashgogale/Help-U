@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
 import { adminAuthService } from '../../../../services/authService';
+import api from '../../../../services/api';
 
 const AdminHeader = ({ onMenuClick }) => {
   const location = useLocation();
@@ -96,10 +97,6 @@ const AdminHeader = ({ onMenuClick }) => {
 
   const fetchNotifications = async () => {
     try {
-      // Import api dynamically if needed or just use fetch with auth headers
-      // Since we don't have api imported, let's use adminAuthService's axios instance if available, or just fetch
-      // Assuming api.js handles interceptors. Let's import api at top.
-      const { default: api } = await import('../../../../services/api');
       const res = await api.get('/notifications/admin');
       if (res.data.success) {
         setNotifications(res.data.data);
@@ -119,7 +116,6 @@ const AdminHeader = ({ onMenuClick }) => {
 
   const handleMarkAsRead = async (id) => {
     try {
-      const { default: api } = await import('../../../../services/api');
       await api.put(`/notifications/${id}/read`);
       // Optimistic update
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
@@ -131,7 +127,6 @@ const AdminHeader = ({ onMenuClick }) => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const { default: api } = await import('../../../../services/api');
       await api.put(`/notifications/read-all`);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
@@ -142,7 +137,6 @@ const AdminHeader = ({ onMenuClick }) => {
 
   const handleDelete = async (id) => {
     try {
-      const { default: api } = await import('../../../../services/api');
       await api.delete(`/notifications/${id}`);
       setNotifications(prev => prev.filter(n => n._id !== id));
       // If deleted was unread, decrease count? We don't know easily without checking.
