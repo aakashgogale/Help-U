@@ -13,6 +13,7 @@ const rateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   skip: (req) => {
     if (req.path === '/health' || req.path.startsWith('/public/')) return true;
     return false;

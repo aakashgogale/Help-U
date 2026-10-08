@@ -22,6 +22,9 @@ initRedis();
 // Initialize Express app
 const app = express();
 
+// Trust proxy (required when behind reverse proxy like Nginx/Cloudflare for rate limiter and client IP detection)
+app.set('trust proxy', 1);
+
 // Security middleware - allow cross-origin resource loading (images) for user app
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
