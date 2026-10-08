@@ -51,21 +51,33 @@ if (process.env.FRONTEND_URL) {
   });
 }
 
+// Normalise so a trailing slash or different casing can never cause a false block
+const normaliseOrigin = (origin) => origin.trim().toLowerCase().replace(/\/+$/, '');
+const allowedOriginSet = new Set(allowedOrigins.map(normaliseOrigin));
+
+// Logged once at boot so a stale deploy is obvious from the logs alone
+console.log(`[CORS] Allowed origins: ${[...allowedOriginSet].join(', ')}`);
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    const isAllowed = allowedOrigins.includes(origin);
+    const candidate = normaliseOrigin(origin);
+    const isAllowed = allowedOriginSet.has(candidate);
 
     // Vercel preview deployments only (full-origin match, not a substring match)
-    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(candidate);
 
     if (isAllowed || isVercelPreview) {
       callback(null, true);
     } else {
-      console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${allowedOrigins.join(', ')}`);
-      callback(new Error(`Not allowed by CORS: ${origin}`));
+      console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${[...allowedOriginSet].join(', ')}`);
+      // Flagged, not thrown: the error handler turns this into a 403 rather than a 500
+      const corsError = new Error(`Not allowed by CORS: ${origin}`);
+      corsError.status = 403;
+      corsError.isCorsError = true;
+      callback(corsError);
     }
   },
   credentials: true,
@@ -261,9 +273,13 @@ app.use((req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  if (err.message && err.message.startsWith('Not allowed by CORS')) {
-    console.error(err.message);
-    return res.status(403).json({ success: false, message: err.message });
+  if (err.isCorsError || (err.message && err.message.startsWith('Not allowed by CORS'))) {
+    console.error(`[CORS] Rejected ${req.method} ${req.path} from origin "${req.headers.origin}"`);
+    return res.status(403).json({
+      success: false,
+      message: 'Origin not allowed',
+      code: 'CORS_ORIGIN_REJECTED'
+    });
   }
 
   console.error('Error:', err);
