@@ -32,6 +32,10 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:5174',
+  'https://www.help-u.in',
+  'https://help-u.in',
+  'https://api.help-u.in',
+  // Legacy domain, kept until the homster.in -> help-u.in migration is complete
   'https://www.homster.in',
   'https://homster.in',
   'https://api.homster.in'
@@ -47,27 +51,39 @@ if (process.env.FRONTEND_URL) {
   });
 }
 
+// Normalise so a trailing slash or different casing can never cause a false block
+const normaliseOrigin = (origin) => origin.trim().toLowerCase().replace(/\/+$/, '');
+const allowedOriginSet = new Set(allowedOrigins.map(normaliseOrigin));
+
+// Logged once at boot so a stale deploy is obvious from the logs alone
+console.log(`[CORS] Allowed origins: ${[...allowedOriginSet].join(', ')}`);
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow allowedOrigins or any Vercel preview URL for this project
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('.vercel.app')) {
+    const candidate = normaliseOrigin(origin);
+    const isAllowed = allowedOriginSet.has(candidate);
+
+    // Vercel preview deployments only (full-origin match, not a substring match)
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(candidate);
+
+    if (isAllowed || isVercelPreview) {
       callback(null, true);
     } else {
-      console.log('BLOCKED CORS ORIGIN:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${[...allowedOriginSet].join(', ')}`);
+      // Flagged, not thrown: the error handler turns this into a 403 rather than a 500
+      const corsError = new Error(`Not allowed by CORS: ${origin}`);
+      corsError.status = 403;
+      corsError.isCorsError = true;
+      callback(corsError);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// CORS configuration finished above
-
-// CORS configuration finished above
 
 // Body parser middleware
 app.use(express.json({ limit: '50mb' }));
@@ -257,6 +273,15 @@ app.use((req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  if (err.isCorsError || (err.message && err.message.startsWith('Not allowed by CORS'))) {
+    console.error(`[CORS] Rejected ${req.method} ${req.path} from origin "${req.headers.origin}"`);
+    return res.status(403).json({
+      success: false,
+      message: 'Origin not allowed',
+      code: 'CORS_ORIGIN_REJECTED'
+    });
+  }
+
   console.error('Error:', err);
   res.status(err.status || 500).json({
     success: false,
