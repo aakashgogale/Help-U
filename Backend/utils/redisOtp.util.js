@@ -15,10 +15,12 @@ const RATE_LIMIT_WINDOW = parseInt(process.env.OTP_RATE_WINDOW) || 600;
  * Generate 6-digit OTP
  */
 const generateOTP = () => {
-  if (process.env.USE_DEFAULT_OTP === 'true') {
+  // The fixed test OTP must never be reachable in production, whatever the env says
+  if (process.env.USE_DEFAULT_OTP === 'true' && process.env.NODE_ENV !== 'production') {
     return '123456';
   }
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // crypto.randomInt is uniform and unpredictable; Math.random is neither
+  return crypto.randomInt(100000, 1000000).toString();
 };
 
 /**
