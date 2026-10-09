@@ -243,7 +243,7 @@ const Settings = () => {
 
           <div className="space-y-3">
             <p className="text-sm text-gray-600">App Version: 1.0.0</p>
-            <p className="text-sm text-gray-600">Worker App</p>
+            <p className="text-sm text-gray-600">Help U Service Partner</p>
           </div>
         </div>
 

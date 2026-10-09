@@ -26,7 +26,7 @@ class ErrorBoundary extends React.Component {
             <div className="text-6xl">⚠️</div>
             <h2 className="text-2xl font-bold text-gray-800 text-center">Something went wrong</h2>
             <p className="text-gray-600 text-center">
-              The worker app encountered an error. Please try refreshing the page.
+              The Service Partner app encountered an error. Please try refreshing the page.
             </p>
             <button
               onClick={() => {

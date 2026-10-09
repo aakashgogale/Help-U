@@ -191,7 +191,7 @@ const WorkerLogin = () => {
           <Logo className="h-20 sm:h-24 w-auto object-contain transition-transform duration-300 hover:scale-105" />
         </div>
         <h1 className="text-[26px] sm:text-[30px] font-bold text-slate-900 tracking-[-0.025em]">
-          {step === 'phone' ? 'Worker Sign In' : 'Verify Identity'}
+          {step === 'phone' ? 'Service Partner Sign In' : 'Verify Identity'}
         </h1>
         <p className="mt-1.5 text-[14px] sm:text-[15px] text-slate-500 font-normal leading-relaxed animate-stagger-1 animate-fade-in">
           {step === 'phone' ? 'Manage your services and bookings' : `We've sent a 6-digit code to ${phoneNumber}`}

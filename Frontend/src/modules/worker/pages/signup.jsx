@@ -366,10 +366,10 @@ const WorkerSignup = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl text-center mb-8 relative z-10 animate-fade-in">
         <Logo className="h-24 w-auto mx-auto transform hover:scale-110 transition-transform duration-500" />
         <h2 className="mt-4 text-3xl font-extrabold text-gray-900 tracking-tight">
-          {step === 'details' ? 'Worker Registration' : 'Verify Identity'}
+          {step === 'details' ? 'Service Partner Registration' : 'Verify Identity'}
         </h2>
         <p className="mt-2 text-sm text-gray-600 animate-stagger-1 animate-fade-in">
-          Join Help U as a Worker Partner and grow your business
+          Join Help U as a Service Partner and grow your business
         </p>
       </div>
 

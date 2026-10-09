@@ -289,7 +289,7 @@ const WithdrawalRequest = () => {
                     <div className="w-40 h-40 rounded-2xl border border-blue-100 bg-white p-2">
                       <img
                         src={bankAccount.qrCodeImage}
-                        alt="Worker payout QR"
+                        alt="Service Partner payout QR"
                         className="w-full h-full object-contain rounded-xl"
                       />
                     </div>

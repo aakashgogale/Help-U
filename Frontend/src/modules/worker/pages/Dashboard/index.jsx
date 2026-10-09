@@ -39,7 +39,7 @@ const Dashboard = memo(() => {
     rating: 0,
   });
   const [workerProfile, setWorkerProfile] = useState({
-    name: 'Worker Name',
+    name: 'Service Partner',
     businessName: 'Business Name',
     photo: null,
     service: [],
@@ -204,7 +204,7 @@ const Dashboard = memo(() => {
     // Load worker profile from localStorage (once)
     const profile = JSON.parse(localStorage.getItem('workerData') || '{}');
     setWorkerProfile({
-      name: profile.name || 'Worker Name',
+      name: profile.name || 'Service Partner',
       businessName: profile.businessName || 'Business Name',
       photo: profile.profilePhoto || null,
       service: profile.service || [],
@@ -709,7 +709,7 @@ const Dashboard = memo(() => {
                     Refer & Earn
                   </span>
                   <h3 className="text-sm font-extrabold text-white mt-1">
-                    Invite Workers & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
+                    Invite Service Partners & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
                   </h3>
                   <p className="text-[11px] text-teal-100 font-medium">Get cash reward directly into your wallet</p>
                 </div>

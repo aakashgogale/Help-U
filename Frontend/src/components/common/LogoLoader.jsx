@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { getLogoSrc } from './Logo';
 
 /**
  * LogoLoader Component
@@ -37,7 +38,7 @@ const LogoLoader = ({ fullScreen = false, overlay = false, inline = false, size 
         className={`relative ${size} flex items-center justify-center`}
       >
         <img
-          src="/helpu-logo.png"
+          src={getLogoSrc()}
           alt="Loading..."
           className="w-full h-full object-contain"
         />

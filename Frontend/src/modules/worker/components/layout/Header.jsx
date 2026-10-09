@@ -94,7 +94,7 @@ const Header = memo(({
               <Logo className="h-14 w-auto" />
             </motion.div>
           )}
-          {showBack && <h1 className="text-lg font-bold text-gray-800">{title || 'Worker'}</h1>}
+          {showBack && <h1 className="text-lg font-bold text-gray-800">{title || 'Service Partner'}</h1>}
         </div>
 
         {/* Right: Search and Notifications */}
