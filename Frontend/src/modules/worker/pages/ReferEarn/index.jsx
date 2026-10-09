@@ -77,13 +77,13 @@ const ReferEarn = () => {
   };
 
   const handleNativeShare = async () => {
-    const text = `Join Help U as a verified service worker partner! Use my referral code: ${data.referralCode}`;
+    const text = `Join Help U as a verified Service Partner! Use my referral code: ${data.referralCode}`;
     const link = getShareLink();
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join Help U as a Worker Partner',
+          title: 'Join Help U as a Service Partner',
           text,
           url: link
         });
@@ -135,11 +135,11 @@ const ReferEarn = () => {
 
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-amber-300 border border-white/20">
-              <FiAward className="w-3.5 h-3.5" /> Worker Referral Program
+              <FiAward className="w-3.5 h-3.5" /> Service Partner Referral Program
             </div>
 
             <h2 className="text-2xl font-black leading-tight">
-              Earn <span className="text-amber-300">₹{data.rewardPerReferral}</span> for every worker you invite!
+              Earn <span className="text-amber-300">₹{data.rewardPerReferral}</span> for every Service Partner you invite!
             </h2>
 
             <p className="text-xs text-teal-100 font-medium leading-relaxed">
@@ -277,7 +277,7 @@ const ReferEarn = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-bold text-gray-900 truncate">
-                        {item.referredWorker?.name || 'Registered Worker'}
+                        {item.referredWorker?.name || 'Registered Service Partner'}
                       </p>
                       <span className="text-[10px] text-gray-400 font-medium">
                         {item.referredWorker?.phone ? `(${item.referredWorker.phone})` : ''}

@@ -88,7 +88,7 @@ const SettlementRequest = () => {
         amount: Math.round(Number(orderData.amount) * 100),
         currency: orderData.currency || 'INR',
         name: 'Help U Admin Settlement',
-        description: 'Worker settlement payment',
+        description: 'Service Partner settlement payment',
         order_id: orderData.orderId,
         prefill: {},
         theme: { color: themeColors.button },

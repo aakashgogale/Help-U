@@ -57,7 +57,7 @@ const Profile = () => {
       const storedWorkerData = JSON.parse(localStorage.getItem('workerData') || '{}');
       if (storedWorkerData && Object.keys(storedWorkerData).length > 0) {
         setProfile({
-          name: storedWorkerData.name || 'Worker Name',
+          name: storedWorkerData.name || 'Service Partner',
           businessName: storedWorkerData.businessName || null,
           phone: storedWorkerData.phone || '',
           email: storedWorkerData.email || '',
@@ -90,7 +90,7 @@ const Profile = () => {
             : 'Not set';
 
           setProfile({
-            name: workerData.name || 'Worker Name',
+            name: workerData.name || 'Service Partner',
             businessName: workerData.businessName || null,
             phone: workerData.phone || '',
             email: workerData.email || '',

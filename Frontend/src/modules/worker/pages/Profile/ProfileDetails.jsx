@@ -67,7 +67,7 @@ const ProfileDetails = () => {
 
           setProfile(prev => ({
             ...prev,
-            name: storedData.name || 'Worker Name',
+            name: storedData.name || 'Service Partner',
             businessName: storedData.businessName || null,
             phone: storedData.phone || '',
             email: storedData.email || '',

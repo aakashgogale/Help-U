@@ -169,7 +169,7 @@ const BankDetails = () => {
               <FiCreditCard className="w-4 h-4" style={{ color: themeColors.icon }} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-800">Worker Bank Details</p>
+              <p className="text-sm font-semibold text-gray-800">Service Partner Bank Details</p>
               <p className="text-xs text-gray-500">Save bank account, UPI and QR in one place</p>
             </div>
           </div>
@@ -267,7 +267,7 @@ const BankDetails = () => {
                   <div className="w-40 h-40 rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <img
                       src={bankDetails.qrCodeImage}
-                      alt="Worker QR"
+                      alt="Service Partner QR"
                       className="w-full h-full object-contain"
                     />
                   </div>
