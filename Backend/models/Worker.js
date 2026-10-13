@@ -221,6 +221,12 @@ const workerSchema = new mongoose.Schema({
       type: Number,
       default: 10, // Default 10km service range for the worker
       min: 1
+    },
+    // Whether the worker wants emergency job alerts. On by default so the
+    // feature works as soon as an admin enables it; workers can opt out.
+    acceptsEmergency: {
+      type: Boolean,
+      default: true
     }
   },
   // Real-time Location

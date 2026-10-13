@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../../middleware/authMiddleware');
 const { uploadImage } = require('../../middleware/uploadMiddleware');
 
-// Upload single file to Cloudinary
-router.post('/upload', uploadImage, async (req, res) => {
+// Used by every logged-in role (profile photo uploads, catalog images) — any
+// valid login is enough; no auth here would let anyone upload for free.
+router.post('/upload', authenticate, uploadImage, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({

@@ -11,6 +11,7 @@ const {
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isWorker } = require('../../middleware/roleMiddleware');
 const { requireFlag } = require('../../middleware/featureGuard');
+const authRateLimiter = require('../../middleware/authRateLimiter');
 
 // Validation rules
 const sendOTPValidation = [
@@ -40,14 +41,14 @@ const loginValidation = [
 
 // Routes
 router.post('/send-otp', sendOTPValidation, sendOTP);
-router.post('/verify-login', verifyLoginValidation, verifyLogin); // New Unified Entry
+router.post('/verify-login', authRateLimiter, verifyLoginValidation, verifyLogin); // New Unified Entry
 router.post(
   '/register',
   requireFlag('isVendorRegistrationEnabled', 'New partner registrations are currently closed. Please try again later.'),
   registerValidation,
   register
 );
-router.post('/login', loginValidation, login);
+router.post('/login', authRateLimiter, loginValidation, login);
 router.post('/refresh-token', require('../../controllers/workerControllers/workerAuthController').refreshToken);
 router.post('/logout', authenticate, isWorker, logout);
 

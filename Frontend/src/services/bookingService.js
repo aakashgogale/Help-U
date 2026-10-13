@@ -13,6 +13,12 @@ export const bookingService = {
     return response.data;
   },
 
+  // Upload one checkout photo of the problem (base64 data URL); returns { success, url }
+  uploadIssuePhoto: async (photo) => {
+    const response = await api.post('/users/bookings/issue-photos', { photo });
+    return response.data;
+  },
+
   // Get user bookings with filters
   getUserBookings: async (params = {}) => {
     const queryParams = new URLSearchParams();

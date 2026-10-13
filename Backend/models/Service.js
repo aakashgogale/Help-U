@@ -49,6 +49,36 @@ const serviceSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true
+  },
+
+  // Service detail content. Mirrors UserService so both models expose the same
+  // shape to the apps. All optional — existing services keep working unchanged.
+  warranty: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  cancellationPolicy: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  inclusions: {
+    type: [String],
+    default: []
+  },
+  exclusions: {
+    type: [String],
+    default: []
+  },
+  faqs: {
+    type: [
+      {
+        question: { type: String, trim: true, required: true },
+        answer: { type: String, trim: true, required: true }
+      }
+    ],
+    default: []
   }
 }, {
   timestamps: true

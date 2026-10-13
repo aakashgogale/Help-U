@@ -34,6 +34,10 @@ import RatingModal from '../../components/booking/RatingModal';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
 import { ConfirmDialog } from '../../../../components/common';
 import ReviewCard from '../../components/booking/ReviewCard';
+import BookingExtrasCard from '../../../../components/booking/BookingExtrasCard';
+import BookingTimeline from '../../../../components/booking/BookingTimeline';
+import ChatButton from '../../../../components/booking/ChatButton';
+import DisputeSection from '../../../../components/disputes/DisputeSection';
 import NotificationBell from '../../components/common/NotificationBell';
 import api from '../../../../services/api';
 
@@ -317,7 +321,9 @@ const BookingDetails = () => {
       : booking.razorpayOrderId;
 
     if (existingOrderId) {
-      // Open Razorpay with existing order
+      // Open Razorpay with existing order. No fresh backend call here, so there's
+      // no response to read `key` from — this must stay in sync with the backend's
+      // RAZORPAY_KEY_ID (a mismatch causes a 400 from Razorpay's checkout preferences API).
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: Math.round(((paymentType === 'advance'
@@ -371,7 +377,7 @@ const BookingDetails = () => {
       }
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: orderResponse.data.key,
         amount: Math.round(orderResponse.data.amount * 100),
         currency: orderResponse.data.currency || 'INR',
         order_id: orderResponse.data.orderId,
@@ -1199,6 +1205,9 @@ const BookingDetails = () => {
             </div>
           </section>
 
+          {/* Emergency, instructions, add-ons and problem photos/videos */}
+          <BookingExtrasCard booking={booking} title="Your Requests" />
+
           {/* Payment Summary - Only show if payment is completed/collected OR if a payment request is active (Work Done) */}
           {(['work_done', 'completed'].includes(booking.status?.toLowerCase()) || booking.paymentStatus === 'success' || booking.cashCollected) && (
             <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
@@ -1483,6 +1492,9 @@ const BookingDetails = () => {
             </div>
           )}
 
+          {/* Chat with the assigned professional */}
+          <ChatButton role="user" booking={booking} className="w-full" />
+
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-4">
             {/* Support */}
@@ -1538,6 +1550,12 @@ const BookingDetails = () => {
             booking={booking}
             onWriteReview={() => setShowRatingModal(true)}
           />
+
+          {/* Report a problem / existing dispute */}
+          <DisputeSection role="user" booking={booking} />
+
+          {/* Detailed lifecycle */}
+          <BookingTimeline booking={booking} />
 
         </main>
 

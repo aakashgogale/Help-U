@@ -7,6 +7,15 @@ const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { createOrder, verifyPayment, refundPayment } = require('../../services/razorpayService');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
+const { getBookingConfig } = require('../../utils/bookingConfig');
+const mongoose = require('mongoose');
+
+// Falls back to the admin-configured default commission rate when a
+// booking has no WorkerBill yet, instead of a hardcoded 20/80 split.
+const getDefaultWorkerShare = async () => {
+  const config = await getBookingConfig();
+  return (config.servicePayoutPercentage ?? 80) / 100;
+};
 
 const getFinalPaymentAmount = (booking) => {
   const amount = Number(booking.userPayableAmount ?? booking.finalAmount ?? 0);
@@ -183,7 +192,27 @@ const verifyPaymentWebhook = async (req, res) => {
       booking.advancePayment.paymentId = razorpay_payment_id;
       booking.advancePayment.razorpayPaymentId = razorpay_payment_id;
 
-      await booking.save();
+      // Booking update + transaction log must succeed or fail together —
+      // otherwise a crash between the two leaves a booking marked "paid"
+      // with no payment record, or vice versa.
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await booking.save({ session });
+          await Transaction.create([{
+            userId: booking.userId,
+            bookingId: booking._id,
+            amount: advanceAmount,
+            type: 'advance_payment',
+            paymentMethod: 'razorpay',
+            status: 'completed',
+            description: `Advance payment for booking ${booking.bookingNumber}`,
+            referenceId: razorpay_payment_id
+          }], { session });
+        });
+      } finally {
+        await session.endSession();
+      }
 
       const io = req.app.get('io');
       if (io) {
@@ -198,17 +227,6 @@ const verifyPaymentWebhook = async (req, res) => {
           });
         }
       }
-
-      await Transaction.create({
-        userId: booking.userId,
-        bookingId: booking._id,
-        amount: advanceAmount,
-        type: 'advance_payment',
-        paymentMethod: 'razorpay',
-        status: 'completed',
-        description: `Advance payment for booking ${booking.bookingNumber}`,
-        referenceId: razorpay_payment_id
-      });
 
       await createNotification({
         userId: booking.userId,
@@ -254,65 +272,81 @@ const verifyPaymentWebhook = async (req, res) => {
       booking.completedAt = new Date();
     }
 
-    await booking.save();
-
-    // ── Credit Worker Wallet from WorkerBill (single source of truth) ──
-    // User payment transaction
-    await Transaction.create({
-      userId: booking.userId,
-      bookingId: booking._id,
-      amount: finalPaymentAmount,
-      type: 'payment',
-      paymentMethod: 'razorpay',
-      status: 'completed',
-      description: `Final payment for booking ${booking.bookingNumber}`,
-      referenceId: razorpay_payment_id
-    });
-
     // Fetch WorkerBill for earnings (only if bill exists = post-completion payment)
     const bill = await WorkerBill.findOne({ bookingId: booking._id });
+    let vendorEarning = 0;
+
+    // Booking status, the user's payment record, the bill, and the worker's
+    // wallet credit all represent one financial event — wrapped in a
+    // transaction so a mid-flight crash can't leave the booking "paid" while
+    // the worker's wallet was never credited (or credited twice on retry).
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await booking.save({ session });
+
+        // User payment transaction
+        await Transaction.create([{
+          userId: booking.userId,
+          bookingId: booking._id,
+          amount: finalPaymentAmount,
+          type: 'payment',
+          paymentMethod: 'razorpay',
+          status: 'completed',
+          description: `Final payment for booking ${booking.bookingNumber}`,
+          referenceId: razorpay_payment_id
+        }], { session });
+
+        if (bill && booking.vendorId) {
+          vendorEarning = bill.vendorTotalEarning;
+
+          // Mark bill as paid
+          bill.status = 'paid';
+          bill.paidAt = new Date();
+          await bill.save({ session });
+
+          // Online payment: only earnings increase, NO dues (platform holds the money)
+          await Worker.findByIdAndUpdate(
+            booking.vendorId,
+            { $inc: { 'wallet.earnings': vendorEarning } },
+            { session }
+          );
+
+          // Earnings credit transaction
+          if (vendorEarning > 0) {
+            await Transaction.create([{
+              vendorId: booking.vendorId,
+              bookingId: booking._id,
+              amount: vendorEarning,
+              type: 'earnings_credit',
+              paymentMethod: 'system',
+              status: 'completed',
+              description: `Earnings ₹${vendorEarning} credited for booking ${booking.bookingNumber} (online payment)`,
+              metadata: {
+                type: 'earnings_increase',
+                billId: bill._id.toString(),
+                serviceEarning: bill.vendorServiceEarning,
+                partsEarning: bill.vendorPartsEarning
+              }
+            }], { session });
+          }
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
 
     if (bill && booking.vendorId) {
-      const vendorEarning = bill.vendorTotalEarning;
-
-      // Mark bill as paid
-      bill.status = 'paid';
-      bill.paidAt = new Date();
-      await bill.save();
-
-      // Online payment: only earnings increase, NO dues (platform holds the money)
-      await Worker.findByIdAndUpdate(booking.vendorId, {
-        $inc: { 'wallet.earnings': vendorEarning }
-      });
-
-      // Earnings credit transaction
-      if (vendorEarning > 0) {
-        await Transaction.create({
-          vendorId: booking.vendorId,
-          bookingId: booking._id,
-          amount: vendorEarning,
-          type: 'earnings_credit',
-          paymentMethod: 'system',
-          status: 'completed',
-          description: `Earnings ₹${vendorEarning} credited for booking ${booking.bookingNumber} (online payment)`,
-          metadata: {
-            type: 'earnings_increase',
-            billId: bill._id.toString(),
-            serviceEarning: bill.vendorServiceEarning,
-            partsEarning: bill.vendorPartsEarning
-          }
-        });
-      }
-
       console.log(`[Payment] Credited ₹${vendorEarning} to worker ${booking.vendorId}`);
     }
 
     // Record stats in the Daily Earning Tracker (Async)
+    const defaultWorkerShare = bill ? null : await getDefaultWorkerShare();
     recordBookingEarning({
       date: new Date(),
       totalRevenue: Number(bill ? bill.grandTotal : booking.finalAmount) || 0,
-      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * 0.2)) || 0,
-      vendorEarnings: Number(bill ? bill.vendorTotalEarning : (booking.finalAmount * 0.8)) || 0,
+      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * (1 - defaultWorkerShare))) || 0,
+      vendorEarnings: Number(bill ? bill.vendorTotalEarning : (booking.finalAmount * defaultWorkerShare)) || 0,
       totalGST: Number(bill ? bill.totalGST : 0) || 0,
       totalTDS: 0 // Tracked in withdrawals
     }).catch(err => console.error('[Payment] Daily tracker failed:', err));
@@ -440,9 +474,23 @@ const processWalletPayment = async (req, res) => {
       });
     }
 
-    // Deduct from user wallet
-    user.wallet.balance -= payableAmount;
-    await user.save();
+    // Deduct from user wallet atomically — the balance guard in the filter
+    // means two concurrent requests can't both pass the check above and
+    // then both deduct, which a plain `balance -= amount; save()` allows
+    // under a race (lost update / double-spend).
+    const debitedUser = await User.findOneAndUpdate(
+      { _id: userId, 'wallet.balance': { $gte: payableAmount } },
+      { $inc: { 'wallet.balance': -payableAmount } },
+      { new: true }
+    );
+
+    if (!debitedUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient wallet balance'
+      });
+    }
+    user.wallet.balance = debitedUser.wallet.balance;
 
     const Transaction = require('../../models/Transaction');
     await Transaction.create({
@@ -568,11 +616,12 @@ const processWalletPayment = async (req, res) => {
     }
 
     // Record stats in the Daily Earning Tracker (Async)
+    const defaultWorkerShareWallet = bill ? null : await getDefaultWorkerShare();
     recordBookingEarning({
       date: new Date(),
       totalRevenue: Number(bill ? bill.grandTotal : booking.finalAmount) || 0,
-      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * 0.2)) || 0,
-      vendorEarnings: Number(bill ? bill.vendorTotalEarning : (booking.finalAmount * 0.8)) || 0,
+      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * (1 - defaultWorkerShareWallet))) || 0,
+      vendorEarnings: Number(bill ? bill.vendorTotalEarning : (booking.finalAmount * defaultWorkerShareWallet)) || 0,
       totalGST: Number(bill ? bill.totalGST : 0) || 0,
       totalTDS: 0 // Tracked in withdrawals
     }).catch(err => console.error('[Wallet Payment] Daily tracker failed:', err));
@@ -685,12 +734,12 @@ const processRefund = async (req, res) => {
       // Update booking payment status
       booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
     } else if (booking.paymentMethod === 'wallet') {
-      // Wallet refund - add back to user wallet
-      const user = await User.findById(booking.userId);
-      if (user) {
-        user.wallet.balance += (amount || booking.finalAmount);
-        await user.save();
-      }
+      // Wallet refund - add back to user wallet atomically, avoiding a lost
+      // update if another wallet change happens to the same user concurrently.
+      await User.updateOne(
+        { _id: booking.userId },
+        { $inc: { 'wallet.balance': (amount || booking.finalAmount) } }
+      );
 
       // Update booking payment status
       booking.paymentStatus = PAYMENT_STATUS.REFUNDED;

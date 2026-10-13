@@ -65,7 +65,40 @@ const userSchema = new mongoose.Schema({
     penalty: {
       type: Number,
       default: 0
+    },
+    promoBalance: {
+      type: Number,
+      default: 0
+    },
+    cashbackBalance: {
+      type: Number,
+      default: 0
     }
+  },
+
+  // ==========================================
+  // CUSTOMER REFERRAL PROGRAMME
+  // ==========================================
+
+  // Sparse so the unique index tolerates existing users who have no code yet;
+  // one is generated for them on their next save.
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    uppercase: true,
+    trim: true,
+    index: true
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    index: true
+  },
+  referralEarnings: {
+    type: Number,
+    default: 0
   },
   plans: {
     isActive: {
@@ -132,8 +165,28 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Helper to generate a random referral code.
+// The prefix differs from the worker code prefix (HOMV) so a customer code can
+// never be mistaken for a worker code when one is entered at signup.
+const generateReferralCode = () => {
+  // Ambiguous characters (0/O, 1/I) are excluded so codes survive being read
+  // aloud or retyped from a screenshot.
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'HU';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
 // Hash password before saving
 userSchema.pre('save', async function (next) {
+  // Generate referral code if missing. Existing users get one the next time
+  // their document is saved.
+  if (!this.referralCode) {
+    this.referralCode = generateReferralCode();
+  }
+
   if (!this.isModified('password')) {
     return next();
   }

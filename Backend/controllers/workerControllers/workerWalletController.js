@@ -690,6 +690,17 @@ const requestWithdrawal = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid amount is required' });
     }
 
+    // Minimum payout, set by the admin in the booking configuration.
+    const { getBookingConfig } = require('../../utils/bookingConfig');
+    const { minWithdrawalAmount } = await getBookingConfig();
+    if (Number(amount) < minWithdrawalAmount) {
+      return res.status(400).json({
+        success: false,
+        code: 'BELOW_MIN_WITHDRAWAL',
+        message: `Minimum withdrawal amount is ₹${minWithdrawalAmount}`
+      });
+    }
+
     const worker = await Worker.findById(vendorId);
     if (!worker) return res.status(404).json({ success: false, message: 'Worker not found' });
 

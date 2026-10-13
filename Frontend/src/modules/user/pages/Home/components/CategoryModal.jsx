@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { FiX, FiLayers, FiArrowLeft, FiPlus, FiCheck } from 'react-icons/fi';
+import { FiX, FiLayers, FiArrowLeft, FiPlus, FiCheck, FiClock, FiMinus, FiPhoneCall } from 'react-icons/fi';
 import { AnimatePresence, motion } from 'framer-motion';
 import { themeColors } from '../../../../../theme';
 import { publicCatalogService } from '../../../../../services/catalogService';
@@ -28,6 +28,9 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
   const [services, setServices] = useState([]); // Sub-services
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Hourly services ask for a duration before they can be added to cart.
+  const [hoursPickerSvc, setHoursPickerSvc] = useState(null);
+  const [pickedHours, setPickedHours] = useState(1);
 
   const cityId = currentCity?._id || currentCity?.id;
 
@@ -106,9 +109,33 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
     setServices([]);
   };
 
-  const handleServiceClick = async (service) => {
-    // Add to cart logic
+  // Hourly services need a duration before pricing is known; everything else
+  // adds straight away. quote_required is never clickable (see the card UI).
+  const handleServiceClick = async (service, hours) => {
+    if (service.pricingType === 'quote_required') return;
+    if (service.pricingType === 'hourly' && !hours) {
+      setPickedHours(service.minHours || 1);
+      setHoursPickerSvc(service);
+      return;
+    }
+
     try {
+      const isHourly = service.pricingType === 'hourly';
+      const rate = service.hourlyRate || service.basePrice;
+      // For fixed/starting_from/inspection_fee, service.amount (resolved by
+      // the backend's getDisplayPricing) already is the right unit price;
+      // discountPrice still wins when present, same as the existing fixed flow.
+      const unitPrice = isHourly
+        ? Math.round((rate || 0) * hours * 100) / 100
+        : (service.discountPrice || service.amount || service.basePrice);
+      const originalUnitPrice = isHourly
+        ? null
+        : (service.discountPrice ? (service.amount || service.basePrice) : null);
+
+      const durationLabel = isHourly
+        ? `${hours} hr${hours === 1 ? '' : 's'}`
+        : (service.duration || '');
+
       const cartItemData = {
         serviceId: service.id || service._id,
         categoryId: category?.id,
@@ -122,19 +149,21 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
         sectionId: selectedBrand?.id || selectedBrand?._id || null, // VITAL: Added for plan benefits
         sectionTitle: selectedBrand?.title || '',
         sectionIcon: toAssetUrl(selectedBrand?.iconUrl || selectedBrand?.icon || ''),
-        price: service.discountPrice || service.basePrice,
-        originalPrice: service.discountPrice ? service.basePrice : null,
-        unitPrice: service.discountPrice || service.basePrice,
+        price: unitPrice,
+        originalPrice: originalUnitPrice,
+        unitPrice,
         serviceCount: 1,
+        pricingType: service.pricingType || 'fixed',
+        hours: isHourly ? hours : undefined,
         rating: "4.8",
         reviews: "1k+",
         vendorId: service.vendorId || selectedBrand?.vendorId || null,
         card: {
           title: service.title,
           subtitle: service.description || '',
-          price: service.discountPrice || service.basePrice,
-          originalPrice: service.discountPrice ? service.basePrice : null,
-          duration: service.duration || '',
+          price: unitPrice,
+          originalPrice: originalUnitPrice,
+          duration: durationLabel,
           description: service.description || '',
           imageUrl: toAssetUrl(service.icon || ''),
           features: service.features || []
@@ -143,6 +172,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
 
       const response = await addToCart(cartItemData);
       if (response.success) {
+        setHoursPickerSvc(null);
         setIsRedirecting(true);
         setTimeout(() => {
           navigate('/user/cart');
@@ -292,25 +322,57 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                         // Services List
                         services.length > 0 ? (
                           <div className="space-y-4">
-                            {services.map((svc) => (
-                              <div key={svc.id || svc._id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
-                                <div className="flex-1 pr-4">
-                                  <h3 className="font-black text-gray-900 text-[15px] leading-snug mb-0.5">{svc.title}</h3>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg font-black text-emerald-600">₹{svc.discountPrice || svc.basePrice}</span>
-                                    {svc.discountPrice && svc.discountPrice < svc.basePrice && (
-                                      <span className="text-xs text-gray-400 line-through font-bold opacity-60">₹{svc.basePrice}</span>
+                            {services.map((svc) => {
+                              const isQuoteOnly = svc.pricingType === 'quote_required';
+                              const isHourly = svc.pricingType === 'hourly';
+                              const isInspection = svc.pricingType === 'inspection_fee';
+
+                              return (
+                                <div key={svc.id || svc._id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
+                                  <div className="flex-1 pr-4">
+                                    <h3 className="font-black text-gray-900 text-[15px] leading-snug mb-0.5">{svc.title}</h3>
+                                    {isQuoteOnly ? (
+                                      <p className="text-xs text-purple-700 font-semibold italic">{svc.quoteContactNote || 'Contact us for a custom quote'}</p>
+                                    ) : isHourly ? (
+                                      <div className="flex items-center gap-1 text-emerald-600">
+                                        <span className="text-lg font-black">₹{svc.hourlyRate || svc.basePrice}</span>
+                                        <span className="text-xs font-bold opacity-70">/hr · {svc.minHours}-{svc.maxHours}h</span>
+                                      </div>
+                                    ) : isInspection ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-lg font-black text-emerald-600">₹{svc.inspectionFee}</span>
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">Inspection visit</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-lg font-black text-emerald-600">₹{svc.discountPrice || svc.basePrice}</span>
+                                        {svc.discountPrice && svc.discountPrice < svc.basePrice && (
+                                          <span className="text-xs text-gray-400 line-through font-bold opacity-60">₹{svc.basePrice}</span>
+                                        )}
+                                        {svc.pricingType === 'starting_from' && (
+                                          <span className="text-[10px] font-bold text-sky-700">starting from</span>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
+                                  {isQuoteOnly ? (
+                                    <a
+                                      href="/user/help-support"
+                                      className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-purple-100"
+                                    >
+                                      <FiPhoneCall /> Contact
+                                    </a>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleServiceClick(svc)}
+                                      className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-100"
+                                    >
+                                      {isHourly ? <><FiClock /> Select</> : <><FiPlus /> Add</>}
+                                    </button>
+                                  )}
                                 </div>
-                                <button
-                                  onClick={() => handleServiceClick(svc)}
-                                  className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-100"
-                                >
-                                  <FiPlus /> Add
-                                </button>
-                              </div>
-                            ))}
+                              );
+                            })}
                             
                             {/* Bottom Disclaimer */}
                             <div className="mt-6 mb-6 p-4 sm:p-5 rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-start gap-4 shadow-sm">
@@ -339,6 +401,74 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
               )}
             </div>
           </motion.div>
+
+          {/* Duration picker for hourly services */}
+          <AnimatePresence>
+            {hoursPickerSvc && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center"
+                onClick={() => setHoursPickerSvc(null)}
+              >
+                <motion.div
+                  initial={{ y: 40, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 40, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6"
+                >
+                  <h3 className="text-lg font-black text-gray-900 mb-1">{hoursPickerSvc.title}</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    ₹{hoursPickerSvc.hourlyRate || hoursPickerSvc.basePrice}/hr · choose how many hours you need
+                  </p>
+
+                  <div className="flex items-center justify-center gap-4 mb-5">
+                    <button
+                      onClick={() => setPickedHours(h => Math.max(hoursPickerSvc.minHours || 1, h - 0.5))}
+                      className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center active:scale-95"
+                    >
+                      <FiMinus className="w-5 h-5 text-gray-700" />
+                    </button>
+                    <div className="text-center min-w-[80px]">
+                      <span className="text-3xl font-black text-gray-900">{pickedHours}</span>
+                      <p className="text-xs text-gray-500 font-bold">hour{pickedHours === 1 ? '' : 's'}</p>
+                    </div>
+                    <button
+                      onClick={() => setPickedHours(h => Math.min(hoursPickerSvc.maxHours || 8, h + 0.5))}
+                      className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center active:scale-95"
+                    >
+                      <FiPlus className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-5 px-1">
+                    <span className="text-sm font-bold text-gray-600">Estimated price</span>
+                    <span className="text-xl font-black text-emerald-600">
+                      ₹{Math.round((hoursPickerSvc.hourlyRate || hoursPickerSvc.basePrice || 0) * pickedHours)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setHoursPickerSvc(null)}
+                      className="py-3 rounded-xl font-bold text-gray-600 bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleServiceClick(hoursPickerSvc, pickedHours)}
+                      className="py-3 rounded-xl font-bold text-white shadow-lg"
+                      style={{ backgroundColor: themeColors.button }}
+                    >
+                      Add to cart
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>

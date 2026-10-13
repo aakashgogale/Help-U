@@ -11,7 +11,7 @@ export const cityService = {
 
   // Get active cities (public view - if needed for switcher)
   getActive: async () => {
-    const response = await api.get('/cities/public');
+    const response = await api.get('/public/cities');
     return response.data;
   },
 
@@ -42,6 +42,34 @@ export const cityService = {
   // Toggle status
   toggleStatus: async (id) => {
     const response = await api.patch(`${BASE_URL}/${id}/status`);
+    return response.data;
+  },
+
+  // ─── Area & Pincode Hierarchy ───
+  getAreas: async (cityId) => {
+    const response = await api.get(`${BASE_URL}/${cityId}/areas`);
+    return response.data;
+  },
+
+  createArea: async (cityId, data) => {
+    const response = await api.post(`${BASE_URL}/${cityId}/areas`, data);
+    return response.data;
+  },
+
+  updateArea: async (cityId, areaId, data) => {
+    const response = await api.put(`${BASE_URL}/${cityId}/areas/${areaId}`, data);
+    return response.data;
+  },
+
+  deleteArea: async (cityId, areaId) => {
+    const response = await api.delete(`${BASE_URL}/${cityId}/areas/${areaId}`);
+    return response.data;
+  },
+
+  checkPincode: async (pincode, cityId) => {
+    const response = await api.get('/public/cities/check-pincode', {
+      params: { pincode, cityId }
+    });
     return response.data;
   }
 };

@@ -113,7 +113,18 @@ const workerBillSchema = new mongoose.Schema({
     serviceSplitPercentage: { type: Number, default: 70 },  // worker gets 70%
     partsSplitPercentage: { type: Number, default: 10 },  // worker gets 10%
     serviceGstPercentage: { type: Number, default: 18 },
-    partsGstPercentage: { type: Number, default: 18 }
+    partsGstPercentage: { type: Number, default: 18 },
+    // Which commission applied, from services/commissionService.js.
+    // 'percentage' bills use serviceSplitPercentage above; 'fixed' bills keep
+    // commissionValue rupees from the service amount instead.
+    commissionType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+    commissionValue: { type: Number, default: null },
+    commissionSource: {
+      type: String,
+      enum: ['global', 'category', 'worker', 'worker_category'],
+      default: 'global'
+    },
+    commissionRuleId: { type: mongoose.Schema.Types.ObjectId, ref: 'CommissionRule', default: null }
   },
 
   /** Worker earnings (calculated on BASE prices, never on GST) */

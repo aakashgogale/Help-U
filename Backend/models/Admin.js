@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { ADMIN_ROLES } = require('../utils/constants');
 
 const adminSchema = new mongoose.Schema({
   name: {
@@ -21,8 +22,12 @@ const adminSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'admin'],
-    default: 'admin'
+    enum: Object.values(ADMIN_ROLES),
+    default: ADMIN_ROLES.ADMIN
+  },
+  permissions: {
+    type: [String],
+    default: []
   },
   cityId: {
     type: mongoose.Schema.Types.ObjectId,

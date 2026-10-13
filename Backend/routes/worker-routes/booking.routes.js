@@ -9,6 +9,7 @@ const {
   getBookingById,
   acceptBooking,
   rejectBooking,
+  cancelJob,
   updateBookingStatus,
   addWorkerNotes,
   startSelfJob,
@@ -41,6 +42,8 @@ const requestAdvancePaymentValidation = [
   body('partsDescription').optional().trim()
 ];
 
+const { getChat, sendChatMessage, markChatRead, getUnreadCount } = require('../../controllers/chatController');
+
 // Routes
 router.get('/pending', authenticate, isWorker, getPendingBookings); // Fetch missed alerts on reconnect
 router.get('/ratings', authenticate, isWorker, getWorkerRatings);
@@ -48,8 +51,15 @@ router.get('/', authenticate, isWorker, getWorkerBookings);
 router.get('/:id', authenticate, isWorker, getBookingById);
 router.post('/:id/accept', authenticate, isWorker, acceptBooking);
 router.post('/:id/reject', authenticate, isWorker, rejectBookingValidation, rejectBooking);
+router.post('/:id/cancel', authenticate, isWorker, body('reason').optional().isString().isLength({ max: 300 }), cancelJob);
 router.put('/:id/status', authenticate, isWorker, updateStatusValidation, updateBookingStatus);
 router.post('/:id/notes', authenticate, isWorker, addNotesValidation, addWorkerNotes);
+
+// Chat with the customer
+router.get('/:id/chat', authenticate, isWorker, getChat);
+router.get('/:id/chat/unread', authenticate, isWorker, getUnreadCount);
+router.post('/:id/chat', authenticate, isWorker, body('message').optional().isString().isLength({ max: 1000 }), sendChatMessage);
+router.post('/:id/chat/read', authenticate, isWorker, markChatRead);
 
 // Self-Job Routes
 router.post('/:id/self/start', authenticate, isWorker, startSelfJob);

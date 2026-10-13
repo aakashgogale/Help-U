@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllBookings,
   getBookingById,
@@ -15,11 +15,16 @@ const cancelBookingValidation = [
   body('cancellationReason').optional().trim()
 ];
 
+// Scoped to '/bookings' — see cityManagement.routes.js for why a bare
+// router.use(middleware) is unsafe when this router shares the '/api/admin'
+// mount point with many other route files.
+router.use('/bookings', authenticate, isAdmin, requirePermission('bookings'));
+
 // Routes
-router.get('/bookings', authenticate, isAdmin, getAllBookings);
-router.get('/bookings/analytics', authenticate, isAdmin, getBookingAnalytics);
-router.get('/bookings/:id', authenticate, isAdmin, getBookingById);
-router.post('/bookings/:id/cancel', authenticate, isAdmin, cancelBookingValidation, cancelBooking);
+router.get('/bookings', getAllBookings);
+router.get('/bookings/analytics', getBookingAnalytics);
+router.get('/bookings/:id', getBookingById);
+router.post('/bookings/:id/cancel', cancelBookingValidation, cancelBooking);
 
 module.exports = router;
 

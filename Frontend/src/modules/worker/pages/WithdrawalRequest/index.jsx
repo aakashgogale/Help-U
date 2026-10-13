@@ -8,11 +8,14 @@ import { requestWithdrawal, getWalletBalance, getWithdrawalHistory } from '../..
 import { toast } from 'react-hot-toast';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import { workerAuthService } from '../../../../services/authService';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
 
 const WithdrawalRequest = () => {
   const navigate = useNavigate();
   const [wallet, setWallet] = useState({ available: 0 });
   const [amount, setAmount] = useState('');
+  // Minimum payout set by the admin in the booking configuration
+  const { minWithdrawalAmount: minWithdrawal } = useBookingConfig();
   const [history, setHistory] = useState([]);
   const [bankAccount, setBankAccount] = useState({
     accountHolderName: '',
@@ -96,8 +99,8 @@ const WithdrawalRequest = () => {
     const numAmount = parseInt(numValue) || 0;
     if (numAmount > wallet.available) {
       setError('Amount cannot exceed available earnings');
-    } else if (numAmount < 100 && numValue !== '') {
-      setError('Minimum withdrawal amount is ₹100');
+    } else if (numAmount < minWithdrawal && numValue !== '') {
+      setError(`Minimum withdrawal amount is ₹${minWithdrawal}`);
     }
   };
 

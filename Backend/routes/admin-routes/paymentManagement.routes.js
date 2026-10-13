@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getFinanceOverview,
   getGSTRReport,
@@ -12,7 +12,10 @@ const {
 } = require('../../controllers/adminControllers/reportController');
 
 // All routes require authentication and admin role
-router.use(authenticate, isAdmin);
+// Scoped to '/payments' — see cityManagement.routes.js for why a bare
+// router.use(middleware) is unsafe when this router shares the '/api/admin'
+// mount point with many other route files.
+router.use('/payments', authenticate, isAdmin, requirePermission('payments'));
 
 // Dashboard overview - /api/admin/payments/overview
 router.get('/payments/overview', getFinanceOverview);

@@ -104,7 +104,7 @@ const AddressFormModal = ({ isOpen, onClose, address, onSave }) => {
       {/* Backdrop */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black bg-opacity-50 z-50"
+        className="fixed inset-0 bg-black/50 z-50"
         onClick={handleClose}
         style={{ opacity: 0 }}
       />

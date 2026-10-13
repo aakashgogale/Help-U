@@ -4,6 +4,7 @@ const { generateOTP, hashOTP, storeOTP, verifyOTP, checkRateLimit } = require('.
 const { sendOTP: sendSMSOTP } = require('../../services/smsService');
 const { sendOTPEmail, sendWelcomeEmail } = require('../../services/emailService');
 const { USER_ROLES } = require('../../utils/constants');
+const { recordReferral } = require('../../services/userReferralService');
 const { validationResult } = require('express-validator');
 
 /**
@@ -162,7 +163,7 @@ const register = async (req, res) => {
       });
     }
 
-    const { name, email, verificationToken } = req.body;
+    const { name, email, verificationToken, referralCode } = req.body;
     let phone = req.body.phone;
 
     // Verify token if provided (New Flow)
@@ -203,6 +204,14 @@ const register = async (req, res) => {
       isPhoneVerified: true,
       isEmailVerified: email ? false : true
     });
+
+    // Record the referral if a code was supplied. Deliberately non-blocking:
+    // an invalid code or a bookkeeping failure must not fail the signup.
+    if (referralCode) {
+      recordReferral(user._id, referralCode).catch((err) =>
+        console.error('[Referral] recordReferral failed:', err.message)
+      );
+    }
 
     // Send Welcome Email
     if (email) {

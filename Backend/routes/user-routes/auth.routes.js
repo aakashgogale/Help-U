@@ -12,6 +12,7 @@ const {
 
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isUser } = require('../../middleware/roleMiddleware');
+const authRateLimiter = require('../../middleware/authRateLimiter');
 
 const sendOTPValidation = [
   body('phone').customSanitizer(val => String(val || '').trim().replace(/\D/g, '').slice(-10)).notEmpty().withMessage('Phone number is required')
@@ -38,9 +39,9 @@ const registerValidation = [
 
 // Routes
 router.post('/send-otp', sendOTPValidation, sendOTP);
-router.post('/verify-login', verifyLoginValidation, verifyLogin); // New Unified Entry
+router.post('/verify-login', authRateLimiter, verifyLoginValidation, verifyLogin); // New Unified Entry
 router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
+router.post('/login', authRateLimiter, loginValidation, login);
 router.post('/refresh-token', require('../../controllers/userControllers/userAuthController').refreshToken);
 router.post('/logout', authenticate, isUser, logout);
 

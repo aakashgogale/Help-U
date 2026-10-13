@@ -19,6 +19,12 @@ import {
   FiTrash2,
   FiStar,
   FiGift,
+  FiAlertOctagon,
+  FiRepeat,
+  FiPlusCircle,
+  FiPercent,
+  FiTag,
+  FiBook,
 } from "react-icons/fi";
 import adminMenu from "../../config/adminMenu.json";
 import dashboardService from "../../services/dashboardService";
@@ -43,6 +49,13 @@ const iconMap = {
   Settings: FiSettings,
   Plans: FiPackage,
   Customization: FiSliders,
+  "Legal & Help Pages": FiBook,
+  Disputes: FiAlertOctagon,
+  "Recurring Bookings": FiRepeat,
+  "Add-ons": FiPlusCircle,
+  Commission: FiPercent,
+  "Booking Config": FiSliders,
+  "Coupons": FiTag,
 };
 
 // Helper function to convert child name to route path
@@ -53,6 +66,7 @@ const getChildRoute = (parentRoute, childName) => {
       "User Bookings": "/admin/users/bookings",
       "Transactions": "/admin/users/transactions",
       "User Analytics": "/admin/users/analytics",
+      "Customer Referrals": "/admin/users/referrals",
     },
     "/admin/workers": {
       "All Workers": "/admin/workers/all",
@@ -106,12 +120,36 @@ const getChildRoute = (parentRoute, childName) => {
   return routeMap[parentRoute]?.[childName] || parentRoute;
 };
 
+const ROUTE_PERMISSION_MAP = {
+  '/admin/dashboard': 'dashboard',
+  '/admin/users': 'users',
+  '/admin/workers': 'workers',
+  '/admin/bookings': 'bookings',
+  '/admin/disputes': 'disputes',
+  '/admin/recurring-bookings': 'recurring-bookings',
+  '/admin/scrap': 'scrap',
+  '/admin/payments': 'payments',
+  '/admin/settlements': 'settlements',
+  '/admin/commission': 'commission',
+  '/admin/user-categories': 'user-categories',
+  '/admin/user-categories/worker-services': 'worker-services',
+  '/admin/user-categories/worker-parts': 'worker-parts',
+  '/admin/addons': 'addons',
+  '/admin/reports': 'reports',
+  '/admin/reviews': 'reviews',
+  '/admin/plans': 'plans',
+  '/admin/coupons': 'coupons',
+  '/admin/settings': 'settings',
+  '/admin/customization': 'customization',
+  '/admin/booking-config': 'booking-config'
+};
+
 const AdminSidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState({});
   const [isMobile, setIsMobile] = useState(false);
-  const [adminUser, setAdminUser] = useState({ name: 'Admin', email: '', role: 'admin' });
+  const [adminUser, setAdminUser] = useState({ name: 'Admin', email: '', role: 'admin', permissions: [] });
   const [counts, setCounts] = useState({
     bookings: 0,
     workers: 0,
@@ -129,7 +167,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         setAdminUser({
           name: stored.name || 'Admin',
           email: stored.email || '',
-          role: stored.role || 'admin'
+          role: stored.role || 'admin',
+          permissions: Array.isArray(stored.permissions) ? stored.permissions : []
         });
       }
     } catch (e) {
@@ -137,11 +176,40 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     }
   }, []);
 
-  // Filter menu items by role
+  // Filter menu items by role or granular sub-admin permissions
   const filteredMenu = useMemo(() => adminMenu.filter(item => {
+    // Super admin has full access
+    if (adminUser.role === 'super_admin') return true;
+
+    const permKey = ROUTE_PERMISSION_MAP[item.route];
+
+    // Check custom permissions first if assigned
+    if (adminUser.permissions && adminUser.permissions.length > 0) {
+      if (adminUser.permissions.includes('*')) return true;
+      if (permKey) {
+        const alt1 = permKey.replace(/-/g, '_');
+        const alt2 = permKey.replace(/_/g, '-');
+        if (
+          adminUser.permissions.includes(permKey) ||
+          adminUser.permissions.includes(alt1) ||
+          adminUser.permissions.includes(alt2)
+        ) {
+          return true;
+        }
+      }
+      // Fallbacks for legacy/alias permissions
+      if (item.route.startsWith('/admin/user-categories') && (adminUser.permissions.includes('services') || adminUser.permissions.includes('user-categories'))) return true;
+      if (item.route === '/admin/customization' && (adminUser.permissions.includes('content') || adminUser.permissions.includes('customization'))) return true;
+      if (item.route === '/admin/settlements' && (adminUser.permissions.includes('payments') || adminUser.permissions.includes('settlements'))) return true;
+      if (item.route === '/admin/recurring-bookings' && (adminUser.permissions.includes('bookings') || adminUser.permissions.includes('recurring-bookings'))) return true;
+
+      // Sub-admin is denied if not explicitly permitted
+      if (adminUser.role === 'sub_admin') return false;
+    }
+
     if (!item.allowedRoles) return true;
     return item.allowedRoles.includes(adminUser.role);
-  }), [adminUser.role]);
+  }), [adminUser.role, adminUser.permissions]);
 
   // Fetch pending counts for badges
   useEffect(() => {
@@ -403,7 +471,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
                 {adminUser.name}
               </h2>
               <p className="text-xs text-gray-400 truncate">
-                {adminUser.role === 'super_admin' ? '⭐ Super Admin' : 'Admin'}
+                {adminUser.role === 'super_admin' ? '⭐ Super Admin' : adminUser.role === 'sub_admin' ? '🛡️ Sub Admin' : 'Admin'}
               </p>
             </div>
           </div>
@@ -435,7 +503,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 z-[99998] lg:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 z-60 lg:hidden backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
@@ -448,7 +516,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed left-0 top-0 bottom-0 w-[280px] z-[99999] lg:hidden shadow-2xl"
+            className="fixed left-0 top-0 bottom-0 w-[280px] z-61 lg:hidden shadow-2xl"
           >
             {sidebarContent}
           </motion.div>

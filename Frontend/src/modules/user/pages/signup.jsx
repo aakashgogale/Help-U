@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FiUser, FiMail, FiPhone, FiArrowRight, FiChevronLeft, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiArrowRight, FiChevronLeft, FiCheckCircle, FiGift } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../theme';
 import { userAuthService } from '../../../services/authService';
@@ -30,6 +30,15 @@ const Signup = () => {
   const [verificationToken, setVerificationToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  // Referral code from a shared link (?ref=CODE), kept across the login → signup hop.
+  const [referralCode, setReferralCode] = useState(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('ref');
+    if (fromUrl) {
+      try { localStorage.setItem('pendingReferralCode', fromUrl.toUpperCase()); } catch { /* storage unavailable */ }
+      return fromUrl.toUpperCase();
+    }
+    try { return localStorage.getItem('pendingReferralCode') || ''; } catch { return ''; }
+  });
 
   // Timer countdown effect
   useEffect(() => {
@@ -89,9 +98,11 @@ const Signup = () => {
         const response = await userAuthService.register({
           name: formData.name,
           email: formData.email || null,
-          verificationToken
+          verificationToken,
+          referralCode: referralCode.trim() || undefined
         });
         if (response.success) {
+          try { localStorage.removeItem('pendingReferralCode'); } catch { /* storage unavailable */ }
           try {
             const { registerFCMToken } = await import('../../../services/pushNotificationService');
             await registerFCMToken('user', true);
@@ -177,9 +188,11 @@ const Signup = () => {
         email: formData.email || null,
         phone: formData.phoneNumber,
         otp: otpValue,
-        token: otpToken
+        token: otpToken,
+        referralCode: referralCode.trim() || undefined
       });
       if (response.success) {
+        try { localStorage.removeItem('pendingReferralCode'); } catch { /* storage unavailable */ }
         setIsLoading(false);
         try {
           const { registerFCMToken } = await import('../../../services/pushNotificationService');
@@ -283,6 +296,27 @@ const Signup = () => {
                     onChange={handleInputChange}
                     className="block w-full pl-10 pr-4 py-3 bg-slate-50/70 hover:bg-slate-50 focus:bg-white text-slate-900 font-medium placeholder-slate-400 text-[15px] border border-slate-200/90 rounded-2xl outline-none transition-all duration-200 focus:border-[#163B66] focus:ring-4 focus:ring-[#163B66]/10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                     placeholder="you@example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="animate-stagger-2 animate-fade-in">
+                <label htmlFor="referralCode" className="block text-[13px] font-semibold text-slate-700 mb-1.5 tracking-tight">
+                  Referral Code <span className="text-slate-400 text-xs font-normal ml-1">(Optional)</span>
+                </label>
+                <div className="relative rounded-2xl group transition-all duration-200">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#163B66] transition-colors">
+                    <FiGift className="h-[18px] w-[18px]" />
+                  </div>
+                  <input
+                    id="referralCode"
+                    name="referralCode"
+                    type="text"
+                    autoCapitalize="characters"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20))}
+                    className="block w-full pl-10 pr-4 py-3 bg-slate-50/70 hover:bg-slate-50 focus:bg-white text-slate-900 font-medium placeholder-slate-400 text-[15px] border border-slate-200/90 rounded-2xl outline-none transition-all duration-200 focus:border-[#163B66] focus:ring-4 focus:ring-[#163B66]/10 shadow-[0_1px_2px_rgba(0,0,0,0.02)] tracking-widest"
+                    placeholder="Friend's code"
                   />
                 </div>
               </div>

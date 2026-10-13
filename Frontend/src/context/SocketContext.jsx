@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { playNotificationSound, isSoundEnabled, playAlertRing } from '../utils/notificationSound';
 import { registerFCMToken } from '../services/pushNotificationService';
+import { setBookingConfigCache } from '../hooks/useBookingConfig';
 
 const SwipeableNotification = ({ t, data, onClick }) => {
   const x = useMotionValue(0);
@@ -188,6 +189,12 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('notification', (data) => {
       // console.log('🔔 App Notification received:', data);
 
+      // A chat message for the conversation already open on screen needs no toast.
+      if (data?.type === 'chat_message' && window.__activeChatBookingId &&
+        String(window.__activeChatBookingId) === String(data.relatedId)) {
+        return;
+      }
+
       if (isSoundEnabled(userType)) {
         playNotificationSound();
       }
@@ -200,9 +207,14 @@ export const SocketProvider = ({ children }) => {
           onClick={() => {
             toast.dismiss(t.id);
             // Optional: navigate based on relatedId
-            if (data.relatedId) {
-              if (userType === 'worker') navigate(`/worker/booking/${data.relatedId}`);
-              else navigate(`/user/booking/${data.relatedId}`);
+            if (data.relatedType === 'dispute' && data.relatedId && userType !== 'admin') {
+              navigate(`/${userType}/disputes/${data.relatedId}`);
+            } else if (data.relatedType === 'recurring' && userType === 'user') {
+              navigate('/user/recurring-bookings');
+            } else if (data.relatedId) {
+              const chatSuffix = data.type === 'chat_message' ? '?chat=1' : '';
+              if (userType === 'worker') navigate(`/worker/booking/${data.relatedId}${chatSuffix}`);
+              else navigate(`/user/booking/${data.relatedId}${chatSuffix}`);
             }
           }}
         />
@@ -221,6 +233,20 @@ export const SocketProvider = ({ children }) => {
       if (userType === 'user') {
         window.dispatchEvent(new Event('userBookingsUpdated'));
       }
+    });
+
+    // Booking chat: forwarded as window events so any open chat or unread
+    // badge can react without holding its own socket listener.
+    newSocket.on('chat_message', (data) => {
+      window.dispatchEvent(new CustomEvent('bookingChatMessage', { detail: data }));
+    });
+    newSocket.on('chat_read', (data) => {
+      window.dispatchEvent(new CustomEvent('bookingChatRead', { detail: data }));
+    });
+
+    // Admin changed the booking configuration (features, limits, prices).
+    newSocket.on('booking_config_updated', (config) => {
+      setBookingConfigCache(config);
     });
 
     // Listen for real-time booking updates
@@ -255,6 +281,11 @@ export const SocketProvider = ({ children }) => {
           brandName: data.brandName,
           brandIcon: data.brandIcon,
           categoryIcon: data.categoryIcon,
+          issuePhotos: data.issuePhotos || [],
+          issueVideos: data.issueVideos || [],
+          customerNotes: data.customerNotes || null,
+          addOns: data.addOns || [],
+          isEmergency: !!data.isEmergency,
           scheduledDate: data.scheduledDate,
           scheduledTime: data.scheduledTime,
           timeSlot: {

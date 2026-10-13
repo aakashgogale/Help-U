@@ -1,6 +1,7 @@
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS } = require('../../utils/constants');
+const escapeRegex = require('../../utils/escapeRegex');
 
 /**
  * Get all bookings with filters and search
@@ -35,9 +36,10 @@ const getAllBookings = async (req, res) => {
 
     // Search by booking number or service name
     if (search) {
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { bookingNumber: { $regex: search, $options: 'i' } },
-        { serviceName: { $regex: search, $options: 'i' } }
+        { bookingNumber: { $regex: safeSearch, $options: 'i' } },
+        { serviceName: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
@@ -153,6 +155,7 @@ const cancelBooking = async (req, res) => {
     booking.status = BOOKING_STATUS.CANCELLED;
     booking.cancelledAt = new Date();
     booking.cancelledBy = 'admin';
+    booking.$locals.actor = 'admin';
     booking.cancellationReason = cancellationReason || 'Cancelled by admin';
 
     await booking.save();

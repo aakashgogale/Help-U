@@ -13,8 +13,23 @@ const serviceSchema = z.object({
   basePrice: z.number().min(0, "Price must be non-negative"),
   gstPercentage: z.number().min(0).max(100).default(18),
   discountPrice: z.number().optional(),
-  categoryId: z.string().min(1, "Category is required")
+  categoryId: z.string().min(1, "Category is required"),
+  pricingType: z.enum(["fixed", "hourly", "starting_from", "inspection_fee", "quote_required"]).default("fixed"),
+  hourlyRate: z.number().min(0).optional(),
+  minHours: z.number().int().min(1).optional(),
+  maxHours: z.number().int().min(1).optional(),
+  inspectionFee: z.number().min(0).optional(),
+  quoteContactNote: z.string().max(300).optional()
 });
+
+// How each pricing type is labelled and what it means for the customer.
+const PRICING_TYPES = [
+  { value: "fixed", label: "Fixed Price", hint: "One price for the whole service." },
+  { value: "hourly", label: "Hourly", hint: "Charged per hour; customer picks the duration at checkout." },
+  { value: "starting_from", label: "Starting From", hint: "Shown as a starting price; the worker's final bill can be higher." },
+  { value: "inspection_fee", label: "Inspection Fee", hint: "Customer pays only this fee to book a visit; the real quote comes after inspection." },
+  { value: "quote_required", label: "Quote Required", hint: "Cannot be booked online — shows a note asking the customer to contact support." }
+];
 
 const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
   const [fetching, setFetching] = useState(false);
@@ -180,7 +195,13 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
     basePrice: "",
     gstPercentage: 18,
     discountPrice: "",
-    categoryId: ""
+    categoryId: "",
+    pricingType: "fixed",
+    hourlyRate: "",
+    minHours: 1,
+    maxHours: 8,
+    inspectionFee: "",
+    quoteContactNote: ""
   });
   const [saving, setSaving] = useState(false);
 
@@ -201,7 +222,13 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
       basePrice: "",
       gstPercentage: 18,
       discountPrice: "",
-      categoryId: defaultCat
+      categoryId: defaultCat,
+      pricingType: "fixed",
+      hourlyRate: "",
+      minHours: 1,
+      maxHours: 8,
+      inspectionFee: "",
+      quoteContactNote: ""
     });
     setIsModalOpen(false);
   };
@@ -213,7 +240,13 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
       basePrice: service.basePrice,
       gstPercentage: service.gstPercentage || 18,
       discountPrice: service.discountPrice || "",
-      categoryId: service.categoryId?._id || service.categoryId || ""
+      categoryId: service.categoryId?._id || service.categoryId || "",
+      pricingType: service.pricingType || "fixed",
+      hourlyRate: service.hourlyRate ?? "",
+      minHours: service.minHours ?? 1,
+      maxHours: service.maxHours ?? 8,
+      inspectionFee: service.inspectionFee ?? "",
+      quoteContactNote: service.quoteContactNote || ""
     });
     setIsModalOpen(true);
   };
@@ -227,8 +260,23 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
       basePrice: Number(form.basePrice),
       gstPercentage: Number(form.gstPercentage),
       discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
-      categoryId: form.categoryId
+      categoryId: form.categoryId,
+      pricingType: form.pricingType,
+      hourlyRate: form.pricingType === "hourly" ? Number(form.hourlyRate || form.basePrice || 0) : undefined,
+      minHours: form.pricingType === "hourly" ? Number(form.minHours || 1) : undefined,
+      maxHours: form.pricingType === "hourly" ? Number(form.maxHours || 8) : undefined,
+      inspectionFee: form.pricingType === "inspection_fee" ? Number(form.inspectionFee || 0) : undefined,
+      quoteContactNote: form.pricingType === "quote_required" ? form.quoteContactNote.trim() : undefined
     };
+
+    if (form.pricingType === "hourly" && (!data.hourlyRate || data.hourlyRate <= 0)) {
+      toast.error("Please set an hourly rate");
+      return;
+    }
+    if (form.pricingType === "inspection_fee" && (data.inspectionFee === undefined || data.inspectionFee < 0)) {
+      toast.error("Please set an inspection fee");
+      return;
+    }
 
     const result = serviceSchema.safeParse(data);
     if (!result.success) {
@@ -455,6 +503,11 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
                             <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded mr-2 mt-1 inline-block">
                               {catTitle}
                             </span>
+                            {service.pricingType && service.pricingType !== "fixed" && (
+                              <span className="text-[10px] text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded mt-1 inline-block border border-sky-100">
+                                {PRICING_TYPES.find(pt => pt.value === service.pricingType)?.label || service.pricingType}
+                              </span>
+                            )}
                           </div>
                           <span className="bg-green-50 text-green-700 text-[10px] px-2 py-0.5 rounded font-bold border border-green-100 whitespace-nowrap">
                             {service.gstPercentage}% GST
@@ -462,10 +515,24 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
                         </div>
 
                         <div className="space-y-1 mt-2">
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-xs text-gray-500">Base Price</span>
-                            <span className="font-semibold text-gray-900">₹{service.basePrice}</span>
-                          </div>
+                          {service.pricingType === "hourly" ? (
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-xs text-gray-500">Rate</span>
+                              <span className="font-semibold text-gray-900">₹{service.hourlyRate || service.basePrice}/hr · {service.minHours}-{service.maxHours}h</span>
+                            </div>
+                          ) : service.pricingType === "inspection_fee" ? (
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-xs text-gray-500">Inspection Fee</span>
+                              <span className="font-semibold text-gray-900">₹{service.inspectionFee}</span>
+                            </div>
+                          ) : service.pricingType === "quote_required" ? (
+                            <div className="text-xs text-purple-700 italic">{service.quoteContactNote || "Custom quote only"}</div>
+                          ) : (
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-xs text-gray-500">{service.pricingType === "starting_from" ? "Starting From" : "Base Price"}</span>
+                              <span className="font-semibold text-gray-900">₹{service.basePrice}</span>
+                            </div>
+                          )}
                           {service.discountPrice && (
                             <div className="flex justify-between items-baseline">
                               <span className="text-xs text-gray-500">Discounted</span>
@@ -543,9 +610,27 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Pricing Model</label>
+            <select
+              value={form.pricingType}
+              onChange={e => setForm({ ...form, pricingType: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              {PRICING_TYPES.map(pt => (
+                <option key={pt.value} value={pt.value}>{pt.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {PRICING_TYPES.find(pt => pt.value === form.pricingType)?.hint}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Base Price (₹)</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1">
+                {form.pricingType === "starting_from" ? "Starting Price (₹)" : "Base Price (₹)"}
+              </label>
               <input
                 type="number"
                 value={form.basePrice}
@@ -569,6 +654,73 @@ const ServicesPage = ({ catalog, setCatalog, selectedCity }) => {
               />
             </div>
           </div>
+
+          {form.pricingType === "hourly" && (
+            <div className="grid grid-cols-3 gap-4 p-3 bg-sky-50 border border-sky-100 rounded-lg">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Rate / Hour (₹)</label>
+                <input
+                  type="number"
+                  value={form.hourlyRate}
+                  onChange={e => setForm({ ...form, hourlyRate: e.target.value })}
+                  placeholder={form.basePrice || "0"}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  min="0"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Min Hours</label>
+                <input
+                  type="number"
+                  value={form.minHours}
+                  onChange={e => setForm({ ...form, minHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Max Hours</label>
+                <input
+                  type="number"
+                  value={form.maxHours}
+                  onChange={e => setForm({ ...form, maxHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  min="1"
+                />
+              </div>
+            </div>
+          )}
+
+          {form.pricingType === "inspection_fee" && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Inspection Fee (₹)</label>
+              <input
+                type="number"
+                value={form.inspectionFee}
+                onChange={e => setForm({ ...form, inspectionFee: e.target.value })}
+                placeholder="e.g. 99"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                min="0"
+                required
+              />
+              <p className="text-[11px] text-gray-500 mt-1">The customer pays this to book the visit. The real cost is quoted by the professional after inspecting.</p>
+            </div>
+          )}
+
+          {form.pricingType === "quote_required" && (
+            <div className="p-3 bg-purple-50 border border-purple-100 rounded-lg">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Contact Note (shown instead of a price)</label>
+              <input
+                value={form.quoteContactNote}
+                onChange={e => setForm({ ...form, quoteContactNote: e.target.value })}
+                placeholder="e.g. Call us for a custom quote"
+                maxLength={300}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">This service cannot be booked online; customers see this note instead of an Add button.</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Discount Price (Optional)</label>

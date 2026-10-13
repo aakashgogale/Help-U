@@ -68,6 +68,12 @@ const categorySchema = new mongoose.Schema({
     default: false,
     index: true
   },
+  // Offers emergency booking for services in this category (when emergency
+  // bookings are enabled in the booking configuration).
+  isEmergencyAvailable: {
+    type: Boolean,
+    default: false
+  },
   metaTitle: {
     type: String,
     trim: true

@@ -2,6 +2,36 @@ const Service = require('../../models/UserService');
 const Brand = require('../../models/Brand');
 const { validationResult } = require('express-validator');
 const { SERVICE_STATUS } = require('../../utils/constants');
+const { buildServiceContent } = require('../../utils/serviceContent');
+const { validatePricingFields } = require('../../utils/servicePricing');
+
+/**
+ * Pulls the pricing-model fields out of a request body, applying sensible
+ * defaults per type so a half-filled form never saves inconsistent data
+ * (e.g. an hourly service with no rate).
+ */
+const buildPricingFields = (body) => {
+  const pricingType = body.pricingType || 'fixed';
+  const fields = { pricingType };
+
+  if (pricingType === 'hourly') {
+    fields.hourlyRate = body.hourlyRate !== undefined ? Number(body.hourlyRate) : Number(body.basePrice) || 0;
+    fields.minHours = body.minHours !== undefined ? Number(body.minHours) : 1;
+    fields.maxHours = body.maxHours !== undefined ? Number(body.maxHours) : 8;
+  } else {
+    fields.hourlyRate = null;
+  }
+
+  if (pricingType === 'inspection_fee') {
+    fields.inspectionFee = Number(body.inspectionFee) || 0;
+  } else {
+    fields.inspectionFee = null;
+  }
+
+  fields.quoteContactNote = pricingType === 'quote_required' ? String(body.quoteContactNote || '').trim() : '';
+
+  return fields;
+};
 
 /**
  * Get all services (with filter by brandId)
@@ -90,6 +120,11 @@ const createService = async (req, res) => {
       iconUrl
     } = req.body;
 
+    const pricingCheck = validatePricingFields(req.body);
+    if (pricingCheck.error) {
+      return res.status(400).json({ success: false, message: pricingCheck.error });
+    }
+
     // Verify brand exists
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -109,7 +144,9 @@ const createService = async (req, res) => {
       gstPercentage: gstPercentage || 18,
       description,
       status: status || SERVICE_STATUS.ACTIVE,
-      iconUrl
+      iconUrl,
+      ...buildPricingFields(req.body),
+      ...buildServiceContent(req.body)
     });
 
     res.status(201).json({
@@ -171,6 +208,28 @@ const updateService = async (req, res) => {
     if (updates.status) service.status = updates.status;
     if (updates.iconUrl !== undefined) service.iconUrl = updates.iconUrl;
     if (updates.brandId) service.brandId = updates.brandId;
+
+    if (updates.pricingType !== undefined) {
+      const pricingCheck = validatePricingFields({ ...service.toObject(), ...updates });
+      if (pricingCheck.error) {
+        return res.status(400).json({ success: false, message: pricingCheck.error });
+      }
+      Object.assign(service, buildPricingFields({ ...service.toObject(), ...updates }));
+    } else if (['hourlyRate', 'minHours', 'maxHours', 'inspectionFee', 'quoteContactNote'].some((k) => updates[k] !== undefined)) {
+      // Pricing type unchanged but one of its parameters was edited.
+      const pricingCheck = validatePricingFields({ pricingType: service.pricingType, ...updates });
+      if (pricingCheck.error) {
+        return res.status(400).json({ success: false, message: pricingCheck.error });
+      }
+      if (updates.hourlyRate !== undefined) service.hourlyRate = Number(updates.hourlyRate);
+      if (updates.minHours !== undefined) service.minHours = Number(updates.minHours);
+      if (updates.maxHours !== undefined) service.maxHours = Number(updates.maxHours);
+      if (updates.inspectionFee !== undefined) service.inspectionFee = Number(updates.inspectionFee);
+      if (updates.quoteContactNote !== undefined) service.quoteContactNote = String(updates.quoteContactNote).trim();
+    }
+
+    // Detail content: only the keys present in the payload are applied.
+    Object.assign(service, buildServiceContent(updates));
 
     // Slugs are auto-updated if title changes via pre-save hook? 
     // Wait, the pre-save hook only runs if slug is empty or we explicitly modify it?

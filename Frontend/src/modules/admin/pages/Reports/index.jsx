@@ -25,6 +25,7 @@ import CardShell from '../UserCategories/components/CardShell';
 import RevenueReport from './RevenueReport';
 import BookingReport from './BookingReport';
 import WorkerReport from './WorkerReport';
+import AdvancedAnalytics from './AdvancedAnalytics';
 
 const ReportsOverview = () => {
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,23 @@ const ReportsOverview = () => {
     <div className="space-y-6">
       {/* Quick Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link to="/admin/reports/analytics" className="group">
+          <CardShell className="bg-gradient-to-br from-amber-600 to-amber-700 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-amber-100 font-bold uppercase tracking-wider text-[10px]">Executive Intelligence</p>
+                <h3 className="text-lg font-black mt-0.5">Marketplace Analytics</h3>
+              </div>
+              <div className="bg-white/20 p-2.5 rounded-xl">
+                <FiTrendingUp size={20} />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-xs font-bold text-amber-100">
+              GMV, AOV & City Metrics <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </CardShell>
+        </Link>
+
         <Link to="/admin/reports/bookings" className="group">
           <CardShell className="bg-gradient-to-br from-primary-600 to-primary-700 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
             <div className="flex items-center justify-between">
@@ -135,10 +153,10 @@ const ReportsOverview = () => {
         </Link>
 
         <Link to="/admin/reports/workers" className="group">
-          <CardShell className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
+          <CardShell className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-amber-100 font-bold uppercase tracking-wider text-[10px]">Partner Insights</p>
+                <p className="text-indigo-100 font-bold uppercase tracking-wider text-[10px]">Partner Insights</p>
                 <h3 className="text-lg font-black mt-0.5">Worker Reports</h3>
               </div>
               <div className="bg-white/20 p-2.5 rounded-xl">
@@ -277,6 +295,7 @@ const Reports = () => {
 
   const navTabs = [
     { name: 'Overview', path: '/admin/reports', icon: FiActivity, exact: true },
+    { name: 'Marketplace Analytics', path: '/admin/reports/analytics', icon: FiTrendingUp },
     { name: 'Revenue', path: '/admin/reports/revenue', icon: FiDollarSign },
     { name: 'Bookings', path: '/admin/reports/bookings', icon: FiShoppingBag },
     { name: 'Workers', path: '/admin/reports/workers', icon: FiUsers },
@@ -291,6 +310,7 @@ const Reports = () => {
     <div className="space-y-4">
       <Routes>
         <Route index element={<ReportsOverview />} />
+        <Route path="analytics" element={<AdvancedAnalytics />} />
         <Route path="revenue" element={<RevenueReport />} />
         <Route path="bookings" element={<BookingReport />} />
         <Route path="workers" element={<WorkerReport />} />

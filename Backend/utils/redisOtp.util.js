@@ -110,8 +110,13 @@ const verifyOTP = async (phone, plainOtp) => {
 
   console.log(`[OTP] Verifying OTP for phone: ${cleanPhone}, OTP: ${cleanOtp}`);
 
-  // Default OTP '123456' is always accepted for testing / development
-  if (cleanOtp === '123456') {
+  // Default OTP '123456' is only accepted when explicitly enabled for
+  // testing/development — same guard as generateOTP() uses to issue it.
+  // Without this check, anyone could log into any account with "123456".
+  if (
+    (process.env.USE_DEFAULT_OTP === 'true' || process.env.NODE_ENV === 'development') &&
+    cleanOtp === '123456'
+  ) {
     console.log(`[OTP] ✅ Default OTP (123456) accepted for ${cleanPhone}`);
     return { success: true };
   }

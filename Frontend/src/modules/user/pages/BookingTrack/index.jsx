@@ -76,6 +76,9 @@ const BookingTrack = () => {
       : booking.razorpayOrderId;
 
     if (existingOrderId) {
+      // No fresh backend call here, so there's no response to read `key` from —
+      // this must stay in sync with the backend's RAZORPAY_KEY_ID (a mismatch
+      // causes a 400 from Razorpay's checkout preferences API).
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: Math.round(((paymentType === 'advance'
@@ -128,7 +131,7 @@ const BookingTrack = () => {
       }
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: orderResponse.data.key,
         amount: orderResponse.data.amount * 100,
         currency: orderResponse.data.currency || 'INR',
         order_id: orderResponse.data.orderId,

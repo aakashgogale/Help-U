@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllPlans,
   getPlanById,
@@ -18,12 +18,12 @@ router.get('/plans', authenticate, getAllPlans);
 router.get('/plans/:id', authenticate, getPlanById);
 
 // POST /api/admin/plans - Create new plan
-router.post('/plans', authenticate, isAdmin, createPlan);
+router.post('/plans', authenticate, isAdmin, requirePermission('plans'), createPlan);
 
 // PUT /api/admin/plans/:id - Update plan
-router.put('/plans/:id', authenticate, isAdmin, updatePlan);
+router.put('/plans/:id', authenticate, isAdmin, requirePermission('plans'), updatePlan);
 
 // DELETE /api/admin/plans/:id - Delete plan
-router.delete('/plans/:id', authenticate, isAdmin, deletePlan);
+router.delete('/plans/:id', authenticate, isAdmin, requirePermission('plans'), deletePlan);
 
 module.exports = router;

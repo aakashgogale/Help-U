@@ -100,7 +100,8 @@ app.use(cookieParser());
 
 // DEBUG: Log Booking Request Body
 app.use('/api/users/bookings', (req, res, next) => {
-  if (req.method === 'POST') {
+  // Booking creation only: other POSTs here (e.g. /issue-photos) carry base64 images.
+  if (req.method === 'POST' && req.path === '/') {
     console.log('DEBUG: POST /api/users/bookings BODY:', JSON.stringify(req.body, null, 2));
   }
   next();
@@ -203,6 +204,10 @@ app.use('/api/user/wallet', require('./routes/user-routes/userWallet.routes'));
 app.use('/api/users/bookings', require('./routes/user-routes/booking.routes'));
 app.use('/api/users', require('./routes/user-routes/cart.routes'));
 app.use('/api/users/fcm-tokens', require('./routes/user-routes/fcmToken.routes'));
+app.use('/api/users/referrals', require('./routes/user-routes/referral.routes'));
+app.use('/api/users/coupons', require('./routes/user-routes/coupon.routes'));
+app.use('/api/users/recurring-bookings', require('./routes/user-routes/recurring.routes'));
+app.use('/api/users/disputes', require('./routes/dispute.routes').userDisputeRoutes);
 
 // Scrap routes
 const scrapRoutes = require('./routes/scrap.routes');
@@ -220,6 +225,7 @@ app.use('/api/workers/fcm-tokens', require('./routes/worker-routes/fcmToken.rout
 app.use('/api/workers', require('./routes/worker-routes/workerBill.routes'));
 app.use('/api/workers/catalog', require('./routes/worker-routes/catalog.routes'));
 app.use('/api/workers', require('./routes/worker-routes/referral.routes'));
+app.use('/api/workers/disputes', require('./routes/dispute.routes').workerDisputeRoutes);
 
 
 // Admin routes
@@ -234,16 +240,20 @@ app.use('/api/admin', require('./routes/admin-routes/brandManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/serviceManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/workerCatalogManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/homePageManagement.routes'));
+app.use('/api/admin', require('./routes/admin-routes/legalPage.routes'));
 app.use('/api/admin', require('./routes/admin-routes/bookingManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/paymentManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/transactionManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/upload.routes'));
 app.use('/api/admin', require('./routes/admin-routes/planManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/settings.routes'));
+app.use('/api/admin/coupons', require('./routes/admin-routes/coupon.routes'));
 app.use('/api/admin', require('./routes/admin-routes/reviewManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/reportManagement.routes'));
 app.use('/api/admin/settlements', require('./routes/admin-routes/settlementManagement.routes'));
 app.use('/api/admin/admins', require('./routes/admin-routes/adminManagement.routes'));
+app.use('/api/admin/disputes', require('./routes/admin-routes/dispute.routes'));
+app.use('/api/admin', require('./routes/admin-routes/bookingFeatures.routes'));
 app.use('/api/image', require('./routes/admin-routes/image.routes'));
 app.use('/api', require('./routes/admin-routes/upload.routes')); // Generic upload access
 
@@ -317,6 +327,10 @@ if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
   const { initializeScheduler } = require('./services/bookingScheduler');
   initializeScheduler(getIO());
   console.log('[Server] Booking Scheduler initialized for wave-based alerting');
+
+  // Books upcoming visits of recurring plans ahead of time
+  const { initializeRecurringRunner } = require('./services/recurringBookingService');
+  initializeRecurringRunner();
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (err) => {

@@ -1,196 +1,195 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-
-import { FiCopy, FiArrowLeft, FiGift, FiBell } from 'react-icons/fi';
-import { FaWhatsapp, FaFacebookMessenger } from 'react-icons/fa';
+import { FiCopy, FiArrowLeft, FiGift, FiShare2, FiUsers, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import { themeColors } from '../../../../theme';
+import bookingFeaturesService from '../../../../services/bookingFeaturesService';
 
+const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+const CRITERIA_TEXT = {
+  ON_SIGNUP: 'as soon as they sign up',
+  FIRST_BOOKING: 'when they complete their first booking',
+  MANUAL_ADMIN_APPROVAL: 'once our team approves the referral'
+};
+
+const STATUS_BADGE = {
+  pending: { label: 'Pending', className: 'bg-amber-50 text-amber-700' },
+  approved: { label: 'Approved', className: 'bg-sky-50 text-sky-700' },
+  rewarded: { label: 'Rewarded', className: 'bg-emerald-50 text-emerald-700' },
+  rejected: { label: 'Not eligible', className: 'bg-gray-100 text-gray-500' }
+};
+
+/**
+ * Refer & Earn: the customer's code, earnings and referred friends, using the
+ * referral programme configured by the admin.
+ */
 const Rewards = () => {
   const navigate = useNavigate();
-  const handleCopyLink = () => {
-    // Copy referral link to clipboard
-    const referralLink = 'https://appzeto.com/refer/your-link';
-    navigator.clipboard.writeText(referralLink).then(() => {
-      toast.success('Link copied to clipboard!');
-    });
+  const [stats, setStats] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      bookingFeaturesService.getReferralStats(),
+      bookingFeaturesService.getReferralHistory({ limit: 50 })
+    ])
+      .then(([s, h]) => {
+        if (s.success) setStats(s.stats);
+        if (h.success) setHistory(h.items || []);
+      })
+      .catch(() => toast.error('Failed to load referral details'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const code = stats?.referralCode || '';
+  const link = code ? `${window.location.origin}/user/signup?ref=${encodeURIComponent(code)}` : '';
+  const shareText = stats
+    ? `Use my code ${code} to sign up on Help U${stats.joiningBonus > 0 ? ` and get ${money(stats.joiningBonus)} in your wallet` : ''}! ${link}`
+    : '';
+
+  const copy = (value, label) => {
+    navigator.clipboard.writeText(value)
+      .then(() => toast.success(`${label} copied`))
+      .catch(() => toast.error('Could not copy'));
   };
 
-  const handleShareWhatsApp = () => {
-    const text = 'Check out this amazing electrical services app!';
-    const url = 'https://appzeto.com/refer/your-link';
-    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+  const share = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Help U', text: shareText, url: link });
+      } catch {
+        // User dismissed the share sheet.
+      }
+    } else {
+      copy(shareText, 'Invite message');
+    }
   };
 
-  const handleShareMessenger = () => {
-    const url = 'https://appzeto.com/refer/your-link';
-    window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(url)}&app_id=your-app-id`, '_blank');
-  };
   return (
-    <div
-      className="min-h-screen bg-white"
-      style={{ background: themeColors.backgroundGradient }}
-    >
-      {/* Header */}
-      <div className="bg-white sticky top-0 z-50 border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-1.5 hover:bg-gray-50 rounded-full transition-colors"
-          >
-            <FiArrowLeft className="w-5 h-5 text-gray-800" />
-          </button>
-          <div className="flex items-center gap-2">
-            <FiGift className="w-5 h-5" style={{ color: '#00A6A6' }} />
-            <h1 className="text-lg font-bold text-gray-900">Refer & Earn</h1>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate('/user/notifications')}
-          className="p-2 hover:bg-gray-50 rounded-full transition-colors"
-        >
-          <FiBell className="w-6 h-6 text-gray-700" />
+    <div className="min-h-screen pb-10" style={{ background: themeColors.backgroundGradient }}>
+      <div className="bg-white sticky top-0 z-50 border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-50 rounded-full transition-colors" aria-label="Back">
+          <FiArrowLeft className="w-5 h-5 text-gray-800" />
         </button>
+        <FiGift className="w-5 h-5" style={{ color: themeColors.button }} />
+        <h1 className="text-lg font-bold text-gray-900">Refer & Earn</h1>
       </div>
 
-      <main>
-        {/* Main Referral Section */}
-        <div className="bg-gray-50 relative overflow-hidden" style={{ background: 'transparent' }}>
-          {/* Dotted Pattern Background */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_black_1px,_transparent_1px)] bg-[length:20px_20px]"></div>
+      <main className="px-4 py-5 space-y-4">
+        {loading ? (
+          <>
+            <div className="h-48 bg-white rounded-3xl animate-pulse" />
+            <div className="h-24 bg-white rounded-3xl animate-pulse" />
+          </>
+        ) : !stats?.isEnabled ? (
+          <div className="bg-white rounded-3xl p-8 text-center border border-gray-100">
+            <FiGift className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="font-bold text-gray-800">Referral programme is paused</p>
+            <p className="text-sm text-gray-500 mt-1">Check back soon for new rewards.</p>
           </div>
+        ) : (
+          <>
+            {/* Hero */}
+            <section className="rounded-3xl p-6 text-white relative overflow-hidden" style={{ background: themeColors.headerGradient }}>
+              <p className="text-sm font-medium text-white/80">Invite friends, earn</p>
+              <p className="text-4xl font-black mt-1">{money(stats.rewardPerReferral)}</p>
+              <p className="text-sm text-white/80 mt-1">
+                for each friend, credited to your wallet {CRITERIA_TEXT[stats.criteria] || ''}.
+                {stats.joiningBonus > 0 && ` Your friend gets ${money(stats.joiningBonus)} too.`}
+              </p>
 
-          <div className="relative px-4 py-4">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-black mb-2">
-                  Refer and get FREE services
-                </h2>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  Invite your friends to try our electrical services. They get instant ₹100 off. You win ₹100 once they take a service.
-                </p>
-              </div>
-              {/* Gift Box Illustration */}
-              <div className="relative shrink-0">
-                <div className="w-16 h-16 bg-yellow-400 rounded-lg flex items-center justify-center transform rotate-12 shadow-lg">
-                  <span className="text-3xl">🎁</span>
+              <div className="mt-5 bg-white/10 border border-white/20 rounded-2xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/70">Your code</p>
+                  <p className="text-xl font-black tracking-widest">{code || '—'}</p>
                 </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full"></div>
-                <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-orange-300 rounded-full"></div>
+                {code && (
+                  <button type="button" onClick={() => copy(code, 'Code')} className="p-2.5 rounded-xl bg-white/15 hover:bg-white/25" aria-label="Copy code">
+                    <FiCopy className="w-5 h-5" />
+                  </button>
+                )}
               </div>
-            </div>
 
-            {/* Refer Via Section */}
-            <div className="mb-2">
-              <p className="text-xs font-medium text-gray-700 mb-2">Refer via</p>
-              <div className="flex gap-3">
-                {/* WhatsApp */}
-                <button
-                  onClick={handleShareWhatsApp}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <div className="w-12 h-12 bg-[#25D366] rounded-full flex items-center justify-center">
-                    <FaWhatsapp className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="text-[10px] text-gray-700">Whatsapp</span>
-                </button>
+              {code && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank')}
+                    className="py-3 rounded-xl bg-[#25D366] text-white font-bold text-sm flex items-center justify-center gap-2">
+                    <FaWhatsapp className="w-4 h-4" /> WhatsApp
+                  </button>
+                  <button type="button" onClick={share}
+                    className="py-3 rounded-xl bg-white text-gray-900 font-bold text-sm flex items-center justify-center gap-2">
+                    <FiShare2 className="w-4 h-4" /> Share
+                  </button>
+                </div>
+              )}
+            </section>
 
-                {/* Messenger */}
-                <button
-                  onClick={handleShareMessenger}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <div className="w-12 h-12 bg-[#0084FF] rounded-full flex items-center justify-center">
-                    <FaFacebookMessenger className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="text-[10px] text-gray-700">Messenger</span>
-                </button>
+            {/* Stats */}
+            <section className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Earned', value: money(stats.totalEarnings), icon: FiGift },
+                { label: 'Rewarded', value: stats.rewardedReferrals, icon: FiCheckCircle },
+                { label: 'Pending', value: stats.pendingReferrals, icon: FiClock }
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
+                  <Icon className="w-4 h-4 mx-auto text-gray-400" />
+                  <p className="text-lg font-black text-gray-900 mt-1">{value}</p>
+                  <p className="text-[11px] text-gray-500">{label}</p>
+                </div>
+              ))}
+            </section>
 
-                {/* Copy Link */}
-                <button
-                  onClick={handleCopyLink}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00A6A6' }}>
-                    <FiCopy className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="text-[10px] text-gray-700">Copy Link</span>
-                </button>
+            {/* How it works */}
+            <section className="bg-white rounded-3xl border border-gray-100 p-5">
+              <h3 className="font-bold text-gray-900 mb-3">How it works</h3>
+              <ol className="space-y-3">
+                {[
+                  'Share your code or link with friends.',
+                  'They sign up on Help U using your code.',
+                  `You get ${money(stats.rewardPerReferral)} ${CRITERIA_TEXT[stats.criteria] || ''}.`
+                ].map((step, i) => (
+                  <li key={step} className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0" style={{ backgroundColor: themeColors.button }}>{i + 1}</span>
+                    <span className="text-sm text-gray-700">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {/* History */}
+            <section className="bg-white rounded-3xl border border-gray-100 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <FiUsers className="w-4 h-4 text-gray-500" />
+                <h3 className="font-bold text-gray-900">Your referrals ({stats.totalReferrals})</h3>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* How it works Section */}
-        <div className="px-4 py-4 bg-white rounded-t-3xl shadow-sm border-t border-gray-100">
-          <h3 className="text-base font-bold text-black mb-3">How it works?</h3>
-
-          <div className="relative pl-7">
-            {/* Vertical Line */}
-            <div className="absolute left-3.5 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-
-            {/* Step 1 */}
-            <div className="relative mb-4">
-              <div className="absolute -left-7 w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
-                1
-              </div>
-              <p className="text-xs text-gray-700">Invite your friends & get rewarded</p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="relative mb-4">
-              <div className="absolute -left-7 w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
-                2
-              </div>
-              <p className="text-xs text-gray-700">They get ₹100 on their first service</p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="relative">
-              <div className="absolute -left-7 w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
-                3
-              </div>
-              <p className="text-xs text-gray-700">You get ₹100 once their service is completed</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Links Section */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-white">
-          <div className="flex items-center gap-2 text-[#00A6A6] text-xs">
-            <span className="text-[#00A6A6]">•</span>
-            <button className="hover:underline">Terms and conditions</button>
-            <span className="text-[#00A6A6]">•</span>
-            <button className="hover:underline">FAQs</button>
-          </div>
-        </div>
-
-        {/* Scratch Cards Section - New Addition */}
-        <div className="px-4 py-4 bg-white border-t border-gray-100">
-          <h2 className="text-base font-bold text-gray-800 mb-1.5">
-            You are yet to earn any scratch cards
-          </h2>
-          <p className="text-xs text-gray-500 mb-3">
-            Start referring to get surprises
-          </p>
-
-          {/* Dotted Line Separator */}
-          <div className="border-t border-dotted border-gray-300 my-3"></div>
-
-          {/* Referral Offer */}
-          <div className="flex items-center gap-2.5 mt-4">
-            <div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">🎁</span>
-            </div>
-            <p className="text-sm text-gray-800 font-medium">
-              Earn ₹100 on every successful referral
-            </p>
-          </div>
-        </div>
+              {history.length === 0 ? (
+                <p className="text-sm text-gray-500">No one has joined with your code yet.</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {history.map((r) => {
+                    const badge = STATUS_BADGE[r.status] || STATUS_BADGE.pending;
+                    return (
+                      <div key={r.id} className="py-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{r.name}</p>
+                          <p className="text-[11px] text-gray-400">{r.phone} · joined {new Date(r.joinedAt).toLocaleDateString('en-IN')}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>{badge.label}</span>
+                          {r.status === 'rewarded' && <p className="text-xs font-bold text-emerald-600 mt-0.5">+{money(r.rewardAmount)}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </main>
-
-
     </div>
   );
 };

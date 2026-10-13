@@ -81,6 +81,29 @@ const uploadDocuments = multer({
   { name: 'otherDocuments', maxCount: 5 }
 ]);
 
+// Video upload to a temporary file, expecting a 'video' field. The controller
+// streams the file to Cloudinary and deletes it. 100MB is a hard ceiling; the
+// admin's configured limit (Settings.maxIssueVideoSizeMB) is checked after.
+const os = require('os');
+const path = require('path');
+
+const VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/x-matroska', 'video/x-m4v'];
+
+const uploadVideoToTemp = multer({
+  storage: multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase().replace(/[^.a-z0-9]/g, '') || '.mp4';
+      cb(null, `issue-video-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  }),
+  fileFilter: (req, file, cb) => {
+    if (VIDEO_MIME_TYPES.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Please upload an MP4, MOV or WEBM video'), false);
+  },
+  limits: { fileSize: 100 * 1024 * 1024, files: 1 }
+}).single('video');
+
 // Error handling middleware
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -113,5 +136,6 @@ module.exports = {
   uploadImage,
   uploadProfilePhoto,
   uploadDocuments,
+  uploadVideoToTemp,
   handleMulterError
 };

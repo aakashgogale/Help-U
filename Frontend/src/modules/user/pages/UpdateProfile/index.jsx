@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
 import { userAuthService } from '../../../../services/authService';
+import api from '../../../../services/api';
 import flutterBridge from '../../../../utils/flutterBridge';
 
 import { z } from "zod";
@@ -110,26 +111,15 @@ const UpdateProfile = () => {
     fetchProfile();
   }, []);
 
-  // Upload file helper
+  // Upload file helper — uses the authenticated api client so the request
+  // carries the logged-in user's token (the endpoint requires auth).
   const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    let baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    if (!baseUrl) {
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrl = 'http://localhost:5000';
-      } else {
-        baseUrl = window.location.origin;
-      }
-    }
-    baseUrl = baseUrl.replace(/\/api$/, '');
-    const response = await fetch(`${baseUrl}/api/image/upload`, {
-      method: 'POST',
-      body: formData,
+    const { data } = await api.post('/image/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
-
-    const data = await response.json();
     if (!data.success) throw new Error(data.message || 'Upload failed');
     return data.imageUrl;
   };

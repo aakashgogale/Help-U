@@ -3,6 +3,7 @@ import { FiX, FiMapPin, FiClock, FiDollarSign, FiArrowRight, FiBell, FiAlertCirc
 import { motion, AnimatePresence } from 'framer-motion';
 import { workerTheme as themeColors } from '../../../../theme';
 import { playAlertRing, stopAlertRing } from '../../../../utils/notificationSound';
+import RequestExtras from './RequestExtras';
 
 const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }) => {
   // Calculate initial time synchronously instead of relying solely on useEffect
@@ -186,11 +187,19 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
                 {booking.serviceCategory || booking.serviceId?.categoryId?.title || booking.serviceId?.category?.title || booking.categoryName || 'General Service'}
               </span>
             </div>
-            <div className="bg-red-50 border border-red-100 px-1.5 py-1 rounded-md">
-              <span className="text-[9px] font-black text-red-600 tracking-widest flex items-center gap-1 uppercase">
-                <FiBell className="w-3 h-3 animate-pulse" /> Urgent
-              </span>
-            </div>
+            {booking.isEmergency ? (
+              <div className="bg-rose-600 px-2 py-1 rounded-md shadow-sm">
+                <span className="text-[9px] font-black text-white tracking-widest flex items-center gap-1 uppercase">
+                  <FiAlertCircle className="w-3 h-3 animate-pulse" /> Emergency
+                </span>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-100 px-1.5 py-1 rounded-md">
+                <span className="text-[9px] font-black text-red-600 tracking-widest flex items-center gap-1 uppercase">
+                  <FiBell className="w-3 h-3 animate-pulse" /> Urgent
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Service Details Card */}
@@ -208,6 +217,8 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
               )}
             </div>
           </div>
+
+          <RequestExtras booking={booking} className="pt-1" />
         </div>
 
         <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-5 text-xs space-y-2">

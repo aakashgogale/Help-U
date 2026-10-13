@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllServices,
   getServiceById,
@@ -18,10 +18,10 @@ const serviceValidation = [
   body('gstPercentage').isNumeric().withMessage('GST Percentage must be a number')
 ];
 
-router.get('/services', authenticate, isAdmin, getAllServices);
-router.get('/services/:id', authenticate, isAdmin, getServiceById);
-router.post('/services', authenticate, isAdmin, serviceValidation, createService);
-router.put('/services/:id', authenticate, isAdmin, updateService);
-router.delete('/services/:id', authenticate, isAdmin, deleteService);
+router.get('/services', authenticate, isAdmin, requirePermission('services'), getAllServices);
+router.get('/services/:id', authenticate, isAdmin, requirePermission('services'), getServiceById);
+router.post('/services', authenticate, isAdmin, requirePermission('services'), serviceValidation, createService);
+router.put('/services/:id', authenticate, isAdmin, requirePermission('services'), updateService);
+router.delete('/services/:id', authenticate, isAdmin, requirePermission('services'), deleteService);
 
 module.exports = router;

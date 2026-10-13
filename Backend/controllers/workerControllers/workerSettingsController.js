@@ -59,7 +59,7 @@ const updateSettings = async (req, res) => {
     }
 
     const vendorId = req.user.id;
-    const { notifications, soundAlerts, language } = req.body;
+    const { notifications, soundAlerts, language, acceptsEmergency } = req.body;
 
     const worker = await Worker.findById(vendorId);
 
@@ -75,6 +75,7 @@ const updateSettings = async (req, res) => {
     if (notifications !== undefined) worker.settings.notifications = notifications;
     if (soundAlerts !== undefined) worker.settings.soundAlerts = soundAlerts;
     if (language !== undefined) worker.settings.language = language;
+    if (acceptsEmergency !== undefined) worker.settings.acceptsEmergency = Boolean(acceptsEmergency);
 
     await worker.save();
 

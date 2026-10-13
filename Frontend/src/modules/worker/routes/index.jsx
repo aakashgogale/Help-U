@@ -60,8 +60,13 @@ const SettlementRequest = lazyLoad(() => import('../pages/Wallet/SettlementReque
 const SettlementHistory = lazyLoad(() => import('../pages/Wallet/SettlementHistory'));
 const MyRatings = lazyLoad(() => import('../pages/MyRatings'));
 const AboutHelpU = lazyLoad(() => import('../pages/AboutHelpU'));
+const Terms = lazyLoad(() => import('../pages/Terms'));
+const PrivacyPolicy = lazyLoad(() => import('../pages/PrivacyPolicy'));
+const Faq = lazyLoad(() => import('../pages/Faq'));
 const BillingPage = lazyLoad(() => import('../pages/BillingPage'));
 const ReferEarn = lazyLoad(() => import('../pages/ReferEarn'));
+const WorkerDisputes = lazyLoad(() => import('../pages/Disputes'));
+const WorkerDisputeDetail = lazyLoad(() => import('../pages/Disputes/DisputeDetail'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
@@ -120,6 +125,12 @@ const WorkerRoutes = () => {
               <Route path="/notifications" element={<ProtectedRoute userType="worker"><Notifications /></ProtectedRoute>} />
               <Route path="/my-ratings" element={<ProtectedRoute userType="worker"><MyRatings /></ProtectedRoute>} />
               <Route path="/about-helpu" element={<ProtectedRoute userType="worker"><AboutHelpU /></ProtectedRoute>} />
+              {/* Public — must be reachable before login (e.g. linked from signup) */}
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/faq" element={<Faq />} />
+              <Route path="/disputes" element={<ProtectedRoute userType="worker"><WorkerDisputes /></ProtectedRoute>} />
+              <Route path="/disputes/:id" element={<ProtectedRoute userType="worker"><WorkerDisputeDetail /></ProtectedRoute>} />
             </Routes>
           </PageTransition>
         </Suspense>

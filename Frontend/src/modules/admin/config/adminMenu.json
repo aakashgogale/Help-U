@@ -18,7 +18,8 @@
     "children": [
       "All Users",
       "User Bookings",
-      "User Analytics"
+      "User Analytics",
+      "Customer Referrals"
     ]
   },
   {
@@ -47,6 +48,24 @@
       "Booking Tracking",
       "Booking Notifications"
     ]
+  },
+  {
+    "title": "Disputes",
+    "route": "/admin/disputes",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
+    "title": "Recurring Bookings",
+    "route": "/admin/recurring-bookings",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
   },
   {
     "title": "Scrap Items",
@@ -85,6 +104,14 @@
     ]
   },
   {
+    "title": "Commission",
+    "route": "/admin/commission",
+    "allowedRoles": [
+      "super_admin"
+    ],
+    "children": []
+  },
+  {
     "title": "User Catalog",
     "route": "/admin/user-categories",
     "allowedRoles": [
@@ -117,12 +144,24 @@
     "children": []
   },
   {
+    "title": "Add-ons",
+    "route": "/admin/addons",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
     "title": "Reports",
     "route": "/admin/reports",
     "allowedRoles": [
-      "super_admin"
+      "super_admin",
+      "admin",
+      "sub_admin"
     ],
     "children": [
+      "Marketplace Analytics",
       "Revenue Report",
       "Booking Report",
       "Payment Report"
@@ -145,6 +184,15 @@
     "children": []
   },
   {
+    "title": "Coupons",
+    "route": "/admin/coupons",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
     "title": "Settings",
     "route": "/admin/settings",
     "allowedRoles": [
@@ -156,6 +204,24 @@
   {
     "title": "Customization",
     "route": "/admin/customization",
+    "allowedRoles": [
+      "super_admin"
+    ],
+    "children": []
+  },
+  {
+    "title": "Legal & Help Pages",
+    "route": "/admin/legal-pages",
+    "allowedRoles": [
+      "super_admin",
+      "admin",
+      "content_manager"
+    ],
+    "children": []
+  },
+  {
+    "title": "Booking Config",
+    "route": "/admin/booking-config",
     "allowedRoles": [
       "super_admin"
     ],

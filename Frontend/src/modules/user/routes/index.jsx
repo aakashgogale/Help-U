@@ -79,6 +79,12 @@ const AddScrap = lazyLoad(() => import('../pages/Scrap/AddScrap'));
 const Notifications = lazyLoad(() => import('../pages/Notifications'));
 const HelpSupport = lazyLoad(() => import('../pages/HelpSupport'));
 const CancellationPolicy = lazyLoad(() => import('../pages/CancellationPolicy'));
+const Terms = lazyLoad(() => import('../pages/Terms'));
+const PrivacyPolicy = lazyLoad(() => import('../pages/PrivacyPolicy'));
+const Faq = lazyLoad(() => import('../pages/Faq'));
+const MyDisputes = lazyLoad(() => import('../pages/Disputes'));
+const DisputeDetail = lazyLoad(() => import('../pages/Disputes/DisputeDetail'));
+const RecurringBookings = lazyLoad(() => import('../pages/RecurringBookings'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
@@ -146,6 +152,13 @@ const UserRoutes = () => {
               <Route path="/notifications" element={<ProtectedRoute userType="user"><Notifications /></ProtectedRoute>} />
               <Route path="/help-support" element={<ProtectedRoute userType="user"><HelpSupport /></ProtectedRoute>} />
               <Route path="/cancellation-policy" element={<ProtectedRoute userType="user"><CancellationPolicy /></ProtectedRoute>} />
+              {/* Public — must be reachable before login (e.g. linked from signup) */}
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/faq" element={<Faq />} />
+              <Route path="/disputes" element={<ProtectedRoute userType="user"><MyDisputes /></ProtectedRoute>} />
+              <Route path="/disputes/:id" element={<ProtectedRoute userType="user"><DisputeDetail /></ProtectedRoute>} />
+              <Route path="/recurring-bookings" element={<ProtectedRoute userType="user"><RecurringBookings /></ProtectedRoute>} />
             </Routes>
           </PageTransition>
         </Suspense>

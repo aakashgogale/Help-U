@@ -17,6 +17,7 @@ const categorySchema = z.object({
   homeBadge: z.string().optional(),
   hasSaleBadge: z.boolean(),
   showOnHome: z.boolean(),
+  isEmergencyAvailable: z.boolean(),
 });
 
 const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
@@ -31,6 +32,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
     homeBadge: "",
     hasSaleBadge: false,
     showOnHome: true,
+    isEmergencyAvailable: false,
   });
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -62,6 +64,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             homeBadge: cat.homeBadge || "",
             hasSaleBadge: cat.hasSaleBadge || false,
             showOnHome: cat.showOnHome !== false,
+            isEmergencyAvailable: cat.isEmergencyAvailable || false,
           }));
 
           // Update catalog with fetched categories
@@ -89,6 +92,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         homeBadge: "",
         hasSaleBadge: false,
         showOnHome: true,
+        isEmergencyAvailable: false,
       });
       return;
     }
@@ -100,6 +104,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       homeBadge: safe.homeBadge || "",
       hasSaleBadge: Boolean(safe.hasSaleBadge),
       showOnHome: safe.showOnHome !== false,
+      isEmergencyAvailable: Boolean(safe.isEmergencyAvailable),
     });
   }, [editing]);
 
@@ -114,6 +119,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       homeBadge: "",
       hasSaleBadge: false,
       showOnHome: true,
+      isEmergencyAvailable: false,
     });
     setIsModalOpen(false);
   };
@@ -128,7 +134,8 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       homeIconUrl: form.homeIconUrl.trim(),
       homeBadge: form.homeBadge.trim(),
       hasSaleBadge: Boolean(form.hasSaleBadge),
-      showOnHome: Boolean(form.showOnHome)
+      showOnHome: Boolean(form.showOnHome),
+      isEmergencyAvailable: Boolean(form.isEmergencyAvailable)
     });
 
     if (!validationResult.success) {
@@ -138,7 +145,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
       return;
     }
 
-    const { title, slug, homeIconUrl, homeBadge, hasSaleBadge, showOnHome } = validationResult.data;
+    const { title, slug, homeIconUrl, homeBadge, hasSaleBadge, showOnHome, isEmergencyAvailable } = validationResult.data;
 
     try {
       setLoading(true);
@@ -166,6 +173,7 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
         homeBadge: homeBadge || null,
         hasSaleBadge,
         showOnHome,
+        isEmergencyAvailable,
         homeOrder,
         cityIds: selectedCity ? [selectedCity] : [],
       };
@@ -651,6 +659,19 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
             />
             <label htmlFor="showOnHome" className="text-base font-semibold text-gray-800">
               Show this category on home
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <input
+              id="isEmergencyAvailable"
+              type="checkbox"
+              checked={form.isEmergencyAvailable}
+              onChange={(e) => setForm((p) => ({ ...p, isEmergencyAvailable: e.target.checked }))}
+              className="h-4 w-4"
+            />
+            <label htmlFor="isEmergencyAvailable" className="text-base font-semibold text-gray-800">
+              Offer emergency booking for this category
             </label>
           </div>
 

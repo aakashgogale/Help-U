@@ -4,6 +4,7 @@ const WorkerBill = require('../../models/WorkerBill');
 const User = require('../../models/User');
 const Worker = require('../../models/Worker');
 const PlatformEarning = require('../../models/PlatformEarning');
+const escapeRegex = require('../../utils/escapeRegex');
 
 /**
  * Get all transactions with pagination and filtering
@@ -23,7 +24,7 @@ const getAllTransactions = async (req, res) => {
 
       // Search filter
       if (search) {
-        const searchRegex = new RegExp(search, 'i');
+        const searchRegex = new RegExp(escapeRegex(search), 'i');
         const [users, workers] = await Promise.all([
           User.find({ $or: [{ name: searchRegex }, { email: searchRegex }] }).select('_id'),
           Worker.find({ $or: [{ name: searchRegex }, { email: searchRegex }] }).select('_id'),
@@ -157,7 +158,7 @@ const getAllTransactions = async (req, res) => {
 
     // Apply search filter (Transaction ID, Order ID, or Customer/Worker Name/Email)
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
 
       // We need to find matching users, workers and bookings first
       const [users, workers, bookings] = await Promise.all([

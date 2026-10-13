@@ -1,5 +1,6 @@
 const Admin = require('../../models/Admin');
 const { validationResult } = require('express-validator');
+const { ADMIN_ROLES, ADMIN_ROLE_LABELS, ADMIN_MODULE_PERMISSIONS } = require('../../utils/constants');
 
 /**
  * Get all admins (Super Admin only)
@@ -22,7 +23,24 @@ const getAllAdmins = async (req, res) => {
 };
 
 /**
- * Create new admin (Super Admin only)
+ * Get available roles and module permissions
+ */
+const getAvailablePermissions = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      roles: ADMIN_ROLES,
+      roleLabels: ADMIN_ROLE_LABELS,
+      permissions: ADMIN_MODULE_PERMISSIONS
+    });
+  } catch (error) {
+    console.error('Get available permissions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch permissions list' });
+  }
+};
+
+/**
+ * Create new admin / sub-admin (Super Admin only)
  */
 const createAdmin = async (req, res) => {
   try {
@@ -35,7 +53,7 @@ const createAdmin = async (req, res) => {
       });
     }
 
-    const { name, email, password, role, cityId, cityName } = req.body;
+    const { name, email, password, role, cityId, cityName, permissions } = req.body;
 
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({ email });
@@ -46,24 +64,32 @@ const createAdmin = async (req, res) => {
       });
     }
 
+    // Default permissions based on role if none provided
+    let assignedPermissions = Array.isArray(permissions) ? permissions : [];
+    if (assignedPermissions.length === 0 && role === 'super_admin') {
+      assignedPermissions = ['*'];
+    }
+
     // Create new admin
     const admin = await Admin.create({
       name,
       email,
       password,
-      role: role || 'admin',
+      role: role || ADMIN_ROLES.SUB_ADMIN,
+      permissions: assignedPermissions,
       cityId: cityId || null,
       cityName: cityName || ''
     });
 
     res.status(201).json({
       success: true,
-      message: 'Admin created successfully',
+      message: 'Admin account created successfully',
       data: {
         id: admin._id,
         name: admin.name,
         email: admin.email,
         role: admin.role,
+        permissions: admin.permissions,
         cityId: admin.cityId,
         cityName: admin.cityName
       }
@@ -126,10 +152,10 @@ const updateAdminRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!['super_admin', 'admin'].includes(role)) {
+    if (!Object.values(ADMIN_ROLES).includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be super_admin or admin'
+        message: 'Invalid role provided'
       });
     }
 
@@ -167,6 +193,7 @@ const updateAdminRole = async (req, res) => {
 
 module.exports = {
   getAllAdmins,
+  getAvailablePermissions,
   createAdmin,
   deleteAdmin,
   updateAdminRole,
@@ -177,7 +204,7 @@ module.exports = {
   updateAdmin: async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, email, password, role, cityId, cityName } = req.body;
+      const { name, email, password, role, cityId, cityName, permissions } = req.body;
 
       // Find admin
       let admin = await Admin.findById(id);
@@ -200,7 +227,11 @@ module.exports = {
       if (cityId !== undefined) admin.cityId = cityId || null; // Allow clearing city
       if (cityName !== undefined) admin.cityName = cityName || '';
 
-      if (role && ['super_admin', 'admin'].includes(role)) {
+      if (permissions !== undefined && Array.isArray(permissions)) {
+        admin.permissions = permissions;
+      }
+
+      if (role && Object.values(ADMIN_ROLES).includes(role)) {
         // Prevent self-demotion
         if (id === req.user.id && role !== 'super_admin' && admin.role === 'super_admin') {
           return res.status(400).json({ success: false, message: 'Cannot demote yourself' });
@@ -221,6 +252,7 @@ module.exports = {
           name: admin.name,
           email: admin.email,
           role: admin.role,
+          permissions: admin.permissions,
           cityId: admin.cityId,
           cityName: admin.cityName,
           isActive: admin.isActive

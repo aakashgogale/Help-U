@@ -1,6 +1,7 @@
 const Settings = require('../../models/Settings');
 const Worker = require('../../models/Worker');
 const { getAllFlags, invalidateFlagCache, FLAG_DEFAULTS } = require('../../utils/featureFlags');
+const { getPublicBookingConfig, invalidateBookingConfigCache } = require('../../utils/bookingConfig');
 
 // Get Global Settings
 exports.getSettings = async (req, res, next) => {
@@ -135,6 +136,10 @@ exports.updateSettings = async (req, res, next) => {
       await settings.save();
     }
 
+    // Payout percentages and search limits are also read through the booking
+    // configuration cache.
+    invalidateBookingConfigCache();
+
     // Broadcast updated configuration to all connected clients via Socket.io
     try {
       const { getIO } = require('../../sockets');
@@ -215,7 +220,11 @@ exports.getPublicSettings = async (req, res, next) => {
 
         // Customization toggles. Read through getAllFlags so a field missing
         // from the stored document resolves to the same default the guards use.
-        ...(await getAllFlags())
+        ...(await getAllFlags()),
+
+        // Booking features (notes, media, add-ons, emergency, chat, disputes,
+        // recurring) for the user and worker apps.
+        bookingConfig: await getPublicBookingConfig()
       }
     });
   } catch (error) {

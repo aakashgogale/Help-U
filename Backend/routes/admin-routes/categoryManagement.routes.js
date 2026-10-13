@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllCategories,
   getCategoryById,
@@ -62,21 +62,21 @@ const updateCategoryValidation = [
 
 // Routes
 // GET /api/admin/categories - Get all categories
-router.get('/categories', authenticate, isAdmin, getAllCategories);
+router.get('/categories', authenticate, isAdmin, requirePermission('categories'), getAllCategories);
 
 // GET /api/admin/categories/:id - Get single category
-router.get('/categories/:id', authenticate, isAdmin, getCategoryById);
+router.get('/categories/:id', authenticate, isAdmin, requirePermission('categories'), getCategoryById);
 
 // POST /api/admin/categories - Create new category
-router.post('/categories', authenticate, isAdmin, createCategoryValidation, createCategory);
+router.post('/categories', authenticate, isAdmin, requirePermission('categories'), createCategoryValidation, createCategory);
 
 // PUT /api/admin/categories/:id - Update category
-router.put('/categories/:id', authenticate, isAdmin, updateCategoryValidation, updateCategory);
+router.put('/categories/:id', authenticate, isAdmin, requirePermission('categories'), updateCategoryValidation, updateCategory);
 
 // DELETE /api/admin/categories/:id - Delete category (soft delete)
-router.delete('/categories/:id', authenticate, isAdmin, deleteCategory);
+router.delete('/categories/:id', authenticate, isAdmin, requirePermission('categories'), deleteCategory);
 
 // PATCH /api/admin/categories/:id/order - Update category order
-router.patch('/categories/:id/order', authenticate, isAdmin, updateCategoryOrder);
+router.patch('/categories/:id/order', authenticate, isAdmin, requirePermission('categories'), updateCategoryOrder);
 
 module.exports = router;

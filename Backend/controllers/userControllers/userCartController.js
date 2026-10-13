@@ -51,6 +51,8 @@ const addToCart = async (req, res) => {
       description,
       icon,
       category,
+      categoryTitle,
+      categoryIcon,
       price,
       originalPrice,
       unitPrice,
@@ -60,7 +62,10 @@ const addToCart = async (req, res) => {
       vendorId,
       sectionTitle, // Brand name
       sectionIcon,  // Brand logo URL
-      card          // Card details snapshot
+      sectionId,
+      card,         // Card details snapshot
+      pricingType,  // fixed/hourly/starting_from/inspection_fee (see utils/servicePricing.js)
+      hours         // hourly only: duration chosen at add-to-cart time
     } = req.body;
 
     console.log(`[AddToCart] Request details - Title: ${title}, Section: ${sectionTitle}`);
@@ -87,10 +92,19 @@ const addToCart = async (req, res) => {
       cart = await Cart.create({ userId, items: [] });
     }
 
-    // Check if item already exists in cart
-    const existingItemIndex = cart.items.findIndex(
-      item => item.title === title && (!serviceId || item.serviceId?.toString() === serviceId)
-    );
+    // Two items only merge when they are truly the same purchase: same
+    // service/title and, for hourly services, the same duration. An hourly
+    // service booked for 2 hours and again for 3 hours must stay as separate
+    // lines — matching on title/serviceId alone would silently merge their
+    // quantities and lose the fact that they're different bookings.
+    const existingItemIndex = cart.items.findIndex(item => {
+      const sameService = item.title === title && (!serviceId || item.serviceId?.toString() === serviceId);
+      if (!sameService) return false;
+      if (pricingType === 'hourly' || item.pricingType === 'hourly') {
+        return item.pricingType === pricingType && Number(item.hours) === Number(hours);
+      }
+      return true;
+    });
 
     if (existingItemIndex !== -1) {
       // Update quantity if item exists
@@ -107,6 +121,8 @@ const addToCart = async (req, res) => {
         description: description || '',
         icon: icon || '',
         category,
+        categoryTitle: categoryTitle || '',
+        categoryIcon: categoryIcon || null,
         price: price || unitPrice || 0,
         originalPrice: originalPrice || null,
         unitPrice: unitPrice || price || 0,
@@ -116,7 +132,10 @@ const addToCart = async (req, res) => {
         vendorId: vendorId || null,
         sectionTitle: sectionTitle || '',
         sectionIcon: sectionIcon || null,
-        card: card || null
+        sectionId: sectionId || null,
+        card: card || null,
+        pricingType: pricingType || 'fixed',
+        hours: hours ?? null
       };
 
       // Only add serviceId and categoryId if they are provided

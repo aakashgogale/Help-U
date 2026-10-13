@@ -65,6 +65,14 @@ const notificationSchema = new mongoose.Schema({
       'vendor_withdrawal_request',
       'vendor_referral_success',
       'vendor_referral_rewarded',
+      'advance_payment_requested',
+      'booking_reassigned',
+      'chat_message',
+      'dispute_raised',
+      'dispute_updated',
+      'dispute_resolved',
+      'recurring_booking_created',
+      'recurring_booking_failed',
       'general'
     ],
     index: true
@@ -87,7 +95,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedType: {
     type: String,
-    enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal'],
+    enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal', 'dispute', 'recurring'],
     default: null
   },
   // Notification Status

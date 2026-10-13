@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllBrands,
   getBrandById,
@@ -101,24 +101,24 @@ const updateBrandValidation = [
 
 // Routes
 // GET /api/admin/brands - Get all brands
-router.get('/brands', authenticate, isAdmin, getAllBrands);
+router.get('/brands', authenticate, isAdmin, requirePermission('brands'), getAllBrands);
 
 // GET /api/admin/brands/:id - Get single brand
-router.get('/brands/:id', authenticate, isAdmin, getBrandById);
+router.get('/brands/:id', authenticate, isAdmin, requirePermission('brands'), getBrandById);
 
 // POST /api/admin/brands - Create new brand
-router.post('/brands', authenticate, isAdmin, createBrandValidation, createBrand);
+router.post('/brands', authenticate, isAdmin, requirePermission('brands'), createBrandValidation, createBrand);
 
 // PUT /api/admin/brands/:id - Update brand
-router.put('/brands/:id', authenticate, isAdmin, updateBrandValidation, updateBrand);
+router.put('/brands/:id', authenticate, isAdmin, requirePermission('brands'), updateBrandValidation, updateBrand);
 
 // DELETE /api/admin/brands/:id - Delete brand (soft delete)
-router.delete('/brands/:id', authenticate, isAdmin, deleteBrand);
+router.delete('/brands/:id', authenticate, isAdmin, requirePermission('brands'), deleteBrand);
 
 // PATCH /api/admin/brands/:id/page - Update brand page content
-router.patch('/brands/:id/page', authenticate, isAdmin, updateBrandPage);
+router.patch('/brands/:id/page', authenticate, isAdmin, requirePermission('brands'), updateBrandPage);
 
 // POST /api/admin/brands/upload-image - Upload brand image
-router.post('/brands/upload-image', authenticate, isAdmin, uploadImage, uploadBrandImage);
+router.post('/brands/upload-image', authenticate, isAdmin, requirePermission('brands'), uploadImage, uploadBrandImage);
 
 module.exports = router;

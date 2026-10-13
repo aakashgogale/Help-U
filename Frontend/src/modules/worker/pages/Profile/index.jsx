@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase, FiStar, FiArrowRight, FiSettings, FiChevronRight, FiCreditCard, FiLogOut, FiGift } from 'react-icons/fi';
+import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase, FiStar, FiArrowRight, FiSettings, FiChevronRight, FiCreditCard, FiLogOut, FiGift, FiAlertOctagon, FiHelpCircle, FiFileText, FiShield } from 'react-icons/fi';
 import { FaWallet } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
@@ -24,10 +24,14 @@ const Profile = () => {
     { id: 2, label: 'Wallet', icon: FaWallet, path: '/worker/wallet' },
     { id: 3, label: 'Refer & Earn', icon: FiGift, path: '/worker/refer-earn', badge: 'Earn ₹100' },
     { id: 5, label: 'My Ratings', icon: FiStar, path: '/worker/my-ratings' },
+    { id: 10, label: 'Disputes', icon: FiAlertOctagon, path: '/worker/disputes' },
     { id: 6, label: 'Bank Details & QR', icon: FiCreditCard, path: '/worker/bank-details' },
     { id: 7, label: 'Manage Address', icon: FiMapPin, path: '/worker/address-management' },
     { id: 8, label: 'Settings', icon: FiSettings, path: '/worker/settings' },
     { id: 9, label: 'About Help U', icon: null, customIcon: 'H', path: '/worker/about-helpu' },
+    { id: 11, label: 'FAQ', icon: FiHelpCircle, path: '/worker/faq' },
+    { id: 12, label: 'Terms & Conditions', icon: FiFileText, path: '/worker/terms' },
+    { id: 13, label: 'Privacy Policy', icon: FiShield, path: '/worker/privacy-policy' },
   ];
 
   const [profile, setProfile] = useState(null);

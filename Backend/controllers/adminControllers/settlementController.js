@@ -4,6 +4,7 @@ const Settlement = require('../../models/Settlement');
 const Withdrawal = require('../../models/Withdrawal');
 const mongoose = require('mongoose');
 const { recordSettlement, recordWithdrawal } = require('../../services/earningTrackerService');
+const escapeRegex = require('../../utils/escapeRegex');
 
 /**
  * Get all workers with their wallet balances
@@ -15,10 +16,11 @@ const getWorkerBalances = async (req, res) => {
 
     let matchQuery = { approvalStatus: 'approved' };
     if (search) {
+      const safeSearch = escapeRegex(search);
       matchQuery.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { businessName: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { businessName: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 

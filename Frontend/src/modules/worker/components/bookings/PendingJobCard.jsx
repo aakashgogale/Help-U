@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiClock, FiMapPin, FiBell } from 'react-icons/fi';
+import RequestExtras from './RequestExtras';
 
 // Internal Timer Component for unification
 const CountdownTimer = ({ durationSeconds, createdAt, expiresAt, onExpire }) => {
@@ -103,9 +104,15 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
               <p className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">
                 {booking.serviceName || booking.serviceType || booking.serviceId?.title || 'New Booking Request'}
               </p>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-yellow-100 text-yellow-600 uppercase tracking-widest shrink-0 mt-0.5">
-                REQ
-              </span>
+              {booking.isEmergency ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-widest shrink-0 mt-0.5">
+                  SOS
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-yellow-100 text-yellow-600 uppercase tracking-widest shrink-0 mt-0.5">
+                  REQ
+                </span>
+              )}
             </div>
             {booking.brandName && (
               <div className="flex items-center gap-1.5 mb-1.5 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md w-fit">
@@ -154,6 +161,7 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
             ₹{booking.price || booking.vendorEarnings || booking.finalAmount || 0}
           </div>
         </div>
+        <RequestExtras booking={booking} className="mt-3" />
         <div className="flex gap-2 mt-3">
           <button
             disabled={!!loadingAction}

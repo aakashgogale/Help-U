@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
-const { isAdmin } = require('../../middleware/roleMiddleware');
+const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllWorkers,
   getWorkerDetails,
@@ -23,17 +23,17 @@ const rejectWorkerValidation = [
 ];
 
 // Routes
-router.get('/workers', authenticate, isAdmin, getAllWorkers);
-router.get('/workers/bookings', authenticate, isAdmin, getAllWorkerBookings);
-router.get('/workers/payments', authenticate, isAdmin, getWorkerPaymentsSummary);
-router.get('/workers/:id', authenticate, isAdmin, getWorkerDetails);
-router.post('/workers/:id/approve', authenticate, isAdmin, approveWorker);
-router.post('/workers/:id/reject', authenticate, isAdmin, rejectWorkerValidation, rejectWorker);
-router.post('/workers/:id/suspend', authenticate, isAdmin, suspendWorker);
-router.patch('/workers/:id/status', authenticate, isAdmin, toggleWorkerStatus); // New
-router.delete('/workers/:id', authenticate, isAdmin, deleteWorker); // New
-router.get('/workers/:id/bookings', authenticate, isAdmin, getWorkerBookings);
-router.get('/workers/:id/earnings', authenticate, isAdmin, getWorkerEarnings);
+router.get('/workers', authenticate, isAdmin, requirePermission('workers'), getAllWorkers);
+router.get('/workers/bookings', authenticate, isAdmin, requirePermission('workers'), getAllWorkerBookings);
+router.get('/workers/payments', authenticate, isAdmin, requirePermission('workers'), getWorkerPaymentsSummary);
+router.get('/workers/:id', authenticate, isAdmin, requirePermission('workers'), getWorkerDetails);
+router.post('/workers/:id/approve', authenticate, isAdmin, requirePermission('workers'), approveWorker);
+router.post('/workers/:id/reject', authenticate, isAdmin, requirePermission('workers'), rejectWorkerValidation, rejectWorker);
+router.post('/workers/:id/suspend', authenticate, isAdmin, requirePermission('workers'), suspendWorker);
+router.patch('/workers/:id/status', authenticate, isAdmin, requirePermission('workers'), toggleWorkerStatus); // New
+router.delete('/workers/:id', authenticate, isAdmin, requirePermission('workers'), deleteWorker); // New
+router.get('/workers/:id/bookings', authenticate, isAdmin, requirePermission('workers'), getWorkerBookings);
+router.get('/workers/:id/earnings', authenticate, isAdmin, requirePermission('workers'), getWorkerEarnings);
 
 module.exports = router;
 

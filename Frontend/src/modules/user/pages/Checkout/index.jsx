@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo } from 'react-icons/fi';
+import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo, FiTag, FiPercent, FiX, FiChevronDown, FiChevronUp, FiAlertCircle } from 'react-icons/fi';
 import { MdStar } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
 import AddressSelectionModal from './components/AddressSelectionModal';
 import TimeSlotModal from './components/TimeSlotModal';
 import WorkerSearchModal from './components/WorkerSearchModal';
+import IssuePhotosPicker from './components/IssuePhotosPicker';
+import { AddOnsSelector, EmergencyOption, BookingNotes, RecurringOption } from './components/CheckoutExtras';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import bookingFeaturesService from '../../../../services/bookingFeaturesService';
+import couponService from '../../../../services/couponService';
+import cityService from '../../../../services/cityService';
 import { bookingService } from '../../../../services/bookingService';
 import { paymentService } from '../../../../services/paymentService';
 import { cartService } from '../../../../services/cartService';
@@ -60,6 +66,55 @@ const Checkout = () => {
   const [visitedFee, setVisitedFee] = useState(29);
   const [gstPercentage, setGstPercentage] = useState(18);
   const [bookingType, setBookingType] = useState('instant'); // 'instant' | 'scheduled'
+  const [issuePhotos, setIssuePhotos] = useState([]); // optional photos of the problem, see IssuePhotosPicker
+  const [issueVideos, setIssueVideos] = useState([]); // optional short videos of the problem
+  const [searchInfo, setSearchInfo] = useState(null); // live worker-search details for WorkerSearchModal
+
+  // Admin-configured checkout extras
+  const bookingConfig = useBookingConfig();
+  const [bookingOptions, setBookingOptions] = useState({ addOns: [], emergency: { available: false } });
+  const [selectedAddOns, setSelectedAddOns] = useState({}); // { addOnId: quantity }
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [recurring, setRecurring] = useState({ frequency: '', occurrences: 4 });
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [showCouponList, setShowCouponList] = useState(false);
+
+  // Pincode / Area service availability state
+  const [pincodeCheck, setPincodeCheck] = useState({ checked: false, serviceable: true, message: '' });
+
+  useEffect(() => {
+    const rawPincode = addressDetails?.pincode || addressDetails?.components?.find(c => c.types.includes('postal_code'))?.long_name;
+    const cleanPincode = String(rawPincode || '').trim();
+    if (!cleanPincode || cleanPincode === '000000' || plan) {
+      setPincodeCheck({ checked: false, serviceable: true, message: '' });
+      return;
+    }
+
+    let active = true;
+    cityService.checkPincode(cleanPincode)
+      .then(res => {
+        if (!active) return;
+        if (res && res.success) {
+          setPincodeCheck({
+            checked: true,
+            serviceable: res.serviceable,
+            message: res.message
+          });
+        }
+      })
+      .catch(() => {
+        if (active) setPincodeCheck({ checked: false, serviceable: true, message: '' });
+      });
+
+    return () => { active = false; };
+  }, [addressDetails, plan]);
 
   // Check if Razorpay is loaded (defer to avoid blocking initial render)
   useEffect(() => {
@@ -270,128 +325,60 @@ const Checkout = () => {
     return addressDetails?.components?.find(c => c.types.includes(type))?.long_name || '';
   };
 
+  // URLs of the optional problem photos that finished uploading; failed ones are left out
+  const getUploadedIssuePhotos = () =>
+    issuePhotos.filter(p => p.status === 'done' && p.url).map(p => p.url);
+  const getUploadedIssueVideos = () =>
+    issueVideos.filter(v => v.status === 'done' && v.url).map(v => v.url);
+
+  // Checkout options (add-ons, emergency) for the service in the cart
+  const firstServiceId = (() => {
+    const s = cartItems[0]?.serviceId;
+    if (!s || plan) return null;
+    return typeof s === 'object' ? (s._id || s.id) : s;
+  })();
+
+  useEffect(() => {
+    if (!firstServiceId) return;
+    let active = true;
+    bookingFeaturesService.getBookingOptions(firstServiceId)
+      .then((res) => {
+        if (!active || !res.success) return;
+        setBookingOptions(res.data);
+        // Drop selections that are no longer offered
+        const offered = new Set((res.data.addOns || []).map(a => a._id));
+        setSelectedAddOns(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => offered.has(id))));
+        if (!res.data.emergency?.available) setIsEmergency(false);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [firstServiceId, bookingConfig.isAddOnsEnabled, bookingConfig.isEmergencyEnabled]);
+
+  const handleEmergencyToggle = (on) => {
+    setIsEmergency(on);
+    // Emergency jobs are dispatched immediately
+    if (on) setBookingType('instant');
+  };
+
   const handleProceed = async () => {
-    // Validation
+    // Check if pincode is serviceable
+    if (pincodeCheck.checked && !pincodeCheck.serviceable) {
+      toast.error(pincodeCheck.message || 'Services are not currently available in your pincode');
+      return;
+    }
+
+    // Without an address or slot, collect it first; otherwise start the search.
     if (bookingType === 'instant') {
       if (!addressDetails) {
         setShowAddressModal(true);
         return;
       }
-    } else {
-      if (!addressDetails || !selectedDate || !selectedTime) {
-        if (!addressDetails) setShowAddressModal(true);
-        else if (!selectedDate || !selectedTime) setShowTimeSlotModal(true);
-        return;
-      }
+    } else if (!addressDetails || !selectedDate || !selectedTime) {
+      if (!addressDetails) setShowAddressModal(true);
+      else setShowTimeSlotModal(true);
+      return;
     }
-
-    try {
-      setShowWorkerModal(true);
-      setCurrentStep('searching');
-
-      const firstItem = cartItems[0];
-      if (!firstItem) {
-        toast.error('Your cart is empty');
-        return;
-      }
-      const serviceId = typeof firstItem.serviceId === 'object'
-        ? firstItem.serviceId._id || firstItem.serviceId.id
-        : firstItem.serviceId;
-
-      const bookedItemsData = cartItems.map(item => ({
-        brandName: item.sectionTitle || item.brand || '',
-        brandIcon: item.sectionIcon || null,
-        card: {
-          title: item.card?.title || item.title,
-          subtitle: item.card?.subtitle || item.description || '',
-          price: item.card?.price || item.price || 0,
-          originalPrice: item.card?.originalPrice || item.originalPrice || null,
-          duration: item.card?.duration || item.duration || '',
-          description: item.card?.description || item.description || '',
-          imageUrl: item.card?.imageUrl || item.icon || '',
-          features: item.card?.features || []
-        },
-        quantity: item.serviceCount || 1
-      }));
-
-      // Calculate Scheduled Data for Instant
-      let finalDate = selectedDate;
-      let finalTime = selectedTime;
-      let finalTimeSlot = {
-        start: selectedTime,
-        end: getTimeSlots().find(slot => slot.value === selectedTime)?.end || selectedTime
-      };
-
-      if (bookingType === 'instant') {
-        const now = new Date();
-        finalDate = now;
-        finalTime = "ASAP";
-        finalTimeSlot = { start: "Now", end: "45 mins" };
-      }
-
-      const response = await bookingService.create({
-        bookingType, // 'instant' or 'scheduled'
-        serviceId,
-        address: {
-          type: addressDetails?.type || 'home',
-          addressLine1: addressDetails?.addressLine1 || address,
-          addressLine2: houseNumber,
-          city: addressDetails?.city || getAddressComponent('locality') || getAddressComponent('administrative_area_level_2') || 'City',
-          state: addressDetails?.state || getAddressComponent('administrative_area_level_1') || 'State',
-          pincode: addressDetails?.pincode || getAddressComponent('postal_code') || '000000',
-          lat: addressDetails?.lat,
-          lng: addressDetails?.lng
-        },
-        scheduledDate: finalDate, // Date object
-        scheduledTime: bookingType === 'instant' ? "ASAP" : (getTimeSlots().find(slot => slot.value === finalTime)?.display || finalTime),
-        timeSlot: finalTimeSlot,
-        amount: amountToPay,
-
-        // Pass Full Breakdown to Backend
-        basePrice: totalOriginalPrice,
-        discount: savings,
-        tax: taxesAndFee,
-        visitationFee: finalVisitedFee,
-
-        // Metadata for better data capture
-        serviceCategory: firstItem.categoryTitle || firstItem.category || 'General',
-        categoryIcon: firstItem.categoryIcon || firstItem.icon || null,
-        brandName: firstItem.sectionTitle || firstItem.brand || '',
-        brandIcon: firstItem.sectionIcon || null,
-
-        contactDetails: {
-          name: contactDetails.name,
-          phone: contactDetails.phone.length === 10 && !contactDetails.phone.includes('+') ? `+91${contactDetails.phone}` : contactDetails.phone
-        },
-
-        paymentMethod: 'online',
-        bookedItems: bookedItemsData
-      });
-
-      if (response.success) {
-        setBookingRequest(response.data);
-
-        // If the backend returns an assigned worker immediately (rare but possible)
-        if (response.data.vendorId && (response.data.status === 'ACCEPTED' || response.data.status === 'ASSIGNED')) {
-          setCurrentStep('accepted');
-          setAcceptedWorker({
-            ...(response.data.vendorId || {}),
-            price: response.data.finalAmount || amountToPay,
-            distance: 'within 5km', // default
-            estimatedTime: '15-30 min'
-          });
-          setSearchingWorkers(false); // Finished search
-        } else {
-          // Normal flow: Entered pooling/searching
-          setCurrentStep('waiting'); // Waiting for worker acceptance
-          // Keep searchingWorkers = true to disable buttons and show progress
-        }
-      }
-    } catch (error) {
-      toast.error('Failed to initiate booking request. Please try again.');
-      setShowWorkerModal(false);
-      setSearchingWorkers(false);
-    }
+    return handleSearchWorkers();
   };
 
 
@@ -439,6 +426,18 @@ const Checkout = () => {
           });
         }, 2000);
       }
+    });
+
+    // Each new wave of alerted workers updates the searching popup
+    socket.on('booking_search_progress', (data) => {
+      if (String(data.bookingId) !== String(bookingRequest._id)) return;
+      setSearchInfo(prev => ({
+        ...(prev || {}),
+        wave: data.wave,
+        // Never count down: events can arrive out of order with the HTTP response
+        notifiedCount: Math.max(prev?.notifiedCount || 0, data.notifiedCount || 0),
+        nearbyCount: data.nearbyCount ?? prev?.nearbyCount
+      }));
     });
 
     socket.on('booking_search_failed', (data) => {
@@ -491,8 +490,18 @@ const Checkout = () => {
         }
       }
 
+      if (pincodeCheck.checked && !pincodeCheck.serviceable) {
+        toast.error(pincodeCheck.message || 'Service is not available in your locality/pincode');
+        return;
+      }
+
       if (cartItems.length === 0 && !bookingRequest) {
         toast.error('Cart is empty');
+        return;
+      }
+
+      if (issuePhotos.some(p => p.status === 'uploading') || issueVideos.some(v => v.status === 'uploading')) {
+        toast.error('Please wait, your photos and videos are still uploading');
         return;
       }
 
@@ -541,8 +550,8 @@ const Checkout = () => {
         finalTimeDisplay = getTimeSlots().find(slot => slot.value === selectedTime)?.display || selectedTime;
       }
 
-      // Create booking request
-      toast.loading('Searching for nearby workers...');
+      // Create booking request (progress is shown in WorkerSearchModal)
+      setSearchInfo(null);
 
       // Ensure serviceId is a string (handle populated cart data)
       const serviceId = typeof firstItem.serviceId === 'object'
@@ -567,6 +576,10 @@ const Checkout = () => {
         quantity: item.serviceCount || 1
       }));
 
+      // Hourly items were priced (rate × hours) when added to the cart; record
+      // the hours actually booked for the worker/admin bill and any dispute.
+      const hourlyItem = cartItems.find(item => item.pricingType === 'hourly' && item.hours);
+
 
 
       const bookingResponse = await bookingService.create({
@@ -576,8 +589,8 @@ const Checkout = () => {
         scheduledDate: finalDate.toISOString(),
         scheduledTime: finalTimeDisplay,
         timeSlot: timeSlotObj,
-        // userNotes: null, // Removed per request
-        paymentMethod: amountToPay === 0 ? 'plan_benefit' : 'pay_at_home',
+        // Plan-covered items go through the plan path even when extras are charged
+        paymentMethod: itemTotal === 0 ? 'plan_benefit' : 'pay_at_home',
         amount: amountToPay,
 
         // Pass Full Breakdown to Backend
@@ -592,8 +605,22 @@ const Checkout = () => {
         brandName: firstItem.sectionTitle || firstItem.brand || '',
         brandIcon: firstItem.sectionIcon || null,
 
-        bookedItems: bookedItemsData
+        bookedItems: bookedItemsData,
+        hours: hourlyItem?.hours,
+        issuePhotos: getUploadedIssuePhotos(),
+        issueVideos: getUploadedIssueVideos(),
+
+        // Admin-configured extras; prices are recalculated on the server
+        customerNotes: bookingConfig.isCustomerNotesEnabled ? customerNotes.trim() : undefined,
+        addOns: Object.entries(selectedAddOns).map(([addOnId, quantity]) => ({ addOnId, quantity })),
+        isEmergency: isEmergency && bookingOptions.emergency?.available ? true : undefined,
+        recurring: isRecurring ? recurring : undefined,
+        couponCode: appliedCoupon?.code || undefined
       });
+
+      if (bookingResponse.recurring) {
+        toast.success(`Recurring plan created: ${bookingResponse.recurring.occurrencesPlanned} visits`, { icon: '🔁' });
+      }
 
       if (!bookingResponse.success) {
         toast.dismiss();
@@ -606,6 +633,7 @@ const Checkout = () => {
 
       const booking = bookingResponse.data;
       setBookingRequest(booking);
+      setSearchInfo(bookingResponse.search || null);
       toast.dismiss();
 
       // Clear cart immediately as search starts (consumes items) - ONLY if workers found
@@ -622,41 +650,20 @@ const Checkout = () => {
         }
       }
 
-      // If no workers found, redirect or refresh immediately
+      // No one nearby: cancel the empty booking and show the "no professional"
+      // screen. The cart was kept above, so "Search again" can rebook.
       if (bookingResponse.noWorkersFound) {
-        toast.dismiss();
         const bookingId = booking?._id || booking?.id;
-
-        // Ensure we stop searching and close the modal
         setSearchingWorkers(false);
-        setShowWorkerModal(false);
+        setCurrentStep('failed');
 
         if (bookingId) {
-          toast.error('No workers currently available for this service.');
-
-          // Auto-cancel and refresh
-          const cancelAndRefresh = async () => {
-            try {
-              await bookingService.cancel(bookingId, 'Initial search found no available workers');
-              setTimeout(() => {
-                window.location.reload();
-              }, 2000);
-            } catch (err) {
-              console.error('Auto-cancel failed:', err);
-              window.location.reload();
-            }
-          };
-          cancelAndRefresh();
-        } else {
-          // Fallback if ID is missing for some reason
-          setCurrentStep('details');
-          toast.error('Search failed. Please try again.');
-          setTimeout(() => window.location.reload(), 2000);
+          bookingService.cancel(bookingId, 'Initial search found no available workers')
+            .catch(err => console.error('Auto-cancel failed:', err));
         }
       } else {
         // Move to waiting state - alerts sent to nearby workers
         setCurrentStep('waiting');
-        toast.success('Finding nearby workers... Alerts sent to workers within 10km!');
       }
 
       // REMOVED local setCartItems([]) - The summary should remain visible while searching
@@ -665,7 +672,7 @@ const Checkout = () => {
     } catch (error) {
       toast.dismiss();
       console.error('Search workers error:', error);
-      toast.error('Failed to search for workers. Please try again.');
+      toast.error(error.response?.data?.message || 'Failed to search for workers. Please try again.');
       setCurrentStep('details');
       setSearchingWorkers(false);
       setShowWorkerModal(false);
@@ -692,8 +699,9 @@ const Checkout = () => {
 
       toast.dismiss();
 
-      // Get Razorpay key
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      // Use the key returned by the backend (tied to the account that created this order_id)
+      // rather than a separate frontend env var, which can drift out of sync with the backend's key.
+      const razorpayKey = orderResponse.data.key;
       if (!razorpayKey) {
         toast.error('Razorpay key not configured');
         return;
@@ -1035,12 +1043,97 @@ const Checkout = () => {
   // Assuming "Free under plan" means NO Payment.
   const finalVisitedFee = itemTotal === 0 ? 0 : visitedFee;
 
-  const totalAmount = itemTotal + taxesAndFee + finalVisitedFee;
+  // Extras — mirrors services/bookingCreationService.js so the total shown is
+  // the total charged. Extras are taxed at the service GST rate.
+  const serviceValue = itemTotal === 0 ? totalOriginalPrice : itemTotal;
+  const addOnsTotal = (bookingOptions.addOns || []).reduce(
+    (sum, a) => sum + (selectedAddOns[a._id] ? a.price * selectedAddOns[a._id] : 0), 0
+  );
+  const emergencyActive = isEmergency && bookingOptions.emergency?.available;
+  const emergencyCharge = emergencyActive
+    ? (bookingOptions.emergency.surchargeType === 'percentage'
+      ? Math.round(serviceValue * (bookingOptions.emergency.surchargeValue || 0) / 100)
+      : Math.round(bookingOptions.emergency.surchargeValue || 0))
+    : 0;
+  const extrasBase = addOnsTotal + emergencyCharge;
+  const extrasTax = Math.round(extrasBase * gstPercentage / 100);
+
+  const isRecurring = bookingType === 'scheduled' && !!recurring.frequency && bookingConfig.isRecurringEnabled;
+  const recurringPct = isRecurring && itemTotal > 0 ? (bookingConfig.recurringDiscountPercentage || 0) : 0;
+  const recurringDiscount = Math.round(itemTotal * recurringPct / 100);
+  const recurringTaxCut = Math.min(taxesAndFee + extrasTax, Math.round(recurringDiscount * gstPercentage / 100));
+
+  // Available coupons effect
+  useEffect(() => {
+    if (plan || itemTotal === 0) return;
+    const firstItem = cartItems[0];
+    const catId = normalizeId(firstItem?.categoryId || firstItem?.category);
+    const srvId = normalizeId(firstItem?.serviceId);
+    couponService.getAvailableCoupons({
+      orderAmount: itemTotal,
+      categoryId: catId,
+      serviceId: srvId
+    }).then(res => {
+      if (res?.success && Array.isArray(res.coupons)) {
+        setAvailableCoupons(res.coupons);
+      }
+    }).catch(() => {});
+  }, [itemTotal, cartItems.length, plan]);
+
+  const handleApplyCoupon = async (codeToApply) => {
+    const code = (codeToApply || couponInput || '').trim().toUpperCase();
+    if (!code) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+    setCouponLoading(true);
+    try {
+      const firstItem = cartItems[0];
+      const catId = normalizeId(firstItem?.categoryId || firstItem?.category);
+      const srvId = normalizeId(firstItem?.serviceId);
+      const res = await couponService.validateCoupon({
+        code,
+        orderAmount: itemTotal,
+        categoryId: catId,
+        serviceId: srvId
+      });
+      if (res.success && res.valid) {
+        setAppliedCoupon({
+          code: res.coupon.code,
+          title: res.coupon.title,
+          description: res.coupon.description,
+          discountType: res.coupon.discountType,
+          discountValue: res.coupon.discountValue
+        });
+        setCouponDiscount(res.discount || 0);
+        toast.success(res.message || `₹${res.discount} discount applied! 🎉`);
+        setCouponInput('');
+        setShowCouponList(false);
+      } else {
+        toast.error(res.message || 'Invalid coupon code');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to apply coupon');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    toast.success('Coupon removed');
+  };
+
+  const effectiveCouponDiscount = itemTotal === 0 ? 0 : Math.min(couponDiscount, itemTotal);
+  const totalAmount = Math.max(0, itemTotal + taxesAndFee + finalVisitedFee + extrasBase + extrasTax - recurringDiscount - recurringTaxCut - effectiveCouponDiscount);
   const amountToPay = totalAmount;
 
   // Helper for Free Plan Full Breakdown Display
   // If the booking is free, we still want to show what the Tax/Fee WOULD have been
-  const displayTax = totalAmount === 0 ? Math.round((totalOriginalPrice * gstPercentage) / 100) : taxesAndFee;
+  const displayTax = totalAmount === 0
+    ? Math.round((totalOriginalPrice * gstPercentage) / 100)
+    : taxesAndFee + extrasTax - recurringTaxCut;
   const displayFee = totalAmount === 0 ? visitedFee : finalVisitedFee;
   const displaySavings = totalAmount === 0 ? (totalOriginalPrice + displayTax + displayFee) : savings;
 
@@ -1287,7 +1380,40 @@ const Checkout = () => {
           })}
         </div>
 
-        {/* ... */}
+        {/* Optional extras, all switched on/off from the admin booking configuration */}
+        {!plan && cartItems.length > 0 && (
+          <>
+            {bookingConfig.isAddOnsEnabled && (
+              <AddOnsSelector addOns={bookingOptions.addOns} selected={selectedAddOns} onChange={setSelectedAddOns} />
+            )}
+
+            <EmergencyOption
+              emergency={bookingOptions.emergency}
+              enabled={emergencyActive}
+              onToggle={handleEmergencyToggle}
+              surchargeAmount={emergencyActive ? emergencyCharge : (bookingOptions.emergency?.surchargeType === 'percentage'
+                ? Math.round(serviceValue * (bookingOptions.emergency?.surchargeValue || 0) / 100)
+                : bookingOptions.emergency?.surchargeValue || 0)}
+            />
+
+            {/* Optional photos and videos of the problem for the worker */}
+            <IssuePhotosPicker
+              photos={issuePhotos}
+              setPhotos={setIssuePhotos}
+              videos={issueVideos}
+              setVideos={setIssueVideos}
+              config={bookingConfig}
+            />
+
+            {bookingConfig.isCustomerNotesEnabled && (
+              <BookingNotes value={customerNotes} onChange={setCustomerNotes} maxLength={bookingConfig.customerNotesMaxLength} />
+            )}
+
+            {bookingType === 'scheduled' && (
+              <RecurringOption config={bookingConfig} value={recurring} onChange={setRecurring} />
+            )}
+          </>
+        )}
 
 
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
@@ -1308,6 +1434,143 @@ const Checkout = () => {
             </button>
           </div>
         </div>
+
+        {/* Coupons & Promo Codes Section (disabled for plan purchases or free items) */}
+        {!plan && itemTotal > 0 && (
+          <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 mb-6 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
+                  <FiTag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Coupons & Offers</h4>
+                  <p className="text-xs text-slate-500">Apply promo codes for extra savings</p>
+                </div>
+              </div>
+              {availableCoupons.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowCouponList(prev => !prev)}
+                  className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1"
+                >
+                  {showCouponList ? 'Hide Offers' : `View Offers (${availableCoupons.length})`}
+                  {showCouponList ? <FiChevronUp className="w-3.5 h-3.5" /> : <FiChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              )}
+            </div>
+
+            {appliedCoupon ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                    ✓
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-emerald-900 tracking-wider">
+                        {appliedCoupon.code}
+                      </span>
+                      <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                        Applied
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                      You save ₹{effectiveCouponDiscount.toLocaleString('en-IN')} with this coupon
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    placeholder="ENTER COUPON CODE"
+                    className="w-full uppercase font-mono tracking-wider px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                  />
+                  {couponInput && (
+                    <button
+                      type="button"
+                      onClick={() => setCouponInput('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <FiX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={couponLoading || !couponInput.trim()}
+                  onClick={() => handleApplyCoupon()}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                    couponInput.trim() && !couponLoading
+                      ? 'bg-teal-600 hover:bg-teal-700 text-white cursor-pointer active:scale-95'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {couponLoading ? 'Checking...' : 'Apply'}
+                </button>
+              </div>
+            )}
+
+            {/* Expandable Available Coupons List */}
+            {showCouponList && availableCoupons.length > 0 && !appliedCoupon && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                {availableCoupons.map((c) => (
+                  <div
+                    key={c.code}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
+                      c.applicable
+                        ? 'bg-slate-50/70 border-slate-200 hover:border-teal-300'
+                        : 'bg-gray-50/50 border-gray-100 opacity-60'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-bold text-xs text-slate-900 px-2 py-0.5 bg-white rounded border border-slate-200 tracking-wider">
+                          {c.code}
+                        </span>
+                        <span className="text-xs font-semibold text-teal-700">
+                          {c.discountType === 'percentage'
+                            ? `${c.discountValue}% OFF`
+                            : `₹${c.discountValue} OFF`}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 truncate">{c.title || c.description}</p>
+                      {c.minOrderAmount > 0 && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">Min. order ₹{c.minOrderAmount}</p>
+                      )}
+                      {!c.applicable && c.reason && (
+                        <p className="text-[11px] text-amber-600 font-medium mt-0.5">{c.reason}</p>
+                      )}
+                    </div>
+                    {c.applicable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyCoupon(c.code)}
+                        className="text-xs font-bold text-teal-600 hover:text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 px-3 py-1.5 rounded-lg shrink-0 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-medium text-slate-400 shrink-0">Not eligible</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Payment Summary */}
         <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 mb-6 shadow-sm overflow-hidden relative">
@@ -1333,6 +1596,40 @@ const Checkout = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-green-600">Discount</span>
                 <span className="text-sm font-medium text-green-600">-₹{displaySavings.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
+            {/* Add-ons */}
+            {addOnsTotal > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600">Add-ons</span>
+                <span className="text-sm font-medium text-slate-900">₹{addOnsTotal.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
+            {/* Emergency surcharge */}
+            {emergencyCharge > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-rose-600">Emergency charge</span>
+                <span className="text-sm font-medium text-rose-600">₹{emergencyCharge.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
+            {/* Recurring plan discount */}
+            {recurringDiscount > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-green-600">Recurring discount ({recurringPct}%)</span>
+                <span className="text-sm font-medium text-green-600">-₹{recurringDiscount.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
+            {/* Coupon discount */}
+            {effectiveCouponDiscount > 0 && appliedCoupon && (
+              <div className="flex justify-between items-center text-emerald-600">
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <FiTag className="w-3.5 h-3.5" /> Coupon ({appliedCoupon.code})
+                </span>
+                <span className="text-sm font-bold">-₹{effectiveCouponDiscount.toLocaleString('en-IN')}</span>
               </div>
             )}
 
@@ -1445,15 +1742,28 @@ const Checkout = () => {
               <span className="text-yellow-500">⚡</span> Book
             </button>
             <button
-              onClick={() => setBookingType('scheduled')}
+              onClick={() => {
+                setBookingType('scheduled');
+                // Emergency jobs are always instant
+                setIsEmergency(false);
+              }}
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${bookingType === 'scheduled' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
             >
               <span>📅</span> Slot
             </button>
           </div>
-          {bookingType === 'instant' && (
+          {bookingType === 'instant' && (emergencyActive ? (
+            <p className="text-xs text-center text-rose-600 font-medium mt-1 mb-1">
+              <span className="font-bold">🚨 Emergency:</span> alerting more professionals nearby
+            </p>
+          ) : (
             <p className="text-xs text-center text-green-600 font-medium mt-1 mb-1">
               <span className="font-bold">⚡ Priority Service:</span> Worker arrives in ~45 mins
+            </p>
+          ))}
+          {isRecurring && (
+            <p className="text-xs text-center text-indigo-600 font-medium mt-1 mb-1">
+              🔁 Repeats {recurring.frequency === 'biweekly' ? 'every 2 weeks' : recurring.frequency === 'monthly' ? 'every month' : 'every week'} · {recurring.occurrences} visits
             </p>
           )}
         </div>
@@ -1480,6 +1790,14 @@ const Checkout = () => {
                   <FiEdit2 className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
+
+              {/* Pincode Availability Warning */}
+              {pincodeCheck.checked && !pincodeCheck.serviceable && (
+                <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-xs text-amber-800">
+                  <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="leading-tight">{pincodeCheck.message}</span>
+                </div>
+              )}
 
               {/* Time Slot (Only for Scheduled) */}
               {bookingType === 'scheduled' && (
@@ -1535,11 +1853,14 @@ const Checkout = () => {
               (houseNumber || addressDetails) ?
                 (currentStep === 'payment' ? handlePayment : handleSearchWorkers) :
                 handleProceed}
-            disabled={searchingWorkers}
-            className="w-full text-white py-3 rounded-lg text-base font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-teal-500/30"
-            style={{ backgroundColor: themeColors.button }}
+            disabled={searchingWorkers || (pincodeCheck.checked && !pincodeCheck.serviceable)}
+            className={`w-full text-white py-3 rounded-lg text-base font-semibold transition-colors disabled:opacity-50 shadow-lg ${
+              pincodeCheck.checked && !pincodeCheck.serviceable ? 'bg-gray-400 cursor-not-allowed shadow-none' : 'shadow-teal-500/30'
+            }`}
+            style={{ backgroundColor: (pincodeCheck.checked && !pincodeCheck.serviceable) ? '#9ca3af' : themeColors.button }}
           >
-            {searchingWorkers ? 'Searching for workers...' :
+            {pincodeCheck.checked && !pincodeCheck.serviceable ? 'Area Not Serviceable' :
+              searchingWorkers ? 'Searching for workers...' :
               currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
                 plan ? 'Proceed to Payment' :
                   bookingType === 'instant' ? 'Find nearby workers now' :
@@ -1566,6 +1887,13 @@ const Checkout = () => {
         }}
         currentStep={currentStep}
         acceptedWorker={acceptedWorker}
+        search={searchInfo}
+        booking={{
+          serviceName: bookingRequest?.serviceName || cartItems[0]?.title,
+          categoryIcon: toAssetUrl(bookingRequest?.categoryIcon || cartItems[0]?.categoryIcon || ''),
+          address: [houseNumber, address].filter(Boolean).join(', '),
+          photosCount: getUploadedIssuePhotos().length + getUploadedIssueVideos().length
+        }}
         onRetry={() => {
           handleSearchWorkers();
         }}

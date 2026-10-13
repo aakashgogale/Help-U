@@ -37,6 +37,15 @@ const dashboardService = {
   getGrowthMetrics: async (params = {}) => {
     const response = await api.get('/admin/dashboard/users/growth', { params });
     return response.data;
+  },
+
+  /**
+   * Get advanced marketplace analytics (GMV, AOV, retention, city/category revenue)
+   * @param {Object} params - days, startDate, endDate
+   */
+  getAdvancedAnalytics: async (params = {}) => {
+    const response = await api.get('/admin/reports/advanced-analytics', { params });
+    return response.data;
   }
 };
 

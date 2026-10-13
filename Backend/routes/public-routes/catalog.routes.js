@@ -5,6 +5,7 @@ const {
   getPublicBrands,
   getPublicBrandBySlug,
   getPublicServices,
+  advancedCatalogSearch,
   getPublicHomeContent,
   getPublicHomeData
 } = require('../../controllers/publicControllers/catalogController');
@@ -14,6 +15,7 @@ router.get('/categories', getPublicCategories);
 router.get('/brands', getPublicBrands); // Formerly services
 router.get('/brands/slug/:slug', getPublicBrandBySlug);
 router.get('/services', getPublicServices); // New services
+router.get('/search/advanced', advancedCatalogSearch);
 router.get('/home-content', getPublicHomeContent);
 router.get('/home-data', getPublicHomeData);
 

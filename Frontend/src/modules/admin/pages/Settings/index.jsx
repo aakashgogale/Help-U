@@ -8,6 +8,30 @@ import { publicCatalogService } from '../../../../services/catalogService';
 import CityManagement from '../Cities';
 import { toast } from 'react-hot-toast';
 
+const AVAILABLE_PERMISSIONS = [
+  { key: 'dashboard', label: 'Dashboard', desc: 'KPI cards & overview metrics' },
+  { key: 'users', label: 'Users', desc: 'Customers, wallets & referrals' },
+  { key: 'workers', label: 'Workers', desc: 'Verification, approval & ledger' },
+  { key: 'bookings', label: 'Bookings', desc: 'Live jobs, assignment & tracking' },
+  { key: 'disputes', label: 'Disputes', desc: 'User & worker dispute resolutions' },
+  { key: 'recurring-bookings', label: 'Recurring Bookings', desc: 'Scheduled recurring subscriptions' },
+  { key: 'scrap', label: 'Scrap Items', desc: 'Scrap requests & verification' },
+  { key: 'payments', label: 'Payments', desc: 'User & worker payments, platform revenue' },
+  { key: 'settlements', label: 'Settlements', desc: 'Worker withdrawals & payouts' },
+  { key: 'commission', label: 'Commission', desc: 'Worker commission rules & tiers' },
+  { key: 'user-categories', label: 'User Catalog', desc: 'Categories, brands & user services' },
+  { key: 'worker-services', label: 'Worker Services', desc: 'Worker-side service catalog' },
+  { key: 'worker-parts', label: 'Worker Parts', desc: 'Spare parts inventory & pricing' },
+  { key: 'addons', label: 'Add-ons', desc: 'Extra service add-on items' },
+  { key: 'reports', label: 'Reports', desc: 'GMV, AOV & advanced business analytics' },
+  { key: 'reviews', label: 'Reviews', desc: 'Ratings & customer feedback' },
+  { key: 'plans', label: 'Plans', desc: 'Subscription plans & benefits' },
+  { key: 'coupons', label: 'Coupons', desc: 'Discount vouchers & promo rules' },
+  { key: 'settings', label: 'Settings', desc: 'System configuration & admin staff' },
+  { key: 'customization', label: 'Customization', desc: 'Hero banners & home content' },
+  { key: 'booking-config', label: 'Booking Config', desc: 'Search radius, waves & ranking' }
+];
+
 const AdminSettings = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,22 +80,62 @@ const AdminSettings = () => {
   });
   const [supportLoading, setSupportLoading] = useState(false);
 
-  const [profile, setProfile] = useState({
-    name: '',
-    email: '',
-    role: 'admin',
-    assignedCity: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+  const [profile, setProfile] = useState(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('adminData') || localStorage.getItem('adminData') || '{}');
+      return {
+        id: stored.id || stored._id || '',
+        _id: stored._id || stored.id || '',
+        name: stored.name || '',
+        email: stored.email || '',
+        role: stored.role || 'admin',
+        assignedCity: stored.cityName || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      };
+    } catch {
+      return {
+        id: '',
+        _id: '',
+        name: '',
+        email: '',
+        role: 'admin',
+        assignedCity: '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      };
+    }
   });
 
   // Admin Management State
   const [admins, setAdmins] = useState([]);
   const [cities, setCities] = useState([]); // State for cities
   const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', role: 'admin', cityId: '' }); // Added cityId
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] });
   const [adminLoading, setAdminLoading] = useState(false);
+
+  const togglePermission = (key) => {
+    setNewAdmin(prev => {
+      const current = Array.isArray(prev.permissions) ? prev.permissions : [];
+      const updated = current.includes(key)
+        ? current.filter(k => k !== key)
+        : [...current, key];
+      return { ...prev, permissions: updated };
+    });
+  };
+
+  const selectAllPermissions = () => {
+    setNewAdmin(prev => ({
+      ...prev,
+      permissions: AVAILABLE_PERMISSIONS.map(p => p.key)
+    }));
+  };
+
+  const clearAllPermissions = () => {
+    setNewAdmin(prev => ({ ...prev, permissions: [] }));
+  };
 
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -113,6 +177,8 @@ const AdminSettings = () => {
         if (res.success && res.data) {
           setProfile(prev => ({
             ...prev,
+            id: res.data.id || res.data._id || prev.id,
+            _id: res.data._id || res.data.id || prev._id,
             email: res.data.email,
             name: res.data.name || 'Admin',
             role: res.data.role || 'admin',
@@ -427,33 +493,33 @@ const AdminSettings = () => {
     e.preventDefault();
     const isEdit = !!newAdmin.id;
 
-    if (!newAdmin.name || !newAdmin.email) {
-      return toast.error('Name and Email are required');
+    if (!newAdmin.name?.trim() || !newAdmin.email?.trim()) {
+      return toast.error('Sub-Admin Name and Email are required');
     }
-    if (!isEdit && !newAdmin.password) {
-      return toast.error('Password is required for new admin');
+    if (!isEdit && !newAdmin.password?.trim()) {
+      return toast.error('Password is required for new sub-admin');
     }
 
     setAdminLoading(true);
     try {
-      // Prepare payload
-      const payload = { ...newAdmin };
-      if (payload.cityId) {
-        const cityObj = cities.find(c => (c._id || c.id) === payload.cityId);
-        if (cityObj) payload.cityName = cityObj.name;
-      } else {
-        delete payload.cityId;
-        payload.cityName = '';
+      const payload = {
+        name: newAdmin.name.trim(),
+        email: newAdmin.email.trim(),
+        role: newAdmin.role || 'sub_admin',
+        permissions: Array.isArray(newAdmin.permissions) ? newAdmin.permissions : []
+      };
+      if (newAdmin.password?.trim()) {
+        payload.password = newAdmin.password.trim();
       }
 
       if (isEdit) {
         await updateAdminDetails(newAdmin.id, payload);
-        toast.success('Admin updated successfully');
+        toast.success('Sub-Admin access updated successfully');
       } else {
         await createAdmin(payload);
-        toast.success('Admin created successfully');
+        toast.success('Sub-Admin created successfully');
       }
-      setNewAdmin({ name: '', email: '', password: '', role: 'admin', cityId: '' });
+      setNewAdmin({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] });
       setShowAddAdmin(false);
       loadAdmins();
     } catch (error) {
@@ -466,11 +532,11 @@ const AdminSettings = () => {
   const handleEditClick = (admin) => {
     setNewAdmin({
       id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      password: '',
-      cityId: admin.cityId?._id || admin.cityId || '' // Handle populated or raw ID
+      name: admin.name || '',
+      email: admin.email || '',
+      role: admin.role || 'sub_admin',
+      permissions: Array.isArray(admin.permissions) ? admin.permissions : [],
+      password: ''
     });
     setShowAddAdmin(true);
   };
@@ -489,6 +555,11 @@ const AdminSettings = () => {
   };
 
   const handleDeleteAdmin = async (id, name) => {
+    const currentId = profile.id || profile._id;
+    if (id && currentId && String(id) === String(currentId)) {
+      toast.error('You cannot delete your own account');
+      return;
+    }
     if (!window.confirm(`Delete admin "${name}"? This cannot be undone.`)) return;
     try {
       await deleteAdmin(id);
@@ -1081,9 +1152,9 @@ const AdminSettings = () => {
           activeView === 'admins' && isSuperAdmin && (
             <motion.div key="admins" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-lg">
+                    <div className="p-2 bg-amber-100 rounded-lg shrink-0">
                       <FiUsers className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
@@ -1091,50 +1162,183 @@ const AdminSettings = () => {
                       <p className="text-sm text-gray-500">Total {admins.length} administrators found</p>
                     </div>
                   </div>
-                  <button onClick={() => { setNewAdmin({ name: '', email: '', password: '', role: 'admin', cityId: '' }); setShowAddAdmin(!showAddAdmin); }}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg transition-all ${showAddAdmin ? 'bg-gray-100 text-gray-600' : 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-100'}`}>
+                  <button onClick={() => { setNewAdmin({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] }); setShowAddAdmin(!showAddAdmin); }}
+                    className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-lg transition-all w-full sm:w-auto ${showAddAdmin ? 'bg-gray-100 text-gray-600' : 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-100'}`}>
                     {showAddAdmin ? <FiX className="w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
-                    {showAddAdmin ? 'Cancel' : 'Add New Admin'}
+                    {showAddAdmin ? 'Cancel' : 'Add New Sub-Admin'}
                   </button>
                 </div>
 
-                {/* Add/Edit Admin Form */}
+                {/* Add/Edit Sub-Admin Form */}
                 <AnimatePresence>
                   {showAddAdmin && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b border-gray-100 bg-amber-50/50">
-                      <form onSubmit={handleCreateAdmin} className="p-6">
-                        <h3 className="text-sm font-bold text-gray-800 mb-4">{newAdmin.id ? 'Edit Administrator' : 'Create New Administrator'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4"> {/* Increased columns */}
-                          <input type="text" placeholder="Full Name" value={newAdmin.name} onChange={e => setNewAdmin(p => ({ ...p, name: e.target.value }))}
-                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200" />
-                          <input type="email" placeholder="Email Address" value={newAdmin.email} onChange={e => setNewAdmin(p => ({ ...p, email: e.target.value }))}
-                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200" />
-                          <input type="password" placeholder={newAdmin.id ? "Password (leave blank to keep)" : "Password"} value={newAdmin.password} onChange={e => setNewAdmin(p => ({ ...p, password: e.target.value }))}
-                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200" />
-
-                          {/* Role Selection */}
-                          <select value={newAdmin.role} onChange={e => setNewAdmin(p => ({ ...p, role: e.target.value }))}
-                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200">
-                            <option value="admin">Admin</option>
-                            <option value="super_admin">Super Admin</option>
-                          </select>
-
-                          {/* City Selection */}
-                          <select value={newAdmin.cityId} onChange={e => setNewAdmin(p => ({ ...p, cityId: e.target.value }))}
-                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200">
-                            <option value="">All Cities (Global)</option>
-                            {cities.map(city => (
-                              <option key={city._id} value={city._id}>
-                                {city.name}
-                              </option>
-                            ))}
-                          </select>
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b border-gray-100 bg-gradient-to-b from-amber-50/60 to-white">
+                      <form onSubmit={handleCreateAdmin} className="p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-5 border-b border-amber-200/60">
+                          <div>
+                            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">
+                                {newAdmin.id ? <FiEdit /> : <FiPlus />}
+                              </span>
+                              {newAdmin.id ? 'Edit Sub-Admin & Access Rights' : 'Create New Sub-Admin'}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Sub-admin ka name, login email aur password dalein, aur niche select karein ki use panel me kya kya access dena hai
+                            </p>
+                          </div>
+                          {newAdmin.id && (
+                            <span className="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full w-fit">
+                              Editing Account
+                            </span>
+                          )}
                         </div>
 
-                        <div className="flex justify-end mt-4">
-                          <button type="submit" disabled={adminLoading}
-                            className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 font-medium text-sm">
-                            {adminLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (newAdmin.id ? 'Update Admin' : 'Create Admin')}
+                        {/* 3 Main Inputs: Admin Name, Email, Password */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                              Admin Name <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                              <input
+                                type="text"
+                                placeholder="Sub-Admin Name"
+                                value={newAdmin.name}
+                                onChange={e => setNewAdmin(p => ({ ...p, name: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all font-medium text-gray-800"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                              Email Address (Login ID) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                              <input
+                                type="email"
+                                placeholder="admin@appzeto.com"
+                                value={newAdmin.email}
+                                onChange={e => setNewAdmin(p => ({ ...p, email: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all font-medium text-gray-800"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                              Password {newAdmin.id ? <span className="text-gray-400 font-normal">(Leave blank to keep current)</span> : <span className="text-red-500">*</span>}
+                            </label>
+                            <div className="relative">
+                              <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                              <input
+                                type="password"
+                                placeholder={newAdmin.id ? "Leave blank to keep existing" : "Set login password"}
+                                value={newAdmin.password}
+                                onChange={e => setNewAdmin(p => ({ ...p, password: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all font-medium text-gray-800"
+                                required={!newAdmin.id}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Granular Module Rights / Permissions Checkboxes */}
+                        <div className="mt-6 pt-5 border-t border-amber-200/60">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                <FiShield className="text-amber-600" /> Kya Kya Access Dena Hai (Select Permissions)
+                              </h4>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Jo jo modules select karenge, login karne par sub-admin ko panel me sirf vahi sections show honge
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-md">
+                                {newAdmin.permissions?.length || 0} / {AVAILABLE_PERMISSIONS.length} Modules Selected
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  selectAllPermissions();
+                                }}
+                                className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer"
+                              >
+                                Select All
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  clearAllPermissions();
+                                }}
+                                className="px-2.5 py-1 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                              >
+                                Clear All
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                            {AVAILABLE_PERMISSIONS.map(p => {
+                              const isChecked = (newAdmin.permissions || []).includes(p.key);
+                              return (
+                                <button
+                                  type="button"
+                                  key={p.key}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    togglePermission(p.key);
+                                  }}
+                                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs cursor-pointer select-none transition-all ${
+                                    isChecked
+                                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm font-semibold ring-2 ring-amber-300 ring-offset-1'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50/40'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border transition-all ${
+                                    isChecked ? 'bg-white text-amber-600 border-white' : 'border-gray-300 bg-gray-50'
+                                  }`}>
+                                    {isChecked ? <FiCheckCircle className="w-3.5 h-3.5" /> : null}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="leading-tight font-medium">
+                                      {p.label}
+                                    </span>
+                                    <span className={`text-[10px] mt-0.5 leading-tight ${isChecked ? 'text-amber-100' : 'text-gray-400'}`}>
+                                      {p.desc}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-amber-200/60">
+                          <button
+                            type="button"
+                            onClick={() => { setShowAddAdmin(false); setNewAdmin({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] }); }}
+                            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={adminLoading}
+                            className="px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 font-semibold text-sm shadow-md shadow-amber-200 transition-all flex items-center gap-2"
+                          >
+                            {adminLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              newAdmin.id ? 'Save & Update Access Rights' : 'Create Sub-Admin with Selected Access'
+                            )}
                           </button>
                         </div>
                       </form>
@@ -1142,84 +1346,190 @@ const AdminSettings = () => {
                   )}
                 </AnimatePresence>
 
-                {/* Admins Table List */}
-                <div className="overflow-x-auto">
+                {/* Mobile Cards View (Visible on small screens) */}
+                <div className="block md:hidden divide-y divide-gray-100">
+                  {admins.map((admin) => {
+                    const currentAdminId = profile.id || profile._id;
+                    const isCurrentAdmin = (admin._id && currentAdminId && String(admin._id) === String(currentAdminId)) ||
+                                          (admin.email && profile.email && admin.email.toLowerCase() === profile.email.toLowerCase());
+                    const isPrimarySuperAdmin = admin.email === 'admin@admin.com';
+
+                    return (
+                      <div key={admin._id} className="p-4 space-y-3 bg-white">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center font-bold text-amber-800 shadow-sm shrink-0">
+                              {admin.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-gray-900 text-sm truncate flex items-center gap-1.5">
+                                {admin.name}
+                                {isCurrentAdmin && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">YOU</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">{admin.email}</p>
+                            </div>
+                          </div>
+
+                          <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border shrink-0 ${
+                            admin.role === 'super_admin'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-purple-50 text-purple-700 border-purple-200'
+                          }`}>
+                            {admin.role === 'super_admin' ? '⭐ Super Admin' : '🛡️ Sub-Admin'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+                          <span className="font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                            {admin.role === 'super_admin'
+                              ? 'Full Access'
+                              : `${admin.permissions?.length || 0} module access`}
+                          </span>
+                          <span className={`flex items-center gap-1 font-semibold ${admin.isActive !== false ? 'text-green-600' : 'text-red-500'}`}>
+                            <span className={`w-2 h-2 rounded-full ${admin.isActive !== false ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            {admin.isActive !== false ? 'Active' : 'Blocked'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                          {isCurrentAdmin ? (
+                            <span className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                              ⭐ You (Current Account)
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                onClick={() => handleEditClick(admin)}
+                                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                <FiEdit className="w-3.5 h-3.5" /> Edit Access
+                              </button>
+                              {!isPrimarySuperAdmin && (
+                                <>
+                                  <button
+                                    onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
+                                    className={`p-1.5 rounded-lg transition-colors ${admin.isActive !== false ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50'}`}
+                                  >
+                                    {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAdmin(admin._id, admin.name)}
+                                    className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Admins Table List (Visible on desktop screens) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
                         <th className="px-6 py-4 font-semibold">Administrator</th>
-                        <th className="px-6 py-4 font-semibold">Role</th>
-                        <th className="px-6 py-4 font-semibold">Assigned City</th>
+                        <th className="px-6 py-4 font-semibold">Assigned Access Rights</th>
                         <th className="px-6 py-4 font-semibold">Status</th>
                         <th className="px-6 py-4 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {admins.map((admin) => (
-                        <tr key={admin._id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center font-bold text-gray-600 shadow-sm border border-white">
-                                {admin.name?.charAt(0).toUpperCase()}
+                      {admins.map((admin) => {
+                        const currentAdminId = profile.id || profile._id;
+                        const isCurrentAdmin = (admin._id && currentAdminId && String(admin._id) === String(currentAdminId)) ||
+                                              (admin.email && profile.email && admin.email.toLowerCase() === profile.email.toLowerCase());
+                        const isPrimarySuperAdmin = admin.email === 'admin@admin.com';
+
+                        return (
+                          <tr key={admin._id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center font-bold text-gray-600 shadow-sm border border-white">
+                                  {admin.name?.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                                    {admin.name}
+                                    {isCurrentAdmin && (
+                                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">YOU</span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{admin.email}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-semibold text-gray-800 text-sm">{admin.name}</p>
-                                <p className="text-xs text-gray-500">{admin.email}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
+                                  admin.role === 'super_admin'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                                }`}>
+                                  {admin.role === 'super_admin'
+                                    ? '⭐ Super Admin (Full Access)'
+                                    : '🛡️ Sub-Admin'}
+                                </span>
+                                {admin.role !== 'super_admin' && (
+                                  <span className="text-[11px] text-gray-600 font-medium">
+                                    {admin.permissions?.length > 0
+                                      ? `${admin.permissions.length} module access rights assigned`
+                                      : 'No custom modules (Restricted)'}
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1 text-xs font-bold rounded-full border ${admin.role === 'super_admin'
-                              ? 'bg-amber-50 text-amber-700 border-amber-100'
-                              : 'bg-blue-50 text-blue-700 border-blue-100'
-                              }`}>
-                              {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            {admin.cityId ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                                {admin.cityId.name || 'Unknown City'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`flex items-center gap-1.5 text-xs font-medium ${admin.isActive !== false ? 'text-green-600' : 'text-red-500'}`}>
+                                <span className={`w-2 h-2 rounded-full ${admin.isActive !== false ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                {admin.isActive !== false ? 'Active' : 'Blocked'}
                               </span>
-                            ) : (
-                              <span className="text-xs text-gray-400">All Cities</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`flex items-center gap-1.5 text-xs font-medium ${admin.isActive !== false ? 'text-green-600' : 'text-red-500'}`}>
-                              <span className={`w-2 h-2 rounded-full ${admin.isActive !== false ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                              {admin.isActive !== false ? 'Active' : 'Blocked'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {admin._id !== profile.id && admin.email !== 'admin@admin.com' && (
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => handleEditClick(admin)}
-                                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                  title="Edit Admin">
-                                  <FiEdit className="w-4 h-4" />
-                                </button>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {isCurrentAdmin ? (
+                                <span className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                                  ⭐ Logged-in
+                                </span>
+                              ) : (
+                                <div className="flex justify-end gap-2">
+                                  <button onClick={() => handleEditClick(admin)}
+                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Edit Access Rights">
+                                    <FiEdit className="w-4 h-4" />
+                                  </button>
 
-                                <button onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
-                                  className={`p-2 text-gray-400 rounded-lg transition-all ${admin.isActive !== false ? 'hover:text-amber-600 hover:bg-amber-50' : 'hover:text-green-600 hover:bg-green-50'
-                                    }`}
-                                  title={admin.isActive !== false ? "Block Admin" : "Unblock Admin"}>
-                                  {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
-                                </button>
+                                  {!isPrimarySuperAdmin && (
+                                    <>
+                                      <button onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
+                                        className={`p-2 text-gray-400 rounded-lg transition-all ${admin.isActive !== false ? 'hover:text-amber-600 hover:bg-amber-50' : 'hover:text-green-600 hover:bg-green-50'
+                                          }`}
+                                        title={admin.isActive !== false ? "Block Admin" : "Unblock Admin"}>
+                                        {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
+                                      </button>
 
-                                <button onClick={() => handleDeleteAdmin(admin._id, admin.name)}
-                                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                  title="Delete Admin">
-                                  <FiTrash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                      <button onClick={() => handleDeleteAdmin(admin._id, admin.name)}
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Delete Admin">
+                                        <FiTrash2 className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {admins.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="px-6 py-12 text-center text-gray-400">
+                          <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
                             <FiUsers className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>No administrators found</p>
                           </td>

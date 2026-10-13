@@ -17,6 +17,11 @@ import {
 import workerBillService from '../../../../services/workerBillService';
 import { CashCollectionModal, ConfirmDialog, OtpVerificationModal } from '../../components/common';
 import VisitVerificationModal from '../../components/common/VisitVerificationModal';
+import BookingExtrasCard from '../../../../components/booking/BookingExtrasCard';
+import BookingTimeline from '../../../../components/booking/BookingTimeline';
+import ChatButton from '../../../../components/booking/ChatButton';
+import DisputeSection from '../../../../components/disputes/DisputeSection';
+import bookingFeaturesService from '../../../../services/bookingFeaturesService';
 import { WorkCompletionModal } from '../../components/common';
 // import BillingModal from '../../components/bookings/BillingModal'; // Consumed by page now
 import workerWalletService from '../../../../services/workerWalletService';
@@ -42,6 +47,8 @@ export default function BookingDetails() {
 
 
   const [actionLoading, setActionLoading] = useState(false);
+  // Worker drops an accepted job; the customer is matched with someone else.
+  const [cancelModal, setCancelModal] = useState({ open: false, reason: '', submitting: false });
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -718,6 +725,9 @@ export default function BookingDetails() {
           );
         })()}
 
+        {/* Emergency flag, instructions, add-ons and problem photos/videos from the customer */}
+        <BookingExtrasCard booking={booking} showPrices={false} title="Customer's Requests" className="mb-4" />
+
         {/* Booked Items Details */}
         {booking.items && booking.items.length > 0 && (
           <div
@@ -1242,6 +1252,9 @@ export default function BookingDetails() {
             <FiArrowRight className="w-5 h-5" />
           </button>
 
+          {/* Chat with the customer */}
+          <ChatButton role="worker" booking={booking} className="w-full" />
+
 
           {/* Worker Operational Buttons */}
           {(
@@ -1296,9 +1309,83 @@ export default function BookingDetails() {
               )}
             </div>
           )}
+
+          {/* Drop the job before arriving; the backend reassigns it */}
+          {['confirmed', 'accepted', 'assigned', 'journey_started'].includes(booking.status) && (
+            <button
+              type="button"
+              onClick={() => setCancelModal({ open: true, reason: '', submitting: false })}
+              className="w-full py-3 rounded-xl text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 active:scale-95 transition-all"
+            >
+              Can't make it? Cancel job
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 space-y-4">
+          <DisputeSection role="worker" booking={booking} />
+          <BookingTimeline booking={booking} />
         </div>
       </main>
 
+
+      {/* Cancel job (before arrival) */}
+      {cancelModal.open && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center" onClick={() => !cancelModal.submitting && setCancelModal({ open: false, reason: '', submitting: false })}>
+          <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900">Cancel this job?</h3>
+            <p className="text-sm text-gray-500 mt-1">The customer will be matched with another professional. Frequent cancellations lower your ranking for new jobs.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {['Vehicle breakdown', 'Personal emergency', 'Location too far', 'Missing tools or parts'].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setCancelModal((m) => ({ ...m, reason: r }))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${cancelModal.reason === r ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={cancelModal.reason}
+              onChange={(e) => setCancelModal((m) => ({ ...m, reason: e.target.value.slice(0, 300) }))}
+              rows={2}
+              placeholder="Reason (required)"
+              className="mt-3 w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-200"
+            />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={cancelModal.submitting}
+                onClick={() => setCancelModal({ open: false, reason: '', submitting: false })}
+                className="py-3 rounded-xl font-bold text-gray-600 bg-gray-100 disabled:opacity-50"
+              >
+                Keep job
+              </button>
+              <button
+                type="button"
+                disabled={cancelModal.submitting || !cancelModal.reason.trim()}
+                onClick={async () => {
+                  setCancelModal((m) => ({ ...m, submitting: true }));
+                  try {
+                    const res = await bookingFeaturesService.cancelJob(id, cancelModal.reason.trim());
+                    toast.success(res.message || 'Job cancelled');
+                    window.dispatchEvent(new Event('workerJobsUpdated'));
+                    navigate('/worker/jobs', { replace: true });
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed to cancel job');
+                    setCancelModal((m) => ({ ...m, submitting: false }));
+                  }
+                }}
+                className="py-3 rounded-xl font-bold text-white bg-rose-600 disabled:opacity-50"
+              >
+                {cancelModal.submitting ? 'Cancelling…' : 'Cancel job'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cash Collection / OTP Modal */}
       <CashCollectionModal

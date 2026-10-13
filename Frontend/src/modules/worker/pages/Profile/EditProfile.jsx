@@ -6,6 +6,7 @@ import Header from '../../components/layout/Header';
 import BottomNav from '../../components/layout/BottomNav';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { workerAuthService } from '../../../../services/authService';
+import api from '../../../../services/api';
 import AddressSelectionModal from '../../../user/pages/Checkout/components/AddressSelectionModal';
 import { toast } from 'react-hot-toast';
 import { z } from "zod";
@@ -222,28 +223,15 @@ const EditProfile = () => {
     setIsAddressModalOpen(false);
   };
 
-  // Upload file helper
+  // Upload file helper — uses the authenticated api client so the request
+  // carries the logged-in worker's token (the endpoint requires auth).
   const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    let baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    if (!baseUrl) {
-      // If no env var, check hostname to determine dev vs prod
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrl = 'http://localhost:5000';
-      } else {
-        // In production, fallback to same origin (relative path)
-        baseUrl = window.location.origin;
-      }
-    }
-    baseUrl = baseUrl.replace(/\/api$/, '');
-    const response = await fetch(`${baseUrl}/api/image/upload`, {
-      method: 'POST',
-      body: formData,
+    const { data } = await api.post('/image/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
-
-    const data = await response.json();
     if (!data.success) throw new Error(data.message || 'Upload failed');
     return data.imageUrl;
   };

@@ -1,6 +1,7 @@
 const User = require('../../models/User');
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
+const escapeRegex = require('../../utils/escapeRegex');
 
 /**
  * Get all users with filters and pagination
@@ -31,10 +32,11 @@ const getAllUsers = async (req, res) => {
 
     // Search by name, phone, or email
     if (search) {
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
@@ -252,6 +254,7 @@ const getUserBookings = async (req, res) => {
 const getUserWalletTransactions = async (req, res) => {
   try {
     const { id } = req.params;
+    const Transaction = require('../../models/Transaction');
 
     const user = await User.findById(id).select('wallet');
 
@@ -262,20 +265,18 @@ const getUserWalletTransactions = async (req, res) => {
       });
     }
 
-    // Get wallet transactions from bookings
-    const transactions = await Booking.find({
-      userId: id,
-      paymentMethod: 'wallet',
-      paymentStatus: 'success'
-    })
-      .select('bookingNumber finalAmount createdAt')
+    const transactions = await Transaction.find({ userId: id })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(100)
+      .lean();
 
     res.status(200).json({
       success: true,
       data: {
-        balance: user.wallet.balance || 0,
+        balance: user.wallet?.balance || 0,
+        penalty: user.wallet?.penalty || 0,
+        promoBalance: user.wallet?.promoBalance || 0,
+        cashbackBalance: user.wallet?.cashbackBalance || 0,
         transactions
       }
     });
@@ -285,6 +286,80 @@ const getUserWalletTransactions = async (req, res) => {
       success: false,
       message: 'Failed to fetch wallet transactions. Please try again.'
     });
+  }
+};
+
+/**
+ * Adjust user wallet (credit / debit cash, promo credits, cashback, or penalty)
+ */
+const adjustUserWallet = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, action = 'credit', walletType = 'balance', description } = req.body;
+
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid amount is required' });
+    }
+
+    const validWalletTypes = ['balance', 'promoBalance', 'cashbackBalance', 'penalty'];
+    if (!validWalletTypes.includes(walletType)) {
+      return res.status(400).json({ success: false, message: 'Invalid wallet type' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (!user.wallet) {
+      user.wallet = { balance: 0, penalty: 0, promoBalance: 0, cashbackBalance: 0 };
+    }
+
+    const currentVal = user.wallet[walletType] || 0;
+    let newVal;
+    if (action === 'credit') {
+      newVal = currentVal + numAmount;
+    } else {
+      newVal = Math.max(0, currentVal - numAmount);
+    }
+
+    user.wallet[walletType] = newVal;
+    await user.save();
+
+    let txnType = 'credit';
+    if (action === 'debit') {
+      txnType = 'debit';
+    } else if (walletType === 'promoBalance') {
+      txnType = 'promo_credit';
+    } else if (walletType === 'cashbackBalance') {
+      txnType = 'cashback';
+    } else if (walletType === 'penalty') {
+      txnType = 'penalty';
+    }
+
+    const Transaction = require('../../models/Transaction');
+    await Transaction.create({
+      userId: user._id,
+      type: txnType,
+      amount: numAmount,
+      status: 'completed',
+      paymentMethod: 'system',
+      description: description || `Admin ${action} of ₹${numAmount} (${walletType})`,
+      balanceBefore: currentVal,
+      balanceAfter: newVal
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully ${action === 'credit' ? 'credited' : 'debited'} ₹${numAmount}`,
+      data: {
+        wallet: user.wallet
+      }
+    });
+  } catch (error) {
+    console.error('Adjust user wallet error:', error);
+    res.status(500).json({ success: false, message: 'Failed to adjust wallet balance' });
   }
 };
 
@@ -303,10 +378,11 @@ const getAllUserBookings = async (req, res) => {
 
     // Search by user name or phone
     if (search) {
+      const safeSearch = escapeRegex(search);
       const users = await User.find({
         $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
+          { name: { $regex: safeSearch, $options: 'i' } },
+          { phone: { $regex: safeSearch, $options: 'i' } }
         ]
       }).select('_id');
       
@@ -351,6 +427,7 @@ module.exports = {
   deleteUser,
   getUserBookings,
   getUserWalletTransactions,
+  adjustUserWallet,
   getAllUserBookings
 };
 

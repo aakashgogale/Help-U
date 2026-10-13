@@ -2,6 +2,7 @@ const Worker = require('../../models/Worker');
 const Booking = require('../../models/Booking');
 const WorkerBill = require('../../models/WorkerBill');
 const { validationResult } = require('express-validator');
+const escapeRegex = require('../../utils/escapeRegex');
 const { WORKER_STATUS, BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { createNotification } = require('../notificationControllers/notificationController');
 
@@ -30,11 +31,12 @@ const getAllWorkers = async (req, res) => {
 
     // Search by name, email, phone, or business name
     if (search) {
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { businessName: { $regex: search, $options: 'i' } }
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
+        { businessName: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
@@ -379,11 +381,12 @@ const getAllWorkerBookings = async (req, res) => {
 
     // If search is provided, we need to find workers by business name or name first
     if (search) {
+      const safeSearch = escapeRegex(search);
       const workers = await Worker.find({
         $or: [
-          { businessName: { $regex: search, $options: 'i' } },
-          { name: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
+          { businessName: { $regex: safeSearch, $options: 'i' } },
+          { name: { $regex: safeSearch, $options: 'i' } },
+          { phone: { $regex: safeSearch, $options: 'i' } }
         ]
       }).select('_id');
 

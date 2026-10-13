@@ -2,8 +2,13 @@ const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
+const { normalizeWorkPhotos } = require('../../utils/workPhotos');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToWorker } = require('../../services/firebaseAdmin');
+const { resolveCommission, computeWorkerEarnings, toPayoutConfig, describeCommission } = require('../../services/commissionService');
+const { handleWorkerCancellation, remainingCandidates, WORKER_CANCELLABLE_STATUSES } = require('../../services/reassignmentService');
+const { getBookingConfig } = require('../../utils/bookingConfig');
+const escapeRegex = require('../../utils/escapeRegex');
 
 const ADVANCE_REQUEST_ALLOWED_STATUSES = [
   BOOKING_STATUS.CONFIRMED,
@@ -77,11 +82,12 @@ const getWorkerBookings = async (req, res) => {
 
     // ── Apply Search Filter (Simple regex on serviceName or bookingNumber) ──
     if (q) {
+      const safeQ = escapeRegex(q);
       query.$and = [
         {
           $or: [
-            { serviceName: { $regex: q, $options: 'i' } },
-            { bookingNumber: { $regex: q, $options: 'i' } }
+            { serviceName: { $regex: safeQ, $options: 'i' } },
+            { bookingNumber: { $regex: safeQ, $options: 'i' } }
           ]
         }
       ];
@@ -119,6 +125,12 @@ const getWorkerBookings = async (req, res) => {
                 assignedAt: 1,
                 brandName: 1,
                 brandIcon: 1,
+                issuePhotos: 1,
+                issueVideos: 1,
+                customerNotes: 1,
+                addOns: 1,
+                isEmergency: 1,
+                bookingType: 1,
                 expiresAt: 1
               }
             }
@@ -216,7 +228,9 @@ const acceptBooking = async (req, res) => {
       {
         _id: id,
         status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-        vendorId: null // Crucial: Ensures another request didn't just take it
+        vendorId: null, // Crucial: Ensures another request didn't just take it
+        // A worker who rejected or dropped this booking cannot take it back.
+        excludedVendors: { $ne: vendorId }
       },
       {
         $set: {
@@ -226,7 +240,7 @@ const acceptBooking = async (req, res) => {
           status: BOOKING_STATUS.CONFIRMED // Default to confirmed
         }
       },
-      { new: true } // Return updated doc
+      { new: true, actor: 'worker' } // Return updated doc
     );
 
     if (!updatedBooking) {
@@ -409,15 +423,16 @@ const rejectBooking = async (req, res) => {
       }
     );
 
-    // Remove worker from notifiedVendors (they've responded)
+    // Remove worker from notifiedVendors (they've responded) and exclude them
+    // from later waves. potentialVendors is left intact: the scheduler picks
+    // each wave from it by skipping notified and excluded workers, so removing
+    // entries would shift the list and skip someone.
     booking.notifiedVendors = booking.notifiedVendors.filter(
       v => v.toString() !== vendorId.toString()
     );
-
-    // Remove from potentialVendors too
-    booking.potentialVendors = booking.potentialVendors.filter(
-      v => v.vendorId?.toString() !== vendorId.toString()
-    );
+    if (!booking.excludedVendors.some(v => v.toString() === vendorId.toString())) {
+      booking.excludedVendors.push(vendorId);
+    }
 
     // Check if ALL workers have rejected
     const pendingRequests = await BookingRequest.countDocuments({
@@ -425,7 +440,16 @@ const rejectBooking = async (req, res) => {
       status: { $in: ['PENDING', 'VIEWED'] }
     });
 
-    const remainingPotential = booking.potentialVendors.length;
+    const remainingPotential = remainingCandidates(booking).length;
+
+    // Everyone alerted so far has said no: alert the next wave now instead
+    // of waiting out the wave timer.
+    if (pendingRequests === 0 && remainingPotential > 0) {
+      const config = await getBookingConfig();
+      if (config.autoReassignOnReject && booking.status === BOOKING_STATUS.SEARCHING) {
+        booking.waveStartedAt = new Date(0);
+      }
+    }
 
     if (pendingRequests === 0 && remainingPotential === 0) {
       // No workers left - mark booking as rejected/failed
@@ -468,6 +492,40 @@ const rejectBooking = async (req, res) => {
 };
 
 /**
+ * Worker cancels a job they accepted.
+ * The booking is handed to another worker when the booking configuration
+ * allows it, otherwise it is cancelled for the customer.
+ */
+const cancelJob = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const result = await handleWorkerCancellation(id, vendorId, reason);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`vendor_${vendorId}`).emit('removeWorkerBooking', { id: String(id) });
+    }
+
+    res.status(200).json({
+      success: true,
+      reassigned: result.reassigned,
+      message: result.reassigned
+        ? 'Job cancelled. The customer is being matched with another professional.'
+        : 'Job cancelled.'
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Cancel job error:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel job. Please try again.' });
+  }
+};
+
+/**
  * Update booking status
  */
 const updateBookingStatus = async (req, res) => {
@@ -492,6 +550,12 @@ const updateBookingStatus = async (req, res) => {
         success: false,
         message: 'Booking not found'
       });
+    }
+
+    // Cancelling before arrival goes through the reassignment flow so the
+    // customer is matched with someone else rather than left without a worker.
+    if (status === BOOKING_STATUS.CANCELLED && WORKER_CANCELLABLE_STATUSES.includes(booking.status)) {
+      return cancelJob(req, res);
     }
 
     // Validate status transition if status is changing
@@ -862,17 +926,23 @@ const completeSelfJob = async (req, res) => {
     // ── Fetch Settings (frozen snapshot for this bill) ──
     const Settings = require('../../models/Settings');
     const settings = await Settings.findOne({ type: 'global' });
-    const serviceSplitPct = settings?.servicePayoutPercentage ?? 70;
-    const partsSplitPct = settings?.partsPayoutPercentage ?? 10;
     const serviceGstPct = settings?.serviceGstPercentage ?? 18;
     const partsGstPct = settings?.partsGstPercentage ?? 18;
+
+    // Commission for this worker and category (global, category, worker or
+    // worker+category rule), frozen into the bill.
+    const commission = await resolveCommission({ workerId: vendorId, categoryId: booking.categoryId });
 
     // ═══════════════════════════════════════════
     // STEP 1: BUILD LINE ITEMS
     // ═══════════════════════════════════════════
 
-    // -- Original booking service (from basePrice) --
-    const originalBase = Number(booking.basePrice) || 0;
+    // -- Original booking service (from basePrice, which already includes
+    //    add-ons and any emergency surcharge). On a plan booking the plan
+    //    covers the service itself; only those extras are charged.
+    const isPlanBooking = booking.paymentMethod === 'plan_benefit';
+    const bookingExtras = (Number(booking.addOnsTotal) || 0) + (Number(booking.emergencyCharge) || 0);
+    const originalBase = isPlanBooking ? bookingExtras : (Number(booking.basePrice) || 0);
     const originalGST = parseFloat(((originalBase * serviceGstPct) / 100).toFixed(2));
 
     // -- Worker-added services --
@@ -939,9 +1009,14 @@ const completeSelfJob = async (req, res) => {
     // ═══════════════════════════════════════════
     // Worker % is applied ONLY on base — never on GST
 
-    const vendorServiceEarning = parseFloat(((totalServiceBase * serviceSplitPct) / 100).toFixed(2));
-    const vendorPartsEarning = parseFloat(((totalPartsBase * partsSplitPct) / 100).toFixed(2));
-    const vendorTotalEarning = parseFloat((vendorServiceEarning + vendorPartsEarning).toFixed(2));
+    // On plan bookings the worker is still paid for the covered service.
+    const earningsServiceBase = isPlanBooking
+      ? parseFloat(((Number(booking.basePrice) || 0) + vendorServiceBase).toFixed(2))
+      : totalServiceBase;
+    const { vendorServiceEarning, vendorPartsEarning, vendorTotalEarning } = computeWorkerEarnings(commission, {
+      serviceBase: earningsServiceBase,
+      partsBase: totalPartsBase
+    });
     const companyRevenue = parseFloat((grandTotal - vendorTotalEarning).toFixed(2));
 
     // ═══════════════════════════════════════════
@@ -987,12 +1062,10 @@ const completeSelfJob = async (req, res) => {
       grandTotal,
 
       // Payout config snapshot
-      payoutConfig: {
-        serviceSplitPercentage: serviceSplitPct,
-        partsSplitPercentage: partsSplitPct,
+      payoutConfig: toPayoutConfig(commission, {
         serviceGstPercentage: serviceGstPct,
         partsGstPercentage: partsGstPct
-      },
+      }),
 
       // Revenue split
       vendorServiceEarning,
@@ -1018,7 +1091,8 @@ const completeSelfJob = async (req, res) => {
     booking.paymentOtp = payOtp;
     booking.customerConfirmationOTP = payOtp;
 
-    if (workPhotos) booking.workPhotos = workPhotos;
+    // Accepts either the new { url, type } objects or legacy URL strings.
+    if (workPhotos) booking.workPhotos = normalizeWorkPhotos(workPhotos);
 
     // Store bill summary in workDoneDetails for frontend display
     booking.workDoneDetails = {
@@ -1209,7 +1283,7 @@ const collectSelfCash = async (req, res) => {
           amount: vendorEarning,
           status: 'completed',
           paymentMethod: 'wallet',
-          description: `Earnings ₹${vendorEarning} credited for booking #${booking.bookingNumber} (70% service + 10% parts)`,
+          description: `Earnings ₹${vendorEarning} credited for booking #${booking.bookingNumber} (${describeCommission(bill.payoutConfig)})`,
           metadata: {
             type: 'earnings_increase',
             billId: bill._id.toString(),
@@ -1465,6 +1539,12 @@ const getPendingBookings = async (req, res) => {
       brandName: req.bookingId.brandName,
       brandIcon: req.bookingId.brandIcon,
       categoryIcon: req.bookingId.categoryIcon,
+      issuePhotos: req.bookingId.issuePhotos || [],
+      issueVideos: req.bookingId.issueVideos || [],
+      customerNotes: req.bookingId.customerNotes || null,
+      addOns: (req.bookingId.addOns || []).map(a => ({ title: a.title, quantity: a.quantity })),
+      isEmergency: !!req.bookingId.isEmergency,
+      bookingType: req.bookingId.bookingType,
       createdAt: req.bookingId.createdAt,
       expiresAt: req.bookingId.expiresAt
     }));
@@ -1488,6 +1568,7 @@ module.exports = {
   getBookingById,
   acceptBooking,
   rejectBooking,
+  cancelJob,
   updateBookingStatus,
   addWorkerNotes,
   startSelfJob,

@@ -10,7 +10,13 @@ import { themeColors } from '../../../../theme';
 
 const Wallet = () => {
   const navigate = useNavigate();
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletData, setWalletData] = useState({
+    balance: 0,
+    penalty: 0,
+    promoBalance: 0,
+    cashbackBalance: 0,
+    totalAvailable: 0
+  });
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +30,14 @@ const Wallet = () => {
         ]);
 
         if (balanceResponse.success) {
-          setWalletBalance(balanceResponse.data.balance || 0);
+          const d = balanceResponse.data || {};
+          setWalletData({
+            balance: d.balance || 0,
+            penalty: d.penalty || 0,
+            promoBalance: d.promoBalance || 0,
+            cashbackBalance: d.cashbackBalance || 0,
+            totalAvailable: d.totalAvailable !== undefined ? d.totalAvailable : (d.balance || 0)
+          });
         }
 
         if (transactionsResponse.success) {
@@ -110,14 +123,35 @@ const Wallet = () => {
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
 
             <div className="relative z-10">
-              <p className="text-gray-400 text-sm font-medium mb-1">Current Balance</p>
-              {/* User Request: Balance should only reflect penalties (negative) */}
-              <h2 className="text-4xl font-bold text-red-400">
-                -₹{transactions
-                  .filter(t => ['penalty', 'fine', 'cancellation_fee', 'debit'].includes(t.type))
-                  .reduce((sum, t) => sum + t.amount, 0)
-                  .toLocaleString('en-IN')} <span className="text-base font-normal text-red-300">(Penalty)</span>
-              </h2>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Available Balance</p>
+                  <h2 className="text-4xl font-extrabold text-white tracking-tight">
+                    ₹{walletData.totalAvailable.toLocaleString('en-IN')}
+                  </h2>
+                </div>
+                {walletData.penalty > 0 && (
+                  <span className="text-xs bg-red-500/20 text-red-300 border border-red-500/40 px-3 py-1 rounded-full font-bold">
+                    -₹{walletData.penalty.toLocaleString('en-IN')} Penalty
+                  </span>
+                )}
+              </div>
+
+              {/* Wallet Breakdown Pills */}
+              <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-white/10 text-xs">
+                <div className="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
+                  <p className="text-gray-400 text-[11px] mb-0.5">Wallet Cash</p>
+                  <p className="font-bold text-white text-sm">₹{walletData.balance.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
+                  <p className="text-teal-300 text-[11px] mb-0.5">Promo Credit</p>
+                  <p className="font-bold text-teal-200 text-sm">₹{walletData.promoBalance.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
+                  <p className="text-amber-300 text-[11px] mb-0.5">Cashback</p>
+                  <p className="font-bold text-amber-200 text-sm">₹{walletData.cashbackBalance.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -133,7 +167,7 @@ const Wallet = () => {
               <p className="text-lg font-bold text-gray-900">
                 ₹{transactions
                   .filter(t => ['payment', 'withdrawal', 'platform_fee', 'convenience_fee', 'gst', 'cash_collected'].includes(t.type))
-                  .reduce((sum, t) => sum + t.amount, 0)
+                  .reduce((sum, t) => sum + (t.amount || 0), 0)
                   .toLocaleString('en-IN')}
               </p>
             </div>
@@ -144,12 +178,9 @@ const Wallet = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <p className="text-gray-500 text-xs font-medium">Total Penalty</p>
+              <p className="text-gray-500 text-xs font-medium">Active Penalty</p>
               <p className="text-lg font-bold text-orange-600">
-                ₹{transactions
-                  .filter(t => ['penalty', 'fine', 'cancellation_fee', 'debit'].includes(t.type))
-                  .reduce((sum, t) => sum + t.amount, 0)
-                  .toLocaleString('en-IN')}
+                ₹{walletData.penalty.toLocaleString('en-IN')}
               </p>
             </div>
           </div>
@@ -179,13 +210,11 @@ const Wallet = () => {
                   // Determine styles based on transaction type
                   let typeStyle = { color: 'text-gray-600', bg: 'bg-gray-100', icon: '•', sign: '' };
 
-                  if (['credit', 'refund', 'topup', 'referral', 'cashback', 'cash_collected'].includes(item.type)) {
-                    // User requested cash_collected in GREEN
+                  if (['credit', 'refund', 'topup', 'referral', 'cashback', 'promo_credit', 'referral_bonus'].includes(item.type)) {
+                    typeStyle = { color: 'text-green-600', bg: 'bg-green-50', icon: '↓', sign: '+' };
+                  } else if (item.type === 'cash_collected') {
                     typeStyle = { color: 'text-green-600', bg: 'bg-green-50', icon: '↓', sign: '' };
-                    // Note: removed '+' sign for cash_collected to be neutral or just distinct? 
-                    // Usually 'cash_collected' means user GAVE money. 
-                    // But user wants it green.
-                  } else if (['payment', 'withdrawal'].includes(item.type)) {
+                  } else if (['payment', 'withdrawal', 'platform_fee', 'convenience_fee', 'gst'].includes(item.type)) {
                     typeStyle = { color: 'text-red-600', bg: 'bg-red-50', icon: '↑', sign: '-' };
                   } else if (['penalty', 'fine', 'cancellation_fee', 'debit'].includes(item.type)) {
                     typeStyle = { color: 'text-orange-600', bg: 'bg-orange-50', icon: '!', sign: '-' };

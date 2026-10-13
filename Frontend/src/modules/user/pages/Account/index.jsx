@@ -6,7 +6,10 @@ import { userAuthService } from '../../../../services/authService';
 import { useConfig } from '../../../../context/ConfigContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { motion } from 'framer-motion';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
 import {
+  FiRepeat,
+  FiAlertOctagon,
   FiArrowLeft,
   FiUser,
   FiEdit3,
@@ -24,7 +27,8 @@ import {
   FiGift,
   FiShield,
   FiZap,
-  FiCheckCircle
+  FiCheckCircle,
+  FiHelpCircle
 } from 'react-icons/fi';
 import { MdAccountBalanceWallet } from 'react-icons/md';
 import NotificationBell from '../../components/common/NotificationBell';
@@ -32,6 +36,7 @@ import NotificationBell from '../../components/common/NotificationBell';
 const Account = () => {
   const navigate = useNavigate();
   const { isScrapEnabled } = useConfig();
+  const bookingConfig = useBookingConfig();
   const [userProfile, setUserProfile] = useState({
     name: 'Verified Customer',
     phone: '',
@@ -399,6 +404,20 @@ const Account = () => {
               label="My Ratings"
               onClick={() => navigate('/user/my-rating')}
             />
+            {bookingConfig.isRecurringEnabled && (
+              <MenuItem
+                icon={FiRepeat}
+                label="Recurring Bookings"
+                onClick={() => navigate('/user/recurring-bookings')}
+              />
+            )}
+            {bookingConfig.isDisputeEnabled && (
+              <MenuItem
+                icon={FiAlertOctagon}
+                label="My Disputes"
+                onClick={() => navigate('/user/disputes')}
+              />
+            )}
           </motion.div>
 
           {/* Preferences */}
@@ -425,13 +444,28 @@ const Account = () => {
               label="Help & Support"
               onClick={() => navigate('/user/help-support')}
             />
+            <MenuItem
+              icon={FiHelpCircle}
+              label="FAQ"
+              onClick={() => navigate('/user/faq')}
+            />
+            <MenuItem
+              icon={FiFileText}
+              label="Terms & Conditions"
+              onClick={() => navigate('/user/terms')}
+            />
+            <MenuItem
+              icon={FiShield}
+              label="Privacy Policy"
+              onClick={() => navigate('/user/privacy-policy')}
+            />
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/user/about-helpu')}
               className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group mb-3"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 transition-colors group-hover:bg-opacity-80"
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 transition-colors group-hover:bg-gray-50/80"
                   style={{ color: themeColors.brand.teal }}>
                   <span className="font-bold">H</span>
                 </div>

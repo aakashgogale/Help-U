@@ -70,8 +70,10 @@ const updateHomeContent = async (req, res) => {
 
     const { cityId } = req.query;
 
-    // Use static method to ensure we get the correct doc (or create if needed)
-    let homeContent = await HomeContent.getHomeContent(cityId);
+    // Use static method to ensure the target doc exists (or is created if needed)
+    // *before* we list every doc below, so a brand-new city's doc is included
+    // in this save instead of being left with just schema defaults.
+    await HomeContent.getHomeContent(cityId);
 
     // Helper to sanitize array items
     const sanitizeItems = (items) => {
@@ -117,29 +119,38 @@ const updateHomeContent = async (req, res) => {
       });
     };
 
-    // Update fields with sanitization
-    if (req.body.banners !== undefined) homeContent.banners = sanitizeItems(req.body.banners);
-    if (req.body.promos !== undefined) homeContent.promos = sanitizeItems(req.body.promos);
-    if (req.body.curated !== undefined) homeContent.curated = sanitizeItems(req.body.curated);
-    if (req.body.noteworthy !== undefined) homeContent.noteworthy = sanitizeItems(req.body.noteworthy);
-    if (req.body.booked !== undefined) homeContent.booked = sanitizeItems(req.body.booked);
-    if (req.body.categorySections !== undefined) {
-      homeContent.categorySections = sanitizeItems(req.body.categorySections);
-      homeContent.markModified('categorySections');
-    }
-    if (req.body.isActive !== undefined) homeContent.isActive = req.body.isActive;
-    if (req.body.isBannersVisible !== undefined) homeContent.isBannersVisible = req.body.isBannersVisible;
-    if (req.body.isPromosVisible !== undefined) homeContent.isPromosVisible = req.body.isPromosVisible;
-    if (req.body.isCuratedVisible !== undefined) homeContent.isCuratedVisible = req.body.isCuratedVisible;
-    if (req.body.isNoteworthyVisible !== undefined) homeContent.isNoteworthyVisible = req.body.isNoteworthyVisible;
-    if (req.body.isBookedVisible !== undefined) homeContent.isBookedVisible = req.body.isBookedVisible;
-    if (req.body.isCategorySectionsVisible !== undefined) homeContent.isCategorySectionsVisible = req.body.isCategorySectionsVisible;
-    if (req.body.isCategoriesVisible !== undefined) homeContent.isCategoriesVisible = req.body.isCategoriesVisible;
-    // Scrap visibility is owned exclusively by Settings.isScrapEnabled and is never
-    // written from a home-content save. Accepting it here let any unrelated home-page
-    // edit push a stale value back and silently re-enable a disabled feature.
+    // Home content (banners, promos, etc.) is shared across all cities rather than
+    // scoped per-city, so an admin edit/delete is applied to every city's document
+    // (plus the default one) and a visitor sees the same result regardless of which
+    // city they're browsing from.
+    const allHomeContents = await HomeContent.find({});
 
-    await homeContent.save();
+    for (const doc of allHomeContents) {
+      if (req.body.banners !== undefined) doc.banners = sanitizeItems(req.body.banners);
+      if (req.body.promos !== undefined) doc.promos = sanitizeItems(req.body.promos);
+      if (req.body.curated !== undefined) doc.curated = sanitizeItems(req.body.curated);
+      if (req.body.noteworthy !== undefined) doc.noteworthy = sanitizeItems(req.body.noteworthy);
+      if (req.body.booked !== undefined) doc.booked = sanitizeItems(req.body.booked);
+      if (req.body.categorySections !== undefined) {
+        doc.categorySections = sanitizeItems(req.body.categorySections);
+        doc.markModified('categorySections');
+      }
+      if (req.body.isActive !== undefined) doc.isActive = req.body.isActive;
+      if (req.body.isBannersVisible !== undefined) doc.isBannersVisible = req.body.isBannersVisible;
+      if (req.body.isPromosVisible !== undefined) doc.isPromosVisible = req.body.isPromosVisible;
+      if (req.body.isCuratedVisible !== undefined) doc.isCuratedVisible = req.body.isCuratedVisible;
+      if (req.body.isNoteworthyVisible !== undefined) doc.isNoteworthyVisible = req.body.isNoteworthyVisible;
+      if (req.body.isBookedVisible !== undefined) doc.isBookedVisible = req.body.isBookedVisible;
+      if (req.body.isCategorySectionsVisible !== undefined) doc.isCategorySectionsVisible = req.body.isCategorySectionsVisible;
+      if (req.body.isCategoriesVisible !== undefined) doc.isCategoriesVisible = req.body.isCategoriesVisible;
+      // Scrap visibility is owned exclusively by Settings.isScrapEnabled and is never
+      // written from a home-content save. Accepting it here let any unrelated home-page
+      // edit push a stale value back and silently re-enable a disabled feature.
+
+      await doc.save();
+    }
+
+    const homeContent = allHomeContents.find(doc => String(doc.cityId || '') === String(cityId || '')) || allHomeContents[0];
 
     const scrapEnabled = await isScrapEnabledGlobally();
 

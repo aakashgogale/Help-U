@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../utils/constants');
+const { MAX_ISSUE_PHOTOS, MAX_ISSUE_VIDEOS } = require('../utils/issuePhotos');
 
 /**
  * Booking Model
@@ -37,8 +38,22 @@ const bookingSchema = new mongoose.Schema({
   // ==========================================
   potentialVendors: [{
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
-    distance: { type: Number } // in km
+    distance: { type: Number }, // in km
+    // Ranking score (0-100) when the 'smart' assignment strategy is used.
+    score: { type: Number, default: null }
   }],
+  // Workers who must not be alerted again for this booking: they rejected it,
+  // were offline when their wave came round, or cancelled after accepting.
+  excludedVendors: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Worker'
+  }],
+  // How many times the booking went back to searching after an assigned
+  // worker cancelled. Capped by Settings.maxReassignments.
+  reassignmentCount: {
+    type: Number,
+    default: 0
+  },
   currentWave: {
     type: Number,
     default: 1
@@ -103,6 +118,72 @@ const bookingSchema = new mongoose.Schema({
     },
     quantity: { type: Number, default: 1 }
   }],
+  // Extras picked at checkout. Prices are copied from the AddOn at booking
+  // time so later price changes do not alter an existing booking.
+  addOns: [{
+    addOnId: { type: mongoose.Schema.Types.ObjectId, ref: 'AddOn' },
+    title: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    quantity: { type: Number, default: 1, min: 1 },
+    total: { type: Number, required: true, min: 0 }
+  }],
+  // Sum of addOns[].total; already included in basePrice.
+  addOnsTotal: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // ==========================================
+  // PRICING MODEL (snapshot from the service at booking time)
+  // ==========================================
+  pricingType: {
+    type: String,
+    enum: ['fixed', 'hourly', 'starting_from', 'inspection_fee', 'quote_required'],
+    default: 'fixed'
+  },
+  // hourly only: hours booked and the rate applied, so the bill and any
+  // dispute can be checked against what the customer actually chose.
+  hoursBooked: {
+    type: Number,
+    default: null
+  },
+  hourlyRateApplied: {
+    type: Number,
+    default: null
+  },
+  // inspection_fee only: the customer paid only to get the professional on
+  // site; the real job cost is added later through advancePayment/worker bill.
+  isInspectionOnly: {
+    type: Boolean,
+    default: false
+  },
+
+  // Emergency booking: alerted to more workers over a wider radius, with a
+  // surcharge (already included in basePrice).
+  isEmergency: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  emergencyCharge: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // Instructions from the customer for the worker, entered at checkout.
+  customerNotes: {
+    type: String,
+    trim: true,
+    maxlength: 2000,
+    default: null
+  },
+  // Set when the booking was generated from a recurring plan.
+  recurringBookingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RecurringBooking',
+    default: null,
+    index: true
+  },
 
   // ==========================================
   // 3. PRICING & BILLING
@@ -113,6 +194,24 @@ const bookingSchema = new mongoose.Schema({
     min: 0
   },
   discount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // Set only when a coupon was applied. The code is stored alongside the id so
+  // the booking still shows what was used if the coupon is later deleted.
+  couponId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon',
+    default: null
+  },
+  couponCode: {
+    type: String,
+    default: null,
+    uppercase: true,
+    trim: true
+  },
+  couponDiscount: {
     type: Number,
     default: 0,
     min: 0
@@ -342,14 +441,42 @@ const bookingSchema = new mongoose.Schema({
     default: false
   },
 
+  // Optional photos the customer attaches at checkout so the worker can see the
+  // problem before accepting. Cleaned by sanitizeIssuePhotos() in
+  // utils/issuePhotos.js before it is written.
+  issuePhotos: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (v) => !v || v.length <= MAX_ISSUE_PHOTOS,
+      message: `A booking can have at most ${MAX_ISSUE_PHOTOS} photos`
+    }
+  },
+  // Short videos of the problem, cleaned by sanitizeIssueVideos().
+  issueVideos: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (v) => !v || v.length <= MAX_ISSUE_VIDEOS,
+      message: `A booking can have at most ${MAX_ISSUE_VIDEOS} videos`
+    }
+  },
+
   // ==========================================
   // 9. WORK COMPLETION
   // ==========================================
-  // ==========================================
-  // 9. WORK COMPLETION
-  // ==========================================
+  // Job photos. Stored as objects so before and after shots can be told apart
+  // on the booking detail page. Entries written before this change were plain
+  // URL strings; normalizeWorkPhotos() in utils/workPhotos.js converts those to
+  // { url, type: 'after' } on read, so old bookings still render.
   workPhotos: [{
-    type: String
+    url: { type: String, required: true },
+    type: {
+      type: String,
+      enum: ['before', 'after'],
+      default: 'after'
+    },
+    uploadedAt: { type: Date, default: Date.now }
   }],
   visitLocation: {
     lat: Number,
@@ -391,10 +518,137 @@ const bookingSchema = new mongoose.Schema({
   // ==========================================
   // 13. NOTES
   // ==========================================
-  vendorNotes: { type: String, default: null }
+  vendorNotes: { type: String, default: null },
+
+  // ==========================================
+  // 14. LIFECYCLE TIMELINE
+  // Appended automatically by the hooks below whenever status, payment
+  // status, rating or dispute status changes, so every code path that moves a
+  // booking along is recorded without each one having to remember to.
+  // ==========================================
+  statusHistory: [{
+    // Booking status at the time of the entry.
+    status: { type: String },
+    // What happened: created, status, payment, reviewed, disputed,
+    // dispute_resolved, refunded, reassigned.
+    event: { type: String, default: 'status' },
+    note: { type: String, default: null },
+    by: { type: String, enum: ['user', 'worker', 'admin', 'system'], default: 'system' },
+    at: { type: Date, default: Date.now }
+  }],
+
+  // ==========================================
+  // 15. DISPUTES & REFUNDS
+  // ==========================================
+  disputeStatus: {
+    type: String,
+    enum: ['none', 'open', 'resolved', 'rejected'],
+    default: 'none',
+    index: true
+  },
+  disputeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Dispute',
+    default: null
+  },
+  // Total refunded to the customer for this booking across all disputes,
+  // used to stop a second refund exceeding what was paid.
+  refundedAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
 
 }, {
   timestamps: true
+});
+
+// Payment statuses that mean the customer has paid.
+const PAID_STATUSES = [PAYMENT_STATUS.SUCCESS, PAYMENT_STATUS.COLLECTED_BY_WORKER];
+
+/**
+ * Timeline entries for a document save. Who made the change is not known to
+ * the model, so callers that care set `booking.$locals.actor` before saving.
+ */
+bookingSchema.pre('save', function (next) {
+  const by = this.$locals?.actor || 'system';
+  const note = this.$locals?.timelineNote || null;
+  const at = new Date();
+  const entries = [];
+
+  if (this.isNew) {
+    entries.push({ status: this.status, event: 'created', by: this.$locals?.actor || 'user', at });
+  } else {
+    // Callers that record a richer entry themselves (e.g. 'reassigned') set
+    // skipStatusEntry so the change is not logged twice.
+    if (this.isModified('status') && !this.$locals?.skipStatusEntry) {
+      entries.push({ status: this.status, event: 'status', note, by, at });
+    }
+    if (this.isModified('paymentStatus')) {
+      if (PAID_STATUSES.includes(this.paymentStatus)) {
+        entries.push({ status: this.status, event: 'payment', by, at });
+      } else if (this.paymentStatus === PAYMENT_STATUS.REFUNDED) {
+        entries.push({ status: this.status, event: 'refunded', by, at });
+      }
+    }
+    if (this.isModified('rating') && this.rating) {
+      entries.push({ status: this.status, event: 'reviewed', note: `${this.rating}★`, by: 'user', at });
+    }
+    if (this.isModified('disputeStatus')) {
+      if (this.disputeStatus === 'open') {
+        entries.push({ status: this.status, event: 'disputed', by, at });
+      } else if (['resolved', 'rejected'].includes(this.disputeStatus)) {
+        entries.push({ status: this.status, event: 'dispute_resolved', note: this.disputeStatus, by: 'admin', at });
+      }
+    }
+  }
+
+  if (entries.length) {
+    this.statusHistory = [...(this.statusHistory || []), ...entries];
+  }
+  next();
+});
+
+/**
+ * Same timeline for findOneAndUpdate / findByIdAndUpdate, which bypass the
+ * save hook. Only plain $set (or top-level) status/payment changes are
+ * tracked; that covers every atomic update in the codebase.
+ */
+bookingSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate() || {};
+  const set = update.$set || {};
+  const read = (key) => (set[key] !== undefined ? set[key] : update[key]);
+
+  const status = read('status');
+  const paymentStatus = read('paymentStatus');
+  const by = this.getOptions()?.actor || 'system';
+  const at = new Date();
+  const entries = [];
+
+  if (status !== undefined) {
+    entries.push({ status, event: 'status', by, at });
+  }
+  if (paymentStatus !== undefined) {
+    if (PAID_STATUSES.includes(paymentStatus)) {
+      entries.push({ status: status || null, event: 'payment', by, at });
+    } else if (paymentStatus === PAYMENT_STATUS.REFUNDED) {
+      entries.push({ status: status || null, event: 'refunded', by, at });
+    }
+  }
+
+  if (entries.length) {
+    // Merge with any $push the caller already set rather than overwrite it.
+    const push = update.$push || {};
+    if (push.statusHistory) {
+      const existing = push.statusHistory.$each || [push.statusHistory];
+      push.statusHistory = { $each: [...existing, ...entries] };
+    } else {
+      push.statusHistory = { $each: entries };
+    }
+    update.$push = push;
+    this.setUpdate(update);
+  }
+  next();
 });
 
 // Generate unique booking number
@@ -422,5 +676,33 @@ bookingSchema.index({ notifiedVendors: 1, status: 1 });
 bookingSchema.index({ 'potentialVendors.vendorId': 1 });
 // Dashboard: $or on { vendorId: null, serviceCategory: ..., status: ... }
 bookingSchema.index({ vendorId: 1, serviceCategory: 1, status: 1 });
+
+// Referral payout on completion.
+//
+// Bookings are completed from several controllers (worker, cash collection,
+// admin), so the trigger lives on the model rather than being repeated at each
+// call site and risking one being missed.
+//
+// The pre-save hook records whether this save is the transition into
+// 'completed'; the post-save hook acts on it. Errors are swallowed: a referral
+// payout must never fail the booking write that triggered it.
+bookingSchema.pre('save', function (next) {
+  this._completedNow =
+    this.isModified('status') && this.status === 'completed';
+  next();
+});
+
+bookingSchema.post('save', function (doc) {
+  if (!this._completedNow) return;
+  this._completedNow = false;
+
+  // Required lazily: the service imports Booking indirectly, and requiring it
+  // at module scope would create a circular import.
+  const { handleBookingCompleted } = require('../services/userReferralService');
+
+  handleBookingCompleted(doc.userId, doc._id).catch((err) =>
+    console.error('[Referral] Booking completion hook failed:', err.message)
+  );
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);

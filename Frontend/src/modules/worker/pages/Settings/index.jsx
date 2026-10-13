@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiBell, FiVolume2, FiGlobe, FiInfo, FiLogOut, FiTrash2, FiMapPin } from 'react-icons/fi';
+import { FiBell, FiVolume2, FiGlobe, FiInfo, FiLogOut, FiTrash2, FiMapPin, FiAlertTriangle } from 'react-icons/fi';
+import api from '../../../../services/api';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
 import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
@@ -15,6 +17,34 @@ const Settings = () => {
     soundAlerts: true,
     language: 'en',
   });
+  const bookingConfig = useBookingConfig();
+  // Stored on the server: the dispatcher reads it when choosing who gets emergency jobs.
+  const [acceptsEmergency, setAcceptsEmergency] = useState(true);
+  const [savingEmergency, setSavingEmergency] = useState(false);
+
+  useEffect(() => {
+    api.get('/workers/settings')
+      .then((res) => {
+        const value = res.data?.data?.settings?.acceptsEmergency;
+        if (typeof value === 'boolean') setAcceptsEmergency(value);
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleEmergency = async () => {
+    const next = !acceptsEmergency;
+    setAcceptsEmergency(next);
+    setSavingEmergency(true);
+    try {
+      await api.put('/workers/settings', { acceptsEmergency: next });
+      toast.success(next ? 'You will receive emergency jobs' : 'Emergency jobs turned off');
+    } catch {
+      setAcceptsEmergency(!next);
+      toast.error('Could not update emergency jobs setting');
+    } finally {
+      setSavingEmergency(false);
+    }
+  };
 
   useLayoutEffect(() => {
     const html = document.documentElement;
@@ -167,6 +197,30 @@ const Settings = () => {
             </div>
           </div>
         </div>
+
+        {/* Emergency jobs opt-in (only when the platform offers emergency bookings) */}
+        {bookingConfig.isEmergencyEnabled && (
+          <div className="bg-white rounded-xl p-4 mb-6 shadow-md" style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FiAlertTriangle className="w-5 h-5 text-rose-500" />
+                <div>
+                  <p className="font-semibold text-gray-800">Emergency Jobs</p>
+                  <p className="text-sm text-gray-600">Get priority alerts for urgent bookings nearby</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={toggleEmergency}
+                disabled={savingEmergency}
+                aria-pressed={acceptsEmergency}
+                className={`relative w-12 h-6 rounded-full transition-colors disabled:opacity-60 ${acceptsEmergency ? 'bg-green-500' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${acceptsEmergency ? 'transform translate-x-6' : ''}`} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Address Management */}
         <div

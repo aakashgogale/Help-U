@@ -94,6 +94,18 @@ const cartItemSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Worker',
     default: null
+  },
+  // Pricing model snapshot from the service (fixed/hourly/starting_from/
+  // inspection_fee), so checkout and the cart UI can show the right label
+  // without re-fetching the service.
+  pricingType: {
+    type: String,
+    default: 'fixed'
+  },
+  // hourly only: hours chosen when the item was added to the cart.
+  hours: {
+    type: Number,
+    default: null
   }
 }, { _id: true });
 

@@ -12,6 +12,7 @@ import Login from '../pages/login';
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Settings = lazy(() => import('../pages/Settings'));
 const Customization = lazy(() => import('../pages/Customization'));
+const LegalPages = lazy(() => import('../pages/LegalPages'));
 const UserCategories = lazy(() => import('../pages/UserCategories'));
 const Users = lazy(() => import('../pages/Users'));
 const Workers = lazy(() => import('../pages/Workers'));
@@ -26,6 +27,13 @@ const Plans = lazy(() => import('../pages/Plans/Plans'));
 const Scrap = lazy(() => import('../pages/Scrap'));
 const Settlements = lazy(() => import('../pages/Settlements'));
 const Reviews = lazy(() => import('../pages/Reviews'));
+const BookingConfig = lazy(() => import('../pages/BookingConfig'));
+const AddOns = lazy(() => import('../pages/AddOns'));
+const Commission = lazy(() => import('../pages/Commission'));
+const Disputes = lazy(() => import('../pages/Disputes'));
+const DisputeDetail = lazy(() => import('../pages/Disputes/DisputeDetail'));
+const RecurringBookings = lazy(() => import('../pages/RecurringBookings'));
+const Coupons = lazy(() => import('../pages/Coupons'));
 
 
 
@@ -71,6 +79,14 @@ const AdminRoutes = () => {
           <Route path="settlements/*" element={<Settlements />} />
           <Route path="settings/*" element={<Settings />} />
           <Route path="customization" element={<Customization />} />
+          <Route path="legal-pages" element={<LegalPages />} />
+          <Route path="booking-config" element={<BookingConfig />} />
+          <Route path="addons" element={<AddOns />} />
+          <Route path="commission" element={<Commission />} />
+          <Route path="disputes" element={<Disputes />} />
+          <Route path="disputes/:id" element={<DisputeDetail />} />
+          <Route path="recurring-bookings" element={<RecurringBookings />} />
+          <Route path="coupons" element={<Coupons />} />
         </Route>
       </Routes>
     </Suspense>

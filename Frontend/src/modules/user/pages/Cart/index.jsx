@@ -279,6 +279,12 @@ const Cart = () => {
                           <div className="flex-1">
                             <p className="text-sm text-gray-800 font-medium">
                               {item.title} X {item.serviceCount || 1}
+                              {item.pricingType === 'hourly' && item.hours && (
+                                <span className="text-xs text-sky-600 font-semibold ml-1.5">({item.hours} hr{item.hours === 1 ? '' : 's'})</span>
+                              )}
+                              {item.pricingType === 'inspection_fee' && (
+                                <span className="text-xs text-amber-600 font-semibold ml-1.5">(inspection visit)</span>
+                              )}
                             </p>
                             {item.description && (
                               <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>

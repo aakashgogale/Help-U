@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiArrowLeft, FiClock, FiTrendingUp, FiX, FiLayers, FiChevronRight } from 'react-icons/fi';
 import { publicCatalogService } from '../../../../../services/catalogService';
+import { useCity } from '../../../../../context/CityContext';
 import { themeColors } from '../../../../../theme';
 
 const toAssetUrl = (url) => {
@@ -16,6 +17,7 @@ const toAssetUrl = (url) => {
 
 const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) => {
   const navigate = useNavigate();
+  const { currentCity } = useCity();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -94,8 +96,11 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
             c.title.toLowerCase().includes(lowerQ)
           ).map(c => ({ ...c, isCategory: true }));
 
-          // 2. Search Services (API)
-          const response = await publicCatalogService.getServices({ search: query });
+          // 2. Search Services with city awareness and multi-factor ranking (API)
+          const response = await publicCatalogService.getServices({
+            search: query,
+            cityId: currentCity?._id || currentCity?.id
+          });
           let serviceMatches = [];
 
           if (response.success) {
@@ -245,13 +250,25 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
                           <h4 className="font-bold text-gray-900 text-[15px] truncate group-hover:text-primary-600 transition-colors">
                             {item.title}
                           </h4>
-                          <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {item.isCategory ? (
                               <span className="text-[10px] font-bold bg-blue-50 text-blue-500 px-2 py-0.5 rounded-md uppercase tracking-tighter">Category</span>
                             ) : (
-                              <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
-                                {item.brandName || item.category || 'Service'}
-                              </span>
+                              <>
+                                <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                                  {item.brandName || item.category || 'Service'}
+                                </span>
+                                {item.rating && (
+                                  <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">
+                                    ⭐ {item.rating}
+                                  </span>
+                                )}
+                                {(item.basePrice !== undefined || item.price !== undefined) && (
+                                  <span className="text-[11px] font-black text-gray-900">
+                                    ₹{item.basePrice || item.price}
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>

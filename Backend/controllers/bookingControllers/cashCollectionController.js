@@ -4,10 +4,18 @@ const Transaction = require('../../models/Transaction');
 const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
 const { createQRCode, getQRCodePayments } = require('../../services/razorpayService');
+const { getBookingConfig } = require('../../utils/bookingConfig');
 
 const getRemainingPayableAmount = (booking) => {
   const amount = Number(booking.userPayableAmount ?? booking.finalAmount ?? 0);
   return Number.isFinite(amount) ? Math.max(0, amount) : 0;
+};
+
+// Falls back to the admin-configured default commission rate when a
+// booking has no WorkerBill yet, instead of a hardcoded 20/80 split.
+const getDefaultWorkerShare = async () => {
+  const config = await getBookingConfig();
+  return (config.servicePayoutPercentage ?? 80) / 100;
 };
 
 /**
@@ -444,13 +452,13 @@ exports.confirmCashCollection = async (req, res) => {
       }
     }
 
-    // Record stats in the Daily Earning Tracker
     // Record stats in the Daily Earning Tracker (Async)
+    const defaultShareConfirmCash = bill ? null : await getDefaultWorkerShare();
     recordBookingEarning({
       date: new Date(),
       totalRevenue: bill ? bill.grandTotal : collectionAmount,
-      platformCommission: bill ? (bill.companyRevenue || 0) : (collectionAmount * 0.2),
-      vendorEarnings: vendorEarning > 0 ? vendorEarning : (collectionAmount * 0.8),
+      platformCommission: bill ? (bill.companyRevenue || 0) : (collectionAmount * (1 - defaultShareConfirmCash)),
+      vendorEarnings: vendorEarning > 0 ? vendorEarning : (collectionAmount * defaultShareConfirmCash),
       totalGST: bill ? (bill.totalGST || 0) : 0,
       totalTDS: 0 // Captured separately during withdrawal
     }).catch(err => console.error('[ConfirmCash] Daily tracker failed:', err));
@@ -583,7 +591,7 @@ exports.verifyOnlinePayment = async (req, res) => {
           bill.paidAt = new Date();
           await bill.save();
         } else {
-          vendorEarning = booking.finalAmount * 0.8;
+          vendorEarning = booking.finalAmount * (await getDefaultWorkerShare());
         }
 
         const vendorId = booking.vendorId;
@@ -628,7 +636,7 @@ exports.verifyOnlinePayment = async (req, res) => {
         recordBookingEarning({
           date: new Date(),
           totalRevenue: Number(bill ? bill.grandTotal : booking.finalAmount) || 0,
-          platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * 0.2)) || 0,
+          platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount - vendorEarning)) || 0,
           vendorEarnings: Number(vendorEarning) || 0,
           totalGST: Number(bill ? bill.totalGST : 0) || 0,
           totalTDS: 0
@@ -727,7 +735,7 @@ exports.confirmManualOnlinePayment = async (req, res) => {
       bill.paidAt = new Date();
       await bill.save();
     } else {
-      vendorEarning = booking.finalAmount * 0.8;
+      vendorEarning = booking.finalAmount * (await getDefaultWorkerShare());
     }
 
     const vendorId = booking.vendorId;
@@ -765,7 +773,7 @@ exports.confirmManualOnlinePayment = async (req, res) => {
     recordBookingEarning({
       date: new Date(),
       totalRevenue: Number(bill ? bill.grandTotal : booking.finalAmount) || 0,
-      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount * 0.2)) || 0,
+      platformCommission: Number(bill ? bill.companyRevenue : (booking.finalAmount - vendorEarning)) || 0,
       vendorEarnings: Number(vendorEarning) || 0,
       totalGST: Number(bill ? bill.totalGST : 0) || 0,
       totalTDS: 0

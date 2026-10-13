@@ -69,5 +69,16 @@ export const adminUserService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch wallet transactions' };
     }
+  },
+
+  // Adjust user wallet (credit or debit cash, promo credits, cashback, or penalty)
+  adjustUserWallet: async (id, data) => {
+    try {
+      const response = await api.post(`/admin/users/${id}/wallet-adjust`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to adjust wallet balance' };
+    }
   }
 };
+

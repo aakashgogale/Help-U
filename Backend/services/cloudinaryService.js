@@ -77,13 +77,43 @@ const uploadFile = async (file, options = {}) => {
 };
 
 /**
+ * Upload a video from a local file path. Uses the chunked uploader so large
+ * files do not have to be held in memory.
+ * @param {string} filePath - Path of the temporary file
+ * @param {Object} options - Upload options (folder, etc.)
+ * @returns {Promise<Object>} - { success, url, public_id, duration, bytes }
+ */
+const uploadVideo = async (filePath, options = {}) => {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_large(
+        filePath,
+        { resource_type: 'video', chunk_size: 6 * 1024 * 1024, ...options },
+        (error, res) => (error ? reject(error) : resolve(res))
+      );
+    });
+
+    return {
+      success: true,
+      url: result.secure_url,
+      public_id: result.public_id,
+      duration: result.duration,
+      bytes: result.bytes
+    };
+  } catch (error) {
+    console.error('Cloudinary video upload error:', error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
+};
+
+/**
  * Delete file from Cloudinary
  * @param {string} publicId - Public ID of the file
  * @returns {Promise<Object>} - Delete result
  */
-const deleteFile = async (publicId) => {
+const deleteFile = async (publicId, resourceType = 'image') => {
   try {
-    const result = await cloudinary.uploader.destroy(publicId);
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
     return {
       success: result.result === 'ok',
       result: result.result
@@ -99,6 +129,7 @@ const deleteFile = async (publicId) => {
 
 module.exports = {
   uploadFile,
+  uploadVideo,
   deleteFile
 };
 

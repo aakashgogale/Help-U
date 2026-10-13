@@ -369,3 +369,218 @@ exports.getRevenueReport = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch revenue report' });
   }
 };
+
+/**
+ * Get Advanced Marketplace Analytics (GMV, AOV, Retention, Repeat Bookings, City/Category Revenue)
+ * GET /api/admin/reports/advanced-analytics
+ */
+exports.getAdvancedAnalytics = async (req, res) => {
+  try {
+    const { startDate, endDate, days = 30 } = req.query;
+    const filter = {};
+
+    if (startDate && endDate) {
+      filter.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    } else if (days && days !== 'all') {
+      const since = new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000);
+      filter.createdAt = { $gte: since };
+    }
+
+    // 1. GMV & Completed Count
+    const gmvAgg = await Booking.aggregate([
+      {
+        $match: {
+          ...filter,
+          status: { $in: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.WORK_DONE] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          gmv: { $sum: '$finalAmount' },
+          platformFee: { $sum: { $ifNull: ['$platformFee', 0] } },
+          totalCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const gmv = Math.round(gmvAgg[0]?.gmv || 0);
+    const completedOrActiveCount = gmvAgg[0]?.totalCount || 0;
+    const aov = completedOrActiveCount > 0 ? Math.round(gmv / completedOrActiveCount) : 0;
+
+    // 2. Booking Statuses (Completion vs Cancellation rate)
+    const [totalCompleted, totalCancelled, totalPending] = await Promise.all([
+      Booking.countDocuments({ ...filter, status: BOOKING_STATUS.COMPLETED }),
+      Booking.countDocuments({ ...filter, status: BOOKING_STATUS.CANCELLED }),
+      Booking.countDocuments({
+        ...filter,
+        status: { $nin: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED] }
+      })
+    ]);
+
+    const totalDecided = totalCompleted + totalCancelled;
+    const completionRate = totalDecided > 0 ? parseFloat(((totalCompleted / totalDecided) * 100).toFixed(1)) : 100;
+    const cancellationRate = totalDecided > 0 ? parseFloat(((totalCancelled / totalDecided) * 100).toFixed(1)) : 0;
+
+    // 3. Customer Retention & Repeat Bookings
+    const customerCohorts = await Booking.aggregate([
+      { $match: { ...filter, status: BOOKING_STATUS.COMPLETED } },
+      {
+        $group: {
+          _id: '$userId',
+          completedBookings: { $sum: 1 },
+          spend: { $sum: '$finalAmount' }
+        }
+      }
+    ]);
+
+    const totalCustomers = customerCohorts.length;
+    const repeatCustomers = customerCohorts.filter(c => c.completedBookings > 1).length;
+    const repeatBookingRate = totalCustomers > 0 ? parseFloat(((repeatCustomers / totalCustomers) * 100).toFixed(1)) : 0;
+    const retentionRate = repeatBookingRate; // Cohort repeat rate
+
+    // 4. City-wise Revenue Breakdown
+    const cityRevenue = await Booking.aggregate([
+      { $match: { ...filter, status: BOOKING_STATUS.COMPLETED } },
+      {
+        $group: {
+          _id: {
+            $ifNull: [
+              '$address.city',
+              { $ifNull: ['$cityName', 'Global / Unspecified'] }
+            ]
+          },
+          revenue: { $sum: '$finalAmount' },
+          bookings: { $sum: 1 }
+        }
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 8 }
+    ]);
+
+    // 5. Category-wise Revenue Breakdown
+    const categoryRevenue = await Booking.aggregate([
+      { $match: { ...filter, status: BOOKING_STATUS.COMPLETED } },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: { $ifNull: ['$category.title', 'General Services'] },
+          revenue: { $sum: '$finalAmount' },
+          bookings: { $sum: 1 }
+        }
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 8 }
+    ]);
+
+    // 6. Vendor / Worker Revenue Leaderboard
+    const vendorRevenue = await Booking.aggregate([
+      {
+        $match: {
+          ...filter,
+          status: BOOKING_STATUS.COMPLETED,
+          vendorId: { $ne: null }
+        }
+      },
+      {
+        $lookup: {
+          from: 'workers',
+          localField: 'vendorId',
+          foreignField: '_id',
+          as: 'worker'
+        }
+      },
+      { $unwind: { path: '$worker', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$vendorId',
+          name: { $first: { $ifNull: ['$worker.name', 'Partner'] } },
+          phone: { $first: { $ifNull: ['$worker.phone', ''] } },
+          rating: { $first: { $ifNull: ['$worker.rating', 5.0] } },
+          revenueGenerated: { $sum: '$finalAmount' },
+          workerEarnings: { $sum: '$vendorEarnings' },
+          completedJobs: { $sum: 1 }
+        }
+      },
+      { $sort: { revenueGenerated: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // 7. Monthly GMV & Net Revenue Trend (12 Months)
+    const gmvTrends = await Booking.aggregate([
+      { $match: { ...filter, status: BOOKING_STATUS.COMPLETED } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%b %Y', date: '$createdAt' } },
+          gmv: { $sum: '$finalAmount' },
+          orders: { $sum: 1 },
+          netPlatformFee: {
+            $sum: {
+              $ifNull: [
+                '$platformCommission',
+                { $multiply: ['$finalAmount', 0.15] }
+              ]
+            }
+          }
+        }
+      },
+      { $sort: { _id: 1 } },
+      { $limit: 12 }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        kpis: {
+          gmv,
+          aov,
+          totalCompleted,
+          totalCancelled,
+          totalPending,
+          completionRate,
+          cancellationRate,
+          totalCustomers,
+          repeatCustomers,
+          repeatBookingRate,
+          retentionRate
+        },
+        cityRevenue: cityRevenue.map(c => ({
+          city: c._id || 'Unknown',
+          revenue: Math.round(c.revenue),
+          bookings: c.bookings
+        })),
+        categoryRevenue: categoryRevenue.map(c => ({
+          category: c._id || 'General',
+          revenue: Math.round(c.revenue),
+          bookings: c.bookings
+        })),
+        vendorRevenue: vendorRevenue.map(v => ({
+          id: v._id,
+          name: v.name,
+          phone: v.phone,
+          rating: parseFloat(Number(v.rating).toFixed(1)),
+          revenue: Math.round(v.revenueGenerated),
+          earnings: Math.round(v.workerEarnings || (v.revenueGenerated * 0.85)),
+          jobs: v.completedJobs
+        })),
+        gmvTrends: gmvTrends.map(t => ({
+          period: t._id,
+          gmv: Math.round(t.gmv),
+          orders: t.orders,
+          platformRevenue: Math.round(t.netPlatformFee)
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Advanced analytics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to calculate advanced analytics' });
+  }
+};

@@ -4,6 +4,7 @@ const WorkerServiceCatalog = require('../../models/WorkerServiceCatalog');
 const WorkerPartsCatalog = require('../../models/WorkerPartsCatalog');
 const Settings = require('../../models/Settings');
 const { BILL_STATUS } = require('../../utils/constants');
+const { resolveCommission, computeWorkerEarnings, toPayoutConfig } = require('../../services/commissionService');
 
 /**
  * Create or Update Worker Bill
@@ -42,18 +43,22 @@ const createOrUpdateBill = async (req, res) => {
 
     // ── Fetch Settings (frozen snapshot) ──
     const settings = await Settings.findOne({ type: 'global' });
-    const serviceSplitPct = settings?.servicePayoutPercentage ?? 70;
-    const partsSplitPct = settings?.partsPayoutPercentage ?? 10;
     const serviceGstPct = settings?.serviceGstPercentage ?? 18;
     const partsGstPct = settings?.partsGstPercentage ?? 18;
+
+    // Commission for this worker and category, frozen into the bill.
+    const commission = await resolveCommission({ workerId: billWorkerId, categoryId: booking.categoryId });
 
     // ═══════════════════════════════════════
     // 1. ORIGINAL SERVICE (from booking)
     // ═══════════════════════════════════════
+    // basePrice already includes add-ons and any emergency surcharge. A plan
+    // covers the service itself, so on plan bookings only those extras are billed.
     const isPlanBooking = booking.paymentMethod === 'plan_benefit';
-    const originalServiceBaseForBill = isPlanBooking ? 0 : (booking.basePrice || 0);
+    const bookingExtras = (Number(booking.addOnsTotal) || 0) + (Number(booking.emergencyCharge) || 0);
+    const originalServiceBaseForBill = isPlanBooking ? bookingExtras : (booking.basePrice || 0);
     const originalServiceBaseForEarnings = booking.basePrice || 0;
-    const originalGST = isPlanBooking ? 0 : parseFloat(((originalServiceBaseForBill * serviceGstPct) / 100).toFixed(2));
+    const originalGST = parseFloat(((originalServiceBaseForBill * serviceGstPct) / 100).toFixed(2));
     const visitingCharges = Number(booking.visitingCharges) || 0;
 
     // ═══════════════════════════════════════
@@ -183,9 +188,10 @@ const createOrUpdateBill = async (req, res) => {
     // ═══════════════════════════════════════
     // 5. REVENUE SPLIT (% applied on BASE only)
     // ═══════════════════════════════════════
-    const vendorServiceEarning = parseFloat(((totalServiceBaseForEarnings * serviceSplitPct) / 100).toFixed(2));
-    const vendorPartsEarning = parseFloat(((totalPartsBase * partsSplitPct) / 100).toFixed(2));
-    const vendorTotalEarning = parseFloat((vendorServiceEarning + vendorPartsEarning).toFixed(2));
+    const { vendorServiceEarning, vendorPartsEarning, vendorTotalEarning } = computeWorkerEarnings(commission, {
+      serviceBase: totalServiceBaseForEarnings,
+      partsBase: totalPartsBase
+    });
     const companyRevenue = parseFloat((grandTotal - vendorTotalEarning).toFixed(2));
 
     // ═══════════════════════════════════════
@@ -225,12 +231,10 @@ const createOrUpdateBill = async (req, res) => {
       visitingCharges,
       transportCharges: finalTransportCharges,
       grandTotal,
-      payoutConfig: {
-        serviceSplitPercentage: serviceSplitPct,
-        partsSplitPercentage: partsSplitPct,
+      payoutConfig: toPayoutConfig(commission, {
         serviceGstPercentage: serviceGstPct,
         partsGstPercentage: partsGstPct
-      },
+      }),
       vendorServiceEarning,
       vendorPartsEarning,
       vendorTotalEarning,

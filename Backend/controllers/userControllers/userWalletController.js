@@ -18,10 +18,20 @@ const getWalletBalance = async (req, res) => {
       });
     }
 
+    const balance = user.wallet?.balance || 0;
+    const penalty = user.wallet?.penalty || 0;
+    const promoBalance = user.wallet?.promoBalance || 0;
+    const cashbackBalance = user.wallet?.cashbackBalance || 0;
+    const totalAvailable = Math.max(0, balance + promoBalance + cashbackBalance - penalty);
+
     res.status(200).json({
       success: true,
       data: {
-        balance: user.wallet.balance || 0
+        balance,
+        penalty,
+        promoBalance,
+        cashbackBalance,
+        totalAvailable
       }
     });
   } catch (error) {
