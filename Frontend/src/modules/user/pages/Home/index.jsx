@@ -30,7 +30,7 @@ import AddressSelectionModal from '../Checkout/components/AddressSelectionModal'
 import ScrapPromotionCard from './components/ScrapPromotionCard';
 import DebugConsole from '../../components/common/DebugConsole';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
-import { isWinterSection, getWinterArtwork, WINTER_FALLBACK_ARTWORK } from '../../utils/seasonalArtwork';
+import { getSectionArtTheme, getSectionArtwork, getSectionArtworkFallback } from '../../utils/seasonalArtwork';
 
 
 
@@ -691,8 +691,8 @@ const Home = () => {
                   );
                 }
 
-                // Winter sections use the matching seasonal illustration for each service
-                const isWinter = isWinterSection(section.title);
+                // Themed sections (winter, electrical) use a matching illustration for each service
+                const artTheme = getSectionArtTheme(section.title);
                 return (
                   <motion.div key={section._id || sIdx} variants={itemVariants}>
                     <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
@@ -700,8 +700,8 @@ const Home = () => {
                         title={section.title}
                         subtitle={section.subtitle}
                         services={section.cards?.map((card, cIdx) => {
-                          const winterArt = isWinter ? getWinterArtwork(card.title) : null;
-                          const processedImage = winterArt || toAssetUrl(card.imageUrl);
+                          const sectionArt = artTheme ? getSectionArtwork(artTheme, card.title) : null;
+                          const processedImage = sectionArt || toAssetUrl(card.imageUrl);
                           return {
                             id: card._id || cIdx,
                             title: card.title,
@@ -712,7 +712,7 @@ const Home = () => {
                             discount: card.discount,
                             optionsCount: card.optionsCount,
                             image: processedImage,
-                            fallbackImage: isWinter ? WINTER_FALLBACK_ARTWORK : getLocalIcon(card.title),
+                            fallbackImage: artTheme ? getSectionArtworkFallback(artTheme) : getLocalIcon(card.title),
                             targetCategoryId: card.targetCategoryId,
                             slug: card.slug
                           };

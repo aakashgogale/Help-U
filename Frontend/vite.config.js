@@ -5,6 +5,26 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
+// Dev only: images may be cached by the browser for an hour (code stays no-store),
+// so pages don't re-download every icon and photo on each navigation.
+// Image URLs that change are versioned (?v=) or content-hashed in builds.
+const IMAGE_REQUEST = /\.(png|jpe?g|webp|avif|gif|svg|ico)(\?|$)/i;
+const devImageCache = () => ({
+  name: 'dev-image-cache',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (IMAGE_REQUEST.test(req.url || '') && !(req.url || '').includes('?import')) {
+        const setHeader = res.setHeader.bind(res);
+        setHeader('Cache-Control', 'public, max-age=3600');
+        // Keep this value when the global no-store headers are applied later
+        res.setHeader = (name, value) => (/^(cache-control|pragma|expires)$/i.test(name) ? res : setHeader(name, value));
+      }
+      next();
+    });
+  },
+});
+
 // https://vite.dev/config/
 export default defineConfig({
   resolve: {
@@ -14,6 +34,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    devImageCache(),
   ],
   server: {
     port: 3000, // Frontend server port

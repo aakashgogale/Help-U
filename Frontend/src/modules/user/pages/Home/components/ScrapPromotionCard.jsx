@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { FiArrowRight, FiTrendingUp } from 'react-icons/fi';
 import { FaLeaf, FaRecycle } from 'react-icons/fa';
 import { MdOutlineVerifiedUser, MdCurrencyRupee } from 'react-icons/md';
-import scrapBoxImg from '../../../../../assets/images/pages/Home/Scrap/scrap-box.png';
+import scrapBoxImg from '../../../../../assets/images/pages/Home/Scrap/scrap-box.webp';
 
 const HIGHLIGHTS = [
   { id: 'eco', icon: FaRecycle, line1: 'Eco Friendly', line2: 'Process' },

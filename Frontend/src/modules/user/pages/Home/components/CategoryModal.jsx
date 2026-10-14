@@ -5,6 +5,7 @@ import { FiX, FiArrowLeft, FiPlus, FiCheck, FiClock, FiMinus, FiPhoneCall, FiEdi
 import { AnimatePresence, motion } from 'framer-motion';
 import { themeColors } from '../../../../../theme';
 import { publicCatalogService } from '../../../../../services/catalogService';
+import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 import { useCart } from '../../../../../context/CartContext';
 import { toast } from 'react-hot-toast';
 
@@ -389,7 +390,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                                     <div className="relative w-full aspect-square rounded-2xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden group-hover:border-accent/30 transition-colors">
                                       {brand.icon ? (
                                         <img
-                                          src={toAssetUrl(brand.icon)}
+                                          src={optimizeCloudinaryUrl(toAssetUrl(brand.icon), { width: 240, crop: 'limit', quality: 'auto' })}
                                           alt={brand.title}
                                           className="w-[74%] h-[62%] object-contain mix-blend-multiply brightness-[1.08] contrast-[1.08] group-hover:scale-105 transition-transform duration-300"
                                           loading="lazy"

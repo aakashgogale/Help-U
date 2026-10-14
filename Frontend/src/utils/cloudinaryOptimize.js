@@ -41,7 +41,10 @@ export const optimizeCloudinaryUrl = (url, options = {}) => {
   // Crop and gravity (only if dimensions specified)
   if (width || height) {
     transforms.push(`c_${crop}`);
-    transforms.push(`g_${gravity}`);
+    // Gravity only applies to cropping modes; 'limit' / 'scale' / 'fit' just resize
+    if (['fill', 'lfill', 'crop', 'thumb', 'auto'].includes(crop)) {
+      transforms.push(`g_${gravity}`);
+    }
   }
 
   // DPR for responsive images

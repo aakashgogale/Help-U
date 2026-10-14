@@ -39,7 +39,7 @@ const PromoCard = memo(({ title, image, onClick, className = '', priority = fals
           />
         ) : (
           <img
-            src={optimizeCloudinaryUrl(image, { quality: 'auto' })}
+            src={optimizeCloudinaryUrl(image, { width: 1040, crop: 'limit', quality: 'auto' })}
             alt={title || 'Promo'}
             onLoad={() => setLoaded(true)}
             onError={() => setLoaded(true)}

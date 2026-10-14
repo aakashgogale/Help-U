@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import homepageBanner from '../../../../../assets/images/pages/Home/Banner/homepage-banner.png';
+import homepageBanner from '../../../../../assets/images/pages/Home/Banner/homepage-banner.jpg';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
 // Every banner renders at one fixed size (3:1), whatever size was uploaded from admin
 const Banner = React.memo(({ imageUrl, onClick }) => {
   // Optimize Cloudinary URLs for faster loading
-  const optimizedUrl = imageUrl ? optimizeCloudinaryUrl(imageUrl, { quality: 'auto' }) : homepageBanner;
+  const optimizedUrl = imageUrl ? optimizeCloudinaryUrl(imageUrl, { width: 1400, crop: 'limit', quality: 'auto' }) : homepageBanner;
   const [loaded, setLoaded] = useState(false);
 
   return (

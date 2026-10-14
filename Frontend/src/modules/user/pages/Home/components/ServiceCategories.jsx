@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FiChevronRight, FiGrid } from 'react-icons/fi';
 import CategoryCard from '../../../components/common/CategoryCard';
+import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -51,7 +52,8 @@ const ServiceCategories = React.memo(({ categories, onCategoryClick }) => {
 
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-6 gap-x-2 sm:gap-x-4">
         {displayCategories.map((category, index) => {
-          const iconSrc = toAssetUrl(category.icon || category.image);
+          // Admin-uploaded icons come from Cloudinary at full size; ask for a small one
+          const iconSrc = optimizeCloudinaryUrl(toAssetUrl(category.icon || category.image), { width: 200, crop: 'limit', quality: 'auto' });
           return (
             <div key={category.id || index} className="flex justify-center">
               <CategoryCard
@@ -63,7 +65,8 @@ const ServiceCategories = React.memo(({ categories, onCategoryClick }) => {
                       src={iconSrc}
                       alt={category.title}
                       className="w-[82%] h-[82%] object-contain transition-transform duration-500 group-hover:scale-110"
-                      loading="lazy"
+                      // First two rows are on screen at load: fetch them right away
+                      loading={index < 8 ? 'eager' : 'lazy'}
                       decoding="async"
                     />
                   ) : null
