@@ -638,6 +638,7 @@ const getPublicHomeData = async (req, res) => {
             imageUrl: card.imageUrl,
             price: card.price,
             rating: card.rating,
+            optionsCount: card.optionsCount,
             targetCategoryId: card.targetCategoryId?.toString() || null
           })),
           order: section.order

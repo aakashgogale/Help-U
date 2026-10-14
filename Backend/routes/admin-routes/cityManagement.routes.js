@@ -6,11 +6,7 @@ const {
   createCity,
   updateCity,
   deleteCity,
-  toggleCityStatus,
-  getCityAreas,
-  createArea,
-  updateArea,
-  deleteArea
+  toggleCityStatus
 } = require('../../controllers/cityController');
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
@@ -38,11 +34,5 @@ router.post('/cities', requirePermission('cities'), createCity);
 router.put('/cities/:id', requirePermission('cities'), updateCity);
 router.delete('/cities/:id', requirePermission('cities'), deleteCity);
 router.patch('/cities/:id/status', requirePermission('cities'), toggleCityStatus);
-
-// Area hierarchy routes
-router.get('/cities/:cityId/areas', requirePermission('cities'), getCityAreas);
-router.post('/cities/:cityId/areas', requirePermission('cities'), createArea);
-router.put('/cities/:cityId/areas/:areaId', requirePermission('cities'), updateArea);
-router.delete('/cities/:cityId/areas/:areaId', requirePermission('cities'), deleteArea);
 
 module.exports = router;

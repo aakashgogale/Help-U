@@ -167,147 +167,19 @@ exports.toggleCityStatus = catchAsync(async (req, res) => {
 });
 
 /**
- * @desc    Get areas of a city
- * @route   GET /api/admin/cities/:cityId/areas OR /api/public/cities/:cityId/areas
- */
-exports.getCityAreas = catchAsync(async (req, res) => {
-  const Area = require('../models/Area');
-  const { cityId } = req.params;
-
-  const areas = await Area.find({ cityId }).sort({ name: 1 });
-
-  res.status(200).json({
-    success: true,
-    count: areas.length,
-    areas
-  });
-});
-
-/**
- * @desc    Create area for a city
- * @route   POST /api/admin/cities/:cityId/areas
- */
-exports.createArea = catchAsync(async (req, res) => {
-  const Area = require('../models/Area');
-  const { cityId } = req.params;
-  const { name, pincode, serviceAvailable = true } = req.body;
-
-  if (!name || !pincode) {
-    return res.status(400).json({
-      success: false,
-      message: 'Area name and pincode are required'
-    });
-  }
-
-  const area = await Area.create({
-    name,
-    pincode: String(pincode).trim(),
-    cityId,
-    serviceAvailable
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Area created successfully',
-    area
-  });
-});
-
-/**
- * @desc    Update area
- * @route   PUT /api/admin/cities/:cityId/areas/:areaId
- */
-exports.updateArea = catchAsync(async (req, res) => {
-  const Area = require('../models/Area');
-  const { areaId } = req.params;
-
-  const area = await Area.findByIdAndUpdate(areaId, req.body, {
-    new: true,
-    runValidators: true
-  });
-
-  if (!area) {
-    return res.status(404).json({
-      success: false,
-      message: 'Area not found'
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: 'Area updated successfully',
-    area
-  });
-});
-
-/**
- * @desc    Delete area
- * @route   DELETE /api/admin/cities/:cityId/areas/:areaId
- */
-exports.deleteArea = catchAsync(async (req, res) => {
-  const Area = require('../models/Area');
-  const { areaId } = req.params;
-
-  const area = await Area.findByIdAndDelete(areaId);
-
-  if (!area) {
-    return res.status(404).json({
-      success: false,
-      message: 'Area not found'
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: 'Area deleted successfully'
-  });
-});
-
-/**
- * @desc    Check service availability by pincode (Public)
+ * @desc    Service availability by pincode (Public)
  * @route   GET /api/public/cities/check-pincode
+ * @note    Zones / areas are no longer used: any location can be booked and
+ *          worker matching alone decides who serves it (distance + radius).
+ *          Kept so already-installed app versions that still call it keep working.
  */
 exports.checkPincodeAvailability = catchAsync(async (req, res) => {
-  const Area = require('../models/Area');
-  const { pincode, cityId } = req.query;
-
-  if (!pincode) {
-    return res.status(400).json({
-      success: false,
-      message: 'Pincode is required'
-    });
-  }
-
-  const cleanPincode = String(pincode).trim();
-  const query = { pincode: cleanPincode, isActive: true };
-  if (cityId) query.cityId = cityId;
-
-  const area = await Area.findOne(query).populate('cityId', 'name state country').lean();
-
-  if (!area) {
-    // If no specific area configured, check if city exists
-    return res.status(200).json({
-      success: true,
-      serviceable: false,
-      message: `Services are not currently available at pincode ${cleanPincode}`,
-      pincode: cleanPincode
-    });
-  }
-
-  const isAvailable = Boolean(area.serviceAvailable);
+  const pincode = String(req.query.pincode || '').trim();
 
   res.status(200).json({
     success: true,
-    serviceable: isAvailable,
-    message: isAvailable
-      ? `Services are available in ${area.name}, ${area.cityId?.name || ''}`
-      : `Services are temporarily unavailable in ${area.name}`,
-    area: {
-      id: area._id,
-      name: area.name,
-      pincode: area.pincode,
-      city: area.cityId?.name,
-      state: area.cityId?.state
-    }
+    serviceable: true,
+    message: 'Services are available at this location',
+    pincode
   });
 });

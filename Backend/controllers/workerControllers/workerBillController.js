@@ -70,6 +70,9 @@ const createOrUpdateBill = async (req, res) => {
 
     if (services && Array.isArray(services)) {
       for (const item of services) {
+        // Customer-added lines are rebuilt from the booking below; never trust them from the client
+        if (item?.addedByCustomer) continue;
+
         let catalogItem = null;
         if (item.catalogId) {
           catalogItem = await WorkerServiceCatalog.findById(item.catalogId);
@@ -98,6 +101,33 @@ const createOrUpdateBill = async (req, res) => {
         vendorServiceBase += base;
         vendorServiceGST += gst;
       }
+    }
+
+    // ═══════════════════════════════════════
+    // 2.5 CUSTOMER-ADDED REPAIR SERVICES
+    // ═══════════════════════════════════════
+    // Picked by the customer after inspection; unit prices were resolved from
+    // the catalog when they were added. "Other" problems carry no price — the
+    // worker prices them as a service or custom item.
+    for (const item of booking.customerAddedServices || []) {
+      if (item.isOther || !(item.unitPrice > 0)) continue;
+      const quantity = Number(item.quantity) || 1;
+      const base = item.unitPrice * quantity;
+      const gst = parseFloat(((base * serviceGstPct) / 100).toFixed(2));
+
+      processedServices.push({
+        name: item.title,
+        price: item.unitPrice,
+        gstPercentage: serviceGstPct,
+        quantity,
+        gstAmount: gst,
+        total: parseFloat((base + gst).toFixed(2)),
+        isOriginal: false,
+        addedByCustomer: true
+      });
+
+      vendorServiceBase += base;
+      vendorServiceGST += gst;
     }
 
     // ═══════════════════════════════════════

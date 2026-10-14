@@ -133,6 +133,19 @@ const bookingSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  // Repair services the customer picked after the professional inspected on
+  // site (e.g. after a "Visit"). Prices are copied server-side from the catalog;
+  // they are added to the worker bill automatically when it is generated.
+  // isOther = free-text problem the worker prices on the bill.
+  customerAddedServices: [{
+    serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserService', default: null },
+    title: { type: String, required: true, trim: true },
+    unitPrice: { type: Number, default: 0, min: 0 },   // base, excl GST
+    quantity: { type: Number, default: 1, min: 1, max: 10 },
+    isOther: { type: Boolean, default: false },
+    note: { type: String, default: '', trim: true, maxlength: 300 },
+    addedAt: { type: Date, default: Date.now }
+  }],
   // ==========================================
   // PRICING MODEL (snapshot from the service at booking time)
   // ==========================================

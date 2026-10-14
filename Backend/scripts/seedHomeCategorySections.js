@@ -114,32 +114,48 @@ const seedHomeCategorySections = async () => {
       },
       {
         title: 'Appliance repair & service',
-        seeAllTargetCategoryId: categories['appliance-repair-service']._id,
+        seeAllTargetCategoryId: categories['appliance-repair-service']?._id,
         order: 2,
         cards: [
           {
-            title: 'AC Service and Repair',
-            imageUrl: 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766135151/Homster/appliance/service/ac-repair.jpg',
+            title: 'Washing machine check-up',
+            imageUrl: '/appliance/washing-machine-checkup.jpg',
+            price: '199',
+            rating: '4.79',
+            reviews: '103K',
+            optionsCount: '1',
             badge: '',
-            targetCategoryId: categories['ac-service-repair']._id
+            targetCategoryId: categories['washing-machine-repair']?._id
           },
           {
-            title: 'Washing Machine Repair',
-            imageUrl: 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766135152/Homster/appliance/service/washing-machine-repair-.jpg',
+            title: 'AC repair',
+            imageUrl: '/appliance/ac-repair.jpg',
+            price: '299',
+            rating: '4.73',
+            reviews: '876K',
+            optionsCount: '4',
             badge: '',
-            targetCategoryId: categories['washing-machine-repair']._id
+            targetCategoryId: categories['ac-service-repair']?._id
           },
           {
-            title: 'Water Heater Repair',
-            imageUrl: 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766135154/Homster/appliance/service/water-heater-repair.jpg',
+            title: 'Water Purifier Service & Installation',
+            imageUrl: '/appliance/water-purifier-service.jpg',
+            price: '299',
+            rating: '4.80',
+            reviews: '332K',
+            optionsCount: '6',
             badge: '',
-            targetCategoryId: categories['water-heater-repair']._id
+            targetCategoryId: categories['water-heater-repair']?._id
           },
           {
-            title: 'Refrigerator Repair',
-            imageUrl: 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766135154/Homster/appliance/service/water-heater-repair.jpg',
+            title: 'Refrigerator repair',
+            imageUrl: '/appliance/refrigerator-repair.jpg',
+            price: '249',
+            rating: '4.76',
+            reviews: '410K',
+            optionsCount: '3',
             badge: '',
-            targetCategoryId: categories['refrigerator-repair']._id
+            targetCategoryId: categories['refrigerator-repair']?._id
           }
         ]
       },

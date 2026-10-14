@@ -43,7 +43,8 @@ const workerBillSchema = new mongoose.Schema({
     quantity: { type: Number, default: 1 },
     gstAmount: Number,        // price × qty × gst%
     total: Number,            // price × qty + gstAmount
-    isOriginal: { type: Boolean, default: false } // true = from booking, false = worker-added
+    isOriginal: { type: Boolean, default: false }, // true = from booking, false = worker-added
+    addedByCustomer: { type: Boolean, default: false } // picked by the customer after inspection
   }],
 
   /** Parts used during the job */

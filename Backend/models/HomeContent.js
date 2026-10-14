@@ -258,6 +258,8 @@ const homeContentSchema = new mongoose.Schema({
       discount: String,
       rating: String,
       reviews: String,
+      // Number of service variants behind the card; more than 1 shows "Starts at" + "N options"
+      optionsCount: String,
       targetCategoryId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',

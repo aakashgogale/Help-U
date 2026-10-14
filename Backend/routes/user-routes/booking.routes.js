@@ -16,6 +16,7 @@ const {
   getUserRatings
 } = require('../../controllers/bookingControllers/userBookingController');
 const { getChat, sendChatMessage, markChatRead, getUnreadCount } = require('../../controllers/chatController');
+const { getExtraServices, updateExtraServices } = require('../../controllers/bookingControllers/bookingExtraServicesController');
 const { MAX_ISSUE_PHOTOS, MAX_ISSUE_VIDEOS } = require('../../utils/issuePhotos');
 const { uploadVideoToTemp } = require('../../middleware/uploadMiddleware');
 
@@ -95,6 +96,9 @@ router.get('/:id/chat', authenticate, isUser, getChat);
 router.get('/:id/chat/unread', authenticate, isUser, getUnreadCount);
 router.post('/:id/chat', authenticate, isUser, body('message').optional().isString().isLength({ max: 1000 }), sendChatMessage);
 router.post('/:id/chat/read', authenticate, isUser, markChatRead);
+// Repair services the customer adds after the professional's inspection
+router.get('/:id/extra-services', authenticate, isUser, getExtraServices);
+router.put('/:id/extra-services', authenticate, isUser, updateExtraServices);
 router.post('/:id/cancel', authenticate, isUser, cancelBookingValidation, cancelBooking);
 router.put('/:id/reschedule', authenticate, isUser, rescheduleBookingValidation, rescheduleBooking);
 router.post('/:id/review', authenticate, isUser, addReviewValidation, addReview);

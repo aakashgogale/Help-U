@@ -34,8 +34,12 @@ app.use(helmet({
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
   'https://www.help-u.in',
   'https://help-u.in',
   'https://api.help-u.in',
@@ -72,8 +76,10 @@ app.use(cors({
 
     // Vercel preview deployments only (full-origin match, not a substring match)
     const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(candidate);
+    // Allow any localhost or 127.0.0.1 port for local development
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(candidate);
 
-    if (isAllowed || isVercelPreview) {
+    if (isAllowed || isVercelPreview || isLocalhost) {
       callback(null, true);
     } else {
       console.error(`BLOCKED CORS ORIGIN: "${origin}" | Allowed list: ${[...allowedOriginSet].join(', ')}`);

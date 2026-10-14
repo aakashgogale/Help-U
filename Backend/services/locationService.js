@@ -79,7 +79,9 @@ const _buildWorkerQuery = (filters = {}) => {
   };
 
   if (filters.city) {
-    baseQuery['address.city'] = { $regex: new RegExp(filters.city, 'i') };
+    // Only used by the no-coordinates fallback; escape the user-entered city text
+    const escapedCity = String(filters.city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    baseQuery['address.city'] = { $regex: new RegExp(escapedCity, 'i') };
   }
 
   if (serviceCategory) {
@@ -119,7 +121,10 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
       if (globalSettings?.searchRadius) radiusKm = globalSettings.searchRadius;
     }
 
-    const baseQuery = _buildWorkerQuery(filters);
+    // Matching is purely by distance + service radius: the city name is not a
+    // filter here, so a nearby worker registered under another city still qualifies.
+    const { city: _ignoredCity, ...geoFilters } = filters;
+    const baseQuery = _buildWorkerQuery(geoFilters);
     const totalApprovedWorkers = await Worker.countDocuments({ approvalStatus: 'APPROVED', isActive: true });
     console.log(`[LocationService] Total Approved/Active Workers in DB: ${totalApprovedWorkers}`);
     console.log(`[LocationService] Searching with query: ${JSON.stringify(baseQuery)}`);

@@ -66,6 +66,7 @@ const notificationSchema = new mongoose.Schema({
       'vendor_referral_success',
       'vendor_referral_rewarded',
       'advance_payment_requested',
+      'customer_added_services', // customer added repair services after inspection
       'booking_reassigned',
       'chat_message',
       'dispute_raised',
