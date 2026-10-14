@@ -1,22 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import homepageBanner from '../../../../../assets/images/pages/Home/Banner/homepage-banner.png';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
+// Every banner renders at one fixed size (3:1), whatever size was uploaded from admin
 const Banner = React.memo(({ imageUrl, onClick }) => {
   // Optimize Cloudinary URLs for faster loading
   const optimizedUrl = imageUrl ? optimizeCloudinaryUrl(imageUrl, { quality: 'auto' }) : homepageBanner;
+  const [loaded, setLoaded] = useState(false);
 
   return (
-    <div className="mb-6 px-4 cursor-pointer group" onClick={onClick}>
-      <div className="relative w-full aspect-[16/8.5] sm:aspect-[21/9] rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.06)] bg-slate-100">
+    <div className="px-4 sm:px-5 w-full lg:max-w-5xl lg:mx-auto cursor-pointer" onClick={onClick}>
+      <div className="relative w-full aspect-3/1 rounded-[22px] sm:rounded-[26px] overflow-hidden transition-transform duration-300 active:scale-[0.99] bg-slate-100">
+        {!loaded && <div className="absolute inset-0 bg-slate-100 animate-pulse" />}
         <img
           src={optimizedUrl}
           alt="Banner"
-          className="w-full h-full object-cover object-center"
+          onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
           decoding="async"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none" />
       </div>
     </div>
   );

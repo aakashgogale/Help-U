@@ -1,10 +1,9 @@
-import React, { useState, useRef, memo, useEffect } from 'react';
+import React, { useRef, memo, useEffect } from 'react';
 import { gsap } from 'gsap';
-import { createRipple } from '../../../../utils/gsapAnimations';
 
 import { themeColors } from '../../../../theme';
 
-const CategoryCard = memo(({ icon, title, onClick, hasSaleBadge = false, index = 0 }) => {
+const CategoryCard = memo(({ icon, title, onClick, hasSaleBadge = false, index = 0, iconBg = '#EEF1F4' }) => {
   const cardRef = useRef(null);
 
   // Simple entrance animation
@@ -25,30 +24,25 @@ const CategoryCard = memo(({ icon, title, onClick, hasSaleBadge = false, index =
   }, [index]);
 
   return (
-    <div
+    <button
+      type="button"
       ref={cardRef}
-      className="flex flex-col items-center justify-center p-1 cursor-pointer relative category-card-container group transition-transform duration-300 ease-out active:scale-95 w-full"
+      className="flex flex-col items-center justify-start cursor-pointer relative group transition-transform duration-300 ease-out active:scale-95 w-full"
       onClick={onClick}
       style={{
         opacity: 0, // Start hidden for GSAP
       }}
     >
       <div
-        className="w-[64px] h-[64px] rounded-full flex items-center justify-center mb-2 relative border border-gray-100 flex-shrink-0 transition-all duration-500 group-hover:shadow-lg group-hover:shadow-primary-100 group-hover:-translate-y-1 bg-white"
-        style={{
-          boxShadow: '0 8px 20px -6px rgba(0,0,0,0.05)',
-        }}
+        className="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-full flex items-center justify-center relative shrink-0 transition-all duration-300 group-hover:-translate-y-1"
+        style={{ backgroundColor: iconBg }}
       >
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         {icon || (
           <svg
-            className="w-7 h-7 text-gray-400 transition-colors duration-300"
-            style={{ color: 'inherit' }}
+            className="w-7 h-7 text-gray-400 group-hover:text-accent transition-colors duration-300"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
-            onMouseEnter={(e) => e.currentTarget.style.color = themeColors.button}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
           >
             <path
               strokeLinecap="round"
@@ -60,7 +54,7 @@ const CategoryCard = memo(({ icon, title, onClick, hasSaleBadge = false, index =
         )}
         {hasSaleBadge && (
           <div
-            className="absolute -top-1.5 -right-1.5 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 border border-white"
+            className="absolute -top-1 -right-1.5 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 border border-white"
             style={{
               background: themeColors.gradient,
               boxShadow: `0 4px 12px ${themeColors.brand.teal}4D`
@@ -71,21 +65,14 @@ const CategoryCard = memo(({ icon, title, onClick, hasSaleBadge = false, index =
         )}
       </div>
       <span
-        className="text-[11px] text-center text-gray-700 font-medium leading-tight tracking-tight mt-1 transition-colors duration-300 w-full line-clamp-2 px-1"
-        style={{
-          wordWrap: 'break-word',
-          color: 'inherit'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.color = themeColors.button}
-        onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
+        className="mt-2.5 text-[13px] sm:text-sm text-center text-ink font-semibold leading-[1.25] tracking-tight w-full line-clamp-2 px-0.5 group-hover:text-accent transition-colors duration-300 break-words"
       >
         {title}
       </span>
-    </div>
+    </button>
   );
 });
 
 CategoryCard.displayName = 'CategoryCard';
 
 export default CategoryCard;
-

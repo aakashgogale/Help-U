@@ -1,8 +1,11 @@
-import React, { memo } from 'react';
-import OptimizedImage from '../../../../components/common/OptimizedImage';
+import React, { memo, useState } from 'react';
 import OptimizedVideo from '../../../../components/common/OptimizedVideo';
+import { optimizeCloudinaryUrl } from '../../../../utils/cloudinaryOptimize';
 
-const PromoCard = memo(({ title, subtitle, buttonText, image, onClick, className = '' }) => {
+// Every promo renders at one fixed size (2:1), whatever size was uploaded from admin
+const PromoCard = memo(({ title, image, onClick, className = '', priority = false }) => {
+  const [loaded, setLoaded] = useState(false);
+
   const isVideo = image && (
     image.includes('video/upload') ||
     image.match(/\.(mp4|webm|ogg|mov)$|^https:\/\/res\.cloudinary\.com.*\/video\//i)
@@ -10,24 +13,40 @@ const PromoCard = memo(({ title, subtitle, buttonText, image, onClick, className
 
   return (
     <div
-      className={`relative rounded-2xl sm:rounded-3xl overflow-hidden w-[calc(100vw-36px)] sm:w-[380px] md:w-[420px] aspect-[16/8.5] max-h-56 cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.06)] bg-slate-100 flex-shrink-0 ${className}`}
+      role="button"
+      tabIndex={0}
+      aria-label={title || 'Promotion'}
+      className={`relative aspect-2/1 rounded-[22px] sm:rounded-[26px] overflow-hidden w-[calc(100vw-32px)] max-w-[560px] sm:w-[440px] md:w-[520px] cursor-pointer transition-transform duration-300 active:scale-[0.99] bg-slate-100 shrink-0 ${className}`}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
     >
+      {!loaded && image && <div className="absolute inset-0 bg-slate-100 animate-pulse" />}
       {image ? (
         isVideo ? (
           <OptimizedVideo
             src={image}
-            className="w-full h-full object-cover object-center"
+            className="absolute inset-0 w-full h-full"
             autoPlay
             loop
             muted
             playsInline
+            onLoadedData={() => setLoaded(true)}
           />
         ) : (
-          <OptimizedImage
-            src={image}
+          <img
+            src={optimizeCloudinaryUrl(image, { quality: 'auto' })}
             alt={title || 'Promo'}
-            className="w-full h-full object-cover object-center"
+            onLoad={() => setLoaded(true)}
+            onError={() => setLoaded(true)}
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
+            decoding="async"
+            className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           />
         )
       ) : (

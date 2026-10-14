@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#DDE2E7"/>
+      <stop offset="0.16" stop-color="#FFFFFF"/>
+      <stop offset="0.78" stop-color="#F6F7F9"/>
+      <stop offset="1" stop-color="#CFD5DB"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2F4F6"/>
+      <stop offset="1" stop-color="#E2E6EA"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3137"/>
+      <stop offset="1" stop-color="#14181C"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F4F6F8"/>
+      <stop offset="0.5" stop-color="#C5CCD3"/>
+      <stop offset="1" stop-color="#E9ECEF"/>
+    </linearGradient>
+    <radialGradient id="drum" cx="0.45" cy="0.4" r="0.65">
+      <stop offset="0" stop-color="#4A5662"/>
+      <stop offset="1" stop-color="#1C232A"/>
+    </radialGradient>
+    <linearGradient id="knob" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#C5CCD3"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+
+  <!-- feet -->
+  <rect x="146" y="428" width="30" height="14" rx="4" fill="#8E979F"/>
+  <rect x="336" y="428" width="30" height="14" rx="4" fill="#8E979F"/>
+
+  <!-- body -->
+  <rect x="124" y="62" width="264" height="372" rx="28" fill="url(#body)" stroke="#D1D7DD" stroke-width="2"/>
+  <path d="M146 150 L162 152 L162 410 Q146 404 146 392 Z" fill="#FFFFFF" opacity="0.65"/>
+
+  <!-- control panel -->
+  <path d="M124 136 L124 90 Q124 62 152 62 L360 62 Q388 62 388 90 L388 136 Z" fill="url(#panel)" stroke="#D3D9DF" stroke-width="1.5"/>
+  <rect x="144" y="84" width="66" height="30" rx="7" fill="#FFFFFF" stroke="#D1D7DD" stroke-width="1.5"/>
+  <rect x="150" y="97" width="54" height="4" rx="2" fill="#D1D7DD"/>
+  <circle cx="246" cy="99" r="17" fill="url(#knob)" stroke="#B9C1C9" stroke-width="1.5"/>
+  <rect x="244.5" y="85" width="3" height="10" rx="1.5" fill="#7A848E"/>
+  <rect x="286" y="84" width="72" height="30" rx="7" fill="url(#screen)"/>
+  <text x="300" y="105" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#4CC38A">0:45</text>
+
+  <!-- door -->
+  <circle cx="256" cy="278" r="100" fill="url(#ring)" stroke="#C9D0D7" stroke-width="2"/>
+  <circle cx="256" cy="278" r="78" fill="url(#drum)"/>
+  <path d="M190 300 Q256 270 322 300 A72 72 0 0 1 190 300 Z" fill="#5FA3EE" opacity="0.45"/>
+  <path d="M206 236 A64 64 0 0 1 270 210" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.28"/>
+  <rect x="348" y="262" width="8" height="32" rx="4" fill="#B9C1C9"/>
+</svg>

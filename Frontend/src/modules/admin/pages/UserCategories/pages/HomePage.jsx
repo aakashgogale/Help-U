@@ -169,6 +169,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
     imageUrl: "",
     rating: "",
     reviews: "",
+    optionsCount: "",
     price: "",
     originalPrice: "",
     discount: "",
@@ -567,6 +568,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
       imageUrl: "",
       rating: "",
       reviews: "",
+      optionsCount: "",
       price: "",
       originalPrice: "",
       discount: "",
@@ -1469,6 +1471,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-2">Image</label>
+            <p className="-mt-1 mb-2 text-xs text-gray-500">Shown at a fixed 3:1 size. Recommended: 1500 × 500 px, key content centred.</p>
             <div className="space-y-3">
               <input
                 type="file"
@@ -1587,6 +1590,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-2">Image</label>
+            <p className="-mt-1 mb-2 text-xs text-gray-500">Shown at a fixed 2:1 size. Recommended: 1600 × 800 px, key content centred.</p>
             <div className="space-y-3">
               <input
                 type="file"
@@ -2315,6 +2319,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                               imageUrl: card.imageUrl || "",
                               rating: card.rating || "",
                               reviews: card.reviews || "",
+                              optionsCount: card.optionsCount || "",
                               price: card.price || "",
                               originalPrice: card.originalPrice || "",
                               discount: card.discount || "",
@@ -2475,6 +2480,18 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                 placeholder="e.g. 3.7M"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Options (optional)</label>
+            <input
+              type="number"
+              min="0"
+              value={cardForm.optionsCount || ""}
+              onChange={(e) => setCardForm((p) => ({ ...p, optionsCount: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
+              placeholder="e.g. 4 — more than 1 shows “Starts at” and “4 options”"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">

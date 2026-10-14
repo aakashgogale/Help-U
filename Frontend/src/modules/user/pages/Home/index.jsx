@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
@@ -10,7 +10,7 @@ import { useCity } from '../../../../context/CityContext';
 import { useConfig } from '../../../../context/ConfigContext';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Lazy load heavy components for better initial load performance
 import PromoCarousel from './components/PromoCarousel';
@@ -19,14 +19,18 @@ const NewAndNoteworthy = lazy(() => import('./components/NewAndNoteworthy'));
 const MostBookedServices = lazy(() => import('./components/MostBookedServices'));
 const CuratedServices = lazy(() => import('./components/CuratedServices'));
 const ServiceSectionWithRating = lazy(() => import('./components/ServiceSectionWithRating'));
+const ApplianceRepairSection = lazy(() => import('./components/ApplianceRepairSection'));
 const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
+const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
 import CategoryModal from './components/CategoryModal';
 import SearchOverlay from './components/SearchOverlay';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
 import ScrapPromotionCard from './components/ScrapPromotionCard';
 import DebugConsole from '../../components/common/DebugConsole';
+import { getCategoryIllustration } from '../../utils/categoryIcons';
+import { isWinterSection, getWinterArtwork, WINTER_FALLBACK_ARTWORK } from '../../utils/seasonalArtwork';
 
 
 
@@ -34,6 +38,8 @@ const getLocalIcon = (title) => {
   if (!title) return null;
   const t = title.toLowerCase();
   const origin = window.location.origin;
+  if (t.includes('refrigerator') || t.includes('fridge')) return `${origin}/ServiceIcon/refrigerator.svg`;
+  if (t.includes('water heater') || t.includes('geyser')) return `${origin}/ServiceIcon/water-heater.svg`;
   if (t.includes('microwave')) return `${origin}/ServiceIcon/microwave.jpeg`;
   if (t.includes('r.o') || t.includes('purifier') || t.includes('prufier')) return `${origin}/ServiceIcon/RpPurifier.jpeg`;
   if (t.includes('led') || t.includes('tv')) return `${origin}/ServiceIcon/LED.jpeg`;
@@ -44,6 +50,29 @@ const getLocalIcon = (title) => {
   if (t.includes('ac ') || t === 'ac') return `${origin}/ServiceIcon/AC.jpeg`;
   return null;
 };
+
+const mapCategories = (list) => (list || []).map(cat => ({
+  id: cat.id,
+  title: cat.title,
+  slug: cat.slug,
+  icon: getCategoryIllustration(cat.title) || toAssetUrl(cat.icon),
+  hasSaleBadge: cat.hasSaleBadge,
+  badge: cat.badge
+}));
+
+// Keyword fallback for home cards whose admin category link is missing
+const CATEGORY_KEYWORDS = [
+  { pattern: / (washing|washer|top load|front load) /, category: /washing/ },
+  { pattern: / (geyser|water heater) /, category: /geyser|water heater/ },
+  { pattern: / (fridge|fride|refrigerator) /, category: /fridge|refrigerator/ },
+  { pattern: / (r\.o\.?|ro|purifier|prufier) /, category: /r\.o|purifier|prufier/ },
+  { pattern: / (ac|a\.c\.?|air conditioner) /, category: /^ac$|air condition/ },
+  { pattern: / cooler /, category: /cooler/ },
+  { pattern: / microwave /, category: /microwave/ },
+  { pattern: / chimney /, category: /chimney/ },
+  { pattern: / (led|tv|television) /, category: /^led|tv/ },
+  { pattern: / dish ?washer /, category: /dish ?washer/ },
+];
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -60,7 +89,6 @@ const Home = () => {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [houseNumber, setHouseNumber] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isLocationSupported, setIsLocationSupported] = useState(true);
   const [detectedCityName, setDetectedCityName] = useState(localStorage.getItem('currentCity') || null);
 
 
@@ -95,7 +123,6 @@ const Home = () => {
           setDetectedCityName(cityCandidate);
           localStorage.setItem('currentCity', cityCandidate);
         }
-        setIsLocationSupported(false);
       }
     }
   }, [address, cities, detectedCityName]);
@@ -111,20 +138,16 @@ const Home = () => {
     );
 
     if (matchedCity) {
-      setIsLocationSupported(true);
       const matchedId = matchedCity._id || matchedCity.id;
       const currentId = currentCity?._id || currentCity?.id;
 
       if (!cityLoading && currentId && matchedId !== currentId) {
         selectCity(matchedCity);
         toast.success(`Location updated to ${matchedCity.name}`);
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
       }
-    } else {
-      setIsLocationSupported(false);
-      if (currentCity) selectCity(null);
+    } else if (currentCity) {
+      // Unlisted city: show the default home content; booking still works wherever a worker is nearby
+      selectCity(null);
     }
   }, [detectedCityName, cities, currentCity, cityLoading]);
 
@@ -168,9 +191,6 @@ const Home = () => {
         }
 
         toast.success(`Location set to ${city}`);
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
       }
     }
     setHouseNumber(savedHouseNumber);
@@ -247,9 +267,12 @@ const Home = () => {
     registerFCMToken('user', true).catch(err => {/* Silent fail */ });
   }, []);
 
-  const [categories, setCategories] = useState([]);
-  const [homeContent, setHomeContent] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Revisits render instantly from the last known data; fresh data loads in the background
+  const [initialSnapshot] = useState(() => publicCatalogService.peekHomeData(currentCity?._id || currentCity?.id));
+  const [categories, setCategories] = useState(() => mapCategories(initialSnapshot?.categories));
+  const [homeContent, setHomeContent] = useState(() => initialSnapshot?.homeContent || null);
+  const [loading, setLoading] = useState(() => !initialSnapshot);
+  const hasDataRef = useRef(Boolean(initialSnapshot));
 
   // Handle scroll separately (only when needed)
   useEffect(() => {
@@ -260,37 +283,28 @@ const Home = () => {
   }, [location.state?.scrollToTop, location.pathname]);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
+  // Row opened in the "See all" screen: { title, subtitle, services, variant, category }
+  const [seeAllSection, setSeeAllSection] = useState(null);
+  const closeSeeAll = useCallback(() => setSeeAllSection(null), []);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Fetch categories and home content on mount (and when city changes)
   useEffect(() => {
     const fetchData = async () => {
+      // Full loader only when there is nothing to show yet
+      if (!hasDataRef.current) setLoading(true);
       try {
-        setLoading(true);
         const cityId = currentCity?._id || currentCity?.id;
-
         const response = await publicCatalogService.getHomeData(cityId);
 
         if (response.success) {
-          if (response.categories) {
-            const mappedCategories = response.categories.map(cat => ({
-              id: cat.id,
-              title: cat.title,
-              slug: cat.slug,
-              icon: getLocalIcon(cat.title) || toAssetUrl(cat.icon),
-              hasSaleBadge: cat.hasSaleBadge,
-              badge: cat.badge
-            }));
-            setCategories(mappedCategories);
-          }
-
-          if (response.homeContent) {
-            setHomeContent(response.homeContent);
-          }
+          if (response.categories) setCategories(mapCategories(response.categories));
+          if (response.homeContent) setHomeContent(response.homeContent);
+          hasDataRef.current = true;
         }
-
-        setLoading(false);
-      } catch (error) {
+      } catch {
+        // Keep showing the last known content
+      } finally {
         setLoading(false);
       }
     };
@@ -344,37 +358,62 @@ const Home = () => {
     }
   };
 
+  const findCategoryById = (id) => id && categories.find(c => c.id === id || c._id === id);
+
+  // Category a home card belongs to: its admin link first, then a whole-word match on its title
+  const resolveServiceCategory = (service) => {
+    if (!service) return null;
+    const linked = findCategoryById(service.targetCategoryId);
+    if (linked) return linked;
+
+    const title = ` ${(service.title || '').toLowerCase().replace(/[^a-z0-9.]+/g, ' ')} `;
+    if (!title.trim()) return null;
+    const byName = categories.find(c => {
+      const name = (c.title || '').toLowerCase().trim();
+      return name && title.includes(` ${name} `);
+    });
+    if (byName) return byName;
+
+    const match = CATEGORY_KEYWORDS.find(({ pattern }) => pattern.test(title));
+    return match ? categories.find(c => match.category.test((c.title || '').toLowerCase())) || null : null;
+  };
+
+  // Category behind a whole row: admin "see all" link, else the one category all its cards share, else a title match
+  const getSectionCategory = (section) => {
+    const linked = findCategoryById(section?.seeAllTargetCategoryId);
+    if (linked) return linked;
+    const cardCats = (section?.cards || []).map(resolveServiceCategory);
+    if (cardCats.length > 0 && cardCats.every(c => c && c.id === cardCats[0].id)) return cardCats[0];
+    return resolveServiceCategory({ title: section?.title });
+  };
+
+  const openSeeAll = ({ title, subtitle, services, variant, category = null }) => {
+    setSeeAllSection({
+      title,
+      subtitle,
+      services: services || [],
+      variant,
+      category,
+      onCategoryClick: category ? () => handleCategoryClick(category) : null
+    });
+  };
+
   const handleServiceClick = (service) => {
     if (!service) return;
-    if (service.targetCategoryId) {
-      const cat = categories.find(c => (c.id === service.targetCategoryId || c._id === service.targetCategoryId));
-      if (cat) {
-        handleCategoryClick(cat);
-        return;
-      }
+    const cat = resolveServiceCategory(service);
+    if (cat) {
+      handleCategoryClick(cat);
+      return;
     }
-    // Fallback: match category by title/keywords if targetCategoryId is not explicitly configured
-    if (service.title && categories.length > 0) {
-      const serviceTitleLower = service.title.toLowerCase();
-      const matchCat = categories.find(c => {
-        const catTitleLower = (c.title || '').toLowerCase();
-        return catTitleLower && (serviceTitleLower.includes(catTitleLower) || catTitleLower.includes(serviceTitleLower));
-      });
-      if (matchCat) {
-        handleCategoryClick(matchCat);
-        return;
-      }
-    }
+    toast(`${(service.title || 'This service').trim()} isn't available for booking yet`, { icon: '🛠️' });
   };
 
   const handleAddClick = async (service) => {
     try {
-      if (service.targetCategoryId) {
-        const cat = categories.find(c => c.id === service.targetCategoryId);
-        if (cat) {
-          handleCategoryClick(cat);
-          return;
-        }
+      const linkedCat = findCategoryById(service.targetCategoryId);
+      if (linkedCat) {
+        handleCategoryClick(linkedCat);
+        return;
       }
 
       if (service.serviceId && service.categoryId) {
@@ -403,16 +442,8 @@ const Home = () => {
           toast.error(response.message || 'Failed to add to cart');
         }
       } else {
-        if (service.targetCategoryId) {
-          const cat = categories.find(c => (c.id === service.targetCategoryId || c._id === service.targetCategoryId));
-          if (cat) {
-            handleCategoryClick(cat);
-          } else {
-            toast.error('Unable to add this service to cart.');
-          }
-        } else {
-          toast.error('Unable to add this service to cart.');
-        }
+        // No direct service link: open its category so the user can pick the exact service
+        handleServiceClick(service);
       }
     } catch (error) {
       toast.error('Failed to add to cart. Please try again.');
@@ -457,55 +488,30 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen relative bg-white">
-      {/* Refined Brand Mesh Gradient Background */}
-        <div className="absolute inset-0 bg-[#F8F9FA]" />
-
+    <div className="min-h-screen relative bg-canvas">
       <motion.div
         className="relative z-10"
-        initial="hidden"
+        initial={initialSnapshot ? false : 'hidden'}
         animate="visible"
         variants={containerVariants}
       >
         <motion.div
           variants={itemVariants}
-          className="backdrop-blur-xl sticky top-0 z-50 rounded-b-[24px] shadow-sm transition-all duration-300 overflow-hidden"
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.85)' }}
+          className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl"
         >
-          <Header
-            location={address}
-            onLocationClick={handleLocationClick}
-          />
-          <div className="px-5 pb-5 pt-1 max-w-lg lg:max-w-2xl mx-auto w-full">
-            <SearchBar onInputClick={() => setIsSearchOpen(true)} />
+          <div className="max-w-screen-xl mx-auto w-full">
+            <Header
+              location={address}
+              onLocationClick={handleLocationClick}
+              showNotifications
+            />
+            <div className="px-4 sm:px-5 pb-4 pt-1 max-w-2xl mx-auto w-full">
+              <SearchBar onInputClick={() => setIsSearchOpen(true)} />
+            </div>
           </div>
         </motion.div>
 
-        <main className="pt-3 flex flex-col gap-5 sm:gap-6 max-w-screen-xl mx-auto w-full pb-20">
-          {!isLocationSupported ? (
-            <div className="flex flex-col items-center justify-center pt-20 pb-10 px-6 text-center min-h-[60vh]">
-              <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3l18 18" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Not service available in your city
-              </h2>
-              <p className="text-gray-500 max-w-xs mx-auto mb-8 font-medium">
-                Please fast! We are coming soon.
-              </p>
-              <button
-                onClick={() => setIsAddressModalOpen(true)}
-                className="px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold shadow-md hover:bg-primary-700 transition-all font-bold"
-                style={{ backgroundColor: '#2874f0' }}
-              >
-                Change Location
-              </button>
-            </div>
-          ) : (
+        <main className="flex flex-col gap-7 sm:gap-8 max-w-screen-xl mx-auto w-full pb-20">
             <>
               {/* Hero Section - Promo Carousel */}
               {homeContent?.isPromosVisible !== false && (homeContent?.promos || []).length > 0 && (
@@ -534,16 +540,30 @@ const Home = () => {
                   <ServiceCategories
                     categories={categories}
                     onCategoryClick={handleCategoryClick}
-                    onSeeAllClick={() => setIsCategoryModalOpen(true)}
                   />
                 </motion.section>
               )}
 
-              {/* Scrap Promotion Section */}
-              {isScrapEnabled && (
-                <motion.section variants={itemVariants}>
-                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
-                </motion.section>
+              {/* Dynamic Banner 1 */}
+              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[0]?.imageUrl) && (
+                <motion.div variants={itemVariants}>
+                  <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
+                    <Banner
+                      imageUrl={homeContent?.banners?.[0] ? toAssetUrl(homeContent.banners[0].imageUrl) : null}
+                      onClick={() => {
+                        const b = homeContent?.banners?.[0];
+                        if (b?.slug) {
+                          navigate(`/user/${b.slug}`);
+                          return;
+                        }
+                        if (b?.targetCategoryId) {
+                          const cat = categories.find(c => c.id === b.targetCategoryId);
+                          if (cat) handleCategoryClick(cat);
+                        }
+                      }}
+                    />
+                  </Suspense>
+                </motion.div>
               )}
 
               {/* Curated Services */}
@@ -583,17 +603,28 @@ const Home = () => {
                         price: item.price,
                         originalPrice: item.originalPrice,
                         discount: item.discount,
+                        optionsCount: item.optionsCount,
                         duration: item.duration,
                         image: toAssetUrl(item.imageUrl),
+                        fallbackImage: getLocalIcon(item.title),
                         slug: item.slug,
                         targetCategoryId: item.targetCategoryId,
                         targetServiceId: item.targetServiceId
                       }))}
                       onServiceClick={handleServiceClick}
                       onBookClick={handleServiceClick}
+                      onAddClick={handleAddClick}
+                      onSeeAllClick={(services) => openSeeAll({ title: 'New and noteworthy', services, variant: 'noteworthy' })}
                     />
                   </Suspense>
                 </motion.div>
+              )}
+
+              {/* Scrap Promotion Section */}
+              {isScrapEnabled && (
+                <motion.section variants={itemVariants}>
+                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
+                </motion.section>
               )}
 
               {/* Most Booked */}
@@ -609,78 +640,114 @@ const Home = () => {
                         price: item.price,
                         originalPrice: item.originalPrice,
                         discount: item.discount,
+                        optionsCount: item.optionsCount,
                         image: toAssetUrl(item.imageUrl),
                         targetCategoryId: item.targetCategoryId,
                         slug: item.slug
                       }))}
                       onServiceClick={handleServiceClick}
                       onAddClick={handleAddClick}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
-              {/* Dynamic Banner 1 */}
-              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[0]?.imageUrl) && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="w-[calc(100%-32px)] aspect-[16/8.5] sm:aspect-[21/9] bg-slate-100 animate-pulse rounded-2xl sm:rounded-3xl mx-4 mb-6" />}>
-                    <Banner
-                      imageUrl={homeContent?.banners?.[0] ? toAssetUrl(homeContent.banners[0].imageUrl) : null}
-                      onClick={() => {
-                        const b = homeContent?.banners?.[0];
-                        if (b?.slug) {
-                          navigate(`/user/${b.slug}`);
-                          return;
-                        }
-                        if (b?.targetCategoryId) {
-                          const cat = categories.find(c => c.id === b.targetCategoryId);
-                          if (cat) handleCategoryClick(cat);
-                        }
-                      }}
+                      onSeeAllClick={(services) => openSeeAll({ title: 'Most booked services', services, variant: 'booked' })}
                     />
                   </Suspense>
                 </motion.div>
               )}
 
               {/* Dynamic Sections */}
-              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).filter(s => (s.cards || []).length > 0).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => (
-                <motion.div key={section._id || sIdx} variants={itemVariants}>
+              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).filter(s => (s.cards || []).length > 0).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => {
+                const isAppliance = (section.title || '').toLowerCase().includes('appliance');
+                if (isAppliance) {
+                  return (
+                    <motion.div key={section._id || sIdx} variants={itemVariants}>
+                      <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                        <ApplianceRepairSection
+                          title="Appliance repair & service"
+                          subtitle={section.subtitle}
+                          services={section.cards?.map((card, cIdx) => ({
+                            id: card._id || cIdx,
+                            title: card.title,
+                            rating: card.rating || "4.8",
+                            reviews: card.reviews || "10k+",
+                            price: card.price,
+                            originalPrice: card.originalPrice,
+                            discount: card.discount,
+                            optionsCount: card.optionsCount,
+                            image: toAssetUrl(card.imageUrl),
+                            targetCategoryId: card.targetCategoryId,
+                            slug: card.slug
+                          })) || []}
+                          onSeeAllClick={(services) => openSeeAll({
+                            title: 'Appliance repair & service',
+                            subtitle: section.subtitle,
+                            services,
+                            variant: 'appliance',
+                            category: getSectionCategory(section)
+                          })}
+                          onServiceClick={(service) => handleServiceClick(service)}
+                          onAddClick={handleAddClick}
+                        />
+                      </Suspense>
+                    </motion.div>
+                  );
+                }
+
+                // Winter sections use the matching seasonal illustration for each service
+                const isWinter = isWinterSection(section.title);
+                return (
+                  <motion.div key={section._id || sIdx} variants={itemVariants}>
+                    <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                      <ServiceSectionWithRating
+                        title={section.title}
+                        subtitle={section.subtitle}
+                        services={section.cards?.map((card, cIdx) => {
+                          const winterArt = isWinter ? getWinterArtwork(card.title) : null;
+                          const processedImage = winterArt || toAssetUrl(card.imageUrl);
+                          return {
+                            id: card._id || cIdx,
+                            title: card.title,
+                            rating: card.rating || "4.8",
+                            reviews: card.reviews || "10k+",
+                            price: card.price,
+                            originalPrice: card.originalPrice,
+                            discount: card.discount,
+                            optionsCount: card.optionsCount,
+                            image: processedImage,
+                            fallbackImage: isWinter ? WINTER_FALLBACK_ARTWORK : getLocalIcon(card.title),
+                            targetCategoryId: card.targetCategoryId,
+                            slug: card.slug
+                          };
+                        }) || []}
+                        onSeeAllClick={(services) => openSeeAll({
+                          title: section.title,
+                          subtitle: section.subtitle,
+                          services,
+                          category: getSectionCategory(section)
+                        })}
+                        onServiceClick={(service) => handleServiceClick(service)}
+                        onAddClick={handleAddClick}
+                      />
+                    </Suspense>
+                  </motion.div>
+                );
+              })}
+
+              {/* Standalone Appliance Repair & Service section if not returned in dynamic categorySections */}
+              {homeContent?.isCategorySectionsVisible !== false && !(homeContent?.categorySections || []).some(s => (s.title || '').toLowerCase().includes('appliance') && (s.cards || []).length > 0) && (
+                <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <ServiceSectionWithRating
-                      title={section.title}
-                      subtitle={section.subtitle}
-                      services={section.cards?.map((card, cIdx) => {
-                        const processedImage = toAssetUrl(card.imageUrl);
-                        return {
-                          id: card._id || cIdx,
-                          title: card.title,
-                          rating: card.rating || "4.8",
-                          reviews: card.reviews || "10k+",
-                          price: card.price,
-                          originalPrice: card.originalPrice,
-                          discount: card.discount,
-                          image: processedImage,
-                          targetCategoryId: card.targetCategoryId,
-                          slug: card.slug
-                        };
-                      }) || []}
-                      onSeeAllClick={() => {
-                        if (section.seeAllTargetCategoryId) {
-                          const cat = categories.find(c => (c.id === section.seeAllTargetCategoryId || c._id === section.seeAllTargetCategoryId));
-                          if (cat) handleCategoryClick(cat);
-                        }
-                      }}
+                    <ApplianceRepairSection
+                      onSeeAllClick={(services) => openSeeAll({ title: 'Appliance repair & service', services, variant: 'appliance' })}
                       onServiceClick={(service) => handleServiceClick(service)}
                       onAddClick={handleAddClick}
                     />
                   </Suspense>
                 </motion.div>
-              ))}
+              )}
 
               {/* Dynamic Banner 2 */}
               {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[1]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="w-[calc(100%-32px)] aspect-[16/8.5] sm:aspect-[21/9] bg-slate-100 animate-pulse rounded-2xl sm:rounded-3xl mx-4 mb-6" />}>
+                  <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                     <Banner
                       imageUrl={homeContent?.banners?.[1] ? toAssetUrl(homeContent.banners[1].imageUrl) : null}
                       onClick={() => {
@@ -702,7 +769,6 @@ const Home = () => {
                 </Suspense>
               </motion.div>
             </>
-          )}
         </main>
       </motion.div>
 
@@ -720,6 +786,20 @@ const Home = () => {
         cartCount={cartCount}
         currentCity={currentCity}
       />
+
+      {/* "See all" screen for a home row */}
+      <AnimatePresence>
+        {seeAllSection && (
+          <Suspense key="see-all" fallback={null}>
+            <SectionSeeAllSheet
+              section={seeAllSection}
+              onClose={closeSeeAll}
+              onServiceClick={handleServiceClick}
+              onAddClick={handleAddClick}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
 
       {/* Search Overlay */}
       <SearchOverlay

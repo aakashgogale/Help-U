@@ -17,6 +17,8 @@ const brand = {
   yellow: '#D68F35', // Logo 'U' Amber/Gold
   orange: '#BB5F36', // Logo Accent Orange
   green: '#16A34A', // Logo Tagline Green
+  accent: '#0F7457', // User home accent (mirrors --color-accent in index.css)
+  accentSoft: '#E6F4EE',
   gradient: 'linear-gradient(135deg, #163B66 0%, #D68F35 50%, #BB5F36 100%)',
   conic: 'conic-gradient(from 0deg, #163B66, #D68F35, #BB5F36, #163B66)'
 };

@@ -1,9 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import { createOptimizedScrollAnimation, createOptimizedStaggerAnimation } from '../../../../../utils/optimizedScrollTrigger';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import ServiceWithRatingCard from '../../../components/common/ServiceWithRatingCard';
-import { themeColors } from '../../../../../theme';
 
-const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeAllClick, onServiceClick, onAddClick, showTopBorder = true }) => {
+const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeAllClick, onServiceClick, onAddClick }) => {
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const cardsRef = useRef(null);
@@ -77,30 +77,66 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
     }
   }, []); // Empty deps - only run once on mount
 
+  const scrollBy = (direction) => {
+    cardsRef.current?.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: 'smooth' });
+  };
+
+  if (!services || services.length === 0) {
+    return null;
+  }
+
   return (
-    <div ref={sectionRef} className="mb-6">
-      <div ref={titleRef} className="px-4 mb-3 flex items-center justify-between" style={{ opacity: 1 }}>
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+    <section ref={sectionRef} className="bg-white py-4 w-full">
+      {/* Header: bold title (+ subtitle) and outlined "See all" */}
+      <div ref={titleRef} className="px-4 mb-4 flex items-center justify-between gap-3" style={{ opacity: 1 }}>
+        <div className="min-w-0">
+          <h2 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight leading-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-xs font-medium text-gray-500 mt-0.5">
+            <p className="text-[13px] sm:text-sm text-[#6B7280] mt-1 leading-snug">
               {subtitle}
             </p>
           )}
         </div>
-        {onSeeAllClick && (
-          <button
-            onClick={onSeeAllClick}
-            className="text-xs font-bold text-[#163B66] hover:underline"
-          >
-            See all
-          </button>
-        )}
+
+        <div className="flex items-center gap-2 shrink-0">
+          {onSeeAllClick && (
+            <button
+              type="button"
+              onClick={() => onSeeAllClick(services)}
+              className="h-8 px-3.5 rounded-lg border border-[#E3E3E3] bg-white text-[13px] font-semibold text-[#6E42E5] hover:border-[#6E42E5]/50 hover:bg-[#F9F7FD] active:scale-95 transition-all"
+            >
+              See all
+            </button>
+          )}
+          {/* Scroll controls for desktop */}
+          <div className="hidden sm:flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scrollBy('left')}
+              aria-label="Previous"
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <FiChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollBy('right')}
+              aria-label="Next"
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <FiChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div ref={cardsRef} className="flex gap-3.5 overflow-x-auto px-4 pb-3 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
+      <div
+        ref={cardsRef}
+        className="flex items-stretch gap-3.5 sm:gap-5 overflow-x-auto px-4 pb-3 scrollbar-hide overscroll-x-contain scroll-smooth"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {services.map((service) => (
           <ServiceWithRatingCard
             key={service.id}
@@ -110,13 +146,15 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
             price={service.price}
             originalPrice={service.originalPrice}
             discount={service.discount}
+            optionsCount={service.optionsCount}
             image={service.image}
+            fallbackImage={service.fallbackImage}
             onClick={() => onServiceClick?.(service)}
             onAddClick={() => onAddClick?.(service)}
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 });
 

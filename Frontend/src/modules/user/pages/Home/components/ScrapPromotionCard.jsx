@@ -1,73 +1,104 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiRefreshCw, FiTrendingUp } from 'react-icons/fi';
-import { themeColors } from '../../../../../theme';
+import { FiArrowRight, FiTrendingUp } from 'react-icons/fi';
+import { FaLeaf, FaRecycle } from 'react-icons/fa';
+import { MdOutlineVerifiedUser, MdCurrencyRupee } from 'react-icons/md';
+import scrapBoxImg from '../../../../../assets/images/pages/Home/Scrap/scrap-box.png';
 
+const HIGHLIGHTS = [
+  { id: 'eco', icon: FaRecycle, line1: 'Eco Friendly', line2: 'Process' },
+  { id: 'pickup', icon: MdOutlineVerifiedUser, line1: 'Safe & Secure', line2: 'Pickup' },
+  { id: 'cash', icon: MdCurrencyRupee, line1: 'Get Instant', line2: 'Cash', ringed: true },
+];
+
+// Sizes use container units (cqw) so the card keeps the same proportions at every width
 const ScrapPromotionCard = ({ onClick }) => {
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      whileTap={{ scale: 0.98 }}
-      className="mx-4 overflow-hidden rounded-3xl relative cursor-pointer group shadow-xl"
-      onClick={onClick}
-    >
-      {/* Background with Brand Mesh Gradient */}
-      <div 
-        className="absolute inset-0 z-0 transition-transform duration-700 group-hover:scale-110"
-        style={{
-          background: `linear-gradient(135deg, ${themeColors.brand.teal} 0%, #1a4d5e 100%)`
+    <div className="px-4 sm:px-5 w-full lg:max-w-3xl lg:mx-auto">
+      <motion.div
+        whileTap={{ scale: 0.99 }}
+        role="button"
+        tabIndex={0}
+        aria-label="Sell scrap now"
+        className="@container relative overflow-hidden rounded-[22px] sm:rounded-[26px] cursor-pointer group"
+        style={{ background: 'linear-gradient(100deg, #E3F2EF 0%, #DCEEE9 55%, #D4E8E1 100%)' }}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick?.();
+          }
         }}
-      />
-      
-      {/* Animated Decorative Circle */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 left-0 w-40 h-40 bg-teal-400/20 rounded-full -ml-20 -mb-20 blur-2xl transition-all duration-500 group-hover:bg-teal-400/30" />
+      >
+        <div className="flex items-stretch pl-[3.4cqw] pr-[2.2cqw] py-[2.4cqw]">
+          {/* Left: copy + CTA */}
+          <div className="relative z-10 w-[45%] shrink-0 flex flex-col justify-center py-[0.6cqw]">
+            <span className="self-start inline-flex items-center gap-[1.1cqw] rounded-full bg-[#CDE9E1] px-[1.8cqw] py-[0.9cqw] text-[max(8px,1.95cqw)] font-bold uppercase tracking-[0.02em] text-[#0A6B55]">
+              <FaLeaf className="w-[max(9px,2.1cqw)] h-[max(9px,2.1cqw)]" />
+              Eco-Friendly Service
+            </span>
 
-      <div className="relative z-10 p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex-1 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider mb-4 border border-white/10">
-            <FiRefreshCw className="animate-spin-slow" />
-            <span>Eco-Friendly Service</span>
-          </div>
-          
-          <h2 className="text-2xl lg:text-3xl font-black text-white mb-2 leading-tight">
-            Turn Your <span className="text-teal-300">Scrap</span> into <br className="hidden md:block" />
-            Instant <span className="text-amber-400">Cash</span>
-          </h2>
-          
-          <p className="text-teal-50/80 text-sm lg:text-base font-medium max-w-md mb-6 mx-auto md:mx-0">
-            Get the best price for your scrap with easy doorstep pickup.
-          </p>
+            <h2 className="mt-[2.4cqw] whitespace-nowrap text-[max(17px,5.1cqw)] font-extrabold leading-[1.16] tracking-[-0.01em] text-[#0D1F35]">
+              Turn Your <span className="text-[#0A7760]">Scrap</span>
+              <br />
+              into <span className="text-[#0A7760]">Instant Cash</span>
+            </h2>
 
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-            <button
-              className="px-6 py-3 bg-white rounded-xl font-bold shadow-lg hover:shadow-white/20 transition-all flex items-center gap-2 group/btn"
-              style={{ color: themeColors.brand.teal }}
-            >
+            <p className="mt-[2cqw] text-[max(9.5px,2.45cqw)] leading-[1.4] font-medium text-[#5B6B78]">
+              Get the best price for your scrap with easy doorstep pickup.
+            </p>
+
+            <span className="mt-[3cqw] self-start inline-flex items-center gap-[2.2cqw] rounded-full bg-accent-dark pl-[3.6cqw] pr-[1cqw] py-[1cqw] text-[max(11px,2.6cqw)] font-bold text-white shadow-[0_8px_18px_-8px_rgba(11,90,67,0.6)] transition-colors group-hover:bg-accent">
               Sell Scrap Now
-              <FiArrowRight className="transition-transform group-hover/btn:translate-x-1" />
-            </button>
-            <div className="flex items-center gap-2 text-white/90 text-sm font-semibold">
-              <div className="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center">
-                <FiTrendingUp className="text-amber-400" />
-              </div>
-              Best Market Rates
+              <span className="flex items-center justify-center rounded-full bg-white w-[max(22px,5cqw)] h-[max(22px,5cqw)]">
+                <FiArrowRight className="w-[60%] h-[60%] text-accent-dark transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+              </span>
+            </span>
+
+            <div className="mt-[2.6cqw] flex items-center gap-[1.6cqw]">
+              <span className="flex items-center justify-center rounded-full bg-[#3F8B76] w-[max(18px,4cqw)] h-[max(18px,4cqw)]">
+                <FiTrendingUp className="w-[58%] h-[58%] text-white" strokeWidth={2.5} />
+              </span>
+              <span className="text-[max(9px,2cqw)] font-semibold text-[#0D1F35]">Best Market Rates</span>
             </div>
           </div>
-        </div>
 
-        {/* Visual Element */}
-        <div className="relative hidden sm:block">
-          <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-110" />
-          <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center relative overflow-hidden group-hover:rotate-3 transition-transform duration-500">
-             <div className="text-6xl lg:text-7xl drop-shadow-2xl">♻️</div>
-             {/* Floating mini elements */}
-             <div className="absolute top-2 left-2 animate-bounce-slow text-2xl">💰</div>
-             <div className="absolute bottom-4 right-2 animate-bounce-slower text-2xl">📦</div>
+          {/* Middle: illustration */}
+          <div className="relative flex-1 min-w-0 flex items-end justify-center">
+            <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 w-[112%] aspect-square rounded-full bg-white/35" />
+            <img
+              src={scrapBoxImg}
+              alt="Scrap box ready for pickup"
+              className="relative w-full max-w-[32cqw] h-auto object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
+
+          {/* Right: highlights */}
+          <ul className="relative z-10 w-[24%] sm:w-[21%] shrink-0 flex flex-col justify-center gap-[1.8cqw]">
+            {HIGHLIGHTS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-[1.2cqw] rounded-[max(10px,2.6cqw)] bg-white/90 px-[1.3cqw] py-[1.8cqw] shadow-[0_6px_16px_-10px_rgba(15,27,45,0.25)]"
+                >
+                  <span className={`shrink-0 flex items-center justify-center text-[#0A7760] w-[max(14px,4.2cqw)] h-[max(14px,4.2cqw)] ${item.ringed ? 'rounded-full border-[1.5px] border-[#0A7760]' : ''}`}>
+                    <Icon className={item.ringed ? 'w-[68%] h-[68%]' : 'w-full h-full'} />
+                  </span>
+                  <span className="min-w-0 whitespace-nowrap text-[max(8px,1.8cqw)] leading-[1.35] font-medium text-[#0D1F35]">
+                    {item.line1}
+                    <br />
+                    {item.line2}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 

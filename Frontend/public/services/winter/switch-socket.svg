@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EDF3FA"/>
+      <stop offset="1" stop-color="#F7F9FC"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="contact" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#1F3B5C" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#1F3B5C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#DDE2E7"/>
+      <stop offset="0.16" stop-color="#FFFFFF"/>
+      <stop offset="0.8" stop-color="#F6F7F9"/>
+      <stop offset="1" stop-color="#CFD5DB"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4F6F8"/>
+      <stop offset="0.45" stop-color="#C3CBD3"/>
+      <stop offset="1" stop-color="#8E979F"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A424A"/>
+      <stop offset="1" stop-color="#1C2228"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="400" fill="url(#sky)"/>
+  <circle cx="200" cy="200" r="150" fill="url(#glow)"/>
+  <g transform="translate(200 206) scale(1.16) translate(-200 -190)">
+    <ellipse cx="200" cy="318" rx="70" ry="11" fill="url(#contact)"/>
+    
+  <rect x="106" y="86" width="188" height="188" rx="26" fill="#1F3B5C" opacity="0.08" transform="translate(4 8)"/>
+  <rect x="106" y="86" width="188" height="188" rx="26" fill="url(#white)" stroke="#D1D7DD" stroke-width="2"/>
+  <rect x="128" y="108" width="62" height="70" rx="10" fill="#F2F4F6" stroke="#D3D9DF" stroke-width="1.5"/>
+  <rect x="210" y="108" width="62" height="70" rx="10" fill="#F2F4F6" stroke="#D3D9DF" stroke-width="1.5"/>
+  <rect x="140" y="118" width="38" height="50" rx="7" fill="#FFFFFF" stroke="#C9D0D7" stroke-width="1.5"/>
+  <rect x="222" y="118" width="38" height="50" rx="7" fill="#FFFFFF" stroke="#C9D0D7" stroke-width="1.5"/>
+  <rect x="152" y="126" width="14" height="5" rx="2.5" fill="#4CC38A"/>
+  <rect x="234" y="126" width="14" height="5" rx="2.5" fill="#E5484D"/>
+  <rect x="128" y="192" width="144" height="64" rx="12" fill="#F2F4F6" stroke="#D3D9DF" stroke-width="1.5"/>
+  <circle cx="176" cy="212" r="7" fill="url(#dark)"/>
+  <circle cx="164" cy="236" r="6" fill="url(#dark)"/>
+  <circle cx="188" cy="236" r="6" fill="url(#dark)"/>
+  <rect x="216" y="204" width="40" height="40" rx="8" fill="#FFFFFF" stroke="#C9D0D7" stroke-width="1.5"/>
+  <circle cx="246" cy="214" r="3" fill="#E5484D"/>
+  <g transform="rotate(-38 92 300)">
+    <rect x="40" y="292" width="62" height="18" rx="9" fill="#F5A623"/>
+    <rect x="48" y="292" width="8" height="18" fill="#E08E0B" opacity="0.6"/>
+    <rect x="102" y="297" width="58" height="8" rx="3" fill="url(#chrome)"/>
+  </g>
+  </g>
+</svg>

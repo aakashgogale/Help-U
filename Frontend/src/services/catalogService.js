@@ -242,6 +242,9 @@ export const homeContentService = {
  * Public Catalog Service (for user app - no authentication required)
  * Now with caching for faster data retrieval
  */
+// Stale copy of home data per city (no expiry), used only for instant display
+const lastHomeData = new Map();
+
 export const publicCatalogService = {
   // Get all active categories (cached for 5 minutes)
   getCategories: async (cityId) => {
@@ -333,8 +336,16 @@ export const publicCatalogService = {
     const response = await api.get(`/public/home-data${query}`);
     if (response.data.success) {
       apiCache.set(cacheKey, response.data, 120); // 2 minutes
+      lastHomeData.set(cacheKey, response.data);
     }
     return response.data;
+  },
+
+  // Last successful home data for this city, even if the 2-minute cache expired.
+  // Lets Home render instantly on revisit while fresh data loads in the background.
+  peekHomeData: (cityId) => {
+    const cacheKey = `public:homeData:${cityId || 'default'}`;
+    return apiCache.get(cacheKey) || lastHomeData.get(cacheKey) || null;
   },
 
   // Invalidate all public caches (useful after admin updates)

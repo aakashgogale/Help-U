@@ -1,11 +1,176 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, memo } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiFillStar } from 'react-icons/ai';
-import { themeColors } from '../../../../../theme';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
-const NewAndNoteworthy = React.memo(({ services, onServiceClick }) => {
-  const serviceList = (services || []).filter(s => s.title && s.image);
+// High-resolution realistic service assets
+import acRepairImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/ac-repair.jpg';
+import washingMachineImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/washing-machine.jpg';
+import coolerRepairImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/cooler-repair.jpg';
+import waterPurifierImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/water-purifier.jpg';
+import fanRepairImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/fan-repair.jpg';
+
+const formatPrice = (p) => {
+  if (p === null || p === undefined || p === '') return null;
+  const clean = p.toString().replace(/[^0-9]/g, '');
+  return clean ? new Intl.NumberFormat('en-IN').format(clean) : null;
+};
+
+// Map keywords to high-resolution realistic photography
+const getFallbackImageForTitle = (title) => {
+  if (!title) return acRepairImg;
+  const t = title.toLowerCase();
+  if (t.includes('ac ') || t.includes('air conditioner') || t === 'ac' || t.includes('split ac')) return acRepairImg;
+  if (t.includes('washing') || t.includes('washer') || t.includes('laundry')) return washingMachineImg;
+  if (t.includes('cooler')) return coolerRepairImg;
+  if (t.includes('purifier') || t.includes('ro') || t.includes('r.o') || t.includes('water')) return waterPurifierImg;
+  if (t.includes('fan') || t.includes('ceiling fan')) return fanRepairImg;
+  return acRepairImg;
+};
+
+const getFallbackData = (title) => {
+  const t = (title || '').toLowerCase();
+  if (t.includes('ac')) {
+    return { rating: '4.82', reviews: '870K', price: '299', options: 4 };
+  }
+  if (t.includes('washing')) {
+    return { rating: '4.79', reviews: '103K', price: '199', options: 1 };
+  }
+  if (t.includes('cooler')) {
+    return { rating: '4.75', reviews: '85K', price: '149', options: 3 };
+  }
+  if (t.includes('purifier') || t.includes('ro')) {
+    return { rating: '4.80', reviews: '332K', price: '299', options: 6 };
+  }
+  if (t.includes('fan')) {
+    return { rating: '4.86', reviews: '195K', price: '99', options: 2 };
+  }
+  return { rating: '4.80', reviews: '100K+', price: '199', options: 1 };
+};
+
+export const NoteworthyCard = memo(({ service, onServiceClick, onAddClick }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const title = service.title || 'Featured Service';
+  const fallbackImg = getFallbackImageForTitle(title);
+  const fallbackData = getFallbackData(title);
+
+  // Filter out low-res cutouts or broken remote images
+  const rawImage = service.image;
+  const isSuspiciousImage = rawImage && (
+    rawImage.includes('washing-1766821326959.jpg') ||
+    rawImage.includes('cooler-1766821341451.jpg') ||
+    rawImage.includes('electrical-panel')
+  );
+
+  let initialSrc = fallbackImg;
+  if (rawImage && !isSuspiciousImage && !imageFailed) {
+    if (rawImage.startsWith('http')) {
+      initialSrc = optimizeCloudinaryUrl(rawImage, { width: 360, quality: 'auto', crop: 'fill' });
+    } else {
+      initialSrc = rawImage;
+    }
+  }
+
+  const rating = service.rating || fallbackData.rating;
+  const reviews = service.reviews || fallbackData.reviews;
+
+  const rawOptions = parseInt(service.optionsCount, 10);
+  const options = !isNaN(rawOptions) && rawOptions > 0 ? rawOptions : fallbackData.options;
+  const hasOptions = options > 1;
+
+  const displayPrice = formatPrice(service.price) || fallbackData.price;
+  const displayOriginalPrice = formatPrice(service.originalPrice);
+
+  return (
+    <div
+      onClick={() => onServiceClick?.(service)}
+      className="w-[144px] sm:w-[158px] flex-shrink-0 flex flex-col cursor-pointer group active:scale-[0.98] transition-transform duration-150 select-none"
+    >
+      {/* Image container: rounded-square with 18px corners */}
+      <div className="relative w-full aspect-square rounded-[18px] overflow-hidden bg-[#F5F5F7]">
+        <img
+          src={imageFailed ? fallbackImg : initialSrc}
+          alt={title}
+          onError={() => setImageFailed(true)}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          decoding="async"
+        />
+        {(service.discount || service.badge) && (
+          <span className="absolute top-2 left-2 text-white text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#6E42E5]">
+            {service.discount || service.badge}
+          </span>
+        )}
+      </div>
+
+      {/* Service name: 2 lines max with fixed height for perfect horizontal alignment */}
+      <h3
+        className="mt-2.5 text-[14px] leading-[19px] font-medium text-[#18181B] line-clamp-2"
+        title={title}
+      >
+        {title}
+      </h3>
+
+      {/* Star rating row: charcoal star + rating + (reviews count) */}
+      <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4 text-[#3F3F46]">
+        <AiFillStar className="w-3.5 h-3.5 text-[#27272A] flex-shrink-0" />
+        <span className="font-semibold text-[#18181B]">{rating}</span>
+        {reviews && (
+          <span className="text-[#52525B]">({reviews})</span>
+        )}
+      </div>
+
+      {/* Bottom row: Starts at ₹... & Outlined Purple Add button */}
+      <div className="mt-auto pt-2.5 flex items-end justify-between gap-1">
+        <div className="flex flex-col justify-end">
+          {hasOptions && (
+            <span className="text-[11px] leading-[14px] font-normal text-[#71717A]">
+              Starts at
+            </span>
+          )}
+          <div className="flex items-baseline gap-1">
+            <span className="text-[15px] sm:text-[16px] leading-[20px] font-bold text-[#18181B]">
+              ₹{displayPrice}
+            </span>
+            {displayOriginalPrice && (
+              <span className="text-[11px] text-[#A1A1AA] line-through">
+                ₹{displayOriginalPrice}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Outlined purple Add button with options count intersecting bottom border */}
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick?.(service);
+            }}
+            aria-label={`Add ${title}`}
+            className="w-[66px] h-[34px] rounded-[9px] bg-white border border-[#E4E4E7] shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-center transition-all duration-200 hover:border-[#6E42E5]/60 hover:bg-[#F9F7FD] active:scale-95"
+          >
+            <span className="text-[14px] font-bold text-[#6E42E5] tracking-tight">
+              Add
+            </span>
+          </button>
+          {hasOptions && (
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white px-1 text-[9.5px] leading-[11px] font-medium text-[#71717A] whitespace-nowrap pointer-events-none">
+              {options} options
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+NoteworthyCard.displayName = 'NoteworthyCard';
+
+const NewAndNoteworthy = React.memo(({ services, onServiceClick, onBookClick, onAddClick, onSeeAllClick }) => {
+  const serviceList = (services || []).filter(s => s && s.title);
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -38,33 +203,39 @@ const NewAndNoteworthy = React.memo(({ services, onServiceClick }) => {
     return null;
   }
 
-  const formatPrice = (p) => {
-    if (!p) return null;
-    const clean = p.toString().replace(/[^0-9]/g, '');
-    return clean ? new Intl.NumberFormat('en-IN').format(clean) : null;
-  };
+  const arrowClass = (enabled) => `w-7 h-7 rounded-full flex items-center justify-center border transition-all ${
+    enabled
+      ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
+      : 'bg-transparent border-transparent text-gray-300 cursor-default'
+  }`;
+
+  const handleAction = onAddClick || onBookClick || onServiceClick;
 
   return (
-    <div className="px-4 sm:px-5 py-2">
-      {/* Clean Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-            New and noteworthy
-          </h2>
-        </div>
+    <section className="bg-white py-4 w-full">
+      {/* Header: Bold black title + Desktop arrows */}
+      <div className="px-4 mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight leading-tight">
+          New and noteworthy
+        </h2>
 
-        {/* Minimal Scroll Controls for Desktop */}
-        <div className="hidden sm:flex items-center gap-1">
+        <div className="flex items-center gap-2 shrink-0">
+          {onSeeAllClick && (
+            <button
+              type="button"
+              onClick={() => onSeeAllClick(serviceList)}
+              className="h-8 px-3.5 rounded-lg border border-[#E3E3E3] bg-white text-[13px] font-semibold text-[#6E42E5] hover:border-[#6E42E5]/50 hover:bg-[#F9F7FD] active:scale-95 transition-all"
+            >
+              See all
+            </button>
+          )}
+          {/* Scroll controls for desktop */}
+          <div className="hidden sm:flex items-center gap-1">
           <button
             onClick={() => handleScroll('left')}
             disabled={!canScrollLeft}
             aria-label="Previous"
-            className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all ${
-              canScrollLeft
-                ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
-                : 'bg-transparent border-transparent text-gray-300 cursor-default'
-            }`}
+            className={arrowClass(canScrollLeft)}
           >
             <FiChevronLeft className="w-4 h-4" />
           </button>
@@ -72,86 +243,34 @@ const NewAndNoteworthy = React.memo(({ services, onServiceClick }) => {
             onClick={() => handleScroll('right')}
             disabled={!canScrollRight}
             aria-label="Next"
-            className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all ${
-              canScrollRight
-                ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
-                : 'bg-transparent border-transparent text-gray-300 cursor-default'
-            }`}
+            className={arrowClass(canScrollRight)}
           >
             <FiChevronRight className="w-4 h-4" />
           </button>
+          </div>
         </div>
       </div>
 
-      {/* Clean Card Carousel */}
+      {/* Swipeable horizontal list showing 2-3 cards partially visible */}
       <div
         ref={scrollRef}
         onScroll={checkScroll}
-        className="flex gap-3 overflow-x-auto pb-2 pt-0.5 scrollbar-hide scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="flex items-stretch gap-3.5 overflow-x-auto px-4 pb-3 scrollbar-hide overscroll-x-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {serviceList.map((service, index) => {
-          const displayPrice = formatPrice(service.price);
-          const rating = service.rating;
-
-          return (
-            <div
-              key={service.id || index}
-              onClick={() => onServiceClick?.(service)}
-              className="min-w-[150px] sm:min-w-[170px] max-w-[180px] flex-shrink-0 bg-white rounded-2xl p-2 border border-gray-100/80 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(22,59,102,0.12)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-            >
-              {/* Image Container */}
-              <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden bg-gray-50">
-                <img
-                  src={optimizeCloudinaryUrl(service.image, { width: 360, quality: 'auto', crop: 'fill' })}
-                  alt={service.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                  loading="lazy"
-                  decoding="async"
-                />
-
-                {/* Only show badge if explicitly configured */}
-                {service.badge && (
-                  <span className="absolute top-2 left-2 text-[9.5px] font-bold px-2 py-0.5 rounded-md bg-black/70 text-white backdrop-blur-sm">
-                    {service.badge}
-                  </span>
-                )}
-              </div>
-
-              {/* Title & Info */}
-              <div className="pt-2 px-1 flex flex-col flex-1 justify-between">
-                <h3 className="text-[13px] font-semibold text-gray-900 group-hover:text-[#163B66] transition-colors leading-snug line-clamp-2 min-h-[36px]">
-                  {service.title}
-                </h3>
-
-                {/* Bottom clean meta row: rating / price if available */}
-                {(rating || displayPrice) && (
-                  <div className="flex items-center justify-between mt-1.5 pt-1 text-[11px] text-gray-600">
-                    {rating && (
-                      <div className="flex items-center gap-0.5 text-gray-800 font-medium">
-                        <AiFillStar className="w-3 h-3 text-amber-500" />
-                        <span>{rating}</span>
-                      </div>
-                    )}
-                    {displayPrice && (
-                      <span className="font-bold text-gray-900 ml-auto">
-                        ₹{displayPrice}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {serviceList.map((service, index) => (
+          <NoteworthyCard
+            key={service.id || service._id || index}
+            service={service}
+            onServiceClick={onServiceClick}
+            onAddClick={handleAction}
+          />
+        ))}
       </div>
-    </div>
+    </section>
   );
 });
 
 NewAndNoteworthy.displayName = 'NewAndNoteworthy';
 
 export default NewAndNoteworthy;
-
-
-

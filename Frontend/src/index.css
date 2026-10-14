@@ -4,6 +4,13 @@
   --color-brand: #163B66;
   --color-brand-light: #f0f6fc;
   --color-brand-dark: #0f2b48;
+
+  /* User home accent (green) */
+  --color-accent: #0F7457;
+  --color-accent-dark: #0B5A43;
+  --color-accent-soft: #E6F4EE;
+  --color-ink: #0F1B2D;
+  --color-canvas: #F6F8F9;
 }
 
 /* Slide up animation for modal */
@@ -58,6 +65,20 @@
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 59, 102, 0.1); }
   70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(22, 59, 102, 0); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 59, 102, 0.1); }
+}
+
+/* Route change: quick opacity-only fade (no transform, so position:fixed children are unaffected) */
+@keyframes page-in {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+.animate-page-in {
+  animation: page-in 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in { animation: none; }
 }
 
 .animate-fade-in {

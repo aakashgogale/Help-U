@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="duct" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9AA3AB"/>
+      <stop offset="0.35" stop-color="#F1F3F5"/>
+      <stop offset="0.7" stop-color="#D5DADF"/>
+      <stop offset="1" stop-color="#8E979F"/>
+    </linearGradient>
+    <linearGradient id="hood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A424A"/>
+      <stop offset="1" stop-color="#1C2228"/>
+    </linearGradient>
+    <linearGradient id="strip" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8E979F"/>
+      <stop offset="0.5" stop-color="#E6E9EC"/>
+      <stop offset="1" stop-color="#858E97"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="light" cx="0.5" cy="0" r="1">
+      <stop offset="0" stop-color="#FFD27A" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFD27A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+
+  <!-- duct -->
+  <rect x="212" y="64" width="88" height="186" fill="url(#duct)" stroke="#C9D0D7" stroke-width="1.5"/>
+  <line x1="212" y1="100" x2="300" y2="100" stroke="#C9D0D7" stroke-width="2"/>
+
+  <!-- hood -->
+  <path d="M206 244 L306 244 L432 342 L80 342 Z" fill="url(#hood)"/>
+  <path d="M206 244 L246 244 L132 342 L80 342 Z" fill="#FFFFFF" opacity="0.07"/>
+
+  <!-- front steel strip -->
+  <rect x="72" y="340" width="368" height="28" rx="6" fill="url(#strip)"/>
+
+  <!-- controls -->
+  <circle cx="320" cy="354" r="4" fill="#2F7DE1"/>
+  <rect x="334" y="351" width="14" height="6" rx="3" fill="#5A636C"/>
+  <rect x="354" y="351" width="14" height="6" rx="3" fill="#5A636C"/>
+  <rect x="374" y="351" width="14" height="6" rx="3" fill="#5A636C"/>
+
+  <!-- lights -->
+  <ellipse cx="172" cy="370" rx="18" ry="3" fill="#FFE2A6"/>
+  <ellipse cx="340" cy="370" rx="18" ry="3" fill="#FFE2A6"/>
+</svg>

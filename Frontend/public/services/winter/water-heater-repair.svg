@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EDF3FA"/>
+      <stop offset="1" stop-color="#F7F9FC"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFC98B" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFC98B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="contact" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#1F3B5C" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#1F3B5C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#DDE2E7"/>
+      <stop offset="0.16" stop-color="#FFFFFF"/>
+      <stop offset="0.8" stop-color="#F6F7F9"/>
+      <stop offset="1" stop-color="#CFD5DB"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4F6F8"/>
+      <stop offset="0.45" stop-color="#C3CBD3"/>
+      <stop offset="1" stop-color="#8E979F"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A424A"/>
+      <stop offset="1" stop-color="#1C2228"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="400" fill="url(#sky)"/>
+  <circle cx="200" cy="200" r="150" fill="url(#glow)"/>
+  <g transform="translate(200 206) scale(1.16) translate(-200 -190)">
+    <ellipse cx="200" cy="318" rx="78" ry="11" fill="url(#contact)"/>
+    
+  <rect x="181" y="276" width="10" height="42" rx="3" fill="url(#chrome)"/>
+  <rect x="209" y="276" width="10" height="42" rx="3" fill="url(#chrome)"/>
+  <rect x="178" y="290" width="16" height="7" rx="2" fill="#2F7DE1"/>
+  <rect x="206" y="290" width="16" height="7" rx="2" fill="#E5484D"/>
+  <rect x="134" y="72" width="132" height="214" rx="58" fill="url(#white)" stroke="#D1D7DD" stroke-width="2"/>
+  <path d="M152 118 Q152 92 174 84 L174 266 Q152 258 152 236 Z" fill="#FFFFFF" opacity="0.7"/>
+  <rect x="164" y="158" width="72" height="56" rx="10" fill="#EEF1F4" stroke="#D3D9DF" stroke-width="1.5"/>
+  <rect x="172" y="166" width="38" height="21" rx="4" fill="url(#dark)"/>
+  <text x="176" y="181" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#FFB25C">60°C</text>
+  <circle cx="222" cy="176" r="8" fill="#FFFFFF" stroke="#B9C1C9" stroke-width="1.5"/>
+  <circle cx="176" cy="200" r="3.5" fill="#E5484D"/>
+  <circle cx="188" cy="200" r="3.5" fill="#4CC38A"/>
+  <path d="M200 104 C208 113 212 120 212 128 a12 12 0 0 1 -24 0 c0 -6 3 -10 7 -14 c0 5 3 8 5 8 c-1 -7 -1 -12 0 -18 Z" fill="#F97316"/>
+  </g>
+</svg>

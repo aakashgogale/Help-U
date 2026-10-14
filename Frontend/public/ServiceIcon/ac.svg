@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.7" stop-color="#F6F7F9"/>
+      <stop offset="1" stop-color="#DDE2E7"/>
+    </linearGradient>
+    <linearGradient id="vent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3137"/>
+      <stop offset="1" stop-color="#14181C"/>
+    </linearGradient>
+    <linearGradient id="air" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5AA9F2" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#5AA9F2" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+
+  <!-- airflow -->
+  <g fill="none" stroke="url(#air)" stroke-width="10" stroke-linecap="round">
+    <path d="M168 306 Q160 346 138 384"/>
+    <path d="M226 306 Q222 348 208 390"/>
+    <path d="M286 306 Q290 348 304 390"/>
+    <path d="M344 306 Q352 346 374 384"/>
+  </g>
+
+  <!-- indoor unit -->
+  <rect x="66" y="142" width="380" height="154" rx="40" fill="url(#body)" stroke="#D1D7DD" stroke-width="2"/>
+  <path d="M90 166 Q90 156 104 154 L420 154" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <line x1="76" y1="236" x2="436" y2="236" stroke="#E2E6EA" stroke-width="2"/>
+
+  <!-- vent + flap -->
+  <rect x="100" y="250" width="312" height="26" rx="10" fill="url(#vent)"/>
+  <rect x="100" y="268" width="312" height="12" rx="6" fill="#F2F4F6" stroke="#D1D7DD" stroke-width="1.5"/>
+
+  <!-- centre trim + status -->
+  <rect x="226" y="206" width="60" height="8" rx="4" fill="#C9CFD5"/>
+  <circle cx="392" cy="252" r="4" fill="#4CC38A"/>
+
+  <!-- snowflake -->
+  <g stroke="#2F7DE1" stroke-width="5" stroke-linecap="round" fill="none">
+    <line x1="388" y1="178" x2="388" y2="214"/>
+    <line x1="372.4" y1="187" x2="403.6" y2="205"/>
+    <line x1="372.4" y1="205" x2="403.6" y2="187"/>
+  </g>
+</svg>

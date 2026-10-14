@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E9ECEF"/>
+      <stop offset="0.12" stop-color="#FFFFFF"/>
+      <stop offset="0.8" stop-color="#F7F8FA"/>
+      <stop offset="1" stop-color="#DADFE4"/>
+    </linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EEF1F4"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9AA3AD"/>
+      <stop offset="0.5" stop-color="#E4E8EC"/>
+      <stop offset="1" stop-color="#8C959F"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3137"/>
+      <stop offset="1" stop-color="#14181C"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- floor shadow -->
+
+  <!-- cabinet -->
+  <rect x="150" y="40" width="212" height="424" rx="18" fill="url(#body)" stroke="#D3D8DD" stroke-width="2"/>
+
+  <!-- freezer door -->
+  <rect x="158" y="48" width="196" height="126" rx="12" fill="url(#door)" stroke="#DCE0E5" stroke-width="1.5"/>
+  <!-- fridge door -->
+  <rect x="158" y="182" width="196" height="268" rx="12" fill="url(#door)" stroke="#DCE0E5" stroke-width="1.5"/>
+
+  <!-- door gap -->
+  <rect x="158" y="175" width="196" height="6" fill="#C9CFD5"/>
+
+  <!-- door sheen -->
+  <path d="M170 58 L196 58 L178 164 L170 164 Z" fill="#FFFFFF" opacity="0.7"/>
+  <path d="M170 194 L200 194 L178 438 L170 438 Z" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- handles -->
+  <rect x="326" y="96" width="10" height="64" rx="5" fill="url(#handle)"/>
+  <rect x="326" y="198" width="10" height="110" rx="5" fill="url(#handle)"/>
+
+  <!-- control panel -->
+  <rect x="200" y="210" width="84" height="40" rx="8" fill="url(#screen)"/>
+  <text x="222" y="237" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#7FD3FF">4°</text>
+  <circle cx="262" cy="222" r="3" fill="#4CC38A"/>
+  <rect x="256" y="232" width="18" height="3" rx="1.5" fill="#5B656F"/>
+  <rect x="256" y="239" width="12" height="3" rx="1.5" fill="#5B656F"/>
+
+  <!-- brand strip -->
+  <rect x="236" y="424" width="40" height="5" rx="2.5" fill="#C3C9CF"/>
+
+  <!-- base grille + feet -->
+  <rect x="166" y="452" width="180" height="8" rx="3" fill="#BCC3CA"/>
+  <rect x="170" y="460" width="20" height="8" rx="2" fill="#5E666E"/>
+  <rect x="322" y="460" width="20" height="8" rx="2" fill="#5E666E"/>
+</svg>

@@ -9,11 +9,19 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { themeColors } from '../../../../theme';
 
 import CitySelectorModal from '../common/CitySelectorModal';
+import NotificationBell from '../common/NotificationBell';
 import { useCity } from '../../../../context/CityContext';
 import { useConfig } from '../../../../context/ConfigContext';
 import { HiChevronDown } from 'react-icons/hi';
 
-const Header = ({ location, onLocationClick }) => {
+// "Area, City, State, ..." -> "Area, City"
+const getShortLocation = (location) => {
+  if (!location || location === '...') return 'Select Location';
+  const parts = location.split(',').map(p => p.trim()).filter(Boolean);
+  return parts.slice(0, 2).join(', ') || 'Select Location';
+};
+
+const Header = ({ location, onLocationClick, showNotifications = false }) => {
   const logoRef = useRef(null);
   const { currentCity } = useCity();
   const { isScrapEnabled } = useConfig();
@@ -31,7 +39,7 @@ const Header = ({ location, onLocationClick }) => {
       <div className="relative z-10">
         <div className="w-full">
           {/* Top Row: Logo (Left) and Location (Right) */}
-          <div className="px-4 py-3 flex items-center justify-between">
+          <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
             {/* Left: Logo */}
             <Link
               to="/user"
@@ -59,7 +67,7 @@ const Header = ({ location, onLocationClick }) => {
             >
               <Logo
                 ref={logoRef}
-                className="h-10 sm:h-12 w-auto"
+                className={showNotifications ? 'h-[52px] sm:h-14 w-auto' : 'h-10 sm:h-12 w-auto'}
               />
             </Link>
 
@@ -74,7 +82,24 @@ const Header = ({ location, onLocationClick }) => {
               <Link to="/user/account" className="text-gray-700 font-semibold hover:text-[#347989] transition-colors">Account</Link>
             </nav>
 
-            {/* Right: City & Location */}
+            {/* Right: Location pill + Notifications (home variant) */}
+            {showNotifications ? (
+              <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={onLocationClick}
+                  className="flex items-center gap-1.5 min-w-0 py-2 pl-1 pr-0.5 rounded-full active:scale-[0.97] transition-transform"
+                  aria-label="Change location"
+                >
+                  <HiLocationMarker className="w-5 h-5 shrink-0 text-accent" />
+                  <span className="text-[13px] sm:text-sm font-semibold text-ink truncate tracking-tight">
+                    {getShortLocation(location)}
+                  </span>
+                  <HiChevronDown className="w-4 h-4 shrink-0 text-gray-600" />
+                </button>
+                <NotificationBell />
+              </div>
+            ) : (
             <div className="flex flex-col items-end gap-1 flex-1 min-w-0 ml-4">
 
 
@@ -95,6 +120,7 @@ const Header = ({ location, onLocationClick }) => {
                 />
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

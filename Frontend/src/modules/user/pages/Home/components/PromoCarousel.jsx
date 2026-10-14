@@ -85,50 +85,23 @@ const PromoCarousel = memo(({ promos, onPromoClick }) => {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-3 overflow-x-auto px-4 pb-2 pt-1 scrollbar-hide snap-x snap-mandatory scroll-smooth"
+        className="flex gap-3 overflow-x-auto px-4 scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4"
       >
         {promotionalCards.map((promo, index) => (
           <div
             key={promo.id || promo._id || index}
             data-promo-card
-            className="flex-shrink-0 snap-center flex justify-center"
+            className="shrink-0 snap-start flex justify-center"
           >
             <PromoCard
               title={promo.title}
               subtitle={promo.subtitle}
               buttonText={promo.buttonText}
               image={promo.image}
-              className={promo.className}
+              priority={index === 0}
               onClick={() => onPromoClick?.(promo)}
             />
           </div>
-        ))}
-      </div>
-      {/* Carousel indicator dots */}
-      <div className="flex justify-center items-center gap-1.5 mt-2.5 mb-3">
-        {promotionalCards.map((_, index) => (
-          <button
-            key={index}
-            type="button"
-            onClick={() => {
-              if (scrollContainerRef.current) {
-                const container = scrollContainerRef.current;
-                const card = container.querySelector('[data-promo-card]');
-                const cardWidth = card ? card.offsetWidth + 12 : container.offsetWidth;
-                container.scrollTo({
-                  left: index * cardWidth,
-                  behavior: 'smooth'
-                });
-                setCurrentIndex(index);
-              }
-            }}
-            aria-label={`Go to slide ${index + 1}`}
-            className={`rounded-full transition-all duration-300 ${
-              index === currentIndex
-                ? 'w-6 h-1.5 bg-[#D68F35] shadow-[0_2px_8px_rgba(214,143,53,0.45)]'
-                : 'w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400'
-            }`}
-          />
         ))}
       </div>
     </div>

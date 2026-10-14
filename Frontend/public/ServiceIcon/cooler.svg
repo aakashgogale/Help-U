@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#DDE2E7"/>
+      <stop offset="0.18" stop-color="#FFFFFF"/>
+      <stop offset="0.75" stop-color="#F6F7F9"/>
+      <stop offset="1" stop-color="#CFD5DB"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2F4F6"/>
+      <stop offset="1" stop-color="#E2E6EA"/>
+    </linearGradient>
+    <linearGradient id="grille" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A424A"/>
+      <stop offset="1" stop-color="#1C2228"/>
+    </linearGradient>
+    <linearGradient id="knob" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#C5CCD3"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+
+  <!-- wheels -->
+  <circle cx="178" cy="430" r="13" fill="#2B3137"/>
+  <circle cx="334" cy="430" r="13" fill="#2B3137"/>
+
+  <!-- body -->
+  <rect x="148" y="62" width="216" height="364" rx="38" fill="url(#body)" stroke="#D1D7DD" stroke-width="2"/>
+  <path d="M164 150 L178 152 L178 400 Q164 394 164 382 Z" fill="#FFFFFF" opacity="0.65"/>
+
+  <!-- top panel with knobs -->
+  <rect x="174" y="80" width="164" height="40" rx="14" fill="url(#panel)" stroke="#D3D9DF" stroke-width="1.5"/>
+  <circle cx="230" cy="100" r="12" fill="url(#knob)" stroke="#B9C1C9" stroke-width="1.5"/>
+  <rect x="228.5" y="90" width="3" height="8" rx="1.5" fill="#7A848E"/>
+  <circle cx="282" cy="100" r="12" fill="url(#knob)" stroke="#B9C1C9" stroke-width="1.5"/>
+  <rect x="280.5" y="90" width="3" height="8" rx="1.5" fill="#7A848E"/>
+
+  <!-- front grille -->
+  <rect x="172" y="138" width="168" height="168" rx="14" fill="url(#grille)"/>
+  <g stroke="#E6E9EC" stroke-width="5" stroke-linecap="round" opacity="0.9">
+    <line x1="186" y1="158" x2="326" y2="158"/>
+    <line x1="186" y1="176" x2="326" y2="176"/>
+    <line x1="186" y1="194" x2="326" y2="194"/>
+    <line x1="186" y1="212" x2="326" y2="212"/>
+    <line x1="186" y1="230" x2="326" y2="230"/>
+    <line x1="186" y1="248" x2="326" y2="248"/>
+    <line x1="186" y1="266" x2="326" y2="266"/>
+    <line x1="186" y1="284" x2="326" y2="284"/>
+  </g>
+  <line x1="256" y1="148" x2="256" y2="296" stroke="#2B3137" stroke-width="4"/>
+
+  <!-- water level window -->
+  <rect x="246" y="324" width="20" height="70" rx="10" fill="#E2E6EA" stroke="#D1D7DD" stroke-width="1.5"/>
+  <rect x="250" y="354" width="12" height="36" rx="6" fill="#2F7DE1"/>
+  <circle cx="300" cy="334" r="5" fill="#4CC38A"/>
+</svg>

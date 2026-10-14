@@ -1,113 +1,118 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { AiFillStar } from 'react-icons/ai';
-import { themeColors } from '../../../../theme';
 import { optimizeCloudinaryUrl } from '../../../../utils/cloudinaryOptimize';
 
-const ServiceWithRatingCard = memo(({ image, title, rating, reviews, price, originalPrice, discount, onClick, onAddClick }) => {
-  const formatPrice = (p) => {
-    if (!p) return null;
-    const clean = p.toString().replace(/[^0-9]/g, '');
-    return clean ? new Intl.NumberFormat('en-IN').format(clean) : null;
-  };
+const formatPrice = (p) => {
+  if (!p) return null;
+  const clean = p.toString().replace(/[^0-9]/g, '');
+  return clean ? new Intl.NumberFormat('en-IN').format(clean) : null;
+};
 
+// Ratings are typed in admin; show only a valid 0-5 number (e.g. "3.9M" -> "3.9")
+const formatRating = (value) => {
+  const num = parseFloat(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(num) || num <= 0 || num > 5) return null;
+  return String(Math.round(num * 100) / 100);
+};
+
+// Urban Company style service tile: square image, 2-line title, rating, price + Add
+const ServiceWithRatingCard = memo(({ image, fallbackImage, title, rating, reviews, price, originalPrice, discount, badge, optionsCount, onClick, onAddClick, tagClassName = 'bg-[#07794C]' }) => {
+  const [failedSrc, setFailedSrc] = useState(null);
+
+  const displayRating = formatRating(rating);
   const displayPrice = formatPrice(price);
   const displayOriginalPrice = formatPrice(originalPrice);
+  const options = parseInt(optionsCount, 10) || 0;
+  const hasOptions = options > 1;
+  const tag = discount
+    ? (discount.toString().toUpperCase().includes('OFF') ? discount : `${discount} OFF`)
+    : badge;
+
+  // Fall back to the local product image when the remote one is missing or fails to load
+  const src = image && failedSrc !== image ? optimizeCloudinaryUrl(image, { width: 360, quality: 'auto', crop: 'fill' }) : fallbackImage;
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="min-w-[165px] sm:min-w-[180px] w-[165px] sm:w-[180px] flex-shrink-0 bg-white rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-[0_10px_25px_-4px_rgba(22,59,102,0.12)] hover:-translate-y-1 active:scale-[0.98] border border-gray-100 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)] group flex flex-col justify-between"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onClick?.();
+      }}
+      className="w-[144px] sm:w-[158px] shrink-0 flex flex-col cursor-pointer group active:scale-[0.98] transition-transform duration-150 select-none"
     >
-      {/* Top Image Section */}
-      <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-gray-50">
-        {discount && (
-          <div
-            className="absolute top-2.5 left-2.5 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm z-10 uppercase tracking-wide"
-            style={{ backgroundColor: themeColors.button || '#163B66' }}
-          >
-            {discount.toString().toUpperCase().includes('OFF') ? discount : `${discount} OFF`}
-          </div>
-        )}
-        {image ? (
+      {/* Image tile */}
+      <div className="relative w-full aspect-square rounded-[18px] overflow-hidden bg-[#F5F5F7]">
+        {src ? (
           <img
-            src={optimizeCloudinaryUrl(image, { width: 380, quality: 'auto', crop: 'fill' })}
+            src={src}
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            onError={() => image && setFailedSrc(image)}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
             decoding="async"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-50 border-b border-gray-100">
-            <img
-              src="/helpu-logo.png"
-              alt="Placeholder"
-              className="w-12 h-12 object-contain opacity-40 grayscale"
-            />
+          <div className="w-full h-full flex items-center justify-center">
+            <img src="/helpu-logo.png" alt="" className="w-12 h-12 object-contain opacity-30 grayscale" />
           </div>
+        )}
+        {tag && (
+          <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ${tagClassName}`}>
+            {tag}
+          </span>
         )}
       </div>
 
-      {/* Card Content Area */}
-      <div className="p-3 flex flex-col flex-1 justify-between bg-white">
-        <div>
-          <h3
-            className="text-[13px] sm:text-[13.5px] font-bold text-gray-900 leading-snug line-clamp-2 min-h-[38px] group-hover:text-[#163B66] transition-colors"
-            title={title}
-          >
-            {title}
-          </h3>
+      {/* Title */}
+      <h3 className="mt-2.5 text-[14px] leading-[19px] font-medium text-[#18181B] line-clamp-2" title={title}>
+        {title}
+      </h3>
 
-          {rating && (
-            <div className="flex items-center gap-1 mt-1.5 mb-0.5">
-              <AiFillStar className="w-3.5 h-3.5 text-amber-500" />
-              <span className="text-xs text-gray-900 font-bold">{rating}</span>
-              {reviews && (
-                <span className="text-[10.5px] text-gray-400 font-medium">({reviews})</span>
-              )}
-            </div>
+      {/* Rating */}
+      {displayRating && (
+        <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4">
+          <AiFillStar className="w-3.5 h-3.5 text-[#27272A] shrink-0" />
+          <span className="font-semibold text-[#18181B]">{displayRating}</span>
+          {reviews && <span className="text-[#52525B]">({reviews})</span>}
+        </div>
+      )}
+
+      {/* Price + Add */}
+      <div className="mt-auto pt-2.5 flex items-center justify-between gap-1">
+        <div className="flex flex-col justify-end min-w-0">
+          {hasOptions && displayPrice && (
+            <span className="text-[11px] leading-[14px] text-[#71717A]">Starts at</span>
           )}
+          <div className="flex items-baseline gap-1 flex-wrap">
+            {(displayPrice || price) && (
+              <span className="text-[15px] sm:text-[16px] leading-5 font-bold text-[#18181B]">
+                {displayPrice ? `₹${displayPrice}` : price}
+              </span>
+            )}
+            {displayOriginalPrice && displayOriginalPrice !== displayPrice && (
+              <span className="text-[11px] text-[#A1A1AA] line-through">₹{displayOriginalPrice}</span>
+            )}
+          </div>
         </div>
 
-        {/* Pricing & Add Button Row */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[14px] sm:text-[15px] font-extrabold text-gray-900">
-                {displayPrice ? `₹${displayPrice}` : (price || 'Custom')}
-              </span>
-              {displayOriginalPrice && (
-                <span className="text-[10.5px] text-gray-400 line-through decoration-gray-400/60">
-                  ₹{displayOriginalPrice}
-                </span>
-              )}
-            </div>
-          </div>
-
+        <div className="relative shrink-0">
           <button
             type="button"
+            aria-label={`Add ${title}`}
             onClick={(e) => {
               e.stopPropagation();
               onAddClick?.();
             }}
-            className="px-3.5 py-1 h-7.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 border shadow-sm active:scale-95 flex items-center justify-center"
-            style={{
-              backgroundColor: `${themeColors.brand?.teal || '#163B66'}0A`,
-              color: themeColors.button || '#163B66',
-              borderColor: `${themeColors.brand?.teal || '#163B66'}20`
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = themeColors.button || '#163B66';
-              e.currentTarget.style.color = '#FFFFFF';
-              e.currentTarget.style.borderColor = themeColors.button || '#163B66';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = `${themeColors.brand?.teal || '#163B66'}0A`;
-              e.currentTarget.style.color = themeColors.button || '#163B66';
-              e.currentTarget.style.borderColor = `${themeColors.brand?.teal || '#163B66'}20`;
-            }}
+            className="w-[66px] h-[34px] rounded-[9px] bg-white border border-[#E4E4E7] shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-center transition-all duration-200 hover:border-[#6E42E5]/60 hover:bg-[#F9F7FD] active:scale-95"
           >
-            Add
+            <span className="text-[14px] font-bold text-[#6E42E5] tracking-tight">Add</span>
           </button>
+          {hasOptions && (
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white px-1 text-[9.5px] leading-[11px] font-medium text-[#71717A] whitespace-nowrap pointer-events-none">
+              {options} options
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -117,5 +122,3 @@ const ServiceWithRatingCard = memo(({ image, title, rating, reviews, price, orig
 ServiceWithRatingCard.displayName = 'ServiceWithRatingCard';
 
 export default ServiceWithRatingCard;
-
-

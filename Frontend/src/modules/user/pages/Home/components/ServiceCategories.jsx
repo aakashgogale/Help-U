@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
+import { FiChevronRight, FiGrid } from 'react-icons/fi';
 import CategoryCard from '../../../components/common/CategoryCard';
-import electricianIcon from '../../../../../assets/images/icons/services/electrician.png';
-import womensSalonIcon from '../../../../../assets/images/icons/services/womens-salon-spa-icon.png';
-import massageMenIcon from '../../../../../assets/images/icons/services/massage-men-icon.png';
-import cleaningIcon from '../../../../../assets/images/icons/services/cleaning-icon.png';
-import electricianPlumberIcon from '../../../../../assets/images/icons/services/electrician-plumber-carpenter-icon.png';
-import acApplianceRepairIcon from '../../../../../assets/images/icons/services/ac-appliance-repair-icon.png';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -15,82 +10,85 @@ const toAssetUrl = (url) => {
   return `${base}${clean.startsWith('/') ? '' : '/'}${clean}`;
 };
 
-const ServiceCategories = React.memo(({ categories, onCategoryClick, onSeeAllClick }) => {
+// Soft pastel circles, cycled per category
+const ICON_BACKGROUNDS = ['#E4EEFB', '#EEEAFB', '#E2F5EE', '#FFF4D6', '#FDE8E8', '#DDF3F1', '#FDECDF'];
+const MORE_BG = '#EEF1F4';
 
+// 2 rows of 4 on mobile: 7 categories + "More"
+const COLLAPSED_COUNT = 7;
+
+const ServiceCategories = React.memo(({ categories, onCategoryClick }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   if (!Array.isArray(categories) || categories.length === 0) {
     return null;
   }
 
-  const serviceCategories = categories.map((cat) => ({
-    ...cat,
-    icon: toAssetUrl(cat.icon || cat.image),
-  }));
-
-  const [isExpanded, setIsExpanded] = useState(false);
-  const displayCategories = isExpanded ? serviceCategories : serviceCategories.slice(0, 7);
-  const showMoreButton = !isExpanded && serviceCategories.length > 7;
+  const canCollapse = categories.length > COLLAPSED_COUNT + 1;
+  const displayCategories = canCollapse && !isExpanded ? categories.slice(0, COLLAPSED_COUNT) : categories;
 
   return (
-    <div className="px-5">
+    <div className="px-4 sm:px-5">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex flex-col">
-          <h2 className="text-[20px] font-black text-gray-900 tracking-tight flex items-center gap-2">
+      <div className="flex items-end justify-between mb-5">
+        <div className="flex flex-col min-w-0">
+          <h2 className="text-[22px] sm:text-2xl font-extrabold text-ink tracking-tight leading-tight">
             Service Categories
-            <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(40,116,240,0.5)]"></div>
           </h2>
-          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-[0.15em] -mt-0.5">Premium Home Services</p>
+          <p className="text-[14px] sm:text-[15px] text-gray-500 font-semibold mt-0.5">Premium Home Services</p>
         </div>
-
+        {canCollapse && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(prev => !prev)}
+            className="flex items-center gap-0.5 text-[15px] font-semibold text-accent shrink-0 pb-1 hover:text-accent-dark transition-colors"
+          >
+            {isExpanded ? 'View Less' : 'View All'}
+            <FiChevronRight className={`w-[18px] h-[18px] transition-transform duration-300 ${isExpanded ? '-rotate-90' : ''}`} />
+          </button>
+        )}
       </div>
 
-      {/* Professional Grid Layout in White Container */}
-      <div className="bg-white rounded-[24px] p-4 pb-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100">
-        <div className="grid grid-cols-4 gap-y-6 gap-x-2">
-          {displayCategories.map((category, index) => {
-            const iconSrc = toAssetUrl(category.icon || category.image);
-            return (
-              <div key={category.id || index} className="flex justify-center h-full">
-                <CategoryCard
-                  title={category.title}
-                  icon={
+      <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-6 gap-x-2 sm:gap-x-4">
+        {displayCategories.map((category, index) => {
+          const iconSrc = toAssetUrl(category.icon || category.image);
+          return (
+            <div key={category.id || index} className="flex justify-center">
+              <CategoryCard
+                title={category.title}
+                iconBg={ICON_BACKGROUNDS[index % ICON_BACKGROUNDS.length]}
+                icon={
+                  iconSrc ? (
                     <img
                       src={iconSrc}
                       alt={category.title}
-                      className="w-12 h-12 object-contain group-hover:rotate-12 transition-transform duration-500 will-change-transform rounded-full"
+                      className="w-[82%] h-[82%] object-contain transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
                       decoding="async"
                     />
-                  }
-                  onClick={() => onCategoryClick?.(category)}
-                  hasSaleBadge={category.hasSaleBadge}
-                  index={index}
-                />
-              </div>
-            );
-          })}
-          
-          {/* More Services Button */}
-          {showMoreButton && (
-            <div className="flex justify-center h-full">
-              <CategoryCard
-                title="More Services"
-                icon={
-                  <div className="w-12 h-12 flex items-center justify-center rounded-full bg-teal-50">
-                    <svg className="w-6 h-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                  </div>
+                  ) : null
                 }
-                onClick={() => setIsExpanded(true)}
-                index={7}
+                onClick={() => onCategoryClick?.(category)}
+                hasSaleBadge={category.hasSaleBadge}
+                index={index}
               />
             </div>
-          )}
-        </div>
-      </div>
+          );
+        })}
 
+        {/* More button */}
+        {canCollapse && !isExpanded && (
+          <div className="flex justify-center">
+            <CategoryCard
+              title="More"
+              iconBg={MORE_BG}
+              icon={<FiGrid className="w-7 h-7 sm:w-8 sm:h-8 text-ink" strokeWidth={1.75} />}
+              onClick={() => setIsExpanded(true)}
+              index={COLLAPSED_COUNT}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 });
@@ -98,4 +96,3 @@ const ServiceCategories = React.memo(({ categories, onCategoryClick, onSeeAllCli
 ServiceCategories.displayName = 'ServiceCategories';
 
 export default ServiceCategories;
-
