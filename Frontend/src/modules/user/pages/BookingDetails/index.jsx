@@ -28,6 +28,7 @@ import {
   FiAlertCircle
 } from 'react-icons/fi';
 import { bookingService } from '../../../../services/bookingService';
+import RepairServicesCard from './RepairServicesCard';
 import { paymentService } from '../../../../services/paymentService';
 import { cartService } from '../../../../services/cartService';
 import RatingModal from '../../components/booking/RatingModal';
@@ -865,6 +866,9 @@ const BookingDetails = () => {
               </div>
             </div>
           )}
+
+          {/* Repair services the customer adds after inspection (included in the bill) */}
+          <RepairServicesCard booking={booking} onSaved={loadBooking} />
 
           {/* Advance Payment Requested Card */}
           {booking.advancePayment?.status === 'requested' && (

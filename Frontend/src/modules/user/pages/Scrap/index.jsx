@@ -1,55 +1,157 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiMapPin, FiClock, FiCheckCircle, FiBell, FiArrowLeft, FiTrash2, FiCamera, FiX, FiLoader, FiImage, FiCheck, FiDollarSign, FiTag } from 'react-icons/fi';
+import {
+  FiPlus, FiMapPin, FiClock, FiCheckCircle, FiTrash2, FiX, FiCheck, FiTag, FiCamera,
+  FiTruck, FiAlertCircle, FiChevronRight
+} from 'react-icons/fi';
+import { FaRecycle } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
 import { AnimatePresence, motion } from 'framer-motion';
-import BottomNav from '../../components/layout/BottomNav';
-import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
-import { themeColors } from '../../../../theme';
-import { uploadToCloudinary } from '../../../../utils/cloudinaryUpload';
-import flutterBridge from '../../../../utils/flutterBridge';
 import { useConfig } from '../../../../context/ConfigContext';
-import NotificationBell from '../../components/common/NotificationBell';
+import PageHeader from '../../components/layout/PageHeader';
 
+const ACTIVE_STATUSES = ['pending', 'offered', 'accepted'];
+const HISTORY_STATUSES = ['completed', 'cancelled', 'rejected'];
+const DELETABLE_STATUSES = ['pending', 'cancelled', 'rejected'];
+
+const STATUS_META = {
+  pending: { label: 'Under review', className: 'bg-amber-50 text-amber-700' },
+  offered: { label: 'Offer received', className: 'bg-blue-50 text-blue-700' },
+  accepted: { label: 'Pickup scheduled', className: 'bg-accent-soft text-accent' },
+  completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+  rejected: { label: 'Rejected', className: 'bg-red-50 text-red-600' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-600' },
+};
+
+const getStatusMeta = (status) => STATUS_META[status] || {
+  label: status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown',
+  className: 'bg-gray-100 text-gray-600'
+};
+
+const formatPrice = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
+const formatDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const StatusChip = ({ status }) => {
+  const meta = getStatusMeta(status);
+  return (
+    <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${meta.className}`}>
+      {meta.label}
+    </span>
+  );
+};
+
+const ScrapThumb = ({ item, size = 'w-[72px] h-[72px]' }) => (
+  <div className={`${size} rounded-2xl overflow-hidden shrink-0 bg-accent-soft flex items-center justify-center`}>
+    {item.images?.length > 0 ? (
+      <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+    ) : (
+      <FaRecycle className="w-7 h-7 text-accent" />
+    )}
+  </div>
+);
+
+// Admin price offer with Accept / Reject
+const OfferBox = ({ item, responding, onRespond, large = false }) => (
+  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3.5" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[12px] font-semibold text-blue-700">Price offered</p>
+        <p className={`${large ? 'text-[24px]' : 'text-[20px]'} font-bold text-ink leading-tight`}>{formatPrice(item.offeredPrice)}</p>
+      </div>
+      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600">
+        <FiTag className="w-[18px] h-[18px]" />
+      </div>
+    </div>
+    {item.adminNote && (
+      <p className="mt-2 text-[12px] text-gray-600 bg-white rounded-xl px-3 py-2">{item.adminNote}</p>
+    )}
+    <div className="mt-3 flex gap-2">
+      <button
+        type="button"
+        onClick={(e) => onRespond(e, item._id, 'accept', item.offeredPrice)}
+        disabled={responding}
+        className="flex-1 h-10 rounded-full bg-accent text-white text-[13px] font-semibold hover:bg-accent-dark active:scale-[0.98] transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+      >
+        <FiCheck className="w-4 h-4" strokeWidth={2.5} /> Accept {formatPrice(item.offeredPrice)}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => onRespond(e, item._id, 'reject', item.offeredPrice)}
+        disabled={responding}
+        className="h-10 px-4 rounded-full border border-red-200 bg-white text-red-600 text-[13px] font-semibold hover:bg-red-50 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+      >
+        <FiX className="w-4 h-4" strokeWidth={2.5} /> Reject
+      </button>
+    </div>
+  </div>
+);
+
+const HOW_IT_WORKS = [
+  { icon: FiCamera, title: 'List your scrap', text: 'Add photos and pickup address' },
+  { icon: FiTag, title: 'Get a price offer', text: 'We review and send the best rate' },
+  { icon: FiTruck, title: 'Free pickup', text: 'Accept the offer and get paid' },
+];
+
+// Last loaded listings, kept across visits so returning to this page is instant.
+// Tied to the current login so another account never sees them.
+let scrapCache = null;
+const currentSession = () => localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || '';
+const readScrapCache = () => (scrapCache && scrapCache.session === currentSession() ? scrapCache.items : null);
 
 const UserScrapPage = () => {
   const navigate = useNavigate();
   const { isScrapEnabled, configLoaded } = useConfig();
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history'
-  const [scraps, setScraps] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [scraps, setScraps] = useState(() => readScrapCache() || []);
+  const [loading, setLoading] = useState(() => !readScrapCache());
   const [selectedScrap, setSelectedScrap] = useState(null);
   const [respondingToOffer, setRespondingToOffer] = useState(false);
+
+  const fetchMyScrap = useCallback(async () => {
+    const hasShownData = Boolean(readScrapCache());
+    try {
+      // Skeleton only when nothing is on screen yet; otherwise refresh quietly
+      if (!hasShownData) setLoading(true);
+      const res = await api.get('/scrap/my');
+      if (res.data.success) {
+        const items = res.data.data || [];
+        setScraps(items);
+        scrapCache = { items, session: currentSession() };
+      }
+    } catch (err) {
+      console.error(err);
+      if (!hasShownData) toast.error('Failed to load scrap items');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (configLoaded && isScrapEnabled) {
       fetchMyScrap();
     }
-  }, [configLoaded, isScrapEnabled]);
+  }, [configLoaded, isScrapEnabled, fetchMyScrap]);
 
-  const fetchMyScrap = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/scrap/my');
-      if (res.data.success) {
-        setScraps(res.data.data);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load scrap items');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Lock page scroll while the details sheet is open
+  useEffect(() => {
+    if (!selectedScrap) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [selectedScrap]);
 
   const handleRespondOffer = async (e, scrapId, action, price) => {
     if (e) e.stopPropagation();
-
-    if (action === 'reject') {
-      if (!window.confirm(`Are you sure you want to reject the offer of ₹${price || ''}?`)) {
-        return;
-      }
+    if (action === 'reject' && !window.confirm(`Are you sure you want to reject the offer of ₹${price || ''}?`)) {
+      return;
     }
 
     try {
@@ -72,7 +174,7 @@ const UserScrapPage = () => {
   };
 
   const handleDelete = async (e, id) => {
-    e.stopPropagation(); // Prevent opening modal
+    e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this listing?')) return;
 
     try {
@@ -89,376 +191,321 @@ const UserScrapPage = () => {
     }
   };
 
-  const activeScraps = scraps.filter(s => s.status === 'pending' || s.status === 'offered' || s.status === 'accepted');
-  const historyScraps = scraps.filter(s => s.status === 'completed' || s.status === 'cancelled' || s.status === 'rejected');
+  const activeScraps = scraps.filter(s => ACTIVE_STATUSES.includes(s.status));
+  const historyScraps = scraps.filter(s => HISTORY_STATUSES.includes(s.status));
+  const visibleScraps = activeTab === 'active' ? activeScraps : historyScraps;
 
   if (!configLoaded) {
-    return <div className="min-h-screen bg-white" />;
+    return <div className="min-h-screen bg-canvas" />;
   }
 
   if (!isScrapEnabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white">
-        <div className="w-20 h-20 rounded-3xl bg-amber-50 flex items-center justify-center text-4xl mb-4 shadow-sm border border-amber-100">
-          ♻️
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-canvas">
+        <div className="w-20 h-20 rounded-full bg-accent-soft flex items-center justify-center mb-5">
+          <FaRecycle className="w-8 h-8 text-accent" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Scrap Service Unavailable</h2>
-        <p className="text-sm text-gray-500 max-w-xs mb-6 font-medium">
-          The scrap selling feature is currently disabled by administrator. Please check back later!
+        <h2 className="text-[18px] font-bold text-ink mb-1.5">Scrap service unavailable</h2>
+        <p className="text-[14px] text-gray-500 max-w-xs mb-6 leading-relaxed">
+          Scrap selling is currently turned off. Please check back later.
         </p>
         <button
+          type="button"
           onClick={() => navigate('/user')}
-          className="px-6 py-2.5 rounded-xl font-bold text-white text-sm shadow-md hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: themeColors.brand?.teal || '#347989' }}
+          className="h-11 px-6 rounded-full bg-accent text-white text-[14px] font-semibold hover:bg-accent-dark active:scale-95 transition-all"
         >
-          Return to Home
+          Back to home
         </button>
       </div>
     );
   }
 
-  // Inside return:
   return (
-    <div className="min-h-screen pb-20 relative bg-white">
-      {/* Refined Brand Mesh Gradient Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(at 0% 0%, ${themeColors?.brand?.teal || '#347989'}25 0%, transparent 70%),
-              radial-gradient(at 100% 0%, ${themeColors?.brand?.yellow || '#D68F35'}20 0%, transparent 70%),
-              radial-gradient(at 100% 100%, ${themeColors?.brand?.orange || '#BB5F36'}15 0%, transparent 75%),
-              radial-gradient(at 0% 100%, ${themeColors?.brand?.teal || '#347989'}10 0%, transparent 70%),
-              radial-gradient(at 50% 50%, ${themeColors?.brand?.teal || '#347989'}03 0%, transparent 100%),
-              #FFFFFF
-            `
-          }}
-        />
-        {/* Elegant Dot Grid Pattern */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `radial-gradient(${themeColors?.brand?.teal || '#347989'} 0.8px, transparent 0.8px)`,
-            backgroundSize: '32px 32px'
-          }}
-        />
-      </div>
-
-      <div className="relative z-10">
-        {/* Modern Glassmorphism Header */}
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/40 border-b border-black/[0.03] px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-black/[0.02]"
-            >
-              <FiArrowLeft className="w-5 h-5 text-gray-800" />
-            </button>
-            <div className="flex items-center gap-2">
-              <FiTrash2 className="w-5 h-5" style={{ color: themeColors.button }} />
-              <h1 className="text-xl font-extrabold text-gray-900">Sell Scrap</h1>
-            </div>
-          </div>
-          <NotificationBell />
-        </header>
-
+    <div className="min-h-screen pb-28 bg-canvas">
+      <PageHeader title="Sell Scrap">
         {/* Tabs */}
-        <div className="flex bg-white border-b border-gray-200 mt-1">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 ${activeTab === 'active'
-              ? `border-[${themeColors.primary}] text-[${themeColors.primary}]`
-              : 'border-transparent text-gray-500'
-              }`}
-            style={{ borderColor: activeTab === 'active' ? themeColors.button : 'transparent', color: activeTab === 'active' ? themeColors.button : undefined }}
-          >
-            Active Listings
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 ${activeTab === 'history'
-              ? `border-[${themeColors.primary}] text-[${themeColors.primary}]`
-              : 'border-transparent text-gray-500'
-              }`}
-            style={{ borderColor: activeTab === 'history' ? themeColors.button : 'transparent', color: activeTab === 'history' ? themeColors.button : undefined }}
-          >
-            History
-          </button>
+        <div className="max-w-2xl mx-auto px-4 pb-3">
+          <div className="grid grid-cols-2 p-1 rounded-full bg-gray-100" role="tablist">
+            {[
+              { id: 'active', label: 'Active', count: activeScraps.length },
+              { id: 'history', label: 'History', count: historyScraps.length },
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`h-9 rounded-full text-[13px] font-semibold transition-all ${isActive ? 'bg-white text-ink shadow-[0_1px_4px_rgba(15,27,45,0.12)]' : 'text-gray-500 hover:text-ink'}`}
+                >
+                  {tab.label}
+                  {!loading && tab.count > 0 && (
+                    <span className={`ml-1.5 text-[11px] font-bold ${isActive ? 'text-accent' : 'text-gray-400'}`}>{tab.count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      </PageHeader>
 
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 animate-pulse">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="space-y-2">
-                      <div className="h-4 w-20 bg-gray-200 rounded"></div>
-                      <div className="h-5 w-40 bg-gray-200 rounded"></div>
-                      <div className="h-3 w-32 bg-gray-200 rounded"></div>
-                    </div>
-                    <div className="h-6 w-16 bg-gray-200 rounded"></div>
-                  </div>
-                  <div className="pt-3 border-t border-gray-50 flex justify-between">
-                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (activeTab === 'active' ? activeScraps : historyScraps).length === 0 ? (
-            <div className="text-center py-20">
-              <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <FiPlus className="w-8 h-8 text-gray-400" />
+      <main className="px-4 py-4 max-w-2xl mx-auto w-full space-y-3">
+        {loading ? (
+          [1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-[20px] border border-gray-100 p-4 animate-pulse flex gap-3">
+              <div className="w-[72px] h-[72px] rounded-2xl bg-gray-100" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-4 w-36 bg-gray-100 rounded" />
+                <div className="h-3 w-48 bg-gray-100 rounded" />
+                <div className="h-3 w-24 bg-gray-100 rounded" />
               </div>
-              <p className="text-gray-500 font-medium">No items found</p>
-              <p className="text-sm text-gray-400 mt-1">Add items to start selling</p>
+            </div>
+          ))
+        ) : visibleScraps.length === 0 ? (
+          activeTab === 'active' ? (
+            <div className="bg-white rounded-[20px] border border-gray-100 p-5">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-accent-soft flex items-center justify-center mb-4">
+                  <FaRecycle className="w-7 h-7 text-accent" />
+                </div>
+                <h3 className="text-[18px] font-bold text-ink">Turn your scrap into cash</h3>
+                <p className="mt-1 text-[14px] text-gray-500 max-w-xs">List old appliances, metal or paper and get the best market rate with free doorstep pickup.</p>
+              </div>
+              <ol className="mt-5 space-y-3">
+                {HOW_IT_WORKS.map((step, index) => {
+                  const StepIcon = step.icon;
+                  return (
+                    <li key={step.title} className="flex items-center gap-3 rounded-2xl bg-canvas px-3.5 py-3">
+                      <span className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-accent shrink-0">
+                        <StepIcon className="w-[18px] h-[18px]" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-ink">{index + 1}. {step.title}</p>
+                        <p className="text-[12px] text-gray-500">{step.text}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+              <button
+                type="button"
+                onClick={() => navigate('/user/scrap/add')}
+                className="mt-5 w-full h-12 rounded-full bg-accent text-white text-[15px] font-semibold hover:bg-accent-dark active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2"
+              >
+                <FiPlus className="w-5 h-5" /> List scrap for pickup
+              </button>
             </div>
           ) : (
-            (activeTab === 'active' ? activeScraps : historyScraps).map(item => (
-              <div
-                key={item._id}
-                className="bg-white rounded-[24px] shadow-sm p-4 border border-gray-100 active:scale-[0.98] transition-all cursor-pointer overflow-hidden relative"
-                onClick={() => setSelectedScrap(item)}
-              >
-                <div className="flex gap-4">
-                  {item.images && item.images.length > 0 && (
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-gray-50 bg-gray-50/50">
-                      <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-extrabold text-gray-900 leading-tight line-clamp-1">{item.title}</h3>
-                        <p className="text-xs font-medium text-gray-500 mt-1 line-clamp-1">{item.description}</p>
-                      </div>
-                      <div className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border
-                        ${item.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : ''}
-                        ${item.status === 'offered' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                        ${item.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' : ''}
-                        ${item.status === 'completed' ? 'bg-gray-100 text-gray-600 border-gray-200' : ''}
-                        ${item.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' : ''}
-                        ${item.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-100' : ''}
-                      `}>
-                        {item.status === 'offered' ? 'Offer Received' : item.status}
-                      </div>
-                      {(item.status === 'pending' || item.status === 'cancelled' || item.status === 'rejected') && (
-                        <button
-                          onClick={(e) => handleDelete(e, item._id)}
-                          className="p-2 ml-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                          title="Delete Listing"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
+                <FiClock className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-ink text-[18px] font-bold mb-1.5">No past listings</h3>
+              <p className="text-gray-500 text-[14px] max-w-xs">Completed, rejected and cancelled listings will appear here.</p>
+            </div>
+          )
+        ) : (
+          visibleScraps.map(item => (
+            <article
+              key={item._id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedScrap(item)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSelectedScrap(item); }}
+              className="bg-white rounded-[20px] border border-gray-100 p-4 cursor-pointer hover:border-accent/25 active:scale-[0.99] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <div className="flex gap-3">
+                <ScrapThumb item={item} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-[16px] font-bold text-ink leading-snug line-clamp-1">{item.title}</h3>
+                    <StatusChip status={item.status} />
                   </div>
-                </div>
-
-                {/* Offer Action Banner in Card */}
-                {item.status === 'offered' && (
-                  <div className="mt-3 p-3 bg-amber-50/90 border border-amber-200 rounded-2xl" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-900">Admin Price Offer:</span>
-                      <span className="text-sm font-black text-amber-800">₹{item.offeredPrice}</span>
-                    </div>
-                    {item.adminNote && (
-                      <p className="text-[11px] text-gray-600 mt-1 italic">"{item.adminNote}"</p>
-                    )}
-                    <div className="flex gap-2 mt-2.5">
-                      <button
-                        onClick={(e) => handleRespondOffer(e, item._id, 'accept', item.offeredPrice)}
-                        disabled={respondingToOffer}
-                        className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-                      >
-                        <FiCheck className="w-3.5 h-3.5" /> Approve ₹{item.offeredPrice}
-                      </button>
-                      <button
-                        onClick={(e) => handleRespondOffer(e, item._id, 'reject', item.offeredPrice)}
-                        disabled={respondingToOffer}
-                        className="py-2 px-3 bg-white hover:bg-red-50 active:scale-95 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-                      >
-                        <FiX className="w-3.5 h-3.5" /> Reject
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between text-[11px] font-bold text-gray-400">
-                  <div className="flex items-center gap-1.5">
-                    <FiClock className="w-3.5 h-3.5" />
-                    <span>Listed on {new Date(item.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  {item.status === 'accepted' && (
-                    <div className="flex items-center gap-1.5 text-green-600">
-                      <FiCheckCircle className="w-3.5 h-3.5" />
-                      <span>Accepted {item.finalPrice ? `(₹${item.finalPrice})` : ''}</span>
-                    </div>
+                  {item.description && (
+                    <p className="mt-0.5 text-[13px] text-gray-500 line-clamp-2">{item.description}</p>
                   )}
-                  {item.status === 'offered' && (
-                    <div className="flex items-center gap-1 text-amber-700 font-bold">
-                      <span>Action required</span>
-                    </div>
-                  )}
+                  <p className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-400">
+                    <FiClock className="w-3.5 h-3.5" /> Listed {formatDate(item.createdAt)}
+                  </p>
                 </div>
               </div>
-            ))
-          )}
-        </div>
 
-        {/* FAB */}
+              {item.status === 'offered' && (
+                <div className="mt-3">
+                  <OfferBox item={item} responding={respondingToOffer} onRespond={handleRespondOffer} />
+                </div>
+              )}
+
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                {item.status === 'accepted' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent">
+                    <FiCheckCircle className="w-4 h-4" /> Accepted{item.finalPrice ? ` at ${formatPrice(item.finalPrice)}` : ''}
+                  </span>
+                ) : item.status === 'offered' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-700">
+                    <FiAlertCircle className="w-4 h-4" /> Action required
+                  </span>
+                ) : item.status === 'completed' && item.finalPrice ? (
+                  <span className="text-[13px] font-semibold text-ink">Sold for {formatPrice(item.finalPrice)}</span>
+                ) : (
+                  <span className="text-[13px] text-gray-500">{item.address?.city || 'Pickup address saved'}</span>
+                )}
+                <div className="flex items-center gap-1">
+                  {DELETABLE_STATUSES.includes(item.status) && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(e, item._id)}
+                      aria-label="Delete listing"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <span className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-accent">
+                    Details <FiChevronRight className="w-4 h-4" />
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </main>
+
+      {/* Add listing */}
+      {!loading && (activeTab === 'history' || activeScraps.length > 0) && (
         <button
+          type="button"
           onClick={() => navigate('/user/scrap/add')}
-          className="fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform active:scale-95"
-          style={{ backgroundColor: themeColors.button }}
+          aria-label="List new scrap"
+          className="fixed bottom-28 right-4 z-30 h-14 pl-4 pr-5 rounded-full bg-accent text-white text-[14px] font-semibold shadow-[0_10px_24px_-8px_rgba(15,116,87,0.6)] hover:bg-accent-dark active:scale-95 transition-all inline-flex items-center gap-2"
         >
-          <FiPlus className="w-7 h-7" />
+          <FiPlus className="w-5 h-5" /> Sell scrap
         </button>
+      )}
 
-        {/* User Scrap Details Modal */}
+      {/* Listing details sheet (portal, so it sits above the bottom nav) */}
+      {createPortal(
         <AnimatePresence>
           {selectedScrap && (
             <>
               <motion.div
+                key="scrap-backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedScrap(null)}
-                className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-md"
+                className="fixed inset-0 bg-black/50 z-[60]"
               />
               <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", damping: 30, stiffness: 350 }}
-                className="fixed bottom-20 left-4 right-4 bg-white rounded-[32px] z-[70] max-h-[85vh] overflow-y-auto shadow-2xl border border-gray-100 flex flex-col"
+                key="scrap-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-label={selectedScrap.title}
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 32, stiffness: 340 }}
+                className="fixed bottom-0 inset-x-0 z-[70] mx-auto w-full max-w-2xl bg-white rounded-t-[28px] max-h-[88vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
-                style={{
-                  boxShadow: '0 -25px 50px -12px rgba(0,0,0,0.5)'
-                }}
               >
-                {/* Header */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-10">
-                  <div className="flex flex-col">
-                    <h2 className="text-xl font-black text-gray-900 leading-tight">{selectedScrap.title}</h2>
+                <div className="pt-2.5 flex justify-center">
+                  <span className="w-10 h-1 rounded-full bg-gray-200" />
+                </div>
+                <div className="px-5 pt-3 pb-3 flex items-start justify-between gap-3 border-b border-gray-100">
+                  <div className="min-w-0">
+                    <h2 className="text-[18px] font-bold text-ink leading-snug">{selectedScrap.title}</h2>
+                    <div className="mt-1.5"><StatusChip status={selectedScrap.status} /></div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setSelectedScrap(null)}
-                    className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                    aria-label="Close"
+                    className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-95 transition-all shrink-0"
                   >
-                    <FiX className="w-6 h-6" />
+                    <FiX className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="p-6 space-y-6">
-                  {/* Images */}
-                  {selectedScrap.images && selectedScrap.images.length > 0 && (
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                  {selectedScrap.images?.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
                       {selectedScrap.images.map((img, i) => (
-                        <div key={i} className={`rounded-3xl overflow-hidden border border-gray-100 ${i === 0 && selectedScrap.images.length % 2 !== 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}>
-                          <img src={img} alt="Scrap" className="w-full h-full object-cover" />
+                        <div
+                          key={i}
+                          className={`rounded-2xl overflow-hidden bg-gray-50 ${i === 0 && selectedScrap.images.length % 2 !== 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
+                        >
+                          <img src={img} alt={`${selectedScrap.title} ${i + 1}`} className="w-full h-full object-cover" />
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* Price Offer Card inside Modal */}
                   {selectedScrap.status === 'offered' && (
-                    <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-3xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Admin Price Offer</span>
-                          <h4 className="text-2xl font-black text-amber-900">₹{selectedScrap.offeredPrice}</h4>
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-lg">
-                          <FiTag />
-                        </div>
-                      </div>
-                      {selectedScrap.adminNote && (
-                        <div className="bg-white/80 p-3 rounded-2xl border border-amber-100 text-xs text-gray-700">
-                          <p className="font-semibold text-gray-500 text-[10px] uppercase">Admin Note:</p>
-                          <p className="mt-0.5">{selectedScrap.adminNote}</p>
-                        </div>
-                      )}
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={(e) => handleRespondOffer(e, selectedScrap._id, 'accept', selectedScrap.offeredPrice)}
-                          disabled={respondingToOffer}
-                          className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          <FiCheck className="w-4 h-4" /> Approve ₹{selectedScrap.offeredPrice}
-                        </button>
-                        <button
-                          onClick={(e) => handleRespondOffer(e, selectedScrap._id, 'reject', selectedScrap.offeredPrice)}
-                          disabled={respondingToOffer}
-                          className="px-4 py-3 bg-white hover:bg-red-50 active:scale-95 text-red-600 border border-red-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          <FiX className="w-4 h-4" /> Reject
-                        </button>
-                      </div>
+                    <OfferBox item={selectedScrap} responding={respondingToOffer} onRespond={handleRespondOffer} large />
+                  )}
+
+                  {(selectedScrap.status === 'accepted' || selectedScrap.status === 'completed') && selectedScrap.finalPrice && (
+                    <div className="rounded-2xl bg-accent-soft px-4 py-3 flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-accent">
+                        {selectedScrap.status === 'completed' ? 'Sold for' : 'Agreed price'}
+                      </span>
+                      <span className="text-[18px] font-bold text-ink">{formatPrice(selectedScrap.finalPrice)}</span>
                     </div>
                   )}
 
-                  {/* Status Badge */}
-                  <div className={`p-4 rounded-3xl border text-center font-black uppercase tracking-widest text-xs
-                    ${selectedScrap.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : ''}
-                    ${selectedScrap.status === 'offered' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                    ${selectedScrap.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' : ''}
-                    ${selectedScrap.status === 'completed' ? 'bg-gray-50 text-gray-500 border-gray-200' : ''}
-                    ${selectedScrap.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' : ''}
-                    ${selectedScrap.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-100' : ''}
-                  `}>
-                    Status: {selectedScrap.status === 'offered' ? 'Offer Received' : selectedScrap.status}
-                    {selectedScrap.finalPrice ? ` (₹${selectedScrap.finalPrice})` : ''}
-                  </div>
-
-                  {/* Description */}
                   {selectedScrap.description && (
-                    <div className="bg-blue-50/30 p-5 rounded-3xl border border-blue-100/30 italic">
-                      <p className="text-gray-600 font-medium leading-relaxed">"{selectedScrap.description}"</p>
+                    <div>
+                      <p className="text-[12px] font-semibold text-gray-500 mb-1">Description</p>
+                      <p className="text-[14px] text-gray-700 leading-relaxed">{selectedScrap.description}</p>
                     </div>
                   )}
 
-                  {/* Location */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
-                      <FiMapPin className="text-red-500" /> Pickup Address
-                    </h3>
-                    <div className="bg-gray-50 p-4 rounded-3xl border border-gray-100">
-                      <p className="font-bold text-gray-800">{selectedScrap.address?.addressLine1}</p>
-                      <p className="text-xs text-gray-400 mt-1 uppercase font-bold">{selectedScrap.address?.city}, {selectedScrap.address?.state}</p>
+                  <div>
+                    <p className="text-[12px] font-semibold text-gray-500 mb-1.5">Pickup address</p>
+                    <div className="flex items-start gap-2.5 rounded-2xl bg-canvas px-3.5 py-3">
+                      <FiMapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-ink">{selectedScrap.address?.addressLine1 || 'Address not available'}</p>
+                        {(selectedScrap.address?.city || selectedScrap.address?.state) && (
+                          <p className="text-[12px] text-gray-500 mt-0.5">
+                            {[selectedScrap.address?.city, selectedScrap.address?.state].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Timeline */}
-                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] font-black uppercase text-gray-400 tracking-wider">
-                    <span className="flex items-center gap-1"><FiClock /> Posted {new Date(selectedScrap.createdAt).toLocaleDateString()}</span>
-                    {selectedScrap.status === 'accepted' && <span className="text-green-600">Pickup Confirmed</span>}
-                  </div>
+                  <p className="inline-flex items-center gap-1.5 text-[12px] text-gray-400">
+                    <FiClock className="w-3.5 h-3.5" /> Listed on {formatDate(selectedScrap.createdAt)}
+                  </p>
                 </div>
 
-                <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex gap-3">
+                <div className="px-5 pt-3 pb-5 border-t border-gray-100 flex gap-2" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
                   <button
+                    type="button"
                     onClick={() => setSelectedScrap(null)}
-                    className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all"
+                    className="flex-1 h-11 rounded-full border border-gray-200 bg-white text-[14px] font-semibold text-ink hover:border-gray-300 active:scale-[0.98] transition-all"
                   >
-                    Back to Listings
+                    Close
                   </button>
-                  {(selectedScrap.status === 'pending' || selectedScrap.status === 'cancelled' || selectedScrap.status === 'rejected') && (
+                  {DELETABLE_STATUSES.includes(selectedScrap.status) && (
                     <button
+                      type="button"
                       onClick={(e) => handleDelete(e, selectedScrap._id)}
-                      className="px-6 py-4 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all flex items-center gap-2"
+                      className="h-11 px-5 rounded-full border border-red-200 bg-white text-red-600 text-[14px] font-semibold hover:bg-red-50 active:scale-[0.98] transition-all inline-flex items-center gap-1.5"
                     >
-                      <FiTrash2 />
-                      Delete
+                      <FiTrash2 className="w-4 h-4" /> Delete
                     </button>
                   )}
                 </div>
               </motion.div>
             </>
           )}
-        </AnimatePresence>
-      </div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

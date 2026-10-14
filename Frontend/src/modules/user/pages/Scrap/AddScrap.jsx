@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCamera, FiCheckCircle, FiImage, FiLoader, FiMapPin, FiX } from 'react-icons/fi';
+import { FiCamera, FiCheckCircle, FiImage, FiLoader, FiMapPin, FiX } from 'react-icons/fi';
+import { FaRecycle } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { z } from "zod";
 
 import api from '../../../../services/api';
-import { themeColors } from '../../../../theme';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
 import { uploadToCloudinary } from '../../../../utils/cloudinaryUpload';
 import flutterBridge from '../../../../utils/flutterBridge';
 import { useConfig } from '../../../../context/ConfigContext';
+import PageHeader from '../../components/layout/PageHeader';
 
 // Zod schema for Scrap
 const scrapSchema = z.object({
@@ -194,206 +195,191 @@ const AddScrap = () => {
   };
 
   if (!configLoaded) {
-    return <div className="min-h-screen bg-white" />;
+    return <div className="min-h-screen bg-canvas" />;
   }
 
   if (!isScrapEnabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white">
-        <div className="w-20 h-20 rounded-3xl bg-amber-50 flex items-center justify-center text-4xl mb-4 shadow-sm border border-amber-100">
-          ♻️
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-canvas">
+        <div className="w-20 h-20 rounded-full bg-accent-soft flex items-center justify-center mb-5">
+          <FaRecycle className="w-8 h-8 text-accent" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Scrap Service Unavailable</h2>
-        <p className="text-sm text-gray-500 max-w-xs mb-6 font-medium">
-          The scrap selling feature is currently disabled by administrator. Please check back later!
+        <h2 className="text-[18px] font-bold text-ink mb-1.5">Scrap service unavailable</h2>
+        <p className="text-[14px] text-gray-500 max-w-xs mb-6 leading-relaxed">
+          Scrap selling is currently turned off. Please check back later.
         </p>
         <button
+          type="button"
           onClick={() => navigate('/user')}
-          className="px-6 py-2.5 rounded-xl font-bold text-white text-sm shadow-md hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: themeColors.brand?.teal || '#347989' }}
+          className="h-11 px-6 rounded-full bg-accent text-white text-[14px] font-semibold hover:bg-accent-dark active:scale-95 transition-all"
         >
-          Return to Home
+          Back to home
         </button>
       </div>
     );
   }
 
+  const fieldClass = 'w-full px-3.5 py-3 rounded-xl bg-canvas border border-transparent text-[15px] text-ink placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-accent/40 focus:ring-2 focus:ring-accent/15 transition-colors';
+
   return (
-    <div className="min-h-screen pb-20 relative bg-white">
-      {/* Refined Brand Mesh Gradient Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(at 0% 0%, ${themeColors?.brand?.teal || '#347989'}25 0%, transparent 70%),
-              radial-gradient(at 100% 0%, ${themeColors?.brand?.yellow || '#D68F35'}20 0%, transparent 70%),
-              radial-gradient(at 100% 100%, ${themeColors?.brand?.orange || '#BB5F36'}15 0%, transparent 75%),
-              radial-gradient(at 0% 100%, ${themeColors?.brand?.teal || '#347989'}10 0%, transparent 70%),
-              radial-gradient(at 50% 50%, ${themeColors?.brand?.teal || '#347989'}03 0%, transparent 100%),
-              #FFFFFF
-            `
-          }}
-        />
-        {/* Elegant Dot Grid Pattern */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `radial-gradient(${themeColors?.brand?.teal || '#347989'} 0.8px, transparent 0.8px)`,
-            backgroundSize: '32px 32px'
-          }}
-        />
-      </div>
+    <div className="min-h-screen bg-canvas">
+      <PageHeader title="Sell Scrap" showBell={false} />
 
-      <div className="relative z-10">
-        {/* Modern Glassmorphism Header */}
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/40 border-b border-black/[0.03] px-4 py-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-black/[0.02]"
-          >
-            <FiArrowLeft className="w-5 h-5 text-gray-800" />
-          </button>
-          <h1 className="text-xl font-extrabold text-gray-900">Add Scrap Item</h1>
-        </header>
-
-        <form onSubmit={handleCreate} className="p-4 space-y-4 pb-8">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Item Title</label>
+      <form onSubmit={handleCreate} className="px-4 py-4 max-w-2xl mx-auto space-y-3 pb-32">
+        <section className="bg-white rounded-[20px] border border-gray-100 p-4 space-y-4">
+          <div>
+            <label htmlFor="scrap-title" className="block text-[13px] font-semibold text-ink mb-1.5">What are you selling?</label>
             <input
+              id="scrap-title"
               type="text"
-              className="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-1 focus:ring-primary-500"
+              className={fieldClass}
               placeholder="e.g. Old LG Split AC, Samsung Fridge"
               value={formData.title}
               onChange={e => setFormData({ ...formData, title: e.target.value })}
               required
             />
           </div>
-
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <div>
+            <label htmlFor="scrap-description" className="block text-[13px] font-semibold text-ink mb-1.5">
+              Description <span className="font-normal text-gray-400">(optional)</span>
+            </label>
             <textarea
-              className="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-1 focus:ring-primary-500"
+              id="scrap-description"
+              className={`${fieldClass} resize-none`}
               rows="3"
-              placeholder="Condition, model year, etc."
+              placeholder="Condition, model year, weight, etc."
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
             />
           </div>
+        </section>
 
-          {/* Image Upload Selection */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Item Images (Max 5)</label>
-            <div className="grid grid-cols-3 gap-3">
-              {selectedFiles.map((item, index) => (
-                <div key={item.id || index} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group">
-                  <img src={item.preview} alt="Preview" className="w-full h-full object-cover" />
+        {/* Photos */}
+        <section className="bg-white rounded-[20px] border border-gray-100 p-4">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-[13px] font-semibold text-ink">Photos</h3>
+            <span className="text-[12px] text-gray-400">{selectedFiles.length}/5</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {selectedFiles.map((item, index) => (
+              <div key={item.id || index} className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50">
+                <img src={item.preview} alt={`Scrap photo ${index + 1}`} className="w-full h-full object-cover" />
 
-                  {/* Upload Progress Overlay */}
-                  {item.status === 'uploading' && (
-                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-2">
-                      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                        <div
-                          className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${item.progress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-[8px] text-white font-black">{item.progress}%</span>
+                {item.status === 'uploading' && (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-2">
+                    <div className="w-full bg-white/30 rounded-full h-1.5 mb-1">
+                      <div className="bg-white h-1.5 rounded-full transition-all duration-300" style={{ width: `${item.progress}%` }} />
                     </div>
-                  )}
+                    <span className="text-[10px] text-white font-bold">{item.progress}%</span>
+                  </div>
+                )}
 
-                  {item.status === 'done' && (
-                    <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5">
-                      <FiCheckCircle size={10} />
-                    </div>
-                  )}
+                {item.status === 'done' && (
+                  <span className="absolute bottom-1.5 left-1.5 w-5 h-5 rounded-full bg-accent text-white flex items-center justify-center">
+                    <FiCheckCircle size={12} />
+                  </span>
+                )}
 
-                  {item.status === 'error' && (
-                    <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-                      <FiX className="text-red-500" />
-                    </div>
-                  )}
+                {item.status === 'error' && (
+                  <div className="absolute inset-0 bg-red-500/25 flex items-center justify-center">
+                    <FiX className="w-6 h-6 text-red-600" />
+                  </div>
+                )}
 
+                {!isUploading && (
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    disabled={isUploading}
-                    className={`absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center transition-opacity ${isUploading ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`}
+                    aria-label={`Remove photo ${index + 1}`}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/55 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
                   >
                     <FiX size={14} />
                   </button>
-                </div>
-              ))}
-              {selectedFiles.length < 5 && !isUploading && (
-                <div
-                  onClick={handlePhotoClick}
-                  className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <FiCamera className="w-6 h-6 text-gray-400" />
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Add Photo</span>
-                  <input
-                    id="add-scrap-photo-upload"
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageSelect}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Address Section */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <FiMapPin className="text-primary-600" /> Pickup Location
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddressModal(true)}
-                className="text-xs font-semibold text-primary-600 hover:text-primary-700"
-                style={{ color: themeColors.button }}
-              >
-                {formData.address.addressLine1 ? 'Change' : 'Select'}
-              </button>
-            </div>
-
-            {formData.address.addressLine1 ? (
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <p className="font-medium text-gray-900 text-sm">{houseNumber ? `${houseNumber}, ` : ''}{formData.address.addressLine1.split(',')[0]}</p>
-                <p className="text-xs text-gray-500 mt-0.5 truncate">{formData.address.addressLine1}</p>
+                )}
               </div>
-            ) : (
+            ))}
+            {selectedFiles.length < 5 && !isUploading && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handlePhotoClick}
+                onKeyDown={(e) => { if (e.key === 'Enter') handlePhotoClick(); }}
+                className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-accent/40 hover:bg-accent-soft/40 transition-colors"
+              >
+                <FiCamera className="w-6 h-6 text-accent" />
+                <span className="text-[11px] font-semibold text-gray-500">Add photo</span>
+                <input
+                  id="add-scrap-photo-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+          </div>
+          <p className="mt-3 text-[12px] text-gray-400">Clear photos help us send you a better price.</p>
+        </section>
+
+        {/* Pickup address */}
+        <section className="bg-white rounded-[20px] border border-gray-100 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[13px] font-semibold text-ink">Pickup address</h3>
+            {formData.address.addressLine1 && (
               <button
                 type="button"
                 onClick={() => setShowAddressModal(true)}
-                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-100 transition-colors"
+                className="text-[13px] font-semibold text-accent hover:text-accent-dark"
               >
-                + Select Pickup Address
+                Change
               </button>
             )}
           </div>
 
-          <div className="pt-2">
+          {formData.address.addressLine1 ? (
+            <div className="flex items-start gap-2.5 rounded-2xl bg-canvas px-3.5 py-3">
+              <FiMapPin className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-ink">{houseNumber ? `${houseNumber}, ` : ''}{formData.address.addressLine1.split(',')[0]}</p>
+                <p className="text-[12px] text-gray-500 mt-0.5 truncate">{formData.address.addressLine1}</p>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAddressModal(true)}
+              className="w-full h-12 rounded-2xl border-2 border-dashed border-gray-200 text-[14px] font-semibold text-accent hover:border-accent/40 hover:bg-accent-soft/40 transition-colors inline-flex items-center justify-center gap-2"
+            >
+              <FiMapPin className="w-4 h-4" /> Select pickup address
+            </button>
+          )}
+        </section>
+
+        {/* Submit */}
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
+          <div className="max-w-2xl mx-auto">
             <button
               type="submit"
               disabled={!formData.address.addressLine1 || isUploading}
-              className="w-full py-4 rounded-2xl text-white font-bold shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
-              style={{ backgroundColor: themeColors.button }}
+              className="w-full h-12 rounded-full bg-accent text-white text-[15px] font-semibold hover:bg-accent-dark active:scale-[0.99] transition-all disabled:opacity-50 disabled:active:scale-100 inline-flex items-center justify-center gap-2"
             >
               {isUploading ? (
                 <>
-                  <FiLoader className="animate-spin" />
-                  <span>Listing Item...</span>
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                  Listing item...
                 </>
               ) : (
-                'List Item for Pickup'
+                'List item for pickup'
               )}
             </button>
+            {!formData.address.addressLine1 && (
+              <p className="mt-1.5 text-center text-[12px] text-gray-400">Select a pickup address to continue</p>
+            )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
 
       <AddressSelectionModal
         isOpen={showAddressModal}
@@ -404,7 +390,7 @@ const AddScrap = () => {
         onSave={handleAddressSave}
       />
 
-      {/* Photo Source Selection - Mobile Styled Bottom Sheet */}
+      {/* Photo source picker */}
       <AnimatePresence>
         {showSourceSheet && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center">
@@ -413,28 +399,29 @@ const AddScrap = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSourceSheet(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/40"
             />
             <motion.div
-              initial={{ y: "100%" }}
+              initial={{ y: '100%' }}
               animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative bg-white w-full rounded-t-[32px] p-6 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-10"
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="relative bg-white w-full max-w-2xl rounded-t-[28px] px-5 pt-3 pb-10 z-10"
             >
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="font-bold text-gray-900 text-lg">Select Photo Source</h4>
-                <button 
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+              <div className="flex justify-between items-center mb-5">
+                <h4 className="font-bold text-ink text-[17px]">Add a photo</h4>
+                <button
+                  type="button"
                   onClick={() => setShowSourceSheet(false)}
-                  className="p-2 bg-gray-100 rounded-full text-gray-500"
+                  aria-label="Close"
+                  className="w-9 h-9 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center"
                 >
-                  <FiX />
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Camera Option */}
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -445,30 +432,25 @@ const AddScrap = () => {
                       document.getElementById('add-scrap-photo-upload')?.click();
                     }
                   }}
-                  className="flex flex-col items-center gap-3 p-6 rounded-2xl border border-teal-100 active:scale-95 transition-all"
-                  style={{ backgroundColor: `${themeColors.button}10` }}
+                  className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-accent-soft active:scale-95 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg"
-                    style={{ backgroundColor: themeColors.button }}
-                  >
+                  <span className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center">
                     <FiCamera className="w-6 h-6" />
-                  </div>
-                  <span className="font-bold text-teal-800 text-sm">Take Photo</span>
+                  </span>
+                  <span className="font-semibold text-ink text-[14px]">Take photo</span>
                 </button>
-
-                {/* Gallery Option */}
                 <button
                   type="button"
                   onClick={() => {
                     setShowSourceSheet(false);
                     document.getElementById('add-scrap-photo-upload')?.click();
                   }}
-                  className="flex flex-col items-center gap-3 p-6 bg-blue-50 rounded-2xl border border-blue-100 active:scale-95 transition-all"
+                  className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-canvas active:scale-95 transition-all"
                 >
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                  <span className="w-12 h-12 rounded-full bg-white text-accent border border-gray-100 flex items-center justify-center">
                     <FiImage className="w-6 h-6" />
-                  </div>
-                  <span className="font-bold text-blue-800 text-sm">Gallery</span>
+                  </span>
+                  <span className="font-semibold text-ink text-[14px]">Gallery</span>
                 </button>
               </div>
             </motion.div>

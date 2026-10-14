@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import PageTransition from '../components/common/PageTransition';
 import BottomNav from '../components/layout/BottomNav';
@@ -96,8 +96,34 @@ const LoadingFallback = () => (
 // Import Live Booking Card
 import LiveBookingCard from '../components/booking/LiveBookingCard';
 
+// Pages reachable from the bottom nav and common flows. Their code is fetched in the
+// background after start-up so switching pages never waits on a download.
+const PRELOAD_PAGES = [
+  () => import('../pages/Home'),
+  () => import('../pages/MyBookings'),
+  () => import('../pages/Cart'),
+  () => import('../pages/Account'),
+  () => import('../pages/Scrap'),
+  () => import('../pages/Checkout'),
+  () => import('../pages/BookingDetails'),
+  () => import('../pages/Notifications'),
+];
+
+const preloadPages = () => {
+  const run = () => PRELOAD_PAGES.forEach((load) => load().catch(() => { /* loaded on demand instead */ }));
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(run, { timeout: 3000 });
+  } else {
+    setTimeout(run, 1500);
+  }
+};
+
 const UserRoutes = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    preloadPages();
+  }, []);
 
   // Enable global notifications for user
   // Global notifications are now handled by SocketProvider at App level

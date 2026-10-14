@@ -181,7 +181,7 @@ const BillingPage = () => {
       // If NO draft, we use backend bill data
       if (billRes && billRes.success && billRes.bill) {
         if (!hasDraft) {
-          setSelectedServices((billRes.bill.services || []).filter(s => !s.isOriginal));
+          setSelectedServices((billRes.bill.services || []).filter(s => !s.isOriginal && !s.addedByCustomer));
           setSelectedParts(billRes.bill.parts || []);
           setCustomItems(billRes.bill.customItems || []);
           setTransportCharges(billRes.bill.transportCharges || 0);
@@ -200,7 +200,7 @@ const BillingPage = () => {
 
         // Update max step based on data (merged)
         const currentData = hasDraft ? JSON.parse(savedDraft) : {
-          selectedServices: (billRes.bill.services || []).filter(s => !s.isOriginal),
+          selectedServices: (billRes.bill.services || []).filter(s => !s.isOriginal && !s.addedByCustomer),
           selectedParts: billRes.bill.parts || [],
           customItems: billRes.bill.customItems || []
         };
@@ -370,9 +370,19 @@ const BillingPage = () => {
     const originalBase = isPlanBooking ? 0 : (booking.basePrice || 0);
     const originalServiceGST = isPlanBooking ? 0 : parseFloat(((originalBase * serviceGstPct) / 100).toFixed(2));
 
+    // Customer-added repair services (priced from the catalog when the customer added them)
+    let customerServiceBase = 0;
+    let customerServiceGST = 0;
+    (booking.customerAddedServices || []).forEach(item => {
+      if (item.isOther || !(item.unitPrice > 0)) return;
+      const base = item.unitPrice * (item.quantity || 1);
+      customerServiceBase += base;
+      customerServiceGST += parseFloat(((base * serviceGstPct) / 100).toFixed(2));
+    });
+
     // Extra Services: price is base, GST calculated separately
-    let extraServiceBase = 0;
-    let extraServiceGST = 0;
+    let extraServiceBase = customerServiceBase;
+    let extraServiceGST = customerServiceGST;
     selectedServices.forEach(s => {
       const base = s.price * s.quantity;
       const gst = parseFloat(((base * serviceGstPct) / 100).toFixed(2));
@@ -422,6 +432,7 @@ const BillingPage = () => {
 
     return {
       originalBase,
+      customerServiceBase,
       extraServiceBase,
       partsBase: totalPartsBase,
       serviceGstPct,
@@ -831,6 +842,31 @@ const BillingPage = () => {
       </div>
 
       <div className="p-4 space-y-6 pb-48">
+        {(booking.customerAddedServices || []).length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+            <p className="text-sm font-bold text-emerald-900">Customer added after inspection</p>
+            <p className="text-[11px] text-emerald-700 mb-3">Priced services are included in the bill automatically.</p>
+            <div className="space-y-2">
+              {booking.customerAddedServices.map((item, index) => (
+                <div key={item._id || index} className="flex items-start justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">
+                      {item.isOther ? 'Other problem' : item.title}
+                      {!item.isOther && item.quantity > 1 && <span className="text-gray-500 font-normal"> x {item.quantity}</span>}
+                    </p>
+                    {item.isOther && <p className="text-xs text-gray-600 break-words">{item.note}</p>}
+                  </div>
+                  {item.isOther ? (
+                    <span className="shrink-0 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">Add price in Services / Extras</span>
+                  ) : (
+                    <span className="shrink-0 font-bold text-gray-900">₹{(item.unitPrice * (item.quantity || 1)).toFixed(2)}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {currentStep === 1 && (
           <div className="animate-in fade-in slide-in-from-right-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-4">
@@ -1151,6 +1187,7 @@ const BillingPage = () => {
                         <span>₹{calculations.originalBase.toFixed(2)}</span>
                       )}
                     </div>
+                    {(booking.customerAddedServices || []).filter(i => !i.isOther && i.unitPrice > 0).map((i, idx) => <div key={`customer-${idx}`} className="flex justify-between text-gray-600"><span>{i.title} x {i.quantity || 1} <span className="text-[10px] font-bold text-emerald-700">(customer)</span></span><span>₹{(i.unitPrice * (i.quantity || 1)).toFixed(2)}</span></div>)}
                     {selectedServices.map(s => <div key={s.catalogId} className="flex justify-between text-gray-600"><span>{s.name} x {s.quantity}</span><span>₹{(s.price * s.quantity).toFixed(2)}</span></div>)}
 
                     <div className="flex justify-between text-xs text-gray-500 border-t border-dashed border-gray-100 pt-1 mt-1">

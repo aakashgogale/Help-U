@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo, FiTag, FiPercent, FiX, FiChevronDown, FiChevronUp, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo, FiTag, FiPercent, FiX, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { MdStar } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
@@ -13,7 +13,6 @@ import { AddOnsSelector, EmergencyOption, BookingNotes, RecurringOption } from '
 import useBookingConfig from '../../../../hooks/useBookingConfig';
 import bookingFeaturesService from '../../../../services/bookingFeaturesService';
 import couponService from '../../../../services/couponService';
-import cityService from '../../../../services/cityService';
 import { bookingService } from '../../../../services/bookingService';
 import { paymentService } from '../../../../services/paymentService';
 import { cartService } from '../../../../services/cartService';
@@ -86,35 +85,6 @@ const Checkout = () => {
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [showCouponList, setShowCouponList] = useState(false);
 
-  // Pincode / Area service availability state
-  const [pincodeCheck, setPincodeCheck] = useState({ checked: false, serviceable: true, message: '' });
-
-  useEffect(() => {
-    const rawPincode = addressDetails?.pincode || addressDetails?.components?.find(c => c.types.includes('postal_code'))?.long_name;
-    const cleanPincode = String(rawPincode || '').trim();
-    if (!cleanPincode || cleanPincode === '000000' || plan) {
-      setPincodeCheck({ checked: false, serviceable: true, message: '' });
-      return;
-    }
-
-    let active = true;
-    cityService.checkPincode(cleanPincode)
-      .then(res => {
-        if (!active) return;
-        if (res && res.success) {
-          setPincodeCheck({
-            checked: true,
-            serviceable: res.serviceable,
-            message: res.message
-          });
-        }
-      })
-      .catch(() => {
-        if (active) setPincodeCheck({ checked: false, serviceable: true, message: '' });
-      });
-
-    return () => { active = false; };
-  }, [addressDetails, plan]);
 
   // Check if Razorpay is loaded (defer to avoid blocking initial render)
   useEffect(() => {
@@ -361,11 +331,6 @@ const Checkout = () => {
   };
 
   const handleProceed = async () => {
-    // Check if pincode is serviceable
-    if (pincodeCheck.checked && !pincodeCheck.serviceable) {
-      toast.error(pincodeCheck.message || 'Services are not currently available in your pincode');
-      return;
-    }
 
     // Without an address or slot, collect it first; otherwise start the search.
     if (bookingType === 'instant') {
@@ -488,11 +453,6 @@ const Checkout = () => {
           toast.error('Please select address');
           return;
         }
-      }
-
-      if (pincodeCheck.checked && !pincodeCheck.serviceable) {
-        toast.error(pincodeCheck.message || 'Service is not available in your locality/pincode');
-        return;
       }
 
       if (cartItems.length === 0 && !bookingRequest) {
@@ -1791,14 +1751,6 @@ const Checkout = () => {
                 </button>
               </div>
 
-              {/* Pincode Availability Warning */}
-              {pincodeCheck.checked && !pincodeCheck.serviceable && (
-                <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-xs text-amber-800">
-                  <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="leading-tight">{pincodeCheck.message}</span>
-                </div>
-              )}
-
               {/* Time Slot (Only for Scheduled) */}
               {bookingType === 'scheduled' && (
                 <div className="flex items-start gap-2.5">
@@ -1853,14 +1805,11 @@ const Checkout = () => {
               (houseNumber || addressDetails) ?
                 (currentStep === 'payment' ? handlePayment : handleSearchWorkers) :
                 handleProceed}
-            disabled={searchingWorkers || (pincodeCheck.checked && !pincodeCheck.serviceable)}
-            className={`w-full text-white py-3 rounded-lg text-base font-semibold transition-colors disabled:opacity-50 shadow-lg ${
-              pincodeCheck.checked && !pincodeCheck.serviceable ? 'bg-gray-400 cursor-not-allowed shadow-none' : 'shadow-teal-500/30'
-            }`}
-            style={{ backgroundColor: (pincodeCheck.checked && !pincodeCheck.serviceable) ? '#9ca3af' : themeColors.button }}
+            disabled={searchingWorkers}
+            className="w-full text-white py-3 rounded-lg text-base font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-teal-500/30"
+            style={{ backgroundColor: themeColors.button }}
           >
-            {pincodeCheck.checked && !pincodeCheck.serviceable ? 'Area Not Serviceable' :
-              searchingWorkers ? 'Searching for workers...' :
+            {searchingWorkers ? 'Searching for workers...' :
               currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
                 plan ? 'Proceed to Payment' :
                   bookingType === 'instant' ? 'Find nearby workers now' :

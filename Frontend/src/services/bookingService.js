@@ -38,6 +38,18 @@ export const bookingService = {
     return response.data;
   },
 
+  // Repair services the customer adds after the professional's inspection
+  getExtraServices: async (id) => {
+    const response = await api.get(`/users/bookings/${id}/extra-services`);
+    return response.data;
+  },
+
+  // items: [{ serviceId, quantity }], otherNote: free-text problem (optional)
+  updateExtraServices: async (id, { items, otherNote }) => {
+    const response = await api.put(`/users/bookings/${id}/extra-services`, { items, otherNote });
+    return response.data;
+  },
+
   // Cancel booking
   cancel: async (id, cancellationReason) => {
     const response = await api.post(`/users/bookings/${id}/cancel`, { cancellationReason });

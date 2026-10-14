@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { FiX, FiLayers, FiArrowLeft, FiPlus, FiCheck, FiClock, FiMinus, FiPhoneCall } from 'react-icons/fi';
+import { FiX, FiArrowLeft, FiPlus, FiCheck, FiClock, FiMinus, FiPhoneCall, FiEdit3 } from 'react-icons/fi';
 import { AnimatePresence, motion } from 'framer-motion';
 import { themeColors } from '../../../../../theme';
 import { publicCatalogService } from '../../../../../services/catalogService';
@@ -16,9 +16,26 @@ const toAssetUrl = (url) => {
   return `${base}${clean.startsWith('/') ? '' : '/'}${clean}`;
 };
 
+// The catalog's catch-all brand ("OTHER", "Others", "Other brand")
+const isOtherBrand = (brand) => /^others?(\s+brands?)?$/i.test((brand?.title || '').trim());
+
+// Brand names typed all-caps or all-lowercase in admin: "CROMPTON" / "crompton" -> "Crompton",
+// short acronyms "lg" / "ifb" -> "LG" / "IFB". Mixed case (e.g. "McCoy") is kept as typed.
+const formatBrandName = (title = '') => {
+  const t = (title || '').trim();
+  if (t !== t.toUpperCase() && t !== t.toLowerCase()) return t;
+  return t.toLowerCase().split(/\s+/).map(word =>
+    word.length <= 3 ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+};
+
+// Typed brand name: letters, numbers, spaces and & . ' - only; single spaces; max 40
+const cleanBrandInput = (value) => value.replace(/[^\p{L}\p{N} &.'-]/gu, '').replace(/\s+/g, ' ').slice(0, 40);
+
 const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCount, currentCity }) => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, cartItems, removeItem } = useCart();
+  const [busyServiceId, setBusyServiceId] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -31,6 +48,9 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
   // Hourly services ask for a duration before they can be added to cart.
   const [hoursPickerSvc, setHoursPickerSvc] = useState(null);
   const [pickedHours, setPickedHours] = useState(1);
+  // "Other" brand: ask the user which brand they have
+  const [otherPrompt, setOtherPrompt] = useState(null); // the catalog's Other brand while asking
+  const [otherBrandInput, setOtherBrandInput] = useState('');
 
   const cityId = currentCity?._id || currentCity?.id;
 
@@ -48,6 +68,8 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
         setBrands([]);
         setServices([]);
         setIsRedirecting(false);
+        setOtherPrompt(null);
+        setOtherBrandInput('');
       }, 300);
     } else if (category?.id) {
       if (category.initialBrand) {
@@ -97,10 +119,32 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
     }
   };
 
-  const handleBrandClick = (brand) => {
+  const openBrandServices = (brand) => {
     setSelectedBrand(brand);
     setView('services');
     fetchServices(brand.id || brand._id);
+  };
+
+  const handleBrandClick = (brand) => {
+    if (isOtherBrand(brand)) {
+      setOtherBrandInput(selectedBrand?.customName || '');
+      setOtherPrompt(brand);
+      return;
+    }
+    openBrandServices(brand);
+  };
+
+  const confirmOtherBrand = (e) => {
+    e?.preventDefault();
+    const name = otherBrandInput.trim();
+    if (name.length < 2) {
+      toast.error('Please enter your brand name');
+      return;
+    }
+    const brand = otherPrompt;
+    setOtherPrompt(null);
+    // Keep the catalog's Other brand (its services / plan benefits) and remember the typed name
+    openBrandServices({ ...brand, customName: name });
   };
 
   const handleBackToBrands = () => {
@@ -147,7 +191,8 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
         categoryIcon: toAssetUrl(category?.homeIconUrl || category?.iconUrl || ''), // Explicit field
         // Brand info — stored as sectionTitle/sectionIcon for booking flow
         sectionId: selectedBrand?.id || selectedBrand?._id || null, // VITAL: Added for plan benefits
-        sectionTitle: selectedBrand?.title || '',
+        // Typed brand for "Other" reaches the booking (brandName) and the worker's job card
+        sectionTitle: selectedBrand?.customName ? `${selectedBrand.customName} (Other)` : (selectedBrand?.title || ''),
         sectionIcon: toAssetUrl(selectedBrand?.iconUrl || selectedBrand?.icon || ''),
         price: unitPrice,
         originalPrice: originalUnitPrice,
@@ -170,18 +215,40 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
         }
       };
 
+      setBusyServiceId(cartItemData.serviceId);
       const response = await addToCart(cartItemData);
       if (response.success) {
         setHoursPickerSvc(null);
-        setIsRedirecting(true);
-        setTimeout(() => {
-          navigate('/user/cart');
-        }, 1200);
+        toast.success(`${service.title} added`, { id: 'service-added' });
       } else {
         toast.error(response.message || 'Failed to add to cart');
       }
     } catch (error) {
       toast.error('Failed to add to cart');
+    } finally {
+      setBusyServiceId(null);
+    }
+  };
+
+  // This category's items already in the cart, by service id
+  const categoryCartItems = (cartItems || []).filter(item =>
+    (category?.id && String(item.categoryId?._id || item.categoryId) === String(category.id)) ||
+    (category?.title && item.category === category.title)
+  );
+  const cartItemByService = new Map(categoryCartItems.map(item => [String(item.serviceId?._id || item.serviceId), item]));
+  const categoryCartTotal = categoryCartItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+  const handleRemoveService = async (service) => {
+    const item = cartItemByService.get(String(service.id || service._id));
+    if (!item) return;
+    setBusyServiceId(String(service.id || service._id));
+    try {
+      const response = await removeItem(item._id || item.id);
+      if (!response?.success) toast.error(response?.message || 'Failed to remove');
+    } catch {
+      toast.error('Failed to remove');
+    } finally {
+      setBusyServiceId(null);
     }
   };
 
@@ -259,11 +326,29 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                         <FiArrowLeft className="w-6 h-6 text-gray-800" />
                       </button>
                     )}
-                    <div>
-                      <h1 className="text-xl font-bold text-gray-900">
-                        {view === 'brands' ? (category?.title || 'Brands') : (selectedBrand?.title || 'Services')}
+                    <div className="min-w-0">
+                      <h1 className="text-xl font-bold text-gray-900 truncate">
+                        {view === 'brands'
+                          ? (category?.title || 'Brands')
+                          : (selectedBrand?.customName || formatBrandName(selectedBrand?.title) || 'Services')}
                       </h1>
-                      {view === 'services' && <p className="text-xs text-gray-500">Select a service to add</p>}
+                      {view === 'brands' && <p className="text-xs text-gray-500">Select your appliance brand</p>}
+                      {view === 'services' && (
+                        selectedBrand?.customName ? (
+                          <p className="text-xs text-gray-500">
+                            Other brand ·{' '}
+                            <button
+                              type="button"
+                              onClick={() => { setOtherBrandInput(selectedBrand.customName); setOtherPrompt(selectedBrand); }}
+                              className="font-semibold text-accent hover:underline"
+                            >
+                              Change
+                            </button>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">Add one or more services</p>
+                        )
+                      )}
                     </div>
                     {loading && <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin ml-auto"></div>}
                   </div>
@@ -283,35 +368,48 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                       {view === 'brands' ? (
                         // Brands Grid
                         brands.length > 0 ? (
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                            {brands.map((brand) => (
-                              <div
-                                key={brand.id || brand._id}
-                                onClick={() => handleBrandClick(brand)}
-                                className="flex flex-col items-center cursor-pointer group active:scale-95 transition-all"
-                              >
-                                <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-gray-100 transition-colors shadow-sm overflow-hidden border border-gray-100 relative">
-                                  {brand.icon ? (
-                                    <img
-                                      src={toAssetUrl(brand.icon)}
-                                      alt={brand.title}
-                                      className="w-14 h-14 object-contain group-hover:scale-110 transition-transform"
-                                      loading="lazy"
-                                    />
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-4">
+                            {[...brands.filter(b => !isOtherBrand(b)), ...brands.filter(isOtherBrand)].map((brand) => {
+                              const isOther = isOtherBrand(brand);
+                              return (
+                                <button
+                                  type="button"
+                                  key={brand.id || brand._id}
+                                  onClick={() => handleBrandClick(brand)}
+                                  className="flex flex-col items-center group active:scale-95 transition-transform focus:outline-none"
+                                >
+                                  {isOther ? (
+                                    <div className="w-full aspect-square rounded-2xl border-2 border-dashed border-gray-200 bg-canvas flex flex-col items-center justify-center gap-1 group-hover:border-accent/40 group-hover:bg-accent-soft/40 transition-colors">
+                                      <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-accent">
+                                        <FiEdit3 className="w-5 h-5" />
+                                      </span>
+                                      <span className="text-[11px] font-semibold text-gray-500">Not listed?</span>
+                                    </div>
                                   ) : (
-                                    <FiLayers className="w-8 h-8 text-gray-300" />
+                                    <div className="relative w-full aspect-square rounded-2xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden group-hover:border-accent/30 transition-colors">
+                                      {brand.icon ? (
+                                        <img
+                                          src={toAssetUrl(brand.icon)}
+                                          alt={brand.title}
+                                          className="w-[74%] h-[62%] object-contain mix-blend-multiply brightness-[1.08] contrast-[1.08] group-hover:scale-105 transition-transform duration-300"
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <span className="text-[22px] font-bold text-gray-300">{formatBrandName(brand.title).charAt(0)}</span>
+                                      )}
+                                      {brand.badge && (
+                                        <span className="absolute top-1.5 right-1.5 bg-accent-soft text-accent text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                          {brand.badge}
+                                        </span>
+                                      )}
+                                    </div>
                                   )}
-                                  {brand.badge && (
-                                    <span className="absolute top-0 right-0 bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg">
-                                      {brand.badge}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] font-bold text-gray-800 text-center leading-tight line-clamp-2 px-1">
-                                  {brand.title}
-                                </p>
-                              </div>
-                            ))}
+                                  <p className="mt-2 text-[12px] font-semibold text-gray-800 text-center leading-tight line-clamp-2 px-1">
+                                    {isOther ? 'Other brand' : formatBrandName(brand.title)}
+                                  </p>
+                                </button>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-center py-12 text-gray-500">
@@ -363,12 +461,26 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                                       <FiPhoneCall /> Contact
                                     </a>
                                   ) : (
-                                    <button
-                                      onClick={() => handleServiceClick(svc)}
-                                      className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-100"
-                                    >
-                                      {isHourly ? <><FiClock /> Select</> : <><FiPlus /> Add</>}
-                                    </button>
+                                    cartItemByService.has(String(svc.id || svc._id)) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveService(svc)}
+                                        disabled={busyServiceId === String(svc.id || svc._id)}
+                                        aria-label={`Remove ${svc.title}`}
+                                        className="min-w-[88px] px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1 border border-accent/40 bg-accent-soft text-accent disabled:opacity-60"
+                                      >
+                                        <FiCheck strokeWidth={3} /> Added
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleServiceClick(svc)}
+                                        disabled={busyServiceId === String(svc.id || svc._id)}
+                                        className="min-w-[88px] px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold flex items-center justify-center gap-1 hover:bg-green-100 disabled:opacity-60"
+                                      >
+                                        {isHourly ? <><FiClock /> Select</> : <><FiPlus /> Add</>}
+                                      </button>
+                                    )
                                   )}
                                 </div>
                               );
@@ -399,8 +511,82 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                   )}
                 </div>
               )}
+
+              {categoryCartItems.length > 0 && !isRedirecting && (
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
+                  <button
+                    type="button"
+                    onClick={() => { onClose?.(); navigate('/user/cart'); }}
+                    className="w-full h-12 rounded-full bg-accent text-white px-5 flex items-center justify-between hover:bg-accent-dark active:scale-[0.99] transition-all"
+                  >
+                    <span className="text-[14px] font-semibold">
+                      {categoryCartItems.length} added · ₹{Math.round(categoryCartTotal).toLocaleString('en-IN')}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[14px] font-semibold">
+                      View cart <FiArrowLeft className="w-4 h-4 rotate-180" />
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
+
+          {/* "Other" brand: ask which brand the user has */}
+          <AnimatePresence>
+            {otherPrompt && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[10000] bg-black/50 flex items-end sm:items-center justify-center"
+                onClick={() => setOtherPrompt(null)}
+              >
+                <motion.form
+                  initial={{ y: 40, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 40, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  onSubmit={confirmOtherBrand}
+                  className="bg-white w-full sm:max-w-sm rounded-t-[28px] sm:rounded-3xl px-5 pt-5"
+                  style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                >
+                  <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
+                  <h3 className="text-[18px] font-bold text-ink">Which brand is your {category?.title?.toLowerCase() || 'appliance'}?</h3>
+                  <p className="text-[13px] text-gray-500 mt-1">We will share it with the professional so they come prepared.</p>
+
+                  <label htmlFor="other-brand-name" className="sr-only">Brand name</label>
+                  <input
+                    id="other-brand-name"
+                    type="text"
+                    autoFocus
+                    autoComplete="off"
+                    maxLength={40}
+                    value={otherBrandInput}
+                    onChange={(e) => setOtherBrandInput(cleanBrandInput(e.target.value))}
+                    placeholder="e.g. Whirlpool, IFB, Panasonic"
+                    className="mt-4 w-full h-12 px-4 rounded-xl bg-canvas border border-transparent text-[15px] text-ink placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-accent/40 focus:ring-2 focus:ring-accent/15 transition-colors"
+                  />
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOtherPrompt(null)}
+                      className="h-11 rounded-full border border-gray-200 bg-white text-[14px] font-semibold text-ink hover:border-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={otherBrandInput.trim().length < 2}
+                      className="h-11 rounded-full bg-accent text-white text-[14px] font-semibold hover:bg-accent-dark disabled:opacity-50 transition-colors"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </motion.form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Duration picker for hourly services */}
           <AnimatePresence>
