@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="i2Wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EEE8DB"/>
+      <stop offset="100%" stop-color="#DBD1BE"/>
+    </linearGradient>
+    <linearGradient id="i2Floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CFC6B2"/>
+      <stop offset="100%" stop-color="#A49A85"/>
+    </linearGradient>
+    <linearGradient id="i2Toilet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E6E6E8"/>
+    </linearGradient>
+    <radialGradient id="i2Skin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#C99670"/>
+    </radialGradient>
+    <linearGradient id="i2Tool" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3F3F44"/>
+      <stop offset="100%" stop-color="#17171A"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="150" fill="url(#i2Wall)"/>
+  <rect y="150" width="220" height="70" fill="url(#i2Floor)"/>
+  <!-- subtle tile grid -->
+  <line x1="0" y1="60" x2="220" y2="60" stroke="#C9C0AC" stroke-width="0.6"/>
+  <line x1="0" y1="115" x2="220" y2="115" stroke="#C9C0AC" stroke-width="0.6"/>
+  <line x1="55" y1="0" x2="55" y2="150" stroke="#C9C0AC" stroke-width="0.6"/>
+  <line x1="165" y1="0" x2="165" y2="150" stroke="#C9C0AC" stroke-width="0.6"/>
+  <!-- shower pipe -->
+  <circle cx="20" cy="85" r="3.5" fill="#9A9087"/>
+  <path d="M20 88 Q 18 115 15 150" stroke="#555" stroke-width="2.3" fill="none"/>
+  <path d="M15 100 Q 18 102 15 104 M15 120 Q 18 122 15 124" stroke="#777" stroke-width="1" fill="none"/>
+  <!-- TWO toilets side by side (slight overlap for "2 bathroom") -->
+  <g transform="translate(-20 0)">
+    <!-- tank 1 -->
+    <path d="M70 55 L 118 55 Q 123 55 123 60 L 123 85 Q 123 90 118 90 L 70 90 Q 65 90 65 85 L 65 60 Q 65 55 70 55 Z" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <!-- bowl 1 -->
+    <ellipse cx="94" cy="110" rx="42" ry="10" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <ellipse cx="94" cy="115" rx="38" ry="9" fill="#DADADC"/>
+    <path d="M58 115 Q 62 160 94 165 Q 128 160 132 115 Z" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <ellipse cx="94" cy="173" rx="42" ry="4" fill="#000" opacity="0.14"/>
+  </g>
+  <!-- second toilet partially behind -->
+  <g transform="translate(60 0)" opacity="0.95">
+    <path d="M70 50 L 118 50 Q 123 50 123 55 L 123 80 Q 123 85 118 85 L 70 85 Q 65 85 65 80 L 65 55 Q 65 50 70 50 Z" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <ellipse cx="94" cy="105" rx="40" ry="10" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <ellipse cx="94" cy="110" rx="36" ry="8" fill="#DADADC"/>
+    <path d="M60 110 Q 64 155 94 160 Q 126 155 130 110 Z" fill="url(#i2Toilet)" stroke="#C9C0B0" stroke-width="1"/>
+    <ellipse cx="94" cy="168" rx="40" ry="4" fill="#000" opacity="0.14"/>
+  </g>
+  <!-- cleaning tool on first bowl base -->
+  <ellipse cx="74" cy="180" rx="16" ry="5" fill="url(#i2Tool)"/>
+  <circle cx="74" cy="178" r="10" fill="#1A1A1C" stroke="#000" stroke-width="0.5"/>
+  <circle cx="74" cy="178" r="7" fill="#4A4A4F"/>
+  <path d="M67 178 L 81 178 M 74 171 L 74 185" stroke="#2A2A2E" stroke-width="1"/>
+  <!-- shaft to hand -->
+  <rect x="86" y="135" width="4.5" height="48" rx="2" fill="url(#i2Tool)" transform="rotate(20 88 159)"/>
+  <!-- hand from right -->
+  <path d="M105 118 Q 125 110 142 120 Q 148 130 140 140 Q 125 143 112 136 Q 103 128 105 118 Z" fill="url(#i2Skin)"/>
+  <rect x="138" y="112" width="20" height="12" rx="3" fill="#2A2A2E"/>
+  <!-- water drops -->
+  <circle cx="95" cy="150" r="1.4" fill="#8DD2E8" opacity="0.9"/>
+  <circle cx="130" cy="152" r="1.2" fill="#8DD2E8" opacity="0.9"/>
+</svg>

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Soft contact shadow -->
+    <radialGradient id="toolShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.32"/>
+      <stop offset="60%" stop-color="#1E2024" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Chrome metallic steel gradient -->
+    <linearGradient id="chromeSteel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#E2E6EA"/>
+      <stop offset="50%" stop-color="#9BA3AF"/>
+      <stop offset="75%" stop-color="#DCE0E6"/>
+      <stop offset="100%" stop-color="#7B8390"/>
+    </linearGradient>
+
+    <!-- Chrome steel bevel dark side -->
+    <linearGradient id="chromeDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C2C7D0"/>
+      <stop offset="100%" stop-color="#555B66"/>
+    </linearGradient>
+
+    <!-- Red screwdriver handle gradient (glossy ergonomic molded plastic) -->
+    <linearGradient id="redHandleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF5A5A"/>
+      <stop offset="30%" stop-color="#E52B2B"/>
+      <stop offset="70%" stop-color="#B31212"/>
+      <stop offset="100%" stop-color="#6E0505"/>
+    </linearGradient>
+
+    <!-- Screwdriver handle flutes (rubber grips) -->
+    <linearGradient id="gripFlute" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#32363D"/>
+      <stop offset="100%" stop-color="#181A1D"/>
+    </linearGradient>
+
+    <!-- Screwdriver shaft steel -->
+    <linearGradient id="shaftSteel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F2F4F7"/>
+      <stop offset="45%" stop-color="#B8BEC8"/>
+      <stop offset="100%" stop-color="#727A86"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ground drop shadow -->
+  <ellipse cx="80" cy="138" rx="46" ry="8" fill="url(#toolShadow)"/>
+
+  <!-- ==================== SCREWDRIVER (bottom-left to top-right) ==================== -->
+  <g transform="rotate(45 80 80)">
+    <!-- Steel Shaft -->
+    <rect x="76" y="24" width="8" height="58" rx="2" fill="url(#shaftSteel)"/>
+    <rect x="78" y="24" width="2" height="58" fill="#FFFFFF" opacity="0.6"/>
+
+    <!-- Screwdriver Tip (Phillips/Cross Head) -->
+    <path d="M 75 24 L 79 16 L 81 16 L 85 24 Z" fill="#6A717D"/>
+    <polygon points="79,16 81,16 80,22" fill="#3D424B"/>
+
+    <!-- Bolster / Steel Collar -->
+    <rect x="74" y="78" width="12" height="6" rx="1.5" fill="url(#chromeDark)"/>
+
+    <!-- Red Molded Handle -->
+    <path d="M 70 84 C 70 82 90 82 90 84 L 92 124 C 92 134 68 134 68 124 Z"
+          fill="url(#redHandleGrad)"/>
+
+    <!-- Ergonomic Flutes (Black rubber grip inserts) -->
+    <rect x="72" y="90" width="3.5" height="26" rx="1.5" fill="url(#gripFlute)"/>
+    <rect x="78" y="90" width="4" height="26" rx="1.5" fill="url(#gripFlute)"/>
+    <rect x="84.5" y="90" width="3.5" height="26" rx="1.5" fill="url(#gripFlute)"/>
+
+    <!-- Handle highlight streak -->
+    <path d="M 72 88 L 72 122" stroke="#FFA2A2" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+
+    <!-- Handle butt cap -->
+    <ellipse cx="80" cy="128" rx="8" ry="3" fill="#B31212"/>
+    <ellipse cx="80" cy="129" rx="5" ry="2" fill="#550505"/>
+  </g>
+
+  <!-- ==================== ADJUSTABLE CRESCENT WRENCH (bottom-right to top-left) ==================== -->
+  <g transform="rotate(-45 80 80)">
+    <!-- Handle -->
+    <path d="M 74 65 L 75 132 C 75 137 85 137 85 132 L 86 65 Z"
+          fill="url(#chromeSteel)"/>
+    <!-- Handle outer border -->
+    <path d="M 74 65 L 75 132 C 75 137 85 137 85 132 L 86 65 Z"
+          fill="none" stroke="#727986" stroke-width="0.8"/>
+
+    <!-- Handle highlight bevel -->
+    <path d="M 76 68 L 76.5 130" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
+    <path d="M 83.5 68 L 83.5 130" stroke="#686F7C" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+
+    <!-- Hanging hole at base of wrench -->
+    <ellipse cx="80" cy="126" rx="3.5" ry="5.5" fill="#555B66"/>
+    <ellipse cx="80" cy="126" rx="2.5" ry="4.5" fill="#2E3238"/>
+
+    <!-- Wrench Head transition neck -->
+    <path d="M 74 66 C 70 58 64 54 62 45 C 60 35 68 22 80 22 C 92 22 100 35 98 45 C 96 54 90 58 86 66 Z"
+          fill="url(#chromeSteel)"/>
+
+    <!-- Crescent Jaw opening cutout -->
+    <path d="M 73 20 L 73 38 C 73 41 87 41 87 38 L 87 20"
+          fill="#F2F3F5"/>
+    <path d="M 73 20 L 73 38 C 73 41 87 41 87 38 L 87 20"
+          fill="none" stroke="#727986" stroke-width="1"/>
+
+    <!-- Fixed Jaw (left) -->
+    <path d="M 62 45 C 60 35 68 22 73 20 L 73 38 C 73 41 78 41 78 41 L 68 47 Z"
+          fill="url(#chromeSteel)"/>
+    <path d="M 64 36 L 72 23" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Movable Jaw (right) -->
+    <path d="M 87 20 C 92 22 100 35 98 45 L 88 47 L 87 38 Z"
+          fill="url(#chromeSteel)"/>
+    <path d="M 96 36 L 88 23" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Knurled Worm Screw Adjustment Cylinder -->
+    <rect x="73" y="44" width="14" height="8" rx="2" fill="#3D424B"/>
+    <rect x="74" y="45" width="12" height="6" rx="1.5" fill="url(#chromeDark)"/>
+    <!-- Knurl spiral ridges -->
+    <line x1="76" y1="45" x2="77" y2="51" stroke="#2B2F36" stroke-width="1"/>
+    <line x1="79" y1="45" x2="80" y2="51" stroke="#2B2F36" stroke-width="1"/>
+    <line x1="82" y1="45" x2="83" y2="51" stroke="#2B2F36" stroke-width="1"/>
+    <line x1="85" y1="45" x2="86" y2="51" stroke="#2B2F36" stroke-width="1"/>
+  </g>
+</svg>

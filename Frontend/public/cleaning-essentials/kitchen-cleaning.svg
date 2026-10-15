@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="kcWall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5EFE2"/>
+      <stop offset="100%" stop-color="#DED3BE"/>
+    </linearGradient>
+    <linearGradient id="kcCounter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5A4433"/>
+      <stop offset="100%" stop-color="#3A2A1F"/>
+    </linearGradient>
+    <linearGradient id="kcGas" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A2A2E"/>
+      <stop offset="100%" stop-color="#0F0F12"/>
+    </linearGradient>
+    <radialGradient id="kcSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#C99670"/>
+    </radialGradient>
+    <linearGradient id="kcGlove" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8B000"/>
+      <stop offset="100%" stop-color="#C78B00"/>
+    </linearGradient>
+  </defs>
+  <!-- wall + tile backsplash -->
+  <rect width="220" height="130" fill="url(#kcWall)"/>
+  <!-- backsplash tiles -->
+  <rect y="100" width="220" height="30" fill="#F0E8D5"/>
+  <line x1="0" y1="115" x2="220" y2="115" stroke="#D7C9A8" stroke-width="0.6"/>
+  <line x1="35" y1="100" x2="35" y2="130" stroke="#D7C9A8" stroke-width="0.6"/>
+  <line x1="75" y1="100" x2="75" y2="130" stroke="#D7C9A8" stroke-width="0.6"/>
+  <line x1="115" y1="100" x2="115" y2="130" stroke="#D7C9A8" stroke-width="0.6"/>
+  <line x1="155" y1="100" x2="155" y2="130" stroke="#D7C9A8" stroke-width="0.6"/>
+  <line x1="195" y1="100" x2="195" y2="130" stroke="#D7C9A8" stroke-width="0.6"/>
+  <!-- counter top -->
+  <rect y="130" width="220" height="20" fill="url(#kcCounter)"/>
+  <rect y="130" width="220" height="3" fill="#8A6A4A" opacity="0.6"/>
+  <!-- cabinet below -->
+  <rect y="150" width="220" height="70" fill="#8E6B4A"/>
+  <rect x="0" y="150" width="220" height="2" fill="#5A4433"/>
+  <!-- cabinet doors -->
+  <rect x="20" y="160" width="80" height="55" rx="2" fill="#A07E58" stroke="#5A4433"/>
+  <rect x="120" y="160" width="80" height="55" rx="2" fill="#A07E58" stroke="#5A4433"/>
+  <circle cx="90" cy="187" r="2" fill="#2A1A10"/>
+  <circle cx="130" cy="187" r="2" fill="#2A1A10"/>
+
+  <!-- gas stove on counter -->
+  <rect x="55" y="70" width="110" height="60" rx="4" fill="url(#kcGas)"/>
+  <!-- burners -->
+  <circle cx="85" cy="92" r="12" fill="#1A1A1C" stroke="#555" stroke-width="0.6"/>
+  <circle cx="85" cy="92" r="6" fill="#4A4A4F"/>
+  <circle cx="135" cy="92" r="12" fill="#1A1A1C" stroke="#555" stroke-width="0.6"/>
+  <circle cx="135" cy="92" r="6" fill="#4A4A4F"/>
+  <!-- knobs -->
+  <circle cx="75" cy="120" r="3.5" fill="#555"/>
+  <circle cx="110" cy="120" r="3.5" fill="#555"/>
+  <circle cx="145" cy="120" r="3.5" fill="#555"/>
+  <!-- shine on stove top -->
+  <path d="M60 76 L 160 76" stroke="#FFFFFF" stroke-width="1" opacity="0.3"/>
+
+  <!-- hand with yellow glove holding scrubber -->
+  <!-- forearm (from top-right) -->
+  <path d="M170 15 Q 190 10 210 20 L 215 45 Q 200 55 185 48 Z" fill="#1A1A1C" transform="rotate(15 190 30)"/>
+  <!-- glove -->
+  <path d="M158 45 Q 180 35 200 50 Q 205 70 190 78 Q 170 80 158 65 Z" fill="url(#kcGlove)" stroke="#8E6300" stroke-width="0.8"/>
+  <!-- fingers gripping -->
+  <path d="M165 65 Q 170 72 178 72" stroke="#C78B00" stroke-width="2" fill="none"/>
+  <!-- scrubber (sponge) -->
+  <rect x="135" y="68" width="30" height="18" rx="3" fill="#F8E880" stroke="#C9B850"/>
+  <rect x="135" y="68" width="30" height="7" fill="#4A8DC9" stroke="#2E5C82"/>
+  <!-- soap bubbles -->
+  <circle cx="120" cy="60" r="4" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="120" cy="60" r="2" fill="#B4E8F2" opacity="0.6"/>
+  <circle cx="110" cy="75" r="3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="128" cy="85" r="3.5" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="128" cy="85" r="1.5" fill="#B4E8F2" opacity="0.5"/>
+  <circle cx="115" cy="92" r="2.5" fill="#FFFFFF" opacity="0.8"/>
+  <!-- sparkle -->
+  <path d="M100 50 L 102 54 L 106 56 L 102 58 L 100 62 L 98 58 L 94 56 L 98 54 Z" fill="#FFFFFF" opacity="0.9"/>
+</svg>

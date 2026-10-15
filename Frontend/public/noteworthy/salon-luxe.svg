@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="salonBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5E8DD"/>
+      <stop offset="100%" stop-color="#E8D4C0"/>
+    </linearGradient>
+    <radialGradient id="sSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#D9A77B"/>
+    </radialGradient>
+    <linearGradient id="sHair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8E5A3A"/>
+      <stop offset="100%" stop-color="#5C3822"/>
+    </linearGradient>
+  </defs>
+  <!-- background -->
+  <rect width="200" height="200" fill="url(#salonBg)"/>
+  <!-- hair back halo -->
+  <path d="M30 90 Q 40 30 100 25 Q 160 30 170 90 Q 175 150 160 200 L 40 200 Q 25 150 30 90 Z" fill="url(#sHair)"/>
+  <!-- neck -->
+  <rect x="82" y="150" width="36" height="30" fill="url(#sSkin)"/>
+  <!-- face -->
+  <ellipse cx="100" cy="110" rx="42" ry="48" fill="url(#sSkin)"/>
+  <!-- hair front (bangs + side) -->
+  <path d="M58 90 Q 60 60 100 50 Q 140 60 142 90 Q 130 72 110 76 Q 100 68 90 76 Q 70 72 58 90 Z" fill="url(#sHair)"/>
+  <path d="M58 90 Q 54 130 65 180 L 48 180 Q 42 130 58 90 Z" fill="url(#sHair)"/>
+  <path d="M142 90 Q 146 130 135 180 L 152 180 Q 158 130 142 90 Z" fill="url(#sHair)"/>
+  <!-- hand near head (right) -->
+  <path d="M140 90 Q 160 70 170 85 Q 168 100 155 110 Q 145 108 140 100 Z" fill="url(#sSkin)"/>
+  <path d="M160 65 Q 170 55 170 78" stroke="url(#sSkin)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- closed eyes -->
+  <path d="M80 110 Q 86 114 92 110" stroke="#2A1E18" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M108 110 Q 114 114 120 110" stroke="#2A1E18" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- lashes -->
+  <path d="M82 109 L 81 112 M 86 110 L 86 113 M 90 110 L 91 113" stroke="#1A110C" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M110 109 L 109 112 M 114 110 L 114 113 M 118 110 L 119 113" stroke="#1A110C" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- subtle nose -->
+  <path d="M100 118 Q 97 128 100 134" stroke="#C99670" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <!-- lips -->
+  <path d="M90 142 Q 100 148 110 142 Q 100 144 90 142 Z" fill="#C97A6B"/>
+  <!-- subtle cheek blush -->
+  <ellipse cx="72" cy="128" rx="7" ry="4" fill="#F8B0A0" opacity="0.4"/>
+  <ellipse cx="128" cy="128" rx="7" ry="4" fill="#F8B0A0" opacity="0.4"/>
+</svg>

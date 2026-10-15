@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="dcShirt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8EDD8"/>
+      <stop offset="100%" stop-color="#E6D4B4"/>
+    </linearGradient>
+    <linearGradient id="dcPants" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8A8378"/>
+      <stop offset="100%" stop-color="#5C5750"/>
+    </linearGradient>
+    <radialGradient id="dcSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#D9A77B"/>
+    </radialGradient>
+    <linearGradient id="vacCan" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B52929"/>
+      <stop offset="100%" stop-color="#7A1414"/>
+    </linearGradient>
+  </defs>
+  <!-- vacuum base -->
+  <ellipse cx="80" cy="230" rx="55" ry="18" fill="#2E2E2E"/>
+  <ellipse cx="80" cy="222" rx="52" ry="22" fill="url(#vacCan)" stroke="#4A0E0E" stroke-width="1.5"/>
+  <ellipse cx="65" cy="212" rx="20" ry="6" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="55" cy="240" r="8" fill="#111"/>
+  <circle cx="105" cy="240" r="8" fill="#111"/>
+  <!-- vac hose going up -->
+  <path d="M120 215 Q 160 180 180 140" stroke="#2E2E2E" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M120 215 Q 160 180 180 140" stroke="#555" stroke-width="2" fill="none" stroke-dasharray="4 4" opacity="0.6"/>
+  <!-- person body (right side) -->
+  <path d="M160 280 L 160 180 Q 200 160 240 180 L 240 280 Z" fill="url(#dcPants)"/>
+  <!-- shirt -->
+  <path d="M150 190 Q 155 140 200 130 Q 245 140 250 190 L 250 215 Q 200 230 150 215 Z" fill="url(#dcShirt)" stroke="#C9B48A" stroke-width="1"/>
+  <!-- apron bib -->
+  <path d="M180 215 L 220 215 L 215 155 L 185 155 Z" fill="#F8EDD8" opacity="0.6" stroke="#C9B48A" stroke-width="1"/>
+  <!-- arm holding hose -->
+  <path d="M160 185 Q 150 195 150 215 L 170 220 Q 180 200 180 185 Z" fill="url(#dcSkin)"/>
+  <circle cx="160" cy="218" r="10" fill="url(#dcSkin)"/>
+  <!-- head -->
+  <ellipse cx="200" cy="100" rx="36" ry="40" fill="url(#dcSkin)"/>
+  <!-- hair bun -->
+  <ellipse cx="200" cy="70" rx="28" ry="20" fill="#2A1E18"/>
+  <circle cx="200" cy="56" r="10" fill="#2A1E18"/>
+  <!-- smile face -->
+  <path d="M186 102 Q 190 108 194 102" stroke="#2A1E18" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M206 102 Q 210 108 214 102" stroke="#2A1E18" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M190 118 Q 200 125 210 118" stroke="#C97A6B" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- sparkles -->
+  <g fill="#FFFFFF" opacity="0.9">
+    <circle cx="40" cy="60" r="3"/>
+    <circle cx="55" cy="110" r="2"/>
+    <circle cx="140" cy="70" r="2.5"/>
+    <path d="M100 40 L104 48 L112 50 L104 52 L100 60 L96 52 L88 50 L96 48 Z"/>
+    <path d="M30 170 L32 174 L36 176 L32 178 L30 182 L28 178 L24 176 L28 174 Z"/>
+  </g>
+</svg>

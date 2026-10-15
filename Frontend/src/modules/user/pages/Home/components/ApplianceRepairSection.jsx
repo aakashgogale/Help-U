@@ -215,9 +215,9 @@ const ApplianceRepairSection = React.memo(({
     : DEFAULT_APPLIANCE_SERVICES;
 
   return (
-    <section className="bg-white py-4 w-full">
+    <section className="w-full">
       {/* Section Header: Bold black title + outlined See all */}
-      <div className="px-4 mb-4 flex items-center justify-between gap-3">
+      <div className="px-4 sm:px-5 mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight leading-tight">
             {title}
@@ -240,10 +240,10 @@ const ApplianceRepairSection = React.memo(({
         )}
       </div>
 
-      {/* Swipeable horizontal list showing 2-3 cards partially visible */}
+      {/* Swipeable horizontal list showing cards */}
       <div
         ref={cardsRef}
-        className="flex items-stretch gap-3.5 overflow-x-auto px-4 pb-3 scrollbar-hide overscroll-x-contain"
+        className="flex items-stretch gap-3.5 overflow-x-auto px-4 sm:px-5 pb-2 scrollbar-hide overscroll-x-contain"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {serviceList.map((service) => (

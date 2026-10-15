@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Shadow -->
+    <radialGradient id="wcShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.25"/>
+      <stop offset="65%" stop-color="#1E2024" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- White porcelain ceramic gradient -->
+    <linearGradient id="porcelain" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="35%" stop-color="#F8FAFC"/>
+      <stop offset="75%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+
+    <!-- Plunger cup red rubber -->
+    <linearGradient id="plungerCup" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="45%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#7F1D1D"/>
+    </linearGradient>
+
+    <!-- Wooden stick -->
+    <linearGradient id="plungerStick" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="50%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient shadow -->
+  <ellipse cx="74" cy="138" rx="42" ry="6.5" fill="url(#wcShadow)"/>
+
+  <!-- Toilet Tank (Cistern at back) -->
+  <rect x="42" y="38" width="46" height="48" rx="6" fill="url(#porcelain)" stroke="#CBD5E1" stroke-width="0.8"/>
+  <rect x="40" y="34" width="50" height="8" rx="3" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="0.8"/>
+  <!-- Chrome flush button -->
+  <circle cx="65" cy="38" r="3.5" fill="#94A3B8"/>
+  <circle cx="65" cy="38" r="2" fill="#E2E8F0"/>
+
+  <!-- Toilet Bowl Base (Pedestal) -->
+  <path d="M 52 106 L 50 134 C 50 136 58 138 65 138 C 72 138 80 136 80 134 L 78 106 Z"
+        fill="url(#porcelain)" stroke="#CBD5E1" stroke-width="0.8"/>
+
+  <!-- Main Toilet Bowl -->
+  <path d="M 44 80 C 44 80 40 106 65 106 C 90 106 86 80 86 80 Z"
+        fill="url(#porcelain)" stroke="#CBD5E1" stroke-width="0.8"/>
+
+  <!-- Toilet Seat & Lid -->
+  <ellipse cx="65" cy="80" rx="24" ry="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="0.8"/>
+  <ellipse cx="65" cy="81" rx="18" ry="4.5" fill="#E2E8F0"/>
+
+  <!-- Plumber Tool (Red suction plunger standing next to toilet) -->
+  <ellipse cx="112" cy="138" rx="14" ry="4" fill="url(#wcShadow)" opacity="0.7"/>
+  <!-- Wooden handle shaft -->
+  <rect x="110" y="60" width="4" height="64" rx="2" fill="url(#plungerStick)"/>
+  <!-- Red suction cup -->
+  <path d="M 98 136 C 98 124 104 122 112 122 C 120 122 126 124 126 136 Z" fill="url(#plungerCup)"/>
+  <ellipse cx="112" cy="136" rx="14" ry="3.5" fill="#7F1D1D"/>
+</svg>

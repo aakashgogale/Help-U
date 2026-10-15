@@ -529,6 +529,12 @@ const getPublicHomeContent = async (req, res) => {
         targetCategoryId: item.targetCategoryId?.toString() || null,
         targetServiceId: item.targetServiceId?.toString() || null,
       })),
+      spotlight: (contentObj.spotlight || []).map(item => ({
+        ...item,
+        id: item._id ? item._id.toString() : item.id,
+        targetCategoryId: item.targetCategoryId?.toString() || null,
+        targetServiceId: item.targetServiceId?.toString() || null,
+      })),
       categorySections: (contentObj.categorySections || []).map(section => ({
         ...section,
         id: section._id ? section._id.toString() : section.id,
@@ -548,6 +554,7 @@ const getPublicHomeContent = async (req, res) => {
       isBookedVisible: contentObj.isBookedVisible ?? true,
       isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
       isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+      isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
       isScrapVisible: isGlobalScrapEnabled
     };
 
@@ -630,6 +637,22 @@ const getPublicHomeData = async (req, res) => {
           targetCategoryId: item.targetCategoryId?.toString() || null,
           order: item.order
         })),
+        spotlight: (contentObj.spotlight || []).map(item => ({
+          id: item._id ? item._id.toString() : item.id,
+          badge: item.badge,
+          title: item.title,
+          subtitle: item.subtitle,
+          startingPrice: item.startingPrice,
+          buttonText: item.buttonText,
+          imageUrl: item.imageUrl,
+          backgroundColor: item.backgroundColor,
+          textColor: item.textColor,
+          badgeColor: item.badgeColor,
+          targetCategoryId: item.targetCategoryId?.toString() || null,
+          targetServiceId: item.targetServiceId?.toString() || null,
+          slug: item.slug,
+          order: item.order
+        })),
         categorySections: (contentObj.categorySections || []).map(section => ({
           title: section.title,
           seeAllTargetCategoryId: section.seeAllTargetCategoryId?.toString() || null,
@@ -650,6 +673,7 @@ const getPublicHomeData = async (req, res) => {
         isBookedVisible: contentObj.isBookedVisible ?? true,
         isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
         isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+        isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
         isScrapVisible: isGlobalScrapEnabled
       };
     }
@@ -669,6 +693,119 @@ const getPublicHomeData = async (req, res) => {
   }
 };
 
+/**
+ * Per-category arrival-time estimate for the user's current location
+ * GET /api/public/categories/eta?lat=&lng=&cityId=
+ *
+ * Returns { categoryId: minutes } for every category where at least one
+ * APPROVED + online + available worker who offers that category exists
+ * within the service radius. Minutes = ceil(distance_km / avg_speed * 60)
+ * clamped to a sensible display range. Categories with no match are omitted
+ * so the UI hides the badge.
+ */
+const getCategoriesEta = async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const { cityId } = req.query;
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(200).json({ success: true, eta: {} });
+    }
+
+    const Worker = require('../../models/Worker');
+    const { WORKER_STATUS } = require('../../utils/constants');
+
+    const categoryQuery = { status: 'active' };
+    if (cityId) categoryQuery.cityIds = cityId;
+    const categories = await Category.find(categoryQuery)
+      .select('title slug')
+      .lean();
+
+    if (categories.length === 0) {
+      return res.status(200).json({ success: true, eta: {} });
+    }
+
+    // Pull the global search radius once so admins can tune it
+    const globalSettings = await Settings.findOne({ type: 'global' }).select('searchRadius').lean();
+    const radiusKm = globalSettings?.searchRadius || 15;
+    const radiusMeters = radiusKm * 1000;
+
+    // Nearby online + available workers with real coordinates. Keep select tiny.
+    const nearby = await Worker.find({
+      approvalStatus: WORKER_STATUS.APPROVED,
+      isActive: true,
+      isOnline: true,
+      availability: 'AVAILABLE',
+      'geoLocation.coordinates': { $ne: [0, 0] },
+      geoLocation: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [lng, lat] },
+          $maxDistance: radiusMeters
+        }
+      }
+    })
+      .select('service categories geoLocation')
+      .limit(200)
+      .lean();
+
+    if (nearby.length === 0) {
+      return res.status(200).json({ success: true, eta: {} });
+    }
+
+    // Precompute each worker's distance from the user (km). $near already
+    // ordered them by distance, so the first match for a category is the closest.
+    const workerDistanceKm = nearby.map(w => {
+      const [wLng, wLat] = w.geoLocation?.coordinates || [0, 0];
+      const dLat = (wLat - lat) * Math.PI / 180;
+      const dLng = (wLng - lng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat * Math.PI / 180) * Math.cos(wLat * Math.PI / 180) *
+        Math.sin(dLng / 2) ** 2;
+      return 2 * 6371 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    });
+
+    // Average urban travel speed used to convert distance -> minutes. Includes
+    // the few minutes a worker needs to acknowledge the job and set off.
+    const AVG_SPEED_KMPH = 25;
+    const BASE_MINUTES = 10;
+    const MIN_DISPLAY = 20;
+    const MAX_DISPLAY = 120;
+
+    const eta = {};
+    for (const cat of categories) {
+      const haystack = [cat.title, cat.slug].filter(Boolean).map(s => s.toLowerCase());
+
+      // Find the closest nearby worker whose declared services/categories match
+      // this category by title or slug (case-insensitive, substring match either way).
+      for (let i = 0; i < nearby.length; i++) {
+        const w = nearby[i];
+        const workerTags = [...(w.service || []), ...(w.categories || [])]
+          .map(s => (s || '').toLowerCase())
+          .filter(Boolean);
+
+        const matches = workerTags.some(tag =>
+          haystack.some(h => tag === h || tag.includes(h) || h.includes(tag))
+        );
+
+        if (matches) {
+          const km = workerDistanceKm[i];
+          const minutes = Math.ceil(BASE_MINUTES + (km / AVG_SPEED_KMPH) * 60);
+          const clamped = Math.min(MAX_DISPLAY, Math.max(MIN_DISPLAY, minutes));
+          eta[cat._id.toString()] = clamped;
+          break;
+        }
+      }
+    }
+
+    return res.status(200).json({ success: true, eta });
+  } catch (error) {
+    console.error('Get categories ETA error:', error);
+    // Soft-fail so the home grid still renders without badges
+    return res.status(200).json({ success: true, eta: {} });
+  }
+};
+
 module.exports = {
   getPublicCategories,
   getPublicBrands,
@@ -676,5 +813,6 @@ module.exports = {
   getPublicServices,
   advancedCatalogSearch,
   getPublicHomeContent,
-  getPublicHomeData
+  getPublicHomeData,
+  getCategoriesEta
 };

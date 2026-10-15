@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="jgSkin" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#D9A77B"/>
+    </radialGradient>
+    <linearGradient id="jgHair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A1E18"/>
+      <stop offset="100%" stop-color="#1A110C"/>
+    </linearGradient>
+    <linearGradient id="jgLeaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6B8F5A"/>
+      <stop offset="100%" stop-color="#415F38"/>
+    </linearGradient>
+  </defs>
+  <!-- back-right leaves -->
+  <g opacity="0.95">
+    <path d="M250 20 Q 230 50 240 90 Q 260 70 258 30 Z" fill="url(#jgLeaf)"/>
+    <path d="M258 90 Q 240 110 248 150 Q 268 130 266 100 Z" fill="url(#jgLeaf)"/>
+    <path d="M240 160 Q 220 180 232 220 Q 252 200 250 170 Z" fill="url(#jgLeaf)"/>
+    <path d="M225 60 Q 210 80 218 115 Q 232 95 230 70 Z" fill="#5A7E4A" opacity="0.75"/>
+  </g>
+  <!-- shoulders / silhouette -->
+  <path d="M50 280 Q 60 220 140 210 Q 220 220 230 280 Z" fill="#E7C8A6"/>
+  <!-- neck -->
+  <path d="M110 210 Q 140 230 170 210 L 170 180 Q 140 190 110 180 Z" fill="url(#jgSkin)"/>
+  <!-- head -->
+  <ellipse cx="140" cy="130" rx="62" ry="72" fill="url(#jgSkin)"/>
+  <!-- hair top + sides -->
+  <path d="M78 110 Q 70 60 110 42 Q 140 32 170 42 Q 210 60 202 110 Q 198 80 170 72 Q 150 68 140 78 Q 130 68 110 72 Q 82 80 78 110 Z" fill="url(#jgHair)"/>
+  <!-- hair falling right side -->
+  <path d="M196 110 Q 215 150 200 210 Q 180 200 180 180 Q 190 150 196 110 Z" fill="url(#jgHair)"/>
+  <path d="M84 110 Q 70 160 90 215 Q 110 205 108 180 Q 95 150 84 110 Z" fill="url(#jgHair)"/>
+  <!-- eyebrows -->
+  <path d="M106 118 Q 118 112 128 117" stroke="#2A1E18" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M152 117 Q 162 112 174 118" stroke="#2A1E18" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- gold eye patches -->
+  <path d="M100 135 Q 118 128 134 135 Q 128 148 118 150 Q 106 148 100 135 Z" fill="#D1A953" stroke="#A67F2C" stroke-width="1.5"/>
+  <path d="M146 135 Q 162 128 180 135 Q 174 148 162 150 Q 152 148 146 135 Z" fill="#D1A953" stroke="#A67F2C" stroke-width="1.5"/>
+  <!-- subtle sheen on patches -->
+  <path d="M104 134 Q 114 130 124 134" stroke="#F0D787" stroke-width="1" fill="none"/>
+  <path d="M150 134 Q 160 130 172 134" stroke="#F0D787" stroke-width="1" fill="none"/>
+  <!-- nose -->
+  <path d="M140 155 Q 136 170 140 175 Q 144 170 140 155 Z" fill="#C99670" opacity="0.5"/>
+  <!-- lips -->
+  <path d="M126 185 Q 140 192 154 185 Q 140 188 126 185 Z" fill="#C97A6B"/>
+  <!-- hand near chin -->
+  <path d="M160 215 Q 175 220 190 210 Q 200 230 180 245 Q 165 240 160 230 Z" fill="url(#jgSkin)" opacity="0.95"/>
+  <!-- front leaf on left -->
+  <path d="M-10 220 Q 20 240 50 230 Q 35 220 10 212 Z" fill="url(#jgLeaf)" opacity="0.9"/>
+</svg>

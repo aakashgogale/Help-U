@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Lazy load heavy components for better initial load performance
 import PromoCarousel from './components/PromoCarousel';
+import SpotlightCarousel from './components/SpotlightCarousel';
 // Lazy load OTHER heavy components
 const NewAndNoteworthy = lazy(() => import('./components/NewAndNoteworthy'));
 const MostBookedServices = lazy(() => import('./components/MostBookedServices'));
@@ -23,7 +24,7 @@ const ApplianceRepairSection = lazy(() => import('./components/ApplianceRepairSe
 const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
 const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
-import CategoryModal from './components/CategoryModal';
+import ServiceCatalogModal from './components/ServiceCatalogModal';
 import SearchOverlay from './components/SearchOverlay';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
@@ -78,9 +79,15 @@ const toAssetUrl = (url) => {
   if (!url) return '';
   const clean = url.replace('/api/upload', '/upload');
   if (clean.startsWith('http')) return clean;
+  if (clean.startsWith('/noteworthy') || clean.startsWith('/spotlight') || clean.startsWith('/categories') || clean.startsWith('/ServiceIcon') || clean.startsWith('/appliance') || clean.startsWith('/services') || clean.startsWith('/cleaning-essentials') || clean.startsWith('/cleaning')) {
+    return clean;
+  }
   const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/api$/, '');
   return `${base}${clean.startsWith('/') ? '' : '/'}${clean}`;
 };
+
+// All home sections are now 100% admin-managed via HomeContent.
+// If admin has not configured a section it renders empty (standard CMS behavior).
 
 const Home = () => {
   const navigate = useNavigate();
@@ -157,6 +164,9 @@ const Home = () => {
       const newAddress = locationObj.address;
       setAddress(newAddress);
       localStorage.setItem('currentAddress', newAddress);
+      if (typeof locationObj.lat === 'number' && typeof locationObj.lng === 'number') {
+        try { localStorage.setItem('userCoords', JSON.stringify({ lat: locationObj.lat, lng: locationObj.lng })); } catch { /* ignore */ }
+      }
 
       // Try to parse city from location object (Google Places)
       const components = locationObj.components || locationObj.address_components;
@@ -211,6 +221,9 @@ const Home = () => {
                   `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
                 );
                 const data = await response.json();
+
+                // Cache coordinates so category ETA badges can use them
+                try { localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude })); } catch { /* ignore */ }
 
                 if (data.status === 'OK' && data.results.length > 0) {
                   const result = data.results[0];
@@ -347,6 +360,21 @@ const Home = () => {
         return;
       }
     }
+    // Slug fallback: match slug (or whole-word title match) against the live
+    // categories list. Lets static/default spotlight cards resolve to a real
+    // category without the admin having to pick one.
+    if (promo.slug) {
+      const s = promo.slug.toLowerCase();
+      const cat = categories.find(c => {
+        const slug = (c.slug || '').toLowerCase();
+        const title = (c.title || '').toLowerCase();
+        return slug === s || title.includes(s) || s.includes(slug);
+      });
+      if (cat) {
+        handleCategoryClick(cat);
+        return;
+      }
+    }
     if (promo.route && !promo.slug) {
       if (promo.scrollToSection) {
         navigate(promo.route, {
@@ -365,6 +393,18 @@ const Home = () => {
     if (!service) return null;
     const linked = findCategoryById(service.targetCategoryId);
     if (linked) return linked;
+
+    // Slug fallback: lets static/default cards point at a category by its slug
+    // without the admin having to pick a specific category id.
+    if (service.slug) {
+      const s = service.slug.toLowerCase();
+      const bySlug = categories.find(c => {
+        const slug = (c.slug || '').toLowerCase();
+        const name = (c.title || '').toLowerCase();
+        return slug === s || slug.includes(s) || s.includes(slug) || name.includes(s);
+      });
+      if (bySlug) return bySlug;
+    }
 
     const title = ` ${(service.title || '').toLowerCase().replace(/[^a-z0-9.]+/g, ' ')} `;
     if (!title.trim()) return null;
@@ -402,10 +442,16 @@ const Home = () => {
     if (!service) return;
     const cat = resolveServiceCategory(service);
     if (cat) {
-      handleCategoryClick(cat);
+      handleCategoryClick({ ...cat, title: service.title || cat.title, slug: service.slug || cat.slug });
       return;
     }
-    toast(`${(service.title || 'This service').trim()} isn't available for booking yet`, { icon: '🛠️' });
+    // Directly open ServiceCatalogModal with the clicked service
+    handleCategoryClick({
+      id: service.id || service._id || service.slug,
+      title: service.title,
+      slug: service.slug || service.title?.toLowerCase().replace(/\s+/g, '-'),
+      image: service.image
+    });
   };
 
   const handleAddClick = async (service) => {
@@ -535,7 +581,7 @@ const Home = () => {
               )}
 
               {/* Categories Section */}
-              {homeContent?.isCategoriesVisible !== false && (categories || []).length > 0 && (
+              {homeContent?.isCategoriesVisible !== false && (
                 <motion.section variants={itemVariants} className="relative overflow-visible">
                   <ServiceCategories
                     categories={categories}
@@ -544,14 +590,218 @@ const Home = () => {
                 </motion.section>
               )}
 
-              {/* Dynamic Banner 1 */}
-              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[0]?.imageUrl) && (
+              {/* In the Spotlight Section (Urban-Company hero banners) */}
+              {homeContent?.isSpotlightVisible !== false && (() => {
+                const items = (homeContent?.spotlight || []).length > 0
+                  ? homeContent.spotlight
+                    .slice()
+                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                    .map(item => ({
+                      ...item,
+                      imageUrl: toAssetUrl(item.imageUrl)
+                    }))
+                  : [];
+                if (items.length === 0) return null;
+                return (
+                  <motion.section variants={itemVariants} className="relative overflow-visible">
+                    <SpotlightCarousel items={items} onItemClick={handlePromoClick} />
+                  </motion.section>
+                );
+              })()}
+
+              {/* New & Noteworthy (right below Spotlight) */}
+              {homeContent?.isNoteworthyVisible !== false && (() => {
+                const adminItems = (homeContent?.noteworthy || [])
+                  .filter(item => item && item.title)
+                  .slice()
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map(item => ({
+                    id: item.id || item._id,
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    badge: item.badge,
+                    duration: item.duration,
+                    image: toAssetUrl(item.imageUrl),
+                    slug: item.slug,
+                    targetCategoryId: item.targetCategoryId,
+                    targetServiceId: item.targetServiceId
+                  }));
+                const items = adminItems;
+                if (items.length === 0) return null;
+                return (
+                  <motion.div variants={itemVariants}>
+                    <Suspense fallback={<div className="h-44 bg-gray-50 animate-pulse rounded-2xl mx-4" />}>
+                      <NewAndNoteworthy
+                        services={items}
+                        onServiceClick={handleServiceClick}
+                      />
+                    </Suspense>
+                  </motion.div>
+                );
+              })()}
+
+              {/* Most Booked (right below New & Noteworthy) */}
+              {homeContent?.isBookedVisible !== false && (() => {
+                const adminBooked = (homeContent?.booked || [])
+                  .filter(item => item && item.title)
+                  .slice()
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map(item => ({
+                    id: item.id || item._id,
+                    title: item.title,
+                    rating: item.rating,
+                    reviews: item.reviews,
+                    price: item.price,
+                    originalPrice: item.originalPrice,
+                    discount: item.discount,
+                    optionsCount: item.optionsCount,
+                    image: toAssetUrl(item.imageUrl),
+                    targetCategoryId: item.targetCategoryId,
+                    slug: item.slug
+                  }));
+                const items = adminBooked;
+                if (items.length === 0) return null;
+                return (
+                  <motion.div variants={itemVariants}>
+                    <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                      <MostBookedServices
+                        services={items}
+                        onServiceClick={handleServiceClick}
+                        onAddClick={handleAddClick}
+                        onSeeAllClick={(services) => openSeeAll({ title: 'Most booked services', services, variant: 'booked' })}
+                      />
+                    </Suspense>
+                  </motion.div>
+                );
+              })()}
+
+              {/* Scrap Promotion Section (right below Most Booked) */}
+              {(isScrapEnabled && homeContent?.isScrapVisible !== false) && (
+                <motion.section variants={itemVariants}>
+                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
+                </motion.section>
+              )}
+
+              {/* Dynamic Category Sections — all admin-managed. Visibility controlled
+                  per-section via admin UI (delete or set isVisible=false). No hardcoded
+                  title filters here. */}
+              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).filter(s => (s.cards || []).length > 0 && !/winter/i.test(s.title || '')).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => {
+                const isAppliance = (section.title || '').toLowerCase().includes('appliance');
+                // Admin's first banner is injected right above the "Electric" section
+                const isElectric = /electric|electrician/i.test(section.title || '');
+                const electricBanner = isElectric && homeContent?.isBannersVisible !== false && homeContent?.banners?.[0]?.imageUrl ? (
+                  <motion.div key={`banner-above-${section._id || sIdx}`} variants={itemVariants}>
+                    <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
+                      <Banner
+                        imageUrl={toAssetUrl(homeContent.banners[0].imageUrl)}
+                        onClick={() => {
+                          const b = homeContent?.banners?.[0];
+                          if (b?.slug) { navigate(`/user/${b.slug}`); return; }
+                          if (b?.targetCategoryId) {
+                            const cat = categories.find(c => c.id === b.targetCategoryId);
+                            if (cat) handleCategoryClick(cat);
+                          }
+                        }}
+                      />
+                    </Suspense>
+                  </motion.div>
+                ) : null;
+
+                if (isAppliance) {
+                  return (
+                    <React.Fragment key={section._id || sIdx}>
+                      {electricBanner}
+                      <motion.div variants={itemVariants}>
+                        <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                          <ApplianceRepairSection
+                            title="Appliance repair & service"
+                            subtitle={section.subtitle}
+                            services={section.cards?.map((card, cIdx) => ({
+                              id: card._id || cIdx,
+                              title: card.title,
+                              rating: card.rating || "4.8",
+                              reviews: card.reviews || "10k+",
+                              price: card.price,
+                              originalPrice: card.originalPrice,
+                              discount: card.discount,
+                              badge: card.badge,
+                              optionsCount: card.optionsCount,
+                              image: toAssetUrl(card.imageUrl),
+                              targetCategoryId: card.targetCategoryId,
+                              slug: card.slug
+                            })) || []}
+                            onSeeAllClick={(services) => openSeeAll({
+                              title: 'Appliance repair & service',
+                              subtitle: section.subtitle,
+                              services,
+                              variant: 'appliance',
+                              category: getSectionCategory(section)
+                            })}
+                            onServiceClick={(service) => handleServiceClick(service)}
+                            onAddClick={handleAddClick}
+                          />
+                        </Suspense>
+                      </motion.div>
+                    </React.Fragment>
+                  );
+                }
+
+                // Themed sections (winter, electrical) use a matching illustration for each service
+                const artTheme = getSectionArtTheme(section.title);
+                return (
+                  <React.Fragment key={section._id || sIdx}>
+                    {electricBanner}
+                    <motion.div variants={itemVariants}>
+                      <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
+                        <ServiceSectionWithRating
+                          title={section.title}
+                          subtitle={section.subtitle}
+                          services={section.cards?.map((card, cIdx) => {
+                            const sectionArt = artTheme ? getSectionArtwork(artTheme, card.title) : null;
+                            const processedImage = sectionArt || toAssetUrl(card.imageUrl);
+                            return {
+                              id: card._id || cIdx,
+                              title: card.title,
+                              rating: card.rating || "4.8",
+                              reviews: card.reviews || "10k+",
+                              price: card.price,
+                              originalPrice: card.originalPrice,
+                              discount: card.discount,
+                              badge: card.badge,
+                              optionsCount: card.optionsCount,
+                              image: processedImage,
+                              fallbackImage: artTheme ? getSectionArtworkFallback(artTheme) : getLocalIcon(card.title),
+                              targetCategoryId: card.targetCategoryId,
+                              slug: card.slug
+                            };
+                          }) || []}
+                          onSeeAllClick={(services) => openSeeAll({
+                            title: section.title,
+                            subtitle: section.subtitle,
+                            services,
+                            category: getSectionCategory(section)
+                          })}
+                          onServiceClick={(service) => handleServiceClick(service)}
+                          onAddClick={handleAddClick}
+                        />
+                      </Suspense>
+                    </motion.div>
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Cleaning Essentials is now purely admin-driven: admin creates a
+                  categorySection titled "Cleaning Essentials" (or similar) and it
+                  renders in the dynamic categorySections map above. No fallback. */}
+
+              {/* Dynamic Banner 1 (banners[1]) — banners[0] is injected above Electric above */}
+              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[1]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                     <Banner
-                      imageUrl={homeContent?.banners?.[0] ? toAssetUrl(homeContent.banners[0].imageUrl) : null}
+                      imageUrl={toAssetUrl(homeContent.banners[1].imageUrl)}
                       onClick={() => {
-                        const b = homeContent?.banners?.[0];
+                        const b = homeContent?.banners?.[1];
                         if (b?.slug) {
                           navigate(`/user/${b.slug}`);
                           return;
@@ -588,149 +838,6 @@ const Home = () => {
                 </motion.div>
               )}
 
-              {/* New & Noteworthy */}
-              {homeContent?.isNoteworthyVisible !== false && (homeContent?.noteworthy || []).length > 0 && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-44 bg-gray-50 animate-pulse rounded-2xl mx-4" />}>
-                    <NewAndNoteworthy
-                      services={(homeContent?.noteworthy || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(item => ({
-                        id: item.id || item._id,
-                        title: item.title,
-                        subtitle: item.subtitle,
-                        badge: item.badge,
-                        rating: item.rating,
-                        reviews: item.reviews,
-                        price: item.price,
-                        originalPrice: item.originalPrice,
-                        discount: item.discount,
-                        optionsCount: item.optionsCount,
-                        duration: item.duration,
-                        image: toAssetUrl(item.imageUrl),
-                        fallbackImage: getLocalIcon(item.title),
-                        slug: item.slug,
-                        targetCategoryId: item.targetCategoryId,
-                        targetServiceId: item.targetServiceId
-                      }))}
-                      onServiceClick={handleServiceClick}
-                      onBookClick={handleServiceClick}
-                      onAddClick={handleAddClick}
-                      onSeeAllClick={(services) => openSeeAll({ title: 'New and noteworthy', services, variant: 'noteworthy' })}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
-              {/* Scrap Promotion Section */}
-              {isScrapEnabled && (
-                <motion.section variants={itemVariants}>
-                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
-                </motion.section>
-              )}
-
-              {/* Most Booked */}
-              {homeContent?.isBookedVisible !== false && (homeContent?.booked || []).length > 0 && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <MostBookedServices
-                      services={(homeContent?.booked || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(item => ({
-                        id: item.id || item._id,
-                        title: item.title,
-                        rating: item.rating,
-                        reviews: item.reviews,
-                        price: item.price,
-                        originalPrice: item.originalPrice,
-                        discount: item.discount,
-                        optionsCount: item.optionsCount,
-                        image: toAssetUrl(item.imageUrl),
-                        targetCategoryId: item.targetCategoryId,
-                        slug: item.slug
-                      }))}
-                      onServiceClick={handleServiceClick}
-                      onAddClick={handleAddClick}
-                      onSeeAllClick={(services) => openSeeAll({ title: 'Most booked services', services, variant: 'booked' })}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
-              {/* Dynamic Sections */}
-              {homeContent?.isCategorySectionsVisible !== false && (homeContent?.categorySections || []).filter(s => (s.cards || []).length > 0).sort((a, b) => (a.order || 0) - (b.order || 0)).map((section, sIdx) => {
-                const isAppliance = (section.title || '').toLowerCase().includes('appliance');
-                if (isAppliance) {
-                  return (
-                    <motion.div key={section._id || sIdx} variants={itemVariants}>
-                      <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                        <ApplianceRepairSection
-                          title="Appliance repair & service"
-                          subtitle={section.subtitle}
-                          services={section.cards?.map((card, cIdx) => ({
-                            id: card._id || cIdx,
-                            title: card.title,
-                            rating: card.rating || "4.8",
-                            reviews: card.reviews || "10k+",
-                            price: card.price,
-                            originalPrice: card.originalPrice,
-                            discount: card.discount,
-                            optionsCount: card.optionsCount,
-                            image: toAssetUrl(card.imageUrl),
-                            targetCategoryId: card.targetCategoryId,
-                            slug: card.slug
-                          })) || []}
-                          onSeeAllClick={(services) => openSeeAll({
-                            title: 'Appliance repair & service',
-                            subtitle: section.subtitle,
-                            services,
-                            variant: 'appliance',
-                            category: getSectionCategory(section)
-                          })}
-                          onServiceClick={(service) => handleServiceClick(service)}
-                          onAddClick={handleAddClick}
-                        />
-                      </Suspense>
-                    </motion.div>
-                  );
-                }
-
-                // Themed sections (winter, electrical) use a matching illustration for each service
-                const artTheme = getSectionArtTheme(section.title);
-                return (
-                  <motion.div key={section._id || sIdx} variants={itemVariants}>
-                    <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                      <ServiceSectionWithRating
-                        title={section.title}
-                        subtitle={section.subtitle}
-                        services={section.cards?.map((card, cIdx) => {
-                          const sectionArt = artTheme ? getSectionArtwork(artTheme, card.title) : null;
-                          const processedImage = sectionArt || toAssetUrl(card.imageUrl);
-                          return {
-                            id: card._id || cIdx,
-                            title: card.title,
-                            rating: card.rating || "4.8",
-                            reviews: card.reviews || "10k+",
-                            price: card.price,
-                            originalPrice: card.originalPrice,
-                            discount: card.discount,
-                            optionsCount: card.optionsCount,
-                            image: processedImage,
-                            fallbackImage: artTheme ? getSectionArtworkFallback(artTheme) : getLocalIcon(card.title),
-                            targetCategoryId: card.targetCategoryId,
-                            slug: card.slug
-                          };
-                        }) || []}
-                        onSeeAllClick={(services) => openSeeAll({
-                          title: section.title,
-                          subtitle: section.subtitle,
-                          services,
-                          category: getSectionCategory(section)
-                        })}
-                        onServiceClick={(service) => handleServiceClick(service)}
-                        onAddClick={handleAddClick}
-                      />
-                    </Suspense>
-                  </motion.div>
-                );
-              })}
-
               {/* Standalone Appliance Repair & Service section if not returned in dynamic categorySections */}
               {homeContent?.isCategorySectionsVisible !== false && !(homeContent?.categorySections || []).some(s => (s.title || '').toLowerCase().includes('appliance') && (s.cards || []).length > 0) && (
                 <motion.div variants={itemVariants}>
@@ -744,14 +851,14 @@ const Home = () => {
                 </motion.div>
               )}
 
-              {/* Dynamic Banner 2 */}
-              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[1]?.imageUrl) && (
+              {/* Dynamic Banner 2 (banners[2]) */}
+              {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[2]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
                   <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                     <Banner
-                      imageUrl={homeContent?.banners?.[1] ? toAssetUrl(homeContent.banners[1].imageUrl) : null}
+                      imageUrl={toAssetUrl(homeContent.banners[2].imageUrl)}
                       onClick={() => {
-                        const b = homeContent?.banners?.[1];
+                        const b = homeContent?.banners?.[2];
                         if (b?.targetCategoryId) {
                           const cat = categories.find(c => (c.id === b.targetCategoryId || c._id === b.targetCategoryId));
                           if (cat) handleCategoryClick(cat);
@@ -774,8 +881,8 @@ const Home = () => {
 
       {/* Removed local BottomNav, rendered by routes */}
 
-      {/* Category Modal */}
-      <CategoryModal
+      {/* Dynamic Urban Company Service Catalog Modal */}
+      <ServiceCatalogModal
         isOpen={isCategoryModalOpen}
         onClose={() => {
           setIsCategoryModalOpen(false);
@@ -783,7 +890,6 @@ const Home = () => {
         }}
         category={selectedCategory}
         location={address}
-        cartCount={cartCount}
         currentCity={currentCity}
       />
 

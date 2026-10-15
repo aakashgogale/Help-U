@@ -82,9 +82,11 @@ const getChildRoute = (parentRoute, childName) => {
     },
     "/admin/user-categories": {
       "Home": "/admin/user-categories/home",
+      "Service Management": "/admin/user-categories/service-management",
+      "Home Sections": "/admin/user-categories/sections",
+      "Manage Services": "/admin/user-categories/catalog",
       "Manage Categories": "/admin/user-categories/categories",
       "Manage Brands": "/admin/user-categories/brands",
-      "Manage Services": "/admin/user-categories/sections",
     },
     "/admin/payments": {
       "Payment Overview": "/admin/payments/overview",

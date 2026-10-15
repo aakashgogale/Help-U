@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="hsBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EEE4D6"/>
+      <stop offset="100%" stop-color="#D7C7B2"/>
+    </linearGradient>
+    <radialGradient id="hsSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#D9A77B"/>
+    </radialGradient>
+    <linearGradient id="hsHair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8E5A3A"/>
+      <stop offset="100%" stop-color="#4A2C1A"/>
+    </linearGradient>
+  </defs>
+  <!-- background -->
+  <rect width="200" height="200" fill="url(#hsBg)"/>
+  <!-- back silhouette of stylist's shoulder/arm (left blur) -->
+  <path d="M-10 160 Q 20 130 40 140 Q 50 160 42 200 L -10 200 Z" fill="#A89275" opacity="0.65"/>
+  <!-- shoulders (woman back view) -->
+  <path d="M30 200 Q 50 160 100 155 Q 150 160 170 200 Z" fill="#C9A782"/>
+  <!-- neck -->
+  <rect x="88" y="140" width="24" height="20" fill="url(#hsSkin)"/>
+  <!-- back of head -->
+  <ellipse cx="100" cy="110" rx="42" ry="48" fill="url(#hsHair)"/>
+  <!-- updo bun -->
+  <ellipse cx="100" cy="78" rx="30" ry="22" fill="url(#hsHair)"/>
+  <circle cx="88" cy="68" r="10" fill="url(#hsHair)"/>
+  <circle cx="112" cy="70" r="12" fill="url(#hsHair)"/>
+  <circle cx="100" cy="60" r="10" fill="url(#hsHair)"/>
+  <!-- loose curls at nape -->
+  <path d="M70 140 Q 72 155 85 158 Q 82 150 70 140 Z" fill="url(#hsHair)"/>
+  <path d="M130 140 Q 128 155 115 158 Q 118 150 130 140 Z" fill="url(#hsHair)"/>
+  <!-- stylist hand (right side) holding curling iron -->
+  <path d="M138 100 Q 160 90 170 105 Q 168 118 158 125 Q 148 122 138 112 Z" fill="url(#hsSkin)"/>
+  <!-- curling iron barrel + handle -->
+  <rect x="152" y="60" width="6" height="40" rx="2" fill="#2A2A2E"/>
+  <rect x="149" y="55" width="12" height="10" rx="2" fill="#C73434"/>
+  <!-- cord -->
+  <path d="M156 100 Q 180 110 185 130" stroke="#2A2A2E" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- subtle highlights on hair -->
+  <path d="M80 85 Q 100 70 125 80" stroke="#C9956C" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <path d="M70 115 Q 90 105 108 112" stroke="#C9956C" stroke-width="1" fill="none" opacity="0.3"/>
+</svg>

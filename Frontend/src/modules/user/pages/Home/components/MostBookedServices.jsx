@@ -210,9 +210,9 @@ const MostBookedServices = React.memo(({ services, onServiceClick, onAddClick, o
   }`;
 
   return (
-    <section className="bg-white py-4 w-full">
+    <section className="w-full">
       {/* Header: Bold black title + Desktop arrows */}
-      <div className="px-4 mb-4 flex items-center justify-between gap-3">
+      <div className="px-4 sm:px-5 mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight leading-tight">
           Most booked services
         </h2>
@@ -222,7 +222,7 @@ const MostBookedServices = React.memo(({ services, onServiceClick, onAddClick, o
             <button
               type="button"
               onClick={() => onSeeAllClick(serviceList)}
-              className="h-8 px-3.5 rounded-lg border border-[#E3E3E3] bg-white text-[13px] font-semibold text-[#6E42E5] hover:border-[#6E42E5]/50 hover:bg-[#F9F7FD] active:scale-95 transition-all"
+              className="text-[13px] font-semibold text-gray-500 hover:text-gray-900 transition-colors"
             >
               See all
             </button>
@@ -249,11 +249,11 @@ const MostBookedServices = React.memo(({ services, onServiceClick, onAddClick, o
         </div>
       </div>
 
-      {/* Swipeable horizontal list showing 2-3 cards partially visible */}
+      {/* Swipeable horizontal list showing cards */}
       <div
         ref={scrollRef}
         onScroll={checkScroll}
-        className="flex items-stretch gap-3.5 overflow-x-auto px-4 pb-3 scrollbar-hide overscroll-x-contain"
+        className="flex items-stretch gap-3.5 overflow-x-auto px-4 sm:px-5 pb-2 scrollbar-hide overscroll-x-contain"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {serviceList.map((service, index) => (

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Soft shadow -->
+    <radialGradient id="sinkShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.22"/>
+      <stop offset="65%" stop-color="#1E2024" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- White glossy ceramic basin gradient -->
+    <linearGradient id="ceramicBasin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="35%" stop-color="#F8FAFC"/>
+      <stop offset="75%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+
+    <!-- Chrome faucet gradient -->
+    <linearGradient id="chromeFaucet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#E2E8F0"/>
+      <stop offset="55%" stop-color="#94A3B8"/>
+      <stop offset="75%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#64748B"/>
+    </linearGradient>
+
+    <!-- Basin inner bowl shadow -->
+    <radialGradient id="bowlShadow" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#E2E8F0"/>
+      <stop offset="60%" stop-color="#CBD5E1"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Ground shadow -->
+  <ellipse cx="80" cy="130" rx="52" ry="7" fill="url(#sinkShadow)"/>
+
+  <!-- Ceramic Washbasin Base / Outer Body -->
+  <path d="M 28 80 C 28 72 32 68 40 68 L 120 68 C 128 68 132 72 132 80 L 126 114 C 124 122 116 126 108 126 L 52 126 C 44 126 36 122 34 114 Z"
+        fill="url(#ceramicBasin)" stroke="#CBD5E1" stroke-width="0.8"/>
+
+  <!-- Basin Top Rim -->
+  <ellipse cx="80" cy="74" rx="48" ry="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="0.8"/>
+
+  <!-- Basin Inner Bowl Cavity -->
+  <ellipse cx="80" cy="76" rx="42" ry="9" fill="url(#bowlShadow)"/>
+  <!-- Water drain plug -->
+  <ellipse cx="80" cy="79" rx="5" ry="2.5" fill="#64748B"/>
+  <ellipse cx="80" cy="79" rx="3.5" ry="1.5" fill="#334155"/>
+
+  <!-- Chrome Mixer Faucet (Tap) -->
+  <!-- Base collar -->
+  <rect x="75" y="60" width="10" height="5" rx="1.5" fill="url(#chromeFaucet)"/>
+  <!-- Vertical pillar -->
+  <rect x="76" y="42" width="8" height="20" rx="2" fill="url(#chromeFaucet)"/>
+  <!-- Curved spout arching forward -->
+  <path d="M 80 42 C 80 32 72 30 68 36 L 68 44" fill="none" stroke="url(#chromeFaucet)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Single lever handle on top -->
+  <path d="M 74 38 L 86 36" stroke="url(#chromeFaucet)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Spout aerator tip -->
+  <rect x="65" y="44" width="6" height="3" rx="1" fill="#475569"/>
+</svg>

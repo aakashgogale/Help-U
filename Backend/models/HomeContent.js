@@ -235,6 +235,10 @@ const homeContentSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    subtitle: {
+      type: String,
+      default: ''
+    },
     seeAllTargetCategoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
@@ -281,6 +285,23 @@ const homeContentSchema = new mongoose.Schema({
     }
   }],
 
+  // In the Spotlight carousel (Urban-Company-style hero banners)
+  spotlight: [{
+    badge: { type: String, default: '' },               // e.g. "New launch"
+    title: { type: String, default: '' },               // e.g. "Japanese glow rituals"
+    subtitle: { type: String, default: '' },            // e.g. "Starting"
+    startingPrice: { type: String, default: '' },       // e.g. "1,399"
+    buttonText: { type: String, default: 'Book now' },
+    imageUrl: { type: String, default: '' },            // right-side portrait
+    backgroundColor: { type: String, default: '#B4C2A8' }, // card bg
+    textColor: { type: String, default: '#1A1A1A' },
+    badgeColor: { type: String, default: '#7A2149' },
+    targetCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
+    slug: { type: String, default: '' },
+    targetServiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', default: null },
+    order: { type: Number, default: 0 }
+  }],
+
   // Status
   isActive: {
     type: Boolean,
@@ -295,7 +316,8 @@ const homeContentSchema = new mongoose.Schema({
   isBookedVisible: { type: Boolean, default: true },
   isCategorySectionsVisible: { type: Boolean, default: true },
   isCategoriesVisible: { type: Boolean, default: true },
-  isScrapVisible: { type: Boolean, default: true }
+  isScrapVisible: { type: Boolean, default: true },
+  isSpotlightVisible: { type: Boolean, default: true }
 }, {
   timestamps: true
 });

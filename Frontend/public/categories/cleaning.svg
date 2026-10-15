@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Soft floor shadow -->
+    <radialGradient id="clFloorShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.28"/>
+      <stop offset="60%" stop-color="#1E2024" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Metallic handle & pipe -->
+    <linearGradient id="pipeMetal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3A3D42"/>
+      <stop offset="40%" stop-color="#6B7280"/>
+      <stop offset="70%" stop-color="#2D3035"/>
+      <stop offset="100%" stop-color="#1A1C1E"/>
+    </linearGradient>
+
+    <!-- Ribbed Hose 3D gradient -->
+    <linearGradient id="hoseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4B5159"/>
+      <stop offset="35%" stop-color="#23272B"/>
+      <stop offset="70%" stop-color="#151719"/>
+      <stop offset="100%" stop-color="#2C3035"/>
+    </linearGradient>
+
+    <!-- Red Vacuum Main Body 3D spherical / cylindrical sheen -->
+    <radialGradient id="redBody" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#FF5C5C"/>
+      <stop offset="28%" stop-color="#E52E2E"/>
+      <stop offset="65%" stop-color="#B81414"/>
+      <stop offset="100%" stop-color="#7A0808"/>
+    </radialGradient>
+
+    <!-- Glossy reflection streak -->
+    <linearGradient id="redGloss" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Black Base / bumper -->
+    <linearGradient id="blackBumper" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3E4349"/>
+      <stop offset="60%" stop-color="#212427"/>
+      <stop offset="100%" stop-color="#141517"/>
+    </linearGradient>
+
+    <!-- Wheel Rim -->
+    <radialGradient id="wheelRim" cx="40%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#4B5159"/>
+      <stop offset="70%" stop-color="#1E2023"/>
+      <stop offset="100%" stop-color="#0E0F10"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Ground contact shadow -->
+  <ellipse cx="88" cy="144" rx="34" ry="7" fill="url(#clFloorShadow)"/>
+  <ellipse cx="52" cy="143" rx="14" ry="4" fill="url(#clFloorShadow)" opacity="0.6"/>
+
+  <!-- High arching suction hose (looping high from right canister down to left floor) -->
+  <!-- Hose outer back shadow -->
+  <path d="M 68 138 C 50 138 42 108 44 72 C 46 36 62 18 84 18 C 96 18 106 28 106 46 L 106 82"
+        fill="none" stroke="#16181B" stroke-width="11" stroke-linecap="round"/>
+  <!-- Hose main 3D gradient stroke -->
+  <path d="M 68 138 C 50 138 42 108 44 72 C 46 36 62 18 84 18 C 96 18 106 28 106 46 L 106 82"
+        fill="none" stroke="url(#hoseGrad)" stroke-width="8.5" stroke-linecap="round"/>
+  <!-- Hose ribbed highlight rings texture -->
+  <path d="M 68 138 C 50 138 42 108 44 72 C 46 36 62 18 84 18 C 96 18 106 28 106 46 L 106 82"
+        fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.32" stroke-linecap="round"/>
+
+  <!-- Hose connector tube wand (left side vertical pipe) -->
+  <rect x="62" y="104" width="7" height="34" rx="2" fill="url(#pipeMetal)"/>
+  <polygon points="56,138 75,138 73,143 58,143" fill="#212427"/>
+
+  <!-- Top Handle on vacuum canister -->
+  <path d="M 90 76 C 90 64 112 64 112 76" fill="none" stroke="#22252A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 90 76 C 90 64 112 64 112 76" fill="none" stroke="url(#pipeMetal)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left Wheel (slightly visible behind) -->
+  <circle cx="82" cy="132" r="12" fill="url(#wheelRim)"/>
+  <circle cx="82" cy="132" r="6" fill="#32363C"/>
+
+  <!-- Right Big Wheel -->
+  <circle cx="120" cy="130" r="14" fill="url(#wheelRim)"/>
+  <circle cx="120" cy="130" r="7" fill="#32363C"/>
+  <circle cx="120" cy="130" r="2.5" fill="#8E96A0"/>
+
+  <!-- Vacuum Base / Lower bumper -->
+  <path d="M 80 128 C 80 122 84 118 90 118 L 114 118 C 120 118 124 122 124 128 C 124 135 119 139 112 139 L 92 139 C 85 139 80 135 80 128 Z"
+        fill="url(#blackBumper)"/>
+  <!-- Bumper rim highlight -->
+  <path d="M 83 123 L 121 123" stroke="#525860" stroke-width="1" stroke-linecap="round"/>
+
+  <!-- Main Red Canister (glossy rounded 3D body) -->
+  <path d="M 84 120 C 83 95 85 75 101 75 C 117 75 119 95 118 120 C 118 126 114 128 101 128 C 88 128 84 126 84 120 Z"
+        fill="url(#redBody)"/>
+
+  <!-- Glossy curved reflection on left shoulder of canister -->
+  <path d="M 88 116 C 87 97 89 80 101 78 C 96 82 93 96 94 116 Z"
+        fill="url(#redGloss)"/>
+
+  <!-- Top button / cord reel switch -->
+  <ellipse cx="101" cy="76" rx="5" ry="2.5" fill="#23262A"/>
+  <ellipse cx="101" cy="75.5" rx="3.5" ry="1.5" fill="#5A606A"/>
+
+  <!-- Front intake socket (where hose connects) -->
+  <ellipse cx="104" cy="94" rx="5.5" ry="7" fill="#1C1E21"/>
+  <ellipse cx="104" cy="94" rx="4" ry="5.5" fill="#35393F"/>
+  <ellipse cx="104" cy="94" rx="2.5" ry="3.5" fill="#111214"/>
+
+  <!-- Front badge / line accent -->
+  <path d="M 95 108 Q 101 112 107 108" fill="none" stroke="#FFA3A3" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+</svg>

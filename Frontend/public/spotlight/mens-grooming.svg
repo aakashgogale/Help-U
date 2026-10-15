@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="mgSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#C99670"/>
+    </radialGradient>
+    <linearGradient id="mgRobe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8F6F2"/>
+      <stop offset="100%" stop-color="#DAD5CA"/>
+    </linearGradient>
+  </defs>
+  <!-- shoulders -->
+  <path d="M30 280 Q 50 210 140 200 Q 230 210 250 280 Z" fill="url(#mgRobe)" stroke="#B8B1A3" stroke-width="1"/>
+  <!-- V collar -->
+  <path d="M110 215 L 140 250 L 170 215 Z" fill="#E8E3D6"/>
+  <!-- neck -->
+  <rect x="118" y="190" width="44" height="20" fill="url(#mgSkin)"/>
+  <!-- head -->
+  <ellipse cx="140" cy="130" rx="60" ry="68" fill="url(#mgSkin)"/>
+  <!-- hair -->
+  <path d="M78 110 Q 90 50 140 50 Q 190 50 202 110 Q 198 95 180 90 Q 160 92 150 100 Q 140 92 128 95 Q 108 92 92 100 Q 84 100 78 110 Z" fill="#2A1E18"/>
+  <!-- face mask (green) -->
+  <path d="M82 128 Q 140 112 198 128 Q 200 160 170 170 Q 170 192 140 198 Q 110 192 110 170 Q 80 160 82 128 Z" fill="#B4CFA3" stroke="#8CB37A" stroke-width="1.5"/>
+  <!-- closed-eye lashes -->
+  <path d="M100 142 Q 112 148 124 142" stroke="#1A110C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M156 142 Q 168 148 180 142" stroke="#1A110C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M100 142 L 98 148 M106 145 L 105 150 M112 146 L 112 151 M118 145 L 119 150" stroke="#1A110C" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M158 145 L 158 150 M164 146 L 164 151 M170 145 L 171 150 M176 142 L 178 148" stroke="#1A110C" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- beard / stubble under mask -->
+  <path d="M110 178 Q 140 192 170 178 Q 162 198 140 202 Q 118 198 110 178 Z" fill="#3B2A20" opacity="0.6"/>
+  <!-- forehead highlight -->
+  <path d="M110 115 Q 140 108 170 115" stroke="#F7E2C8" stroke-width="2" fill="none" opacity="0.6"/>
+  <!-- cucumber slice decoration (brow) -->
+  <circle cx="112" cy="130" r="4" fill="#8CB37A"/>
+  <circle cx="168" cy="130" r="4" fill="#8CB37A"/>
+  <circle cx="112" cy="130" r="1.5" fill="#D7E6C8"/>
+  <circle cx="168" cy="130" r="1.5" fill="#D7E6C8"/>
+</svg>

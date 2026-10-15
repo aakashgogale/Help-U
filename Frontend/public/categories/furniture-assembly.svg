@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Shadow -->
+    <radialGradient id="shelfShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.25"/>
+      <stop offset="65%" stop-color="#1E2024" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Natural oak / pine wood gradient -->
+    <linearGradient id="oakWood" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="35%" stop-color="#F59E0B"/>
+      <stop offset="70%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+
+    <!-- Shelf cubby interior shadow -->
+    <linearGradient id="cubbyInterior" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#92400E"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <!-- Side panel 3D edge -->
+    <linearGradient id="sideEdge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient shadow -->
+  <ellipse cx="80" cy="136" rx="52" ry="7" fill="url(#shelfShadow)"/>
+
+  <!-- Isometric / 3D Wood Bookcase / Cubby Shelf -->
+  <!-- Outer Frame -->
+  <rect x="34" y="44" width="92" height="84" rx="4" fill="url(#oakWood)" stroke="#92400E" stroke-width="1"/>
+
+  <!-- Left Column Cubbies (3 levels) -->
+  <rect x="40" y="50" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+  <rect x="40" y="76" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+  <rect x="40" y="102" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+
+  <!-- Right Column Cubbies (3 levels) -->
+  <rect x="82" y="50" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+  <rect x="82" y="76" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+  <rect x="82" y="102" width="38" height="22" rx="2" fill="url(#cubbyInterior)"/>
+
+  <!-- Shelf Board Top highlights -->
+  <line x1="36" y1="46" x2="124" y2="46" stroke="#FEF3C7" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="40" y1="73" x2="120" y2="73" stroke="#FEF3C7" stroke-width="1"/>
+  <line x1="40" y1="99" x2="120" y2="99" stroke="#FEF3C7" stroke-width="1"/>
+
+  <!-- Center divider pillar -->
+  <line x1="80" y1="46" x2="80" y2="126" stroke="#FEF3C7" stroke-width="1"/>
+</svg>

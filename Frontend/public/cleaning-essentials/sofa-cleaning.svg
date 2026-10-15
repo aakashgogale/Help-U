@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="scBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0E8D9"/>
+      <stop offset="50%" stop-color="#D4C8B2"/>
+      <stop offset="100%" stop-color="#78261A"/>
+    </linearGradient>
+    <linearGradient id="scSofa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E6E0D4"/>
+      <stop offset="100%" stop-color="#C4BCA8"/>
+    </linearGradient>
+    <linearGradient id="scSofaShadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C4BCA8" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#8A8268" stop-opacity="0.5"/>
+    </linearGradient>
+    <radialGradient id="scSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#C99670"/>
+    </radialGradient>
+    <linearGradient id="scVacBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2E6B82"/>
+      <stop offset="100%" stop-color="#132E3A"/>
+    </linearGradient>
+  </defs>
+  <!-- room background -->
+  <rect width="220" height="220" fill="url(#scBg)"/>
+  <!-- wall divider -->
+  <rect y="80" width="220" height="2" fill="#4A2E24" opacity="0.3"/>
+  <!-- sofa (large, filling bottom 2/3) -->
+  <!-- back cushion -->
+  <path d="M15 115 Q 20 85 60 85 L 200 85 Q 210 85 212 100 L 212 140 L 15 140 Z" fill="url(#scSofa)"/>
+  <!-- seat cushion -->
+  <path d="M10 140 L 215 140 L 220 185 Q 220 195 210 195 L 20 195 Q 10 195 8 185 Z" fill="url(#scSofa)" stroke="#B0A890" stroke-width="0.8"/>
+  <!-- cushion seams -->
+  <line x1="78" y1="142" x2="78" y2="193" stroke="#A89E86" stroke-width="1"/>
+  <line x1="152" y1="142" x2="152" y2="193" stroke="#A89E86" stroke-width="1"/>
+  <!-- back cushion seam -->
+  <path d="M15 115 Q 115 110 212 115" stroke="#A89E86" stroke-width="0.8" fill="none"/>
+  <!-- arm rests -->
+  <ellipse cx="10" cy="155" rx="12" ry="22" fill="#D4CCB8"/>
+  <ellipse cx="210" cy="155" rx="12" ry="22" fill="#D4CCB8"/>
+
+  <!-- cleaned stripe (lighter area where vac has passed) -->
+  <path d="M60 148 L 150 148 L 148 180 L 62 180 Z" fill="#F5EEDE" opacity="0.85"/>
+
+  <!-- vacuum nozzle on the cushion -->
+  <!-- nozzle head (flat upholstery tool) -->
+  <path d="M90 155 L 130 155 L 128 168 L 92 168 Z" fill="url(#scVacBody)" stroke="#0A1E26" stroke-width="0.8"/>
+  <rect x="94" y="166" width="32" height="3" fill="#000" opacity="0.5"/>
+  <!-- extension wand -->
+  <rect x="113" y="100" width="6" height="60" rx="2" fill="url(#scVacBody)"/>
+  <!-- hose at top -->
+  <path d="M116 100 Q 140 80 165 70" stroke="url(#scVacBody)" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <path d="M116 100 Q 140 80 165 70" stroke="#1A4356" stroke-width="2" fill="none" stroke-dasharray="4 3" opacity="0.6"/>
+  <!-- hand gripping wand -->
+  <path d="M156 60 Q 175 50 190 65 Q 195 78 185 86 Q 172 90 160 82 Q 152 72 156 60 Z" fill="url(#scSkin)"/>
+  <!-- watch -->
+  <rect x="178" y="56" width="14" height="10" rx="2" fill="#1A1A1C"/>
+  <rect x="180" y="58" width="10" height="6" rx="1" fill="#4A4A4F"/>
+  <!-- wrist / cuff -->
+  <rect x="184" y="30" width="22" height="30" rx="4" fill="#1A1A1C" transform="rotate(10 195 45)"/>
+  <!-- tiny dust particles being sucked in -->
+  <circle cx="100" cy="150" r="1.2" fill="#8A8268"/>
+  <circle cx="110" cy="152" r="1" fill="#8A8268"/>
+  <circle cx="120" cy="150" r="1.4" fill="#8A8268"/>
+</svg>

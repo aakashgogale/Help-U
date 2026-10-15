@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120">
+  <defs>
+    <!-- Soft floor shadow beneath AC -->
+    <radialGradient id="acShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1A202C" stop-opacity="0.22"/>
+      <stop offset="65%" stop-color="#1A202C" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#1A202C" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glossy front fascia gradient -->
+    <linearGradient id="acFascia" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="8%" stop-color="#FAFBFD"/>
+      <stop offset="55%" stop-color="#EDF1F5"/>
+      <stop offset="85%" stop-color="#E2E7ED"/>
+      <stop offset="100%" stop-color="#CCD3DC"/>
+    </linearGradient>
+
+    <!-- Top curvature highlight -->
+    <linearGradient id="acHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Bottom louver flap -->
+    <linearGradient id="acFlap" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D5DCE4"/>
+      <stop offset="50%" stop-color="#EBF0F5"/>
+      <stop offset="100%" stop-color="#B8C1CC"/>
+    </linearGradient>
+
+    <!-- Display panel -->
+    <linearGradient id="dispBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E242B"/>
+      <stop offset="100%" stop-color="#0E1217"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient shadow on wall/floor -->
+  <ellipse cx="80" cy="98" rx="60" ry="6.5" fill="url(#acShadow)"/>
+
+  <!-- AC Main Body Shell (curved modern split indoor unit) -->
+  <rect x="12" y="32" width="136" height="52" rx="9" fill="url(#acFascia)" stroke="#B8C1CD" stroke-width="0.8"/>
+
+  <!-- Top highlight glare -->
+  <path d="M 16 34 Q 80 32 144 34 L 144 40 Q 80 38 16 40 Z" fill="url(#acHighlight)"/>
+
+  <!-- Air outlet louver flap (bottom horizontal slat) -->
+  <path d="M 16 71 Q 80 70 144 71 L 144 78 Q 80 79 16 78 Z" fill="url(#acFlap)"/>
+  <line x1="15" y1="70.5" x2="145" y2="70.5" stroke="#9EA8B5" stroke-width="0.7"/>
+  <line x1="16" y1="78.5" x2="144" y2="78.5" stroke="#8A95A3" stroke-width="0.7"/>
+
+  <!-- Left brand/series label -->
+  <rect x="22" y="63" width="10" height="2" rx="1" fill="#9BA4B0"/>
+
+  <!-- Dark glass display pill for temperature -->
+  <rect x="114" y="45" width="22" height="15" rx="3.5" fill="url(#dispBg)" stroke="#2D3748" stroke-width="0.5"/>
+  
+  <!-- LED Numbers: "24°" -->
+  <text x="125" y="56"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="8.5"
+        font-weight="700"
+        fill="#38BDF8"
+        text-anchor="middle"
+        letter-spacing="-0.3">24°</text>
+
+  <!-- Power LED indicator -->
+  <circle cx="131" cy="49" r="0.7" fill="#34D399"/>
+</svg>

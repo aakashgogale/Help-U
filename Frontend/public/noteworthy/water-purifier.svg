@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="wpBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5F5F7"/>
+      <stop offset="100%" stop-color="#E8EAEE"/>
+    </linearGradient>
+    <linearGradient id="wpBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A2A2E"/>
+      <stop offset="100%" stop-color="#111115"/>
+    </linearGradient>
+    <radialGradient id="wpBtn" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#78BFD6"/>
+      <stop offset="60%" stop-color="#2E6B82"/>
+      <stop offset="100%" stop-color="#132E3A"/>
+    </radialGradient>
+  </defs>
+  <!-- background -->
+  <rect width="200" height="200" fill="url(#wpBg)"/>
+  <!-- shadow under device -->
+  <ellipse cx="100" cy="178" rx="52" ry="4" fill="#000" opacity="0.1"/>
+  <!-- main body -->
+  <rect x="55" y="35" width="90" height="140" rx="10" fill="url(#wpBody)" stroke="#000" stroke-width="0.5"/>
+  <!-- top highlight -->
+  <rect x="57" y="37" width="86" height="20" rx="8" fill="#FFFFFF" opacity="0.04"/>
+  <!-- side vent lines -->
+  <rect x="60" y="150" width="80" height="1" fill="#333"/>
+  <rect x="60" y="155" width="80" height="1" fill="#333"/>
+  <!-- center circular power button -->
+  <circle cx="100" cy="90" r="22" fill="url(#wpBtn)" stroke="#0A1E26" stroke-width="1.5"/>
+  <circle cx="100" cy="90" r="15" fill="none" stroke="#78BFD6" stroke-width="1" opacity="0.7"/>
+  <circle cx="100" cy="90" r="6" fill="#A8E0ED" opacity="0.9"/>
+  <!-- brand text -->
+  <text x="100" y="138" text-anchor="middle" fill="#555" font-family="Arial, sans-serif" font-size="7" font-weight="700" letter-spacing="2">NATIVE</text>
+  <!-- tiny bottom indicators -->
+  <circle cx="92" cy="165" r="1.5" fill="#78BFD6"/>
+  <circle cx="100" cy="165" r="1.5" fill="#444"/>
+  <circle cx="108" cy="165" r="1.5" fill="#444"/>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="acUnit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#D7DEE6"/>
+    </linearGradient>
+    <linearGradient id="acAir" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CEE9F2" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#78BFD6" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="acSkin" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#F3D4B4"/>
+      <stop offset="100%" stop-color="#D9A77B"/>
+    </radialGradient>
+    <linearGradient id="uniform" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1F6FB2"/>
+      <stop offset="100%" stop-color="#0E4C86"/>
+    </linearGradient>
+  </defs>
+  <!-- wall AC unit top-right -->
+  <rect x="140" y="30" width="130" height="38" rx="8" fill="url(#acUnit)" stroke="#8893A1" stroke-width="1.2"/>
+  <rect x="140" y="30" width="130" height="12" rx="8" fill="#EEF3F7"/>
+  <rect x="150" y="52" width="110" height="2" fill="#B5C0CC"/>
+  <rect x="150" y="58" width="110" height="2" fill="#B5C0CC"/>
+  <rect x="150" y="64" width="110" height="2" fill="#B5C0CC"/>
+  <circle cx="252" cy="37" r="2" fill="#78BFD6"/>
+  <!-- cool air flow -->
+  <path d="M140 68 Q 200 140 270 68 L 270 95 Q 200 170 140 95 Z" fill="url(#acAir)"/>
+  <!-- technician head -->
+  <ellipse cx="100" cy="135" rx="32" ry="36" fill="url(#acSkin)"/>
+  <!-- cap -->
+  <path d="M68 115 Q 100 85 132 115 L 132 125 L 68 125 Z" fill="url(#uniform)"/>
+  <rect x="72" y="125" width="56" height="4" fill="#0E4C86"/>
+  <path d="M100 95 Q 90 100 85 110 Q 100 102 115 110 Q 110 100 100 95 Z" fill="#FFFFFF" opacity="0.3"/>
+  <!-- face -->
+  <circle cx="90" cy="135" r="2" fill="#2A1E18"/>
+  <circle cx="110" cy="135" r="2" fill="#2A1E18"/>
+  <path d="M93 152 Q 100 157 107 152" stroke="#2A1E18" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- body in uniform -->
+  <path d="M50 280 L 50 190 Q 100 170 150 190 L 150 280 Z" fill="url(#uniform)"/>
+  <!-- collar -->
+  <path d="M80 180 L 100 205 L 120 180 Z" fill="#FFFFFF"/>
+  <!-- id badge -->
+  <rect x="115" y="195" width="14" height="18" rx="2" fill="#FFFFFF" stroke="#0E4C86"/>
+  <!-- arm raising screwdriver -->
+  <path d="M135 215 Q 160 190 180 150" stroke="url(#uniform)" stroke-width="22" fill="none" stroke-linecap="round"/>
+  <!-- hand -->
+  <circle cx="180" cy="150" r="12" fill="url(#acSkin)"/>
+  <!-- screwdriver -->
+  <rect x="178" y="105" width="4" height="40" fill="#8A929C"/>
+  <rect x="172" y="90" width="16" height="18" rx="3" fill="#C73434"/>
+  <!-- toolbelt accents -->
+  <rect x="60" y="235" width="80" height="8" fill="#0A3A66"/>
+</svg>

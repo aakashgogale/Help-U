@@ -58,7 +58,11 @@ const ServiceWithRatingCard = memo(({ image, fallbackImage, title, rating, revie
           </div>
         )}
         {tag && (
-          <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ${tagClassName}`}>
+          <span className={`absolute top-2 left-2 text-white font-bold rounded ${
+            tag.toString().toLowerCase() === 'new'
+              ? 'bg-[#7B183E] text-[11px] font-semibold px-2 py-0.5 rounded-[6px] shadow-sm tracking-tight'
+              : `text-[10px] px-1.5 py-0.5 ${tagClassName}`
+          }`}>
             {tag}
           </span>
         )}

@@ -86,15 +86,15 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
   }
 
   return (
-    <section ref={sectionRef} className="bg-white py-4 w-full">
+    <section ref={sectionRef} className="w-full">
       {/* Header: bold title (+ subtitle) and outlined "See all" */}
-      <div ref={titleRef} className="px-4 mb-4 flex items-center justify-between gap-3" style={{ opacity: 1 }}>
+      <div ref={titleRef} className="px-4 sm:px-5 mb-3 flex items-center justify-between gap-3" style={{ opacity: 1 }}>
         <div className="min-w-0">
           <h2 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight leading-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-[13px] sm:text-sm text-[#6B7280] mt-1 leading-snug">
+            <p className="text-[13px] sm:text-sm text-[#6B7280] mt-0.5 leading-snug">
               {subtitle}
             </p>
           )}
@@ -105,7 +105,7 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
             <button
               type="button"
               onClick={() => onSeeAllClick(services)}
-              className="h-8 px-3.5 rounded-lg border border-[#E3E3E3] bg-white text-[13px] font-semibold text-[#6E42E5] hover:border-[#6E42E5]/50 hover:bg-[#F9F7FD] active:scale-95 transition-all"
+              className="text-[14px] font-semibold text-[#6E42E5] hover:text-[#582CD0] active:scale-95 transition-all"
             >
               See all
             </button>
@@ -134,7 +134,7 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
 
       <div
         ref={cardsRef}
-        className="flex items-stretch gap-3.5 sm:gap-5 overflow-x-auto px-4 pb-3 scrollbar-hide overscroll-x-contain scroll-smooth"
+        className="flex items-stretch gap-3.5 overflow-x-auto px-4 sm:px-5 pb-2 scrollbar-hide overscroll-x-contain scroll-smooth"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {services.map((service) => (
@@ -146,6 +146,7 @@ const ServiceSectionWithRating = React.memo(({ title, subtitle, services, onSeeA
             price={service.price}
             originalPrice={service.originalPrice}
             discount={service.discount}
+            badge={service.badge}
             optionsCount={service.optionsCount}
             image={service.image}
             fallbackImage={service.fallbackImage}

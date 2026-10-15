@@ -348,6 +348,31 @@ export const publicCatalogService = {
     return apiCache.get(cacheKey) || lastHomeData.get(cacheKey) || null;
   },
 
+  // Per-category arrival-time estimates for a lat/lng, keyed by category id.
+  // Short cache so the badge stays fresh while users scroll.
+  getCategoriesEta: async ({ lat, lng, cityId } = {}) => {
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return { success: true, eta: {} };
+    }
+    const roundedLat = lat.toFixed(2);
+    const roundedLng = lng.toFixed(2);
+    const cacheKey = `public:categoriesEta:${roundedLat}:${roundedLng}:${cityId || 'default'}`;
+    const cached = apiCache.get(cacheKey);
+    if (cached) return cached;
+
+    const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+    if (cityId) params.append('cityId', cityId);
+    try {
+      const response = await api.get(`/public/categories/eta?${params.toString()}`);
+      if (response.data?.success) {
+        apiCache.set(cacheKey, response.data, 60);
+      }
+      return response.data;
+    } catch {
+      return { success: true, eta: {} };
+    }
+  },
+
   // Invalidate all public caches (useful after admin updates)
   invalidateCache: () => {
     apiCache.invalidatePrefix('public:');

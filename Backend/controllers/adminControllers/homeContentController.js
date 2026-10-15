@@ -30,7 +30,7 @@ const getHomeContent = async (req, res) => {
         noteworthy: homeContent.noteworthy || [],
         booked: homeContent.booked || [],
         categorySections: homeContent.categorySections || [],
-        categorySections: homeContent.categorySections || [],
+        spotlight: homeContent.spotlight || [],
         isActive: homeContent.isActive,
         isBannersVisible: homeContent.isBannersVisible ?? true,
         isPromosVisible: homeContent.isPromosVisible ?? true,
@@ -39,6 +39,7 @@ const getHomeContent = async (req, res) => {
         isBookedVisible: homeContent.isBookedVisible ?? true,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible ?? true,
         isCategoriesVisible: homeContent.isCategoriesVisible ?? true,
+        isSpotlightVisible: homeContent.isSpotlightVisible ?? true,
         isScrapVisible: scrapEnabled,
         createdAt: homeContent.createdAt,
         updatedAt: homeContent.updatedAt
@@ -88,7 +89,8 @@ const updateHomeContent = async (req, res) => {
           newItem.id.startsWith('hcur-') ||
           newItem.id.startsWith('hnot-') ||
           newItem.id.startsWith('hbkd-') ||
-          newItem.id.startsWith('hsec-')
+          newItem.id.startsWith('hsec-') ||
+          newItem.id.startsWith('hspl-')
         )) {
           delete newItem.id;
         }
@@ -131,6 +133,7 @@ const updateHomeContent = async (req, res) => {
       if (req.body.curated !== undefined) doc.curated = sanitizeItems(req.body.curated);
       if (req.body.noteworthy !== undefined) doc.noteworthy = sanitizeItems(req.body.noteworthy);
       if (req.body.booked !== undefined) doc.booked = sanitizeItems(req.body.booked);
+      if (req.body.spotlight !== undefined) doc.spotlight = sanitizeItems(req.body.spotlight);
       if (req.body.categorySections !== undefined) {
         doc.categorySections = sanitizeItems(req.body.categorySections);
         doc.markModified('categorySections');
@@ -143,6 +146,7 @@ const updateHomeContent = async (req, res) => {
       if (req.body.isBookedVisible !== undefined) doc.isBookedVisible = req.body.isBookedVisible;
       if (req.body.isCategorySectionsVisible !== undefined) doc.isCategorySectionsVisible = req.body.isCategorySectionsVisible;
       if (req.body.isCategoriesVisible !== undefined) doc.isCategoriesVisible = req.body.isCategoriesVisible;
+      if (req.body.isSpotlightVisible !== undefined) doc.isSpotlightVisible = req.body.isSpotlightVisible;
       // Scrap visibility is owned exclusively by Settings.isScrapEnabled and is never
       // written from a home-content save. Accepting it here let any unrelated home-page
       // edit push a stale value back and silently re-enable a disabled feature.
@@ -166,6 +170,7 @@ const updateHomeContent = async (req, res) => {
         noteworthy: homeContent.noteworthy,
         booked: homeContent.booked,
         categorySections: homeContent.categorySections,
+        spotlight: homeContent.spotlight,
         isActive: homeContent.isActive,
         isBannersVisible: homeContent.isBannersVisible,
         isPromosVisible: homeContent.isPromosVisible,
@@ -174,6 +179,7 @@ const updateHomeContent = async (req, res) => {
         isBookedVisible: homeContent.isBookedVisible,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible,
         isCategoriesVisible: homeContent.isCategoriesVisible,
+        isSpotlightVisible: homeContent.isSpotlightVisible,
         isScrapVisible: scrapEnabled
       }
     });

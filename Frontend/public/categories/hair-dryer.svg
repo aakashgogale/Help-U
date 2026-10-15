@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Soft floor shadow -->
+    <radialGradient id="dryerShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.22"/>
+      <stop offset="65%" stop-color="#1E2024" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Lavender/purple 3D matte gradient -->
+    <linearGradient id="purpleMatte" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D3B8FF"/>
+      <stop offset="25%" stop-color="#B28CFA"/>
+      <stop offset="70%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#6535D4"/>
+    </linearGradient>
+
+    <!-- Barrel highlight -->
+    <linearGradient id="barrelHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Nozzle / Metallic accent -->
+    <linearGradient id="metallicGrey" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6B7280"/>
+      <stop offset="50%" stop-color="#374151"/>
+      <stop offset="100%" stop-color="#1F2937"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow beneath dryer -->
+  <ellipse cx="94" cy="136" rx="34" ry="6" fill="url(#dryerShadow)"/>
+
+  <!-- Ergonomic handle (slightly angled downwards) -->
+  <path d="M 94 80 L 104 124 C 105 129 97 132 93 131 L 82 130 C 78 129 76 125 75 120 L 78 80 Z"
+        fill="url(#purpleMatte)"/>
+  <!-- Handle highlight bevel -->
+  <path d="M 83 84 L 89 126" stroke="#E9D8FD" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Power switch on handle -->
+  <rect x="78" y="94" width="3" height="12" rx="1.5" fill="#4C1D95"/>
+  <rect x="78" y="98" width="3.5" height="5" rx="1" fill="#E2E8F0"/>
+
+  <!-- Main cylindrical barrel -->
+  <rect x="42" y="44" width="76" height="38" rx="14" fill="url(#purpleMatte)"/>
+  <!-- Top glare highlight -->
+  <path d="M 46 48 Q 80 45 114 48 L 114 55 Q 80 52 46 55 Z" fill="url(#barrelHighlight)"/>
+
+  <!-- Back air filter dome / cap -->
+  <path d="M 112 47 C 122 47 128 54 128 63 C 128 72 122 79 112 79 Z" fill="#6B21A8"/>
+  <ellipse cx="118" cy="63" rx="4" ry="11" fill="url(#metallicGrey)"/>
+  <ellipse cx="118" cy="63" rx="2" ry="7" fill="#111827"/>
+
+  <!-- Front air concentrator nozzle (left pointing) -->
+  <path d="M 44 50 L 30 54 L 30 72 L 44 76 Z" fill="url(#metallicGrey)"/>
+  <ellipse cx="30" cy="63" rx="2" ry="9" fill="#111827"/>
+
+  <!-- Rose gold / chrome accent ring between barrel and nozzle -->
+  <rect x="42" y="49" width="3" height="28" rx="1" fill="#E9D5FF"/>
+</svg>

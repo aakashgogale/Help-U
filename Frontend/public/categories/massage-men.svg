@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <!-- Soft floor shadow -->
+    <radialGradient id="mensSpaShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E2024" stop-opacity="0.25"/>
+      <stop offset="65%" stop-color="#1E2024" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#1E2024" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Dark charcoal leather mattress gradient -->
+    <linearGradient id="darkLeather" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#555C66"/>
+      <stop offset="25%" stop-color="#383F48"/>
+      <stop offset="70%" stop-color="#242930"/>
+      <stop offset="100%" stop-color="#15181C"/>
+    </linearGradient>
+
+    <!-- Rich Walnut wood legs gradient -->
+    <linearGradient id="walnutWood" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#59371D"/>
+      <stop offset="50%" stop-color="#784B29"/>
+      <stop offset="100%" stop-color="#3B220F"/>
+    </linearGradient>
+
+    <!-- Towel gradient -->
+    <linearGradient id="foldedTowel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E7ED"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient floor shadow -->
+  <ellipse cx="80" cy="132" rx="55" ry="7" fill="url(#mensSpaShadow)"/>
+
+  <!-- Walnut wood legs & frame -->
+  <!-- Left back leg -->
+  <line x1="38" y1="94" x2="26" y2="128" stroke="url(#walnutWood)" stroke-width="5" stroke-linecap="round"/>
+  <!-- Left front leg -->
+  <line x1="42" y1="94" x2="52" y2="128" stroke="url(#walnutWood)" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Cross brace left -->
+  <line x1="30" y1="116" x2="48" y2="116" stroke="#3B220F" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Right back leg -->
+  <line x1="120" y1="94" x2="108" y2="128" stroke="url(#walnutWood)" stroke-width="5" stroke-linecap="round"/>
+  <!-- Right front leg -->
+  <line x1="124" y1="94" x2="134" y2="128" stroke="url(#walnutWood)" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Cross brace right -->
+  <line x1="112" y1="116" x2="130" y2="116" stroke="#3B220F" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Horizontal support underframe -->
+  <rect x="32" y="90" width="96" height="6" rx="2" fill="#3B220F"/>
+
+  <!-- Main Charcoal Padded Mattress -->
+  <!-- Bottom shadow layer of cushion -->
+  <rect x="22" y="76" width="116" height="16" rx="8" fill="#111317"/>
+  <!-- Cushion main body -->
+  <rect x="22" y="70" width="116" height="18" rx="8" fill="url(#darkLeather)"/>
+  <!-- Top highlight glare -->
+  <path d="M 28 72 Q 80 69 132 72 L 132 75 Q 80 72 28 75 Z" fill="#FFFFFF" opacity="0.25"/>
+
+  <!-- Headrest pillow (right side) -->
+  <ellipse cx="132" cy="74" rx="8" ry="10" fill="#242930"/>
+  <ellipse cx="132" cy="74" rx="6" ry="8" fill="url(#darkLeather)"/>
+  <ellipse cx="132" cy="74" rx="3" ry="5" fill="#111417"/>
+
+  <!-- Folded White Spa Towel on bed -->
+  <rect x="60" y="65" width="28" height="7" rx="3" fill="url(#foldedTowel)" stroke="#CCD3DC" stroke-width="0.6"/>
+  <rect x="62" y="60" width="24" height="6" rx="2.5" fill="#FFFFFF" stroke="#CCD3DC" stroke-width="0.6"/>
+</svg>

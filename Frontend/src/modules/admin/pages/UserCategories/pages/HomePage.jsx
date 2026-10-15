@@ -159,6 +159,10 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   const [bookedForm, setBookedForm] = useState({ title: "", rating: "", reviews: "", price: "", originalPrice: "", discount: "", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "" });
   const [editingBookedId, setEditingBookedId] = useState(null);
 
+  const [isSpotlightModalOpen, setIsSpotlightModalOpen] = useState(false);
+  const [spotlightForm, setSpotlightForm] = useState({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "" });
+  const [editingSpotlightId, setEditingSpotlightId] = useState(null);
+
   const [isCategorySectionModalOpen, setIsCategorySectionModalOpen] = useState(false);
   const [categorySectionForm, setCategorySectionForm] = useState({ title: "", seeAllTargetCategoryId: "", seeAllSlug: "", seeAllTargetServiceId: "", cards: [] });
   const [editingCategorySectionId, setEditingCategorySectionId] = useState(null);
@@ -289,6 +293,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             newAndNoteworthy: addIds(hc.noteworthy || []), // API returns 'noteworthy', component expects 'newAndNoteworthy'
             mostBooked: addIds(hc.booked || []), // API returns 'booked', component expects 'mostBooked'
             categorySections: addIds(hc.categorySections || []),
+            spotlight: addIds(hc.spotlight || []),
             isBannersVisible: hc.isBannersVisible ?? true,
             isPromosVisible: hc.isPromosVisible ?? true,
             isCuratedVisible: hc.isCuratedVisible ?? true,
@@ -296,6 +301,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             isBookedVisible: hc.isBookedVisible ?? true,
             isCategorySectionsVisible: hc.isCategorySectionsVisible ?? true,
             isCategoriesVisible: hc.isCategoriesVisible ?? true,
+            isSpotlightVisible: hc.isSpotlightVisible ?? true,
             isScrapVisible: hc.isScrapVisible ?? true
           };
           setCatalog(next);
@@ -396,13 +402,15 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         noteworthy: homeData.newAndNoteworthy,
         booked: homeData.mostBooked,
         categorySections: homeData.categorySections,
+        spotlight: homeData.spotlight,
         isBannersVisible: homeData.isBannersVisible,
         isPromosVisible: homeData.isPromosVisible,
         isCuratedVisible: homeData.isCuratedVisible,
         isNoteworthyVisible: homeData.isNoteworthyVisible,
         isBookedVisible: homeData.isBookedVisible,
         isCategorySectionsVisible: homeData.isCategorySectionsVisible,
-        isCategoriesVisible: homeData.isCategoriesVisible
+        isCategoriesVisible: homeData.isCategoriesVisible,
+        isSpotlightVisible: homeData.isSpotlightVisible
       };
       await homeContentService.update(payload, { cityId: selectedCity });
       toast.success('Home page updated successfully!');
@@ -526,6 +534,53 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         await patchHome({ mostBooked: [...booked, { id: `hmb-${Date.now()}`, ...bookedForm }] });
       }
       resetBookedForm();
+    } catch (error) { }
+  };
+
+  // Spotlight handlers (In the Spotlight carousel)
+  const resetSpotlightForm = () => {
+    setEditingSpotlightId(null);
+    setSpotlightForm({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "" });
+    setIsSpotlightModalOpen(false);
+  };
+
+  const saveSpotlight = async () => {
+    try {
+      const title = spotlightForm.title.trim();
+      if (!title) return toast.error("Title is required");
+      const items = home?.spotlight || [];
+      if (editingSpotlightId) {
+        await patchHome({ spotlight: items.map((s) => (s.id === editingSpotlightId ? { ...s, ...spotlightForm } : s)) });
+      } else {
+        await patchHome({ spotlight: [...items, { id: `hspl-${Date.now()}`, order: items.length, ...spotlightForm }] });
+      }
+      resetSpotlightForm();
+    } catch (error) { }
+  };
+
+  const editSpotlight = (item) => {
+    setEditingSpotlightId(item.id);
+    setSpotlightForm({
+      badge: item.badge || "",
+      title: item.title || "",
+      subtitle: item.subtitle || "Starting",
+      startingPrice: item.startingPrice || "",
+      buttonText: item.buttonText || "Book now",
+      imageUrl: item.imageUrl || "",
+      backgroundColor: item.backgroundColor || "#B4C2A8",
+      textColor: item.textColor || "#1A1A1A",
+      badgeColor: item.badgeColor || "#7A2149",
+      targetCategoryId: item.targetCategoryId || "",
+      slug: item.slug || "",
+      targetServiceId: item.targetServiceId || ""
+    });
+    setIsSpotlightModalOpen(true);
+  };
+
+  const removeSpotlight = async (id) => {
+    try {
+      const items = home?.spotlight || [];
+      await patchHome({ spotlight: items.filter((s) => s.id !== id) });
     } catch (error) { }
   };
 
@@ -820,6 +875,75 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
                           >
                             <FiTrash2 className="w-3.5 h-3.5" />
                           </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* In the Spotlight (hero banner carousel) */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex items-start justify-between gap-3 pb-2 border-b border-gray-200">
+            <div>
+              <div className="text-lg font-bold text-gray-900">In the Spotlight</div>
+              <div className="text-xs text-gray-500 mt-0.5">Urban-Company-style hero banners above the categories grid</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <ToggleSwitch
+              label="Show Spotlight"
+              checked={home?.isSpotlightVisible !== false}
+              onChange={() => patchHome({ isSpotlightVisible: !home?.isSpotlightVisible })}
+            />
+            <button
+              type="button"
+              onClick={() => { resetSpotlightForm(); setIsSpotlightModalOpen(true); }}
+              className="px-4 py-2 rounded-xl text-white flex items-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg"
+              style={{ background: 'linear-gradient(to right, #2874F0, #1e5fd4)', border: 'none', cursor: 'pointer' }}
+            >
+              <FiPlus className="w-4 h-4" style={{ color: '#ffffff' }} />
+              <span>Add</span>
+            </button>
+          </div>
+          {(home.spotlight || []).length === 0 ? (
+            <div className="text-sm text-gray-500">No spotlight banners. Defaults are shown to users until you add some.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700 w-12">#</th>
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700 w-20">Image</th>
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Badge</th>
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Title</th>
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Price</th>
+                    <th className="text-left py-2 px-3 text-sm font-bold text-gray-700">Redirect</th>
+                    <th className="text-center py-2 px-3 text-sm font-bold text-gray-700 w-28">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(home.spotlight || []).map((s, idx) => (
+                    <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2.5 px-3 text-sm font-semibold text-gray-600">{idx + 1}</td>
+                      <td className="py-2.5 px-3">
+                        {s.imageUrl ? (
+                          <img src={s.imageUrl} alt="" className="h-12 w-12 object-cover rounded-lg border border-gray-200" style={{ backgroundColor: s.backgroundColor || '#F3F4F6' }} />
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg border border-gray-200" style={{ backgroundColor: s.backgroundColor || '#F3F4F6' }} />
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3"><div className="text-sm text-gray-700">{s.badge || '—'}</div></td>
+                      <td className="py-2.5 px-3"><div className="text-sm font-semibold text-gray-900">{s.title || '—'}</div></td>
+                      <td className="py-2.5 px-3"><div className="text-sm text-gray-600">{s.startingPrice ? `${s.subtitle || 'Starting'} ${s.startingPrice}` : '—'}</div></td>
+                      <td className="py-2.5 px-3"><div className="text-sm text-gray-600">{s.targetCategoryId ? getCategoryTitle(s.targetCategoryId) : (s.slug || '—')}</div></td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button type="button" onClick={() => editSpotlight(s)} className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100" title="Edit"><FiEdit2 className="w-3.5 h-3.5" /></button>
+                          <button type="button" onClick={() => removeSpotlight(s.id)} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Delete"><FiTrash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2215,6 +2339,109 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Spotlight Modal */}
+      <Modal
+        isOpen={isSpotlightModalOpen}
+        onClose={resetSpotlightForm}
+        title={editingSpotlightId ? "Edit Spotlight Banner" : "Add Spotlight Banner"}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Portrait Image (right side)</label>
+            <p className="-mt-1 mb-2 text-xs text-gray-500">Transparent PNG works best. Shown bleeding to the right edge of the card.</p>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploading(true); setUploadProgress(0);
+                try {
+                  const response = await serviceService.uploadImage(file, 'spotlight', (p) => setUploadProgress(p));
+                  if (response.success) {
+                    setSpotlightForm((p) => ({ ...p, imageUrl: response.imageUrl }));
+                    toast.success("Image uploaded!");
+                  }
+                } catch (err) {
+                  toast.error(err.response?.data?.message || "Failed to upload image");
+                } finally { setUploading(false); setUploadProgress(0); }
+              }}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+            />
+            {spotlightForm.imageUrl && !uploading && (
+              <div className="relative inline-block mt-3" style={{ backgroundColor: spotlightForm.backgroundColor }}>
+                <img src={spotlightForm.imageUrl} alt="Preview" className="h-24 w-auto object-cover rounded-lg border border-gray-200" />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-base font-bold text-gray-900 mb-2">Badge <span className="text-xs text-gray-500 font-normal">(top-left pill)</span></label>
+              <input value={spotlightForm.badge} onChange={(e) => setSpotlightForm((p) => ({ ...p, badge: e.target.value }))} placeholder="New launch" className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white" />
+            </div>
+            <div>
+              <label className="block text-base font-bold text-gray-900 mb-2">Button Text</label>
+              <input value={spotlightForm.buttonText} onChange={(e) => setSpotlightForm((p) => ({ ...p, buttonText: e.target.value }))} placeholder="Book now" className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Title</label>
+            <input value={spotlightForm.title} onChange={(e) => setSpotlightForm((p) => ({ ...p, title: e.target.value }))} placeholder="Japanese glow rituals" className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-base font-bold text-gray-900 mb-2">Subtitle</label>
+              <input value={spotlightForm.subtitle} onChange={(e) => setSpotlightForm((p) => ({ ...p, subtitle: e.target.value }))} placeholder="Starting" className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white" />
+            </div>
+            <div>
+              <label className="block text-base font-bold text-gray-900 mb-2">Starting Price</label>
+              <input value={spotlightForm.startingPrice} onChange={(e) => setSpotlightForm((p) => ({ ...p, startingPrice: e.target.value }))} placeholder="1,399" className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Background</label>
+              <input type="color" value={spotlightForm.backgroundColor} onChange={(e) => setSpotlightForm((p) => ({ ...p, backgroundColor: e.target.value }))} className="w-full h-11 border border-gray-300 rounded-lg bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Text</label>
+              <input type="color" value={spotlightForm.textColor} onChange={(e) => setSpotlightForm((p) => ({ ...p, textColor: e.target.value }))} className="w-full h-11 border border-gray-300 rounded-lg bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Badge</label>
+              <input type="color" value={spotlightForm.badgeColor} onChange={(e) => setSpotlightForm((p) => ({ ...p, badgeColor: e.target.value }))} className="w-full h-11 border border-gray-300 rounded-lg bg-white" />
+            </div>
+          </div>
+
+          <RedirectionSelector
+            categories={categories}
+            allServices={allServices}
+            targetCategoryId={spotlightForm.targetCategoryId}
+            slug={spotlightForm.slug}
+            onChange={(patch) => setSpotlightForm((p) => ({ ...p, ...patch }))}
+            label="Clicking this banner opens..."
+          />
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={saveSpotlight}
+              disabled={uploading || isSyncing}
+              className={`flex-1 py-3.5 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${(uploading || isSyncing) ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''}`}
+              style={{ backgroundColor: (uploading || isSyncing) ? '#cbd5e1' : '#2874F0' }}
+            >
+              {(uploading || isSyncing) ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <FiSave className="w-5 h-5" />}
+              {uploading ? "Uploading..." : isSyncing ? "Saving..." : (editingSpotlightId ? "Update" : "Add")}
+            </button>
+            <button onClick={resetSpotlightForm} disabled={isSyncing} className="px-6 py-3.5 text-gray-700 rounded-xl font-medium hover:bg-gray-100 border border-gray-200">Cancel</button>
           </div>
         </div>
       </Modal>
