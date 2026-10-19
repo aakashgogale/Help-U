@@ -5,11 +5,18 @@ const { authenticate } = require('../../middleware/authMiddleware');
 const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware');
 const {
   getAllCategories,
+  getCategoryChildren,
   getCategoryById,
+  checkSlugAvailability,
+  getCategoryDependencies,
   createCategory,
   updateCategory,
   deleteCategory,
-  updateCategoryOrder
+  updateCategoryOrder,
+  bulkReorderCategories,
+  bulkCategoryStatus,
+  archiveCategory,
+  restoreCategory
 } = require('../../controllers/adminControllers/categoryController');
 
 // Validation rules
@@ -26,10 +33,22 @@ const createCategoryValidation = [
     .toLowerCase()
     .matches(/^[a-z0-9-]+$/)
     .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  body('parentId')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId()
+    .withMessage('parentId must be a valid Mongo id'),
+  body('hasBrands')
+    .optional()
+    .isBoolean()
+    .withMessage('hasBrands must be boolean'),
   body('homeOrder')
     .optional()
     .isInt({ min: 0 })
     .withMessage('Home order must be a non-negative integer'),
+  body('etaDefaultMinutes')
+    .optional({ nullable: true })
+    .isInt({ min: 0 })
+    .withMessage('etaDefaultMinutes must be a non-negative integer'),
   body('status')
     .optional()
     .isIn(['active', 'inactive', 'deleted'])
@@ -37,46 +56,44 @@ const createCategoryValidation = [
 ];
 
 const updateCategoryValidation = [
-  body('title')
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Category title cannot be empty')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Title must be between 2 and 100 characters'),
-  body('slug')
-    .optional()
-    .trim()
-    .toLowerCase()
-    .matches(/^[a-z0-9-]+$/)
-    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
-  body('homeOrder')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('Home order must be a non-negative integer'),
-  body('status')
-    .optional()
-    .isIn(['active', 'inactive', 'deleted'])
-    .withMessage('Status must be active, inactive, or deleted')
+  body('title').optional().trim().notEmpty().isLength({ min: 2, max: 100 }),
+  body('slug').optional().trim().toLowerCase().matches(/^[a-z0-9-]+$/),
+  body('parentId').optional({ nullable: true, checkFalsy: true }).isMongoId(),
+  body('hasBrands').optional().isBoolean(),
+  body('homeOrder').optional().isInt({ min: 0 }),
+  body('etaDefaultMinutes').optional({ nullable: true }).isInt({ min: 0 }),
+  body('status').optional().isIn(['active', 'inactive', 'deleted'])
 ];
 
-// Routes
-// GET /api/admin/categories - Get all categories
+// Reorder validation (used by bulkReorderCategories).
+const reorderValidation = [
+  body('items').isArray({ min: 1 }).withMessage('items[] is required'),
+  body('items.*.id').isMongoId().withMessage('Each item.id must be a valid Mongo id'),
+  body('items.*.homeOrder').isInt({ min: 0 }).withMessage('Each item.homeOrder must be a non-negative integer')
+];
+
+const bulkStatusValidation = [
+  body('ids').isArray({ min: 1 }).withMessage('ids[] is required'),
+  body('ids.*').isMongoId().withMessage('Each id must be a valid Mongo id'),
+  body('status').isIn(['active', 'inactive', 'deleted']).withMessage('status must be active, inactive or deleted')
+];
+
+// Static / collection routes (register BEFORE :id routes so '/slug-available',
+// '/reorder', '/bulk-status' don't collide with /categories/:id).
+router.get('/categories/slug-available', authenticate, isAdmin, requirePermission('categories'), checkSlugAvailability);
+router.patch('/categories/reorder', authenticate, isAdmin, requirePermission('categories'), reorderValidation, bulkReorderCategories);
+router.patch('/categories/bulk-status', authenticate, isAdmin, requirePermission('categories'), bulkStatusValidation, bulkCategoryStatus);
+
+// Standard CRUD + per-id helpers
 router.get('/categories', authenticate, isAdmin, requirePermission('categories'), getAllCategories);
-
-// GET /api/admin/categories/:id - Get single category
 router.get('/categories/:id', authenticate, isAdmin, requirePermission('categories'), getCategoryById);
-
-// POST /api/admin/categories - Create new category
+router.get('/categories/:id/children', authenticate, isAdmin, requirePermission('categories'), getCategoryChildren);
+router.get('/categories/:id/dependencies', authenticate, isAdmin, requirePermission('categories'), getCategoryDependencies);
 router.post('/categories', authenticate, isAdmin, requirePermission('categories'), createCategoryValidation, createCategory);
-
-// PUT /api/admin/categories/:id - Update category
 router.put('/categories/:id', authenticate, isAdmin, requirePermission('categories'), updateCategoryValidation, updateCategory);
-
-// DELETE /api/admin/categories/:id - Delete category (soft delete)
 router.delete('/categories/:id', authenticate, isAdmin, requirePermission('categories'), deleteCategory);
-
-// PATCH /api/admin/categories/:id/order - Update category order
+router.post('/categories/:id/archive', authenticate, isAdmin, requirePermission('categories'), archiveCategory);
+router.post('/categories/:id/restore', authenticate, isAdmin, requirePermission('categories'), restoreCategory);
 router.patch('/categories/:id/order', authenticate, isAdmin, requirePermission('categories'), updateCategoryOrder);
 
 module.exports = router;

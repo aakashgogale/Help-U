@@ -207,6 +207,20 @@ const ALL_SERVICES_SECTIONS = [
     ]
   },
   {
+    id: 'painting-section',
+    title: 'Painting',
+    items: [
+      {
+        id: 'wall-painting',
+        title: 'Wall Painting',
+        icon: '/ServiceIcon/painting-roller.svg?v=4',
+        eta: null,
+        slug: 'painting',
+        matchKeywords: ['paint', 'painting', 'wall', 'interior', 'exterior', 'colour', 'color']
+      }
+    ]
+  },
+  {
     id: 'electrician-plumber-carpenter',
     title: 'Electrician, Plumber & Carpenter',
     subsections: [
@@ -506,6 +520,14 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
 // =========================================================================
 // Grouped All Services Drawer (Triggered by the 6th "All services" tile)
 // =========================================================================
+// Slugs already covered by the hardcoded ALL_SERVICES_SECTIONS tiles
+const COVERED_SLUGS = new Set();
+ALL_SERVICES_SECTIONS.forEach(sec => {
+  const collect = (items) => (items || []).forEach(i => { if (i.slug) COVERED_SLUGS.add(i.slug.toLowerCase()); });
+  collect(sec.items);
+  (sec.subsections || []).forEach(sub => collect(sub.items));
+});
+
 const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose }) => {
   const [address, setAddress] = useState('');
 
@@ -514,6 +536,15 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
       setAddress(localStorage.getItem('currentAddress') || 'Select Location');
     }
   }, [open]);
+
+  const extraCategories = useMemo(() => {
+    if (!Array.isArray(categories) || categories.length === 0) return [];
+    return categories.filter(c => {
+      const slug = (c.slug || '').toLowerCase();
+      if (!slug || COVERED_SLUGS.has(slug) || c.showOnHome === false) return false;
+      return !!(c.icon || c.homeIconUrl);
+    });
+  }, [categories]);
 
   const content = (
     <AnimatePresence>
@@ -570,6 +601,34 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
 
               {/* Scrollable Grouped Categories Content */}
               <div className="overflow-y-auto px-5 py-5 space-y-7">
+                {/* Dynamic categories from backend (not covered by hardcoded sections) */}
+                {extraCategories.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-[19px] sm:text-[20px] font-bold text-[#111827] tracking-tight">
+                      More Services
+                    </h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {extraCategories.map((cat) => {
+                        const liveEta = etaMap[cat.id] || etaMap[cat._id];
+                        const icon = toAssetUrl(cat.icon) || null;
+                        return (
+                          <ServiceTile
+                            key={cat.id || cat._id}
+                            title={cat.title}
+                            icon={icon}
+                            etaMinutes={liveEta}
+                            onClick={() => {
+                              onPick(cat);
+                              onClose();
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="border-b border-gray-100/90 pt-3" />
+                  </div>
+                )}
+
                 {ALL_SERVICES_SECTIONS.map((section, sIdx) => (
                   <div key={section.id} className="space-y-3">
                     <h3 className="text-[19px] sm:text-[20px] font-bold text-[#111827] tracking-tight">
@@ -637,6 +696,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                     )}
                   </div>
                 ))}
+
               </div>
             </div>
           </motion.div>

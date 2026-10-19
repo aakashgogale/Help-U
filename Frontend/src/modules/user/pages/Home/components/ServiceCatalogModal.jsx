@@ -1118,7 +1118,7 @@ const resolveCategoryKey = (categoryOrService) => {
   if (text.includes('ac') || text.includes('air-conditioner') || text.includes('cooler')) {
     return 'ac-repair';
   }
-  if (text.includes('clean') || text.includes('bathroom') || text.includes('kitchen') || text.includes('sofa') || text.includes('pest')) {
+  if (text.includes('clean') || text.includes('bathroom') || text.includes('kitchen') || text.includes('sofa')) {
     return 'cleaning';
   }
   if (text.includes('wash') || text.includes('laundry')) {
@@ -1134,8 +1134,10 @@ const resolveCategoryKey = (categoryOrService) => {
     return 'mens-salon';
   }
 
-  return 'womens-salon';
+  return null;
 };
+
+const EMPTY_CATALOG = { sections: [], subCategories: [] };
 
 // =========================================================================
 // ServiceCatalogModal Component
@@ -1156,23 +1158,118 @@ const ServiceCatalogModal = React.memo(({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [backendServices, setBackendServices] = useState([]);
+  const [catalogData, setCatalogData] = useState(null);
   const [addingId, setAddingId] = useState(null);
 
   const sectionRefs = useRef({});
   const catalogScrollRef = useRef(null);
 
+  // Smooth scroll to a section
+  const scrollToSection = useCallback((sectionId) => {
+    setActiveSubTab(sectionId);
+    const el = sectionRefs.current[sectionId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setIsMenuOpen(false);
+  }, []);
+
   // Determine active catalog dataset
   const catalogKey = useMemo(() => resolveCategoryKey(category), [category]);
-  const catalogConfig = CATALOG_DATA[catalogKey] || CATALOG_DATA['womens-salon'];
+  const hardcodedConfig = catalogKey && CATALOG_DATA[catalogKey];
+
+  const catalogConfig = useMemo(() => {
+    if (hardcodedConfig) return hardcodedConfig;
+    if (!catalogData) return EMPTY_CATALOG;
+    const cat = catalogData.category || {};
+    return {
+      title: cat.title,
+      etaMinutes: cat.etaDefaultMinutes,
+      rating: cat.displayRating,
+      bookings: cat.bookingsLabel,
+      hero: catalogData.hero && catalogData.hero.title ? catalogData.hero : null,
+      coupon: catalogData.bestCoupon || null,
+      subCategories: (catalogData.subCategories || []).map(sc => ({
+        id: sc._id || sc.slug,
+        title: sc.title,
+        icon: sc.icon || sc.homeIconUrl
+      })),
+      sections: []
+    };
+  }, [hardcodedConfig, catalogData]);
 
   const categoryTitle = category?.title || catalogConfig.title;
 
+  // Group backend services by brand / section
+  const liveSections = useMemo(() => {
+    if (!backendServices || backendServices.length === 0) return [];
+
+    const groups = new Map();
+    backendServices.forEach((s) => {
+      const brandTitle = s.brandName || s.categoryName || 'Services';
+      const brandSlug = `section-${String(brandTitle).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+      if (!groups.has(brandSlug)) {
+        groups.set(brandSlug, {
+          id: brandSlug,
+          title: brandTitle,
+          items: []
+        });
+      }
+
+      const itemPrice = Number(s.basePrice ?? s.price ?? s.amount ?? 499);
+      const itemOriginalPrice = s.originalPrice ? Number(s.originalPrice) : undefined;
+      const durationStr = s.durationMinutes ? `${s.durationMinutes} mins` : (s.duration ? `${s.duration} mins` : '45 mins');
+
+      groups.get(brandSlug).items.push({
+        id: s._id || s.id,
+        isBackendService: true,
+        backendServiceId: s._id || s.id,
+        title: s.title || s.name,
+        price: itemPrice,
+        originalPrice: itemOriginalPrice,
+        discount: s.discountLabel || (itemOriginalPrice && itemPrice ? `${Math.round(((itemOriginalPrice - itemPrice) / itemOriginalPrice) * 100)}% OFF` : null),
+        rating: s.rating ? String(s.rating) : '4.8',
+        reviews: s.reviewsCount ? `${s.reviewsCount} reviews` : (s.reviews || '1k+ reviews'),
+        duration: durationStr,
+        image: s.icon ? toAssetUrl(s.icon) : (s.images?.[0] ? toAssetUrl(s.images[0]) : null),
+        isPackage: Boolean(s.isPackage || (s.variants && s.variants.length > 0)),
+        variants: s.variants || [],
+        bullets: Array.isArray(s.inclusions) && s.inclusions.length > 0
+          ? s.inclusions
+          : (Array.isArray(s.features) && s.features.length > 0
+            ? s.features
+            : [s.description || 'Verified expert service with warranty']),
+        description: s.description || ''
+      });
+    });
+
+    return Array.from(groups.values());
+  }, [backendServices]);
+
+  // Combined SubCategories (pills at top)
+  const combinedSubCategories = useMemo(() => {
+    const livePills = liveSections.map((sec) => ({
+      id: sec.id,
+      title: sec.title,
+      icon: sec.items[0]?.image || '/categories/cleaning.svg?v=4',
+      isNew: true
+    }));
+    return [...livePills, ...(catalogConfig.subCategories || [])];
+  }, [liveSections, catalogConfig.subCategories]);
+
   // Set default active tab
   useEffect(() => {
-    if (catalogConfig.subCategories?.[0]) {
-      setActiveSubTab(catalogConfig.subCategories[0].id);
+    if (category?.initialBrand?.title) {
+      const bSlug = `section-${String(category.initialBrand.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      setActiveSubTab(bSlug);
+      setTimeout(() => scrollToSection(bSlug), 300);
+      return;
     }
-  }, [catalogConfig]);
+    if (combinedSubCategories?.[0]) {
+      setActiveSubTab(combinedSubCategories[0].id);
+    }
+  }, [combinedSubCategories, category?.initialBrand, scrollToSection]);
 
   // Fetch live backend services if category ID exists
   useEffect(() => {
@@ -1181,58 +1278,50 @@ const ServiceCatalogModal = React.memo(({
       setIsSearchOpen(false);
       setIsMenuOpen(false);
       setSelectedItemDetails(null);
+      setBackendServices([]);
+      setCatalogData(null);
       return;
     }
 
-    const fetchLiveServices = async () => {
-      if (category?.id || category?._id) {
+    const fetchLiveData = async () => {
+      const catId = category?.id || category?._id;
+      const catSlug = category?.slug;
+      if (!catId && !catSlug) return;
+
+      try {
+        const slugOrId = catSlug || catId;
+        const res = await publicCatalogService.getCatalog(slugOrId);
+        if (res.success) {
+          setCatalogData(res);
+          const allServices = (res.sections || []).flatMap(s => (s.services || []).map(svc => ({
+            ...svc,
+            brandName: s.title,
+            brandIcon: s.iconUrl,
+            categoryName: res.category?.title
+          })));
+          if (allServices.length > 0) {
+            setBackendServices(allServices);
+            return;
+          }
+        }
+      } catch { /* fall through to getServices */ }
+
+      if (catId) {
         try {
-          const res = await publicCatalogService.getServices({
-            categoryId: category.id || category._id
-          });
+          const res = await publicCatalogService.getServices({ categoryId: catId });
           if (res.success && Array.isArray(res.services)) {
             setBackendServices(res.services);
           }
-        } catch {
-          // Fallback silently to curated catalog
-        }
+        } catch { /* silent fallback */ }
       }
     };
 
-    fetchLiveServices();
-  }, [isOpen, category?.id, category?._id]);
+    fetchLiveData();
+  }, [isOpen, category?.id, category?._id, category?.slug]);
 
-  // Combine curated sections with live backend services
+  // Combine curated sections with live backend services (LIVE AT TOP)
   const combinedSections = useMemo(() => {
-    let sections = catalogConfig.sections || [];
-
-    // If backend has services, inject live section
-    if (backendServices.length > 0) {
-      const liveItems = backendServices.map(s => ({
-        id: s._id || s.id,
-        isBackendService: true,
-        backendServiceId: s._id || s.id,
-        title: s.title || s.name,
-        price: Number(s.price) || 499,
-        originalPrice: s.originalPrice ? Number(s.originalPrice) : undefined,
-        rating: s.rating || '4.8',
-        reviews: s.reviews || '500+ reviews',
-        duration: s.duration ? `${s.duration} mins` : '45 mins',
-        image: s.icon ? toAssetUrl(s.icon) : null,
-        bullets: Array.isArray(s.features) && s.features.length > 0
-          ? s.features
-          : [s.description || 'Verified expert service with warranty']
-      }));
-
-      sections = [
-        ...sections,
-        {
-          id: 'live-catalog',
-          title: 'Specialty Services',
-          items: liveItems
-        }
-      ];
-    }
+    let sections = [...liveSections, ...(catalogConfig.sections || [])];
 
     // Filter by search query if any
     if (searchQuery.trim()) {
@@ -1247,7 +1336,7 @@ const ServiceCatalogModal = React.memo(({
     }
 
     return sections;
-  }, [catalogConfig.sections, backendServices, searchQuery]);
+  }, [liveSections, catalogConfig.sections, searchQuery]);
 
   // Cart calculations
   const cartItemMap = useMemo(() => {
@@ -1331,15 +1420,6 @@ const ServiceCatalogModal = React.memo(({
     }
   };
 
-  // Smooth scroll to a section
-  const scrollToSection = useCallback((sectionId) => {
-    setActiveSubTab(sectionId);
-    const el = sectionRefs.current[sectionId];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    setIsMenuOpen(false);
-  }, []);
 
   // Share link
   const handleShare = async () => {
@@ -1549,10 +1629,10 @@ const ServiceCatalogModal = React.memo(({
             {/* ========================================================================= */}
             {/* SUB-CATEGORY PILL SELECTOR (Screenshots 1 & 2) */}
             {/* ========================================================================= */}
-            {catalogConfig.subCategories?.length > 0 && (
+            {combinedSubCategories?.length > 0 && (
               <div className="mt-2.5 border-y border-gray-100 bg-white py-3">
                 <div className="flex items-start gap-3.5 overflow-x-auto px-4 scrollbar-hide overscroll-x-contain">
-                  {catalogConfig.subCategories.map((sub) => {
+                  {combinedSubCategories.map((sub) => {
                     const isActive = activeSubTab === sub.id;
                     return (
                       <button

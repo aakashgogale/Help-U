@@ -25,14 +25,22 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
   const [trendingServices, setTrendingServices] = useState([]);
   const inputRef = useRef(null);
 
-  // Load recent searches and trending services on mount
+  // Recent searches load on mount (localStorage read, no network).
   useEffect(() => {
     const saved = localStorage.getItem('recent_searches');
     if (saved) {
       setRecentSearches(JSON.parse(saved).slice(0, 5));
     }
+  }, []);
 
-    // Fetch trending services (Most Booked)
+  // Trending services only load when the overlay is actually opened, and only
+  // once per session. The overlay mounts unconditionally from Home, so this
+  // used to fire on every /user visit even if the user never tapped search.
+  const trendingFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen || trendingFetchedRef.current) return;
+    trendingFetchedRef.current = true;
+
     const fetchTrending = async () => {
       try {
         const res = await publicCatalogService.getHomeContent();
@@ -47,7 +55,6 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
           setTrendingServices(filtered.slice(0, 5));
         } else {
           // Fallback to project-specific trending services if API returns empty
-          console.log('Using fallback trending services');
           setTrendingServices([
             { id: 'trend-1', title: 'AC Repair & Service', category: 'AC & Appliance', imageUrl: '/assets/icons/services/ac.png' },
             { id: 'trend-2', title: 'Washing Machine Repair', category: 'AC & Appliance', imageUrl: '/assets/icons/services/washing-machine.png' },
@@ -57,8 +64,8 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
           ]);
         }
       } catch (error) {
-        console.error("Failed to load trending services", error);
-        // Fallback on error too
+        // On error, allow a retry next time the overlay opens.
+        trendingFetchedRef.current = false;
         setTrendingServices([
           { id: 'trend-1', title: 'AC Repair & Service', category: 'AC & Appliance' },
           { id: 'trend-2', title: 'Washing Machine Repair', category: 'AC & Appliance' },
@@ -69,7 +76,7 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
       }
     };
     fetchTrending();
-  }, []);
+  }, [isOpen]);
 
   // Focus input when opened
   useEffect(() => {
@@ -138,30 +145,49 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
     }
 
     // 2. Handle Service/Brand Click
-    let catId = item.categoryId || item.targetCategoryId || item.categoryId;
+    const catId = item.parentCategoryId || item.categoryId || item.targetCategoryId;
     let category = null;
 
     if (catId) {
       category = categories.find(c => (c.id === catId || c._id === catId));
     }
 
+    if (!category && item.parentCategoryId) {
+      category = categories.find(c => (c.id === item.parentCategoryId || c._id === item.parentCategoryId));
+    }
+
     if (!category && item.category) {
-      category = categories.find(c => c.title === item.category);
+      category = categories.find(c => c.title?.toLowerCase() === item.category?.toLowerCase());
     }
 
-    if (category) {
-      // If it's a service match, tell the modal to open THIS brand immediately
-      const initialBrand = item.brandId ? {
-        id: item.brandId,
-        title: item.brandName || item.category,
-        iconUrl: item.brandIcon || item.icon
-      } : (item.id && !item.isCategory ? item : null);
-
-      onCategoryClick({
-        ...category,
-        initialBrand: initialBrand
-      });
+    if (!category && (item.categoryName || item.title)) {
+      const text = `${item.categoryName || ''} ${item.title || ''}`.toLowerCase();
+      category = categories.find(c =>
+        text.includes((c.title || '').toLowerCase()) ||
+        (c.slug && text.includes(c.slug.toLowerCase()))
+      );
     }
+
+    // Fallback: construct category so the modal definitely opens with this service
+    if (!category) {
+      category = {
+        id: item.parentCategoryId || item.categoryId || item.id,
+        _id: item.parentCategoryId || item.categoryId || item.id,
+        title: item.categoryName || item.title,
+        slug: item.slug || 'services'
+      };
+    }
+
+    const initialBrand = item.brandId ? {
+      id: item.brandId,
+      title: item.brandName || item.category,
+      iconUrl: item.brandIcon || item.icon
+    } : (item.id && !item.isCategory ? item : null);
+
+    onCategoryClick({
+      ...category,
+      initialBrand: initialBrand
+    });
   };
 
   const handleTermClick = (term) => {

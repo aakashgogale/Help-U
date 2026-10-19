@@ -1,7 +1,14 @@
 const Brand = require('../../models/Brand');
 const Category = require('../../models/Category');
+const UserService = require('../../models/UserService');
+const Booking = require('../../models/Booking');
+const Cart = require('../../models/Cart');
+const Coupon = require('../../models/Coupon');
+const HomeContent = require('../../models/HomeContent');
 const { validationResult } = require('express-validator');
 const { SERVICE_STATUS } = require('../../utils/constants');
+const { invalidatePublicCatalogKeys } = require('../../utils/catalogCache');
+const { writeAudit } = require('../../utils/auditLog');
 
 /**
  * Get all brands
@@ -78,6 +85,8 @@ const getAllBrands = async (req, res) => {
           isFeatured: brand.isFeatured,
           rating: brand.rating,
           totalBookings: brand.totalBookings,
+          displayOrder: brand.displayOrder || 0,
+          bannerPromo: brand.bannerPromo || { title: '', subtitle: '', originalPrice: null, imageUrl: '' },
           page: cleanMongoIds(brand.page) || {},
           sections: cleanMongoIds(brand.sections) || [],
           createdAt: brand.createdAt,
@@ -150,6 +159,8 @@ const getBrandById = async (req, res) => {
         isFeatured: brand.isFeatured,
         rating: brand.rating,
         totalBookings: brand.totalBookings,
+        displayOrder: brand.displayOrder || 0,
+        bannerPromo: brand.bannerPromo || { title: '', subtitle: '', originalPrice: null, imageUrl: '' },
         page: cleanMongoIds(brand.page) || {},
         sections: cleanMongoIds(brand.sections) || [],
         createdAt: brand.createdAt,
@@ -192,7 +203,9 @@ const createBrand = async (req, res) => {
       discountPrice,
       page,
       sections,
-      cityIds
+      cityIds,
+      bannerPromo,
+      displayOrder
     } = req.body;
 
     // Validate cities if provided
@@ -276,10 +289,19 @@ const createBrand = async (req, res) => {
       page: sanitizedPage,
       sections: sanitizedSections,
       cityIds: cityIds || [],
+      displayOrder: Number(displayOrder) || 0,
+      bannerPromo: bannerPromo ? {
+        title: String(bannerPromo.title || '').trim(),
+        subtitle: String(bannerPromo.subtitle || '').trim(),
+        originalPrice: bannerPromo.originalPrice !== undefined && bannerPromo.originalPrice !== null && bannerPromo.originalPrice !== '' ? Number(bannerPromo.originalPrice) : null,
+        imageUrl: String(bannerPromo.imageUrl || '').trim()
+      } : undefined,
       status: SERVICE_STATUS.ACTIVE,
       createdBy: req.user.id
     });
 
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'create', entityType: 'brand', entityId: brand._id, after: brand });
     res.status(201).json({
       success: true,
       message: 'Brand created successfully',
@@ -292,6 +314,8 @@ const createBrand = async (req, res) => {
         logo: brand.logo,
         badge: brand.badge,
         routePath: brand.routePath,
+        displayOrder: brand.displayOrder || 0,
+        bannerPromo: brand.bannerPromo || { title: '', subtitle: '', originalPrice: null, imageUrl: '' },
         page: brand.page,
         sections: brand.sections,
         createdAt: brand.createdAt,
@@ -422,8 +446,19 @@ const updateBrand = async (req, res) => {
       }
     }
     if (status !== undefined) brand.status = status;
+    if (req.body.displayOrder !== undefined) brand.displayOrder = Number(req.body.displayOrder) || 0;
+    if (req.body.bannerPromo !== undefined) {
+      brand.bannerPromo = {
+        title: String(req.body.bannerPromo?.title || '').trim(),
+        subtitle: String(req.body.bannerPromo?.subtitle || '').trim(),
+        originalPrice: req.body.bannerPromo?.originalPrice !== undefined && req.body.bannerPromo?.originalPrice !== null && req.body.bannerPromo?.originalPrice !== '' ? Number(req.body.bannerPromo.originalPrice) : null,
+        imageUrl: String(req.body.bannerPromo?.imageUrl || '').trim()
+      };
+    }
 
     await brand.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'update', entityType: 'brand', entityId: brand._id, after: brand });
 
     res.status(200).json({
       success: true,
@@ -437,6 +472,8 @@ const updateBrand = async (req, res) => {
         logo: brand.logo,
         badge: brand.badge,
         routePath: brand.routePath,
+        displayOrder: brand.displayOrder || 0,
+        bannerPromo: brand.bannerPromo || { title: '', subtitle: '', originalPrice: null, imageUrl: '' },
         page: brand.page,
         sections: brand.sections,
         createdAt: brand.createdAt,
@@ -479,8 +516,12 @@ const deleteBrand = async (req, res) => {
     }
 
     // Soft delete - set status to deleted
+    const before = brand.toObject();
+    brand.previousStatus = brand.status || 'active';
     brand.status = SERVICE_STATUS.DELETED;
     await brand.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'delete', entityType: 'brand', entityId: brand._id, before, after: brand });
 
     res.status(200).json({
       success: true,
@@ -563,6 +604,7 @@ const updateBrandPage = async (req, res) => {
     }
 
     await brand.save();
+    await invalidatePublicCatalogKeys();
 
     res.status(200).json({
       success: true,
@@ -609,6 +651,139 @@ const uploadBrandImage = async (req, res) => {
   }
 };
 
+/**
+ * Dependency report for a brand — what still points at it.
+ * GET /api/admin/brands/:id/dependencies
+ */
+const getBrandDependencies = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brand = await Brand.findById(id).select('_id title').lean();
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    const [activeServices, activeBookings, activeCarts, couponRefs, homeContentRefs] = await Promise.all([
+      UserService.countDocuments({ brandId: id, status: { $ne: 'deleted' } }).catch(() => 0),
+      // Bookings link to serviceId; count every active booking whose service belongs to this brand.
+      UserService.find({ brandId: id }).select('_id').lean().then(services => {
+        const ids = services.map(s => s._id);
+        if (ids.length === 0) return 0;
+        return Booking.countDocuments({ serviceId: { $in: ids }, status: { $nin: ['completed', 'cancelled', 'rejected'] } });
+      }).catch(() => 0),
+      UserService.find({ brandId: id }).select('_id').lean().then(services => {
+        const ids = services.map(s => s._id);
+        if (ids.length === 0) return 0;
+        return Cart.countDocuments({ 'items.serviceId': { $in: ids } });
+      }).catch(() => 0),
+      Coupon.countDocuments({ isActive: true, services: { $in: await UserService.find({ brandId: id }).distinct('_id').catch(() => []) } }).catch(() => 0),
+      HomeContent.countDocuments({
+        // Brand doesn't have a direct target field on HomeContent today, but
+        // its sections may reference services under it. Count conservatively
+        // by checking service-targeted refs for any service of this brand.
+        'categorySections.cards.targetServiceId': { $in: await UserService.find({ brandId: id }).distinct('_id').catch(() => []) }
+      }).catch(() => 0)
+    ]);
+
+    const hasDependencies = (activeServices + activeBookings + activeCarts + couponRefs + homeContentRefs) > 0;
+    res.status(200).json({
+      success: true, brandId: id, title: brand.title,
+      hasDependencies, activeServices, activeBookings, activeCarts, coupons: couponRefs, homeContentReferences: homeContentRefs
+    });
+  } catch (error) {
+    console.error('Brand dependencies error:', error);
+    res.status(500).json({ success: false, message: 'Failed to build dependency report.' });
+  }
+};
+
+/**
+ * Bulk reorder brands.
+ * PATCH /api/admin/brands/reorder
+ * body: { items: [{ id, displayOrder }] }
+ */
+const bulkReorderBrands = async (req, res) => {
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    if (items.length === 0) return res.status(400).json({ success: false, message: 'items[] is required' });
+    const ops = items
+      .filter(i => i && i.id)
+      .map(i => ({ updateOne: { filter: { _id: i.id }, update: { $set: { displayOrder: Number(i.displayOrder) || 0 } } } }));
+    if (ops.length === 0) return res.status(400).json({ success: false, message: 'No valid items supplied' });
+    const result = await Brand.bulkWrite(ops);
+    await invalidatePublicCatalogKeys();
+    res.status(200).json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) {
+    console.error('Bulk reorder brands error:', error);
+    res.status(500).json({ success: false, message: 'Failed to reorder brands.' });
+  }
+};
+
+/**
+ * Bulk status change.
+ * PATCH /api/admin/brands/bulk-status
+ * body: { ids: [], status: 'active'|'inactive'|'deleted' }
+ */
+const bulkBrandStatus = async (req, res) => {
+  try {
+    const { ids, status } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ success: false, message: 'ids[] is required' });
+    const allowed = ['active', 'inactive', 'deleted'];
+    if (!allowed.includes(status)) return res.status(400).json({ success: false, message: `status must be one of: ${allowed.join(', ')}` });
+    const result = await Brand.updateMany({ _id: { $in: ids } }, { $set: { status } });
+    await invalidatePublicCatalogKeys();
+    res.status(200).json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) {
+    console.error('Bulk brand status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update brands.' });
+  }
+};
+
+/**
+ * Archive a brand (soft delete). Snapshots the current status. Idempotent.
+ * POST /api/admin/brands/:id/archive
+ */
+const archiveBrand = async (req, res) => {
+  try {
+    const brand = await Brand.findById(req.params.id);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+    if (brand.status === SERVICE_STATUS.DELETED) {
+      return res.status(200).json({ success: true, message: 'Brand already archived', brand });
+    }
+    const before = brand.toObject();
+    brand.previousStatus = brand.status || 'active';
+    brand.status = SERVICE_STATUS.DELETED;
+    await brand.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'archive', entityType: 'brand', entityId: brand._id, before, after: brand });
+    res.status(200).json({ success: true, message: 'Brand archived', brand });
+  } catch (error) {
+    console.error('Archive brand error:', error);
+    res.status(500).json({ success: false, message: 'Failed to archive brand.' });
+  }
+};
+
+/**
+ * Restore an archived brand.
+ * POST /api/admin/brands/:id/restore
+ */
+const restoreBrand = async (req, res) => {
+  try {
+    const brand = await Brand.findById(req.params.id);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+    if (brand.status !== SERVICE_STATUS.DELETED) {
+      return res.status(200).json({ success: true, message: 'Brand not archived', brand });
+    }
+    const before = brand.toObject();
+    brand.status = brand.previousStatus || 'active';
+    brand.previousStatus = null;
+    await brand.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'restore', entityType: 'brand', entityId: brand._id, before, after: brand });
+    res.status(200).json({ success: true, message: 'Brand restored', brand });
+  } catch (error) {
+    console.error('Restore brand error:', error);
+    res.status(500).json({ success: false, message: 'Failed to restore brand.' });
+  }
+};
+
 module.exports = {
   getAllBrands,
   getBrandById,
@@ -616,5 +791,10 @@ module.exports = {
   updateBrand,
   deleteBrand,
   updateBrandPage,
-  uploadBrandImage
+  uploadBrandImage,
+  getBrandDependencies,
+  bulkReorderBrands,
+  bulkBrandStatus,
+  archiveBrand,
+  restoreBrand
 };

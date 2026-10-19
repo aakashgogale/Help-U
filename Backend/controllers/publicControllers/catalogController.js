@@ -1,9 +1,12 @@
 const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
 const Service = require('../../models/UserService');
+const Coupon = require('../../models/Coupon');
 const { getDisplayPricing } = require('../../utils/servicePricing');
 const HomeContent = require('../../models/HomeContent');
 const Settings = require('../../models/Settings');
+const mongoose = require('mongoose');
+const { getRedis, isRedisConnected } = require('../../services/redisService');
 
 /**
  * Public Catalog Controllers
@@ -16,20 +19,32 @@ const Settings = require('../../models/Settings');
  */
 const getPublicCategories = async (req, res) => {
   try {
-    const { cityId } = req.query;
+    const { cityId, parentId } = req.query;
 
     // Build query
-    const query = { status: 'active' };
+    const query = { status: 'active', publishStatus: { $ne: 'draft' } };
     if (cityId) {
       query.cityIds = cityId;
     }
 
+    // Default: top-level categories only (parentId: null). Sub-categories
+    // never leak into the Home grid or /public/categories listing. Clients
+    // explicitly fetch children with ?parentId=<id>; pass ?parentId=all to
+    // skip the filter altogether.
+    if (parentId === undefined || parentId === null || parentId === '') {
+      query.parentId = null;
+    } else if (parentId !== 'all') {
+      query.parentId = parentId;
+    }
+
     const categories = await Category.find(query)
-      .select('title slug homeIconUrl homeBadge hasSaleBadge homeOrder showOnHome')
+      .select('title slug homeIconUrl homeBadge hasSaleBadge homeOrder showOnHome parentId subCategoryBadge')
       .sort({ homeOrder: 1, createdAt: -1 })
       .lean();
 
-    // Fetch only necessary fields for initial category list
+    // Fetch only necessary fields for initial category list. parentId and
+    // subCategoryBadge are additive and ignored by callers that don't need
+    // them (the Home grid already uses only id/title/slug/icon/badge).
     const initialCategories = categories.map(cat => ({
       id: cat._id.toString(),
       title: cat.title,
@@ -37,7 +52,9 @@ const getPublicCategories = async (req, res) => {
       icon: cat.homeIconUrl || '',
       badge: cat.homeBadge || '',
       hasSaleBadge: cat.hasSaleBadge || false,
-      showOnHome: cat.showOnHome || false
+      showOnHome: cat.showOnHome || false,
+      parentId: cat.parentId ? cat.parentId.toString() : null,
+      subCategoryBadge: cat.subCategoryBadge || ''
     }));
 
     res.status(200).json({
@@ -62,7 +79,7 @@ const getPublicBrands = async (req, res) => {
     const { categoryId, categorySlug, search, cityId } = req.query;
 
     // Build query
-    const query = { status: 'active' };
+    const query = { status: 'active', publishStatus: { $ne: 'draft' } };
     if (categoryId) query.categoryIds = categoryId;
     if (cityId) query.cityIds = cityId;
 
@@ -78,7 +95,7 @@ const getPublicBrands = async (req, res) => {
 
     // If categorySlug is provided, filter by category
     if (categorySlug) {
-      const catQuery = { slug: categorySlug, status: 'active' };
+      const catQuery = { slug: categorySlug, status: 'active', publishStatus: { $ne: 'draft' } };
       if (cityId) {
         catQuery.cityIds = cityId;
       }
@@ -86,7 +103,7 @@ const getPublicBrands = async (req, res) => {
       let category = await Category.findOne(catQuery).lean();
 
       if (!category && cityId) {
-        category = await Category.findOne({ slug: categorySlug, status: 'active' }).lean();
+        category = await Category.findOne({ slug: categorySlug, status: 'active', publishStatus: { $ne: 'draft' } }).lean();
       }
 
       if (category) {
@@ -131,7 +148,7 @@ const getPublicBrandBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const brand = await Brand.findOne({ slug, status: 'active' })
+    const brand = await Brand.findOne({ slug, status: 'active', publishStatus: { $ne: 'draft' } })
       .populate('categoryIds', 'title slug')
       .lean();
 
@@ -164,7 +181,7 @@ const getPublicBrandBySlug = async (req, res) => {
     };
 
     // Fetch services associated with this brand
-    const brandServices = await Service.find({ brandId: brand._id, status: 'active' }).lean();
+    const brandServices = await Service.find({ brandId: brand._id, status: 'active', publishStatus: { $ne: 'draft' } }).lean();
 
     // Map services to a default section structure for the frontend
     const servicesSection = {
@@ -231,12 +248,12 @@ const getPublicServices = async (req, res) => {
   try {
     const { brandId, brandSlug, categoryId, search, q, sortBy, minPrice, maxPrice, cityId } = req.query;
 
-    const query = { status: 'active' };
+    const query = { status: 'active', publishStatus: { $ne: 'draft' } };
 
     if (brandId) {
       query.brandId = brandId;
     } else if (brandSlug) {
-      const brand = await Brand.findOne({ slug: brandSlug });
+      const brand = await Brand.findOne({ slug: brandSlug, status: 'active', publishStatus: { $ne: 'draft' } });
       if (brand) {
         query.brandId = brand._id;
       } else {
@@ -245,7 +262,14 @@ const getPublicServices = async (req, res) => {
     }
 
     if (categoryId) {
-      query.categoryId = categoryId;
+      if (mongoose.Types.ObjectId.isValid(categoryId)) {
+        const catObjId = new mongoose.Types.ObjectId(categoryId);
+        const childCategories = await Category.find({ parentId: catObjId, status: 'active' }).select('_id').lean();
+        const catIds = [catObjId, ...childCategories.map(c => c._id)];
+        query.categoryId = { $in: catIds };
+      } else {
+        query.categoryId = categoryId;
+      }
     }
 
     if (minPrice || maxPrice) {
@@ -267,7 +291,7 @@ const getPublicServices = async (req, res) => {
 
     let services = await Service.find(query)
       .populate('brandId', 'title iconUrl cityIds')
-      .populate('categoryId', 'title slug cityIds')
+      .populate('categoryId', 'title slug cityIds parentId')
       .lean();
 
     // City filtering if cityId provided
@@ -350,6 +374,9 @@ const getPublicServices = async (req, res) => {
         brandIcon: svc.brandId?.iconUrl,
         categoryId: svc.categoryId?._id,
         categoryName: svc.categoryId?.title,
+        parentCategoryId: svc.categoryId?.parentId ? svc.categoryId.parentId.toString() : null,
+        durationMinutes: svc.durationMinutes,
+        variants: svc.variants || [],
         rating: svc.rating,
         reviewsCount: svc.reviewsCount,
         score: svc._score,
@@ -382,8 +409,9 @@ const advancedCatalogSearch = async (req, res) => {
       });
     }
 
-    // 1. Matched Categories
-    const catQuery = { status: 'active' };
+    // 1. Matched Categories (top-level only — sub-categories are discovery
+    // surfaces inside a parent catalog, not standalone search results).
+    const catQuery = { status: 'active', parentId: null, publishStatus: { $ne: 'draft' } };
     if (cityId) catQuery.cityIds = cityId;
     catQuery.$or = [
       { title: { $regex: queryTerm, $options: 'i' } },
@@ -400,6 +428,7 @@ const advancedCatalogSearch = async (req, res) => {
     // Query services with multi-factor
     const serviceQuery = {
       status: 'active',
+      publishStatus: { $ne: 'draft' },
       $or: [
         { title: { $regex: queryTerm, $options: 'i' } },
         { description: { $regex: queryTerm, $options: 'i' } }
@@ -580,9 +609,11 @@ const getPublicHomeData = async (req, res) => {
   try {
     const { cityId } = req.query;
 
-    // Fetch in parallel
+    // Fetch in parallel. Categories filter is top-level only (parentId: null)
+    // so sub-categories can never leak into the Home grid; the Home UI
+    // consumes this payload unchanged.
     const [categoriesRes, homeContent, settings] = await Promise.all([
-      Category.find({ status: 'active', cityIds: cityId ? cityId : { $exists: true } })
+      Category.find({ status: 'active', parentId: null, publishStatus: { $ne: 'draft' }, cityIds: cityId ? cityId : { $exists: true } })
         .select('title slug homeIconUrl homeBadge hasSaleBadge')
         .sort({ homeOrder: 1 })
         .lean(),
@@ -716,8 +747,11 @@ const getCategoriesEta = async (req, res) => {
     const Worker = require('../../models/Worker');
     const { WORKER_STATUS } = require('../../utils/constants');
 
-    const categoryQuery = { status: 'active' };
+    const categoryQuery = { status: 'active', publishStatus: { $ne: 'draft' } };
     if (cityId) categoryQuery.cityIds = cityId;
+    // Top-level only — sub-categories inherit their parent's ETA badge
+    // through the catalog modal; they don't own their own badge on the grid.
+    categoryQuery.parentId = null;
     const categories = await Category.find(categoryQuery)
       .select('title slug')
       .lean();
@@ -806,6 +840,291 @@ const getCategoriesEta = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/public/categories/:idOrSlug/catalog
+ * Consolidated category catalog payload:
+ * - Category hero ({ tag, title, startingPrice, imageUrl })
+ * - Best coupon (category-specific first, then app-wide; filtered by isActive, in-date, isAutoApply prioritised, highest discountValue)
+ * - SubCategories[] (active children of this category)
+ * - Sections[] (ordered by Brand.displayOrder) with nested services[] (active + publishStatus=published only, filtered to this brand+category, ordered by UserService.sortOrder) and each service's variants[] (active only, ordered by variant.order)
+ * Short Redis cache (public:catalog:<idOrSlug>:<cityId|'all'>, TTL 120s).
+ */
+const getPublicCategoryCatalog = async (req, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    const { cityId } = req.query;
+
+    if (!idOrSlug) {
+      return res.status(400).json({ success: false, message: 'Category ID or slug is required.' });
+    }
+
+    const cacheKey = `public:catalog:${idOrSlug}:${cityId || 'all'}`;
+    const redis = getRedis();
+
+    // 1. Short Redis cache check
+    if (isRedisConnected() && redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return res.status(200).json(JSON.parse(cached));
+        }
+      } catch (cacheErr) {
+        // Non-blocking cache read error
+      }
+    }
+
+    // 2. Resolve Category (by ObjectId or slug)
+    const isObjectId = mongoose.Types.ObjectId.isValid(idOrSlug) && /^[0-9a-fA-F]{24}$/.test(idOrSlug);
+    const categoryQuery = {
+      status: 'active',
+      publishStatus: { $ne: 'draft' },
+      ...(isObjectId ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug })
+    };
+
+    const category = await Category.findOne(categoryQuery).lean();
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found.'
+      });
+    }
+
+    // 3. Category hero
+    const hero = {
+      tag: category.heroBanner?.tag || '',
+      title: category.heroBanner?.title || '',
+      startingPrice: category.heroBanner?.startingPrice || '',
+      imageUrl: category.heroBanner?.imageUrl || ''
+    };
+
+    // 4. SubCategories (active children of this category)
+    const subCategoriesQuery = {
+      parentId: category._id,
+      status: 'active',
+      publishStatus: { $ne: 'draft' }
+    };
+    if (cityId) {
+      subCategoriesQuery.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
+    }
+
+    const subCategoriesDocs = await Category.find(subCategoriesQuery)
+      .select('title slug homeIconUrl homeBadge subCategoryBadge sortOrder homeOrder heroBanner')
+      .sort({ sortOrder: 1, homeOrder: 1, createdAt: 1 })
+      .lean();
+
+    const subCategories = subCategoriesDocs.map(sc => ({
+      _id: sc._id,
+      id: sc._id.toString(),
+      title: sc.title,
+      slug: sc.slug,
+      icon: sc.homeIconUrl || '',
+      homeIconUrl: sc.homeIconUrl || '',
+      badge: sc.subCategoryBadge || sc.homeBadge || '',
+      subCategoryBadge: sc.subCategoryBadge || '',
+      sortOrder: sc.sortOrder || 0,
+      parentId: category._id.toString()
+    }));
+
+    // 5. Best Coupon: category-specific first, then app-wide; filter by isActive, in-date, isAutoApply prioritised, pick highest discountValue
+    const now = new Date();
+    const couponQuery = {
+      isActive: true,
+      validFrom: { $lte: now },
+      validUntil: { $gte: now },
+      $or: [
+        { categories: category._id },
+        { categories: { $size: 0 } },
+        { categories: { $exists: false } }
+      ]
+    };
+    if (cityId) {
+      couponQuery.$and = [
+        {
+          $or: [
+            { cities: cityId },
+            { cities: { $size: 0 } },
+            { cities: { $exists: false } }
+          ]
+        }
+      ];
+    }
+
+    const rawCoupons = await Coupon.find(couponQuery).lean();
+    const validCoupons = rawCoupons.filter(c => {
+      if (c.usageLimit && c.usageLimit > 0 && (c.usedCount || 0) >= c.usageLimit) {
+        return false;
+      }
+      return true;
+    });
+
+    validCoupons.sort((a, b) => {
+      const aCatSpecific = Array.isArray(a.categories) && a.categories.some(id => id.toString() === category._id.toString()) ? 1 : 0;
+      const bCatSpecific = Array.isArray(b.categories) && b.categories.some(id => id.toString() === category._id.toString()) ? 1 : 0;
+      if (aCatSpecific !== bCatSpecific) {
+        return bCatSpecific - aCatSpecific; // Category-specific first
+      }
+
+      const aAuto = a.isAutoApply ? 1 : 0;
+      const bAuto = b.isAutoApply ? 1 : 0;
+      if (aAuto !== bAuto) {
+        return bAuto - aAuto; // isAutoApply prioritised
+      }
+
+      const aVal = a.discountValue || 0;
+      const bVal = b.discountValue || 0;
+      return bVal - aVal; // Highest discountValue
+    });
+
+    const topCoupon = validCoupons[0] || null;
+    const bestCoupon = topCoupon ? {
+      _id: topCoupon._id,
+      code: topCoupon.code,
+      title: topCoupon.title,
+      description: topCoupon.description || '',
+      discountType: topCoupon.discountType,
+      discountValue: topCoupon.discountValue,
+      maxDiscountAmount: topCoupon.maxDiscountAmount || 0,
+      minOrderAmount: topCoupon.minOrderAmount || 0,
+      isAutoApply: !!topCoupon.isAutoApply,
+      validUntil: topCoupon.validUntil
+    } : null;
+
+    // 6. Sections with nested services and variants via aggregation ($lookup, no N+1)
+    const brandMatch = {
+      status: 'active',
+      publishStatus: { $ne: 'draft' },
+      $or: [
+        { categoryIds: category._id },
+        { categoryId: category._id }
+      ]
+    };
+    if (cityId) {
+      brandMatch.$and = [
+        {
+          $or: [
+            { cityIds: new mongoose.Types.ObjectId(cityId) },
+            { cityIds: { $size: 0 } },
+            { cityIds: { $exists: false } }
+          ]
+        }
+      ];
+    }
+
+    const allowedCategoryIds = [category._id, ...subCategoriesDocs.map(sc => sc._id)];
+
+    const sectionsPipeline = [
+      { $match: brandMatch },
+      { $sort: { displayOrder: 1, createdAt: 1 } },
+      {
+        $lookup: {
+          from: 'userservices',
+          let: { brandId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$brandId', '$$brandId'] },
+                    { $eq: ['$status', 'active'] },
+                    { $ne: ['$publishStatus', 'draft'] },
+                    {
+                      $or: [
+                        { $in: ['$categoryId', allowedCategoryIds] },
+                        { $eq: [{ $ifNull: ['$categoryId', null] }, null] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            ...(cityId ? [{
+              $match: {
+                $or: [
+                  { cityIds: new mongoose.Types.ObjectId(cityId) },
+                  { cityIds: { $size: 0 } },
+                  { cityIds: { $exists: false } }
+                ]
+              }
+            }] : []),
+            { $sort: { sortOrder: 1, createdAt: 1 } },
+            {
+              $addFields: {
+                variants: {
+                  $sortArray: {
+                    input: {
+                      $filter: {
+                        input: { $ifNull: ['$variants', []] },
+                        as: 'v',
+                        cond: { $eq: ['$$v.isActive', true] }
+                      }
+                    },
+                    sortBy: { order: 1 }
+                  }
+                }
+              }
+            }
+          ],
+          as: 'services'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          slug: 1,
+          iconUrl: 1,
+          badge: 1,
+          displayOrder: 1,
+          bannerPromo: 1,
+          services: 1
+        }
+      }
+    ];
+
+    const sections = await Brand.aggregate(sectionsPipeline);
+
+    const payload = {
+      success: true,
+      category: {
+        _id: category._id,
+        id: category._id.toString(),
+        title: category.title,
+        slug: category.slug,
+        displayRating: category.displayRating || '',
+        bookingsLabel: category.bookingsLabel || '',
+        etaDefaultMinutes: category.etaDefaultMinutes || null,
+        hasBrands: !!category.hasBrands,
+        hero
+      },
+      hero,
+      bestCoupon,
+      subCategories,
+      sections
+    };
+
+    // Cache in Redis for 120s
+    if (isRedisConnected() && redis) {
+      try {
+        await redis.setex(cacheKey, 120, JSON.stringify(payload));
+      } catch (err) {
+        // Non-blocking cache write error
+      }
+    }
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error('Get public category catalog error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch catalog. Please try again.'
+    });
+  }
+};
+
 module.exports = {
   getPublicCategories,
   getPublicBrands,
@@ -814,5 +1133,7 @@ module.exports = {
   advancedCatalogSearch,
   getPublicHomeContent,
   getPublicHomeData,
-  getCategoriesEta
+  getCategoriesEta,
+  getPublicCategoryCatalog
 };
+

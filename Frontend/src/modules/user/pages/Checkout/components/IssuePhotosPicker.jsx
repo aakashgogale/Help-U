@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { FiCamera, FiX, FiAlertCircle, FiVideo } from 'react-icons/fi';
+import React, { useRef, useState } from 'react';
+import { FiCamera, FiX, FiAlertCircle, FiVideo, FiImage } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { bookingService } from '../../../../../services/bookingService';
 import bookingFeaturesService from '../../../../../services/bookingFeaturesService';
@@ -36,7 +36,9 @@ const readVideoDuration = (file) => new Promise((resolve) => {
  */
 const IssuePhotosPicker = ({ photos, setPhotos, videos = [], setVideos, config = {} }) => {
   const inputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
 
   const maxPhotos = config.maxIssuePhotos ?? 5;
   const videoEnabled = !!(config.isIssueVideoEnabled && setVideos && (config.maxIssueVideos ?? 0) > 0);
@@ -110,10 +112,29 @@ const IssuePhotosPicker = ({ photos, setPhotos, videos = [], setVideos, config =
     uploadVideo(entry.id, file);
   };
 
-  const handleAdd = async () => {
+  // Open the device camera (native when inside the Flutter app).
+  const handleTakePhoto = async () => {
+    setShowPhotoMenu(false);
     if (flutterBridge.isFlutter) {
       const file = await flutterBridge.openCamera();
       if (file) addFiles([file]);
+      return;
+    }
+    cameraInputRef.current?.click();
+  };
+
+  // Open the gallery / file picker. In the Flutter WebView a plain file input
+  // still opens the gallery, so the same path works everywhere.
+  const handleChooseGallery = () => {
+    setShowPhotoMenu(false);
+    inputRef.current?.click();
+  };
+
+  // On web the file picker already lets the user pick from gallery, so skip the
+  // menu. Inside Flutter we offer the choice between camera and gallery.
+  const handleAdd = () => {
+    if (flutterBridge.isFlutter) {
+      setShowPhotoMenu(true);
       return;
     }
     inputRef.current?.click();
@@ -205,9 +226,36 @@ const IssuePhotosPicker = ({ photos, setPhotos, videos = [], setVideos, config =
 
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
         onChange={(e) => { addFiles(Array.from(e.target.files || [])); e.target.value = ''; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => { addFiles(Array.from(e.target.files || [])); e.target.value = ''; }} />
       {videoEnabled && (
         <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/*" className="hidden"
           onChange={(e) => { addVideo(e.target.files?.[0]); e.target.value = ''; }} />
+      )}
+
+      {showPhotoMenu && (
+        <div className="fixed inset-0 z-[10050] flex items-end justify-center" onClick={() => setShowPhotoMenu(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl p-2 pb-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="pt-2 pb-3 flex justify-center">
+              <div className="w-10 h-1 rounded-full bg-gray-300" />
+            </div>
+            <button type="button" onClick={handleTakePhoto}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors">
+              <FiCamera className="w-5 h-5 text-gray-700" />
+              <span className="text-[15px] font-semibold text-gray-800">Take Photo</span>
+            </button>
+            <button type="button" onClick={handleChooseGallery}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors">
+              <FiImage className="w-5 h-5 text-gray-700" />
+              <span className="text-[15px] font-semibold text-gray-800">Choose from Gallery</span>
+            </button>
+            <button type="button" onClick={() => setShowPhotoMenu(false)}
+              className="w-full mt-1 px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-500 hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

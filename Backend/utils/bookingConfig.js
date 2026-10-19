@@ -77,7 +77,15 @@ const CONFIG_SCHEMA = {
   recurringFrequencies: [['weekly', 'biweekly', 'monthly'], 'enumList', ['weekly', 'biweekly', 'monthly']],
   recurringMaxOccurrences: [12, 'number', 2, 52],
   recurringDiscountPercentage: [0, 'number', 0, 50],
-  recurringLeadHours: [24, 'number', 1, 168]
+  recurringLeadHours: [24, 'number', 1, 168],
+
+  // Time-slot window (Phase 1). Defaults match today's hard-coded Checkout
+  // behaviour so no admin edit means no behaviour change.
+  slotStartHour: [9, 'number', 0, 23],
+  slotEndHour: [20, 'number', 1, 24],
+  slotDurationMinutes: [60, 'number', 15, 240],
+  slotMaxDaysAhead: [7, 'number', 1, 30],
+  slotMinLeadMinutes: [60, 'number', 0, 1440]
 };
 
 // Existing settings the booking flow also needs; read here so callers have one
@@ -171,7 +179,14 @@ const getPublicBookingConfig = async () => {
     isRecurringEnabled: c.isRecurringEnabled,
     recurringFrequencies: c.recurringFrequencies,
     recurringMaxOccurrences: c.recurringMaxOccurrences,
-    recurringDiscountPercentage: c.recurringDiscountPercentage
+    recurringDiscountPercentage: c.recurringDiscountPercentage,
+
+    // Exposed to the user app so Checkout can build the time-slot grid.
+    slotStartHour: c.slotStartHour,
+    slotEndHour: c.slotEndHour,
+    slotDurationMinutes: c.slotDurationMinutes,
+    slotMaxDaysAhead: c.slotMaxDaysAhead,
+    slotMinLeadMinutes: c.slotMinLeadMinutes
   };
 };
 
@@ -216,6 +231,19 @@ const sanitizeConfigUpdate = (payload = {}) => {
         : [];
       if (list.length === 0) errors.push(`${name} needs at least one value`);
       else updates[name] = list.map((v) => v.slice(0, 100));
+    }
+  }
+
+  // Cross-field: slot window must be a valid range when both ends are being
+  // updated in the same request. Validator is synchronous today so we only
+  // run this pair-check when both keys are present — single-field updates
+  // are protected by the per-field min/max above and by the caller (the
+  // settings controller re-reads the saved document before returning).
+  if (updates.slotStartHour !== undefined && updates.slotEndHour !== undefined) {
+    if (updates.slotEndHour <= updates.slotStartHour) {
+      errors.push('slotEndHour must be greater than slotStartHour');
+      delete updates.slotStartHour;
+      delete updates.slotEndHour;
     }
   }
 

@@ -157,19 +157,25 @@ const placeBooking = async (userId, payload, options = {}) => {
   }
 
   const [service, user] = await Promise.all([
-    Service.findById(serviceId).select('title basePrice discountPrice description images iconUrl categoryId category categoryIds pricingType hourlyRate minHours maxHours inspectionFee').lean(),
+    Service.findById(serviceId).select('title basePrice discountPrice description images iconUrl categoryId category categoryIds pricingType hourlyRate minHours maxHours inspectionFee status publishStatus').lean(),
     User.findById(userId).select('name phone wallet plans')
   ]);
 
   if (!service) return fail(404, 'Service not found');
+  if (service.status !== 'active' || service.publishStatus === 'draft') {
+    return fail(400, 'Service is currently unavailable', { code: 'SERVICE_UNAVAILABLE' });
+  }
   if (!user) return fail(404, 'User not found');
 
   const categoryId = service.categoryId || service.categoryIds?.[0];
   let category = categoryId
-    ? await Category.findById(categoryId).select('title icon image slug isEmergencyAvailable').lean()
+    ? await Category.findOne({ _id: categoryId, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable').lean()
     : null;
   if (!category && service.category) {
-    category = await Category.findOne({ title: service.category }).select('title icon image slug isEmergencyAvailable').lean();
+    // Title-fallback is scoped to top-level active, non-draft categories so a sub-category
+    // sharing the same display title can never shadow the real parent used
+    // for emergency / city / display routing on a new booking.
+    category = await Category.findOne({ title: service.category, parentId: null, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable').lean();
   }
 
   // Pricing model: hourly/inspection-fee services resolve their own amount;

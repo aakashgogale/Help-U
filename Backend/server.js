@@ -258,6 +258,7 @@ app.use('/api/admin', require('./routes/admin-routes/reviewManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/reportManagement.routes'));
 app.use('/api/admin/settlements', require('./routes/admin-routes/settlementManagement.routes'));
 app.use('/api/admin/admins', require('./routes/admin-routes/adminManagement.routes'));
+app.use('/api/admin', require('./routes/admin-routes/auditLog.routes'));
 app.use('/api/admin/disputes', require('./routes/admin-routes/dispute.routes'));
 app.use('/api/admin', require('./routes/admin-routes/bookingFeatures.routes'));
 app.use('/api/image', require('./routes/admin-routes/image.routes'));

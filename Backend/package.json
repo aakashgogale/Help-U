@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node api.js && node server.js",
     "dev": "node api.js && nodemon server.js",
-    "test": "node tests",
+    "test": "node tests/runAllCatalogTests.js",
+    "test:catalog": "node tests/runAllCatalogTests.js",
+    "test:validators": "node tests/validators.test.js",
+    "test:nesting": "node tests/nestingRules.test.js",
+    "test:dependencies": "node tests/dependencyCheck.test.js",
+    "test:migration": "node tests/migrationIdempotency.test.js",
+    "test:public-catalog": "node tests/publicCatalog.test.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "seed:database": "node scripts/seedDatabase.js",
     "seed:electrician": "node scripts/seedElectricianService.js",
@@ -18,6 +24,8 @@
     "upload:home-content-images": "node scripts/uploadHomeContentImages.js",
     "update:home-content-images": "node scripts/updateHomeContentImages.js",
     "migrate:category-icons": "node scripts/migrateCategoryIcons.js",
+    "migrate:has-brands": "node scripts/migrateCategoryHasBrands.js",
+    "migrate:has-brands:apply": "node scripts/migrateCategoryHasBrands.js --apply",
     "upload:icons": "node scripts/uploadIcons.js",
     "upload:home": "node scripts/uploadHomeImages.js",
     "upload:services": "node scripts/uploadServiceImages.js"

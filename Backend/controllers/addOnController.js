@@ -153,7 +153,10 @@ exports.getBookingOptions = async (req, res) => {
     const categoryId = service.categoryId || service.categoryIds?.[0] || null;
     let category = categoryId ? await Category.findById(categoryId).select('isEmergencyAvailable').lean() : null;
     if (!category && service.category) {
-      category = await Category.findOne({ title: service.category }).select('_id isEmergencyAvailable').lean();
+      // Title-fallback is scoped to top-level categories so a newly created
+      // sub-category (which can share a title with a sibling via different
+      // namespaced slugs) can't accidentally resolve as the emergency anchor.
+      category = await Category.findOne({ title: service.category, parentId: null }).select('_id isEmergencyAvailable').lean();
     }
 
     const addOns = config.isAddOnsEnabled

@@ -19,6 +19,83 @@ const categorySchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
+  // Self-reference for sub-categories. Top-level categories keep this as null
+  // so getPublicCategories (which must filter parentId: null by default in
+  // STEP 2) returns the same Home grid as before. The unique index on `slug`
+  // means a sub-category still needs a unique slug — document owners should
+  // namespace them (e.g. "womens-salon-waxing", "ac-repair-packages").
+  parentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null,
+    index: true
+  },
+  // Display metadata for the Urban-Company-style service catalog modal.
+  // All optional; a category saved before these existed reads with defaults
+  // and the modal falls back to its current hard-coded CATALOG_DATA until the
+  // seed script fills them.
+  displayRating: {
+    type: String,
+    default: ''
+  },
+  bookingsLabel: {
+    type: String,
+    default: ''
+  },
+  etaDefaultMinutes: {
+    type: Number,
+    default: null,
+    min: 0
+  },
+  // Hero banner shown at the top of the service catalog modal. When every
+  // field is empty, the modal keeps its current layout with no hero.
+  heroBanner: {
+    tag: { type: String, default: '' },
+    title: { type: String, default: '' },
+    startingPrice: { type: String, default: '' },
+    imageUrl: { type: String, default: '' }
+  },
+  // Pill-badge text for a sub-category tab (e.g. "Upto 20% OFF"). Top-level
+  // categories can leave this empty.
+  subCategoryBadge: {
+    type: String,
+    default: ''
+  },
+  // Whether this (top-level) category organises its services under a Brand
+  // layer (e.g. appliances with LG/Samsung/Whirlpool brands) or presents
+  // services flat under the category. The Phase-3 admin wizard reads this
+  // to decide whether to show the Brand/Section step. Default false so new
+  // categories flow straight through to services; the Phase-2 migration
+  // sets this to true for every existing category that has at least one
+  // Brand pointing to it, so the old appliance flow stays unchanged.
+  hasBrands: {
+    type: Boolean,
+    default: false
+  },
+  // Draft/published lifecycle, independent of status. publishStatus=draft keeps
+  // the row out of public listings even while status='active' (used for
+  // in-progress work in the Phase-4 wizard). Default 'published' so existing
+  // rows keep behaving as today.
+  publishStatus: {
+    type: String,
+    enum: ['draft', 'published'],
+    default: 'published',
+    index: true
+  },
+  // Admin-chosen custom sort order for the admin list. Independent of
+  // homeOrder (which drives the user Home grid). Default 0.
+  sortOrder: {
+    type: Number,
+    default: 0,
+    index: true
+  },
+  // Snapshot of the previous status before archive, so restore returns to the
+  // original state (active/inactive) instead of forcing 'active'. Set by the
+  // archive endpoint, cleared by restore.
+  previousStatus: {
+    type: String,
+    default: null
+  },
   homeIconUrl: {
     type: String,
     default: null

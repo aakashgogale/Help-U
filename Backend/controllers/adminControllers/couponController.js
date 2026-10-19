@@ -32,6 +32,7 @@ const buildPatch = (body = {}, { isCreate = false } = {}) => {
   if (body.services !== undefined) patch.services = Array.isArray(body.services) ? body.services : [];
   if (body.cities !== undefined) patch.cities = Array.isArray(body.cities) ? body.cities : [];
   if (body.firstBookingOnly !== undefined) patch.firstBookingOnly = Boolean(body.firstBookingOnly);
+  if (body.isAutoApply !== undefined) patch.isAutoApply = Boolean(body.isAutoApply);
   if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
 
   if (isCreate) {

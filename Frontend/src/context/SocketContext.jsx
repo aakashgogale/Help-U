@@ -69,6 +69,12 @@ const SocketContext = createContext(null);
 
 const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:5000';
 
+// Per-tab guard so a socket reconnect storm does not fire the FCM save flow
+// (service-worker register → permission → getToken → POST backend) over and
+// over. Keyed by userType so switching accounts in the same tab still
+// re-registers once for the new role.
+const fcmRegisteredThisSession = new Set();
+
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const location = useLocation();
@@ -135,7 +141,10 @@ export const SocketProvider = ({ children }) => {
       auth: {
         token: token
       },
-      transports: ['polling', 'websocket'], // Try polling first for reliability
+      // WebSocket first avoids the polling preflight storm on dev (each poll
+      // is a cross-origin XHR). Polling stays as a fallback for networks that
+      // block WS.
+      transports: ['websocket', 'polling'],
       path: '/socket.io/',
       secure: true,
       rejectUnauthorized: false,
@@ -152,17 +161,21 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('connect', () => {
       // console.log(`✅ ${userType.toUpperCase()} App Socket connected`);
 
-      // Register FCM token for push notifications (on page load/refresh)
-      if (userType && token) {
-        // console.log(`[SocketContext] Registering FCM token for ${userType}...`);
-        registerFCMToken(userType, true).then((fcmToken) => {
-          if (fcmToken) {
-            // console.log(`[SocketContext] ✅ FCM token registered for ${userType}`);
-          } else {
-            // console.log(`[SocketContext] ⚠️ FCM token registration returned null for ${userType}`);
+      // Register FCM token for push notifications ONCE per session per
+      // userType. forceUpdate: false so the localStorage short-circuit in
+      // registerFCMToken takes effect and we skip the full save flow on
+      // every socket reconnect. The in-memory Set is a second guard that
+      // also skips the work when localStorage is cleared mid-session.
+      if (userType && token && !fcmRegisteredThisSession.has(userType)) {
+        fcmRegisteredThisSession.add(userType);
+        registerFCMToken(userType, false).then((fcmToken) => {
+          if (!fcmToken) {
+            // Permission denied or no token: allow a retry later in this
+            // session (e.g. after the user grants permission).
+            fcmRegisteredThisSession.delete(userType);
           }
-        }).catch((err) => {
-          // console.error(`[SocketContext] ❌ FCM token registration failed for ${userType}:`, err);
+        }).catch(() => {
+          fcmRegisteredThisSession.delete(userType);
         });
       }
 

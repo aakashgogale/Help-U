@@ -1,546 +1,1729 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
-  FiChevronRight,
-  FiChevronDown,
-  FiEdit2,
-  FiTrash2,
-  FiEye,
-  FiEyeOff,
+  FiGrid,
+  FiList,
   FiPlus,
   FiSearch,
   FiRefreshCw,
-  FiFolder,
-  FiTag,
+  FiFilter,
+  FiChevronRight,
+  FiChevronUp,
+  FiChevronDown,
+  FiEdit2,
+  FiTrash2,
+  FiCopy,
+  FiMove,
   FiBox,
-  FiExternalLink,
+  FiLayers,
+  FiTag,
+  FiArchive,
+  FiActivity,
   FiAlertTriangle,
+  FiUsers,
+  FiCalendar,
+  FiCheck,
+  FiX,
+  FiEye,
+  FiEyeOff,
+  FiDollarSign,
+  FiCheckSquare,
+  FiSquare
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import {
   categoryService,
   brandService,
   serviceService,
+  catalogHealthService,
+  publicCatalogService
 } from "../../../../../services/catalogService";
+import { cityService } from "../../../../admin/services/cityService";
+import CatalogHealthBar from "../components/CatalogHealthBar";
+import DependencyModal from "../components/DependencyModal";
+import BulkMoveModal from "../components/BulkMoveModal";
+import ServiceWizardModal from "../components/ServiceWizardModal";
+import CategoriesListView from "../components/CategoriesListView";
+import BrandsListView from "../components/BrandsListView";
+import DraftArchiveView from "../components/DraftArchiveView";
+import AuditLogView from "../components/AuditLogView";
+import ToggleSwitch from "../components/ToggleSwitch";
+import { toAssetUrl } from "../utils";
 
 /**
- * Unified Service Management
- * One page that shows the FULL catalog tree pulled from the DB:
- *   Category  ─▶  Brand(s)  ─▶  Service(s)
+ * ServiceManagementPage - Phase 3 Unified Catalog Management Page
  *
- * All data is read via existing admin APIs. Edits for individual records
- * are delegated to the existing dedicated pages so there is one source of
- * truth per entity (no duplicate forms). This page gives admins the
- * bird's-eye view and quick-visibility / quick-delete controls across the
- * whole catalog.
+ * 5 Tabs:
+ *   1. Services (Main Catalog List with table/card view, appliance layout, bulk actions, filters)
+ *   2. Categories (Hierarchy, appliance toggle, reorder, status)
+ *   3. Sections and brands (Brands management, reorder, mapping)
+ *   4. Draft and archive (Restore, publish, dependency-checked purge)
+ *   5. Audit log (Activity stream, diff viewer)
  */
+const ServiceManagementPage = ({ selectedCity: propCity }) => {
+  // ─── TABS ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("services"); // "services" | "categories" | "brands" | "draft-archive" | "audit-log"
 
-const StatCard = ({ icon: Icon, label, value, tint }) => (
-  <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
-    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: tint + "22", color: tint }}>
-      <Icon className="w-5 h-5" />
-    </div>
-    <div>
-      <div className="text-2xl font-bold text-gray-900 leading-none">{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
-    </div>
-  </div>
-);
+  // ─── HEALTH METRICS ───────────────────────────────────────────────────
+  const [healthData, setHealthData] = useState({});
+  const [loadingHealth, setLoadingHealth] = useState(false);
+  const [activeStatFilter, setActiveStatFilter] = useState("all"); // "all" | "active" | "draft" | "needs-attention"
 
-const StatusPill = ({ active }) => (
-  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${active ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-600"}`}>
-    {active ? "ACTIVE" : "INACTIVE"}
-  </span>
-);
-
-const ServiceManagementPage = ({ selectedCity }) => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  // ─── COMMON DATA ──────────────────────────────────────────────────────
+  const [cities, setCities] = useState([]);
+  const [selectedCity, setSelectedCity] = useState(propCity || "");
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [brands, setBrands] = useState([]);
-  const [services, setServices] = useState([]);
-  const [expanded, setExpanded] = useState({}); // { [categoryId]: true }
-  const [expandedBrand, setExpandedBrand] = useState({}); // { [brandId]: true }
-  const [search, setSearch] = useState("");
-  const [busyId, setBusyId] = useState(null);
 
-  // Fetch the whole catalog (3 collections) in parallel.
-  const loadAll = async () => {
-    setLoading(true);
+  // ─── SERVICES STATE ───────────────────────────────────────────────────
+  const [services, setServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [servicesError, setServicesError] = useState(null);
+
+  // ─── VIEW & FILTER STATE ──────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState("table"); // "table" | "card"
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("all");
+  const [selectedBrand, setSelectedBrand] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all"); // "all" | "active" | "inactive" | "deleted"
+  const [selectedPublishStatus, setSelectedPublishStatus] = useState("all"); // "all" | "published" | "draft"
+
+  // Left brand list active item for hasBrands=true categories (Appliance flow)
+  const [activeApplianceBrandId, setActiveApplianceBrandId] = useState(null);
+
+  // ─── BULK SELECTION STATE ─────────────────────────────────────────────
+  const [selectedServiceIds, setSelectedServiceIds] = useState([]);
+
+  // ─── MODAL STATES ─────────────────────────────────────────────────────
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [editingService, setEditingService] = useState(null);
+
+  const [depModal, setDepModal] = useState({
+    isOpen: false,
+    item: null,
+    report: null,
+    loading: false,
+  });
+
+  const [isBulkMoveOpen, setIsBulkMoveOpen] = useState(false);
+  const [bulkMoveTargetIds, setBulkMoveTargetIds] = useState([]);
+  const [movingBulk, setMovingBulk] = useState(false);
+
+  // ─── PAGINATION ───────────────────────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+
+  // ─── LOAD HEALTH METRICS ──────────────────────────────────────────────
+  const loadHealth = useCallback(async () => {
+    try {
+      setLoadingHealth(true);
+      const res = await catalogHealthService.getHealth();
+      if (res?.success) {
+        setHealthData(res);
+      }
+    } catch (err) {
+      console.error("Health fetch error:", err);
+    } finally {
+      setLoadingHealth(false);
+    }
+  }, []);
+
+  // ─── LOAD CITIES & BASE METADATA ──────────────────────────────────────
+  useEffect(() => {
+    const initMeta = async () => {
+      try {
+        const [cityRes, catRes, brandRes] = await Promise.all([
+          cityService.getAll(),
+          categoryService.getAll({}),
+          brandService.getAll({}),
+        ]);
+
+        if (cityRes?.success) {
+          setCities((cityRes.cities || []).filter((c) => c.isActive));
+        }
+        if (catRes?.success) {
+          setCategories(catRes.categories || []);
+        }
+        if (brandRes?.success) {
+          setBrands(brandRes.brands || []);
+        }
+      } catch (err) {
+        console.error("Meta load error:", err);
+      }
+    };
+
+    initMeta();
+    loadHealth();
+  }, [loadHealth]);
+
+  // Keep propCity synced
+  useEffect(() => {
+    if (propCity && propCity !== selectedCity) {
+      setSelectedCity(propCity);
+    }
+  }, [propCity, selectedCity]);
+
+  // ─── DYNAMIC SUB-CATEGORIES ON CATEGORY CHANGE ────────────────────────
+  useEffect(() => {
+    if (!selectedCategory || selectedCategory === "all") {
+      setSubCategories([]);
+      setSelectedSubCategory("all");
+      return;
+    }
+
+    const loadSubs = async () => {
+      try {
+        const res = await categoryService.getChildren(selectedCategory);
+        if (res?.success) {
+          setSubCategories(res.categories || []);
+        } else {
+          setSubCategories([]);
+        }
+      } catch (err) {
+        console.error("Failed to load sub-categories:", err);
+        setSubCategories([]);
+      }
+    };
+
+    loadSubs();
+  }, [selectedCategory]);
+
+  // Check if current category hasBrands === true
+  const activeCategoryObj = useMemo(() => {
+    if (!selectedCategory || selectedCategory === "all") return null;
+    return categories.find((c) => String(c.id || c._id) === String(selectedCategory)) || null;
+  }, [categories, selectedCategory]);
+
+  const isApplianceCategory = activeCategoryObj?.hasBrands === true;
+
+  // Filtered brands for the active category
+  const categoryBrands = useMemo(() => {
+    if (!selectedCategory || selectedCategory === "all") return brands;
+    const catIdStr = String(selectedCategory);
+    return brands.filter((b) => {
+      const directId = String(typeof b.categoryId === "object" ? b.categoryId?._id || b.categoryId?.id : b.categoryId);
+      if (directId === catIdStr) return true;
+      if (Array.isArray(b.categoryIds)) {
+        return b.categoryIds.some((cid) => {
+          const id = String(typeof cid === "object" ? cid?._id || cid?.id : cid);
+          return id === catIdStr;
+        });
+      }
+      return false;
+    });
+  }, [brands, selectedCategory]);
+
+  // Auto-select first brand when appliance flow is active
+  useEffect(() => {
+    if (isApplianceCategory && categoryBrands.length > 0) {
+      if (!activeApplianceBrandId || !categoryBrands.some((b) => (b.id || b._id) === activeApplianceBrandId)) {
+        setActiveApplianceBrandId(categoryBrands[0].id || categoryBrands[0]._id);
+      }
+    } else if (!isApplianceCategory) {
+      setActiveApplianceBrandId(null);
+    }
+  }, [isApplianceCategory, categoryBrands, activeApplianceBrandId]);
+
+  // ─── FETCH SERVICES ───────────────────────────────────────────────────
+  const fetchServices = useCallback(async () => {
+    setLoadingServices(true);
+    setServicesError(null);
     try {
       const params = {};
       if (selectedCity) params.cityId = selectedCity;
-      const [catRes, brandRes, svcRes] = await Promise.all([
-        categoryService.getAll(params),
-        brandService.getAll(params),
-        serviceService.getAll({}),
-      ]);
-      if (catRes?.success) setCategories(catRes.categories || []);
-      if (brandRes?.success) setBrands(brandRes.brands || []);
-      if (svcRes?.success) setServices(svcRes.services || []);
+      if (selectedStatus !== "all") params.status = selectedStatus;
+      if (selectedPublishStatus !== "all") params.publishStatus = selectedPublishStatus;
+      if (selectedCategory !== "all") params.categoryId = selectedCategory;
+
+      const res = await serviceService.getWithStats(params);
+      if (res?.success) {
+        setServices(res.services || []);
+      } else {
+        setServices([]);
+        setServicesError(res?.message || "Failed to load services");
+      }
     } catch (err) {
-      console.error("Service Management load error:", err);
-      toast.error("Failed to load catalog");
+      console.error("Services fetch error:", err);
+      setServicesError(err?.response?.data?.message || err.message || "Failed to load services");
+      toast.error("Failed to load services");
     } finally {
-      setLoading(false);
+      setLoadingServices(false);
     }
-  };
+  }, [selectedCity, selectedStatus, selectedPublishStatus, selectedCategory]);
 
   useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity]);
+    fetchServices();
+  }, [fetchServices]);
 
-  // Group brands/services by their parent for O(1) lookup.
-  const brandsByCategory = useMemo(() => {
-    const map = {};
-    brands.forEach((b) => {
-      const parents = Array.isArray(b.categoryIds) && b.categoryIds.length > 0
-        ? b.categoryIds.map((c) => (typeof c === "object" ? c.id || c._id : c))
-        : (b.categoryId ? [typeof b.categoryId === "object" ? b.categoryId.id || b.categoryId._id : b.categoryId] : []);
-      parents.forEach((pid) => {
-        const key = String(pid);
-        (map[key] = map[key] || []).push(b);
+  // ─── NEEDS ATTENTION IDS MAP ──────────────────────────────────────────
+  const needsAttentionMap = useMemo(() => {
+    const map = new Map();
+    if (Array.isArray(healthData.needsAttention)) {
+      healthData.needsAttention.forEach((item) => {
+        const id = String(item.id || item._id);
+        map.set(id, item.reasons || ["needs-attention"]);
       });
-    });
+    }
     return map;
-  }, [brands]);
+  }, [healthData]);
 
-  const servicesByBrand = useMemo(() => {
-    const map = {};
-    services.forEach((s) => {
-      const bid = typeof s.brandId === "object" ? (s.brandId?.id || s.brandId?._id) : s.brandId;
-      if (!bid) return;
-      const key = String(bid);
-      (map[key] = map[key] || []).push(s);
-    });
-    return map;
-  }, [services]);
+  // ─── CLIENT FILTERING ─────────────────────────────────────────────────
+  const filteredServices = useMemo(() => {
+    let list = [...services];
 
-  // Full-text filter (categories, brands, services). Hits are expanded
-  // automatically so the matching row is visible.
-  const filteredCategories = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return categories;
-    return categories.filter((c) => {
-      if ((c.title || "").toLowerCase().includes(q)) return true;
-      const bList = brandsByCategory[String(c.id)] || [];
-      if (bList.some((b) => (b.title || "").toLowerCase().includes(q))) return true;
-      return bList.some((b) => (servicesByBrand[String(b.id)] || []).some((s) => (s.title || "").toLowerCase().includes(q)));
-    });
-  }, [categories, brandsByCategory, servicesByBrand, search]);
-
-  // Auto-expand matching rows on search change
-  useEffect(() => {
-    if (!search.trim()) return;
-    const q = search.trim().toLowerCase();
-    const nextCat = {};
-    const nextBrand = {};
-    categories.forEach((c) => {
-      const cHit = (c.title || "").toLowerCase().includes(q);
-      const bList = brandsByCategory[String(c.id)] || [];
-      bList.forEach((b) => {
-        const bHit = (b.title || "").toLowerCase().includes(q);
-        const sList = servicesByBrand[String(b.id)] || [];
-        const sHit = sList.some((s) => (s.title || "").toLowerCase().includes(q));
-        if (bHit || sHit) {
-          nextCat[String(c.id)] = true;
-          nextBrand[String(b.id)] = true;
-        }
+    // If appliance category is active, filter by activeApplianceBrandId
+    if (isApplianceCategory && activeApplianceBrandId) {
+      list = list.filter((s) => {
+        const bId = String(typeof s.brandId === "object" ? s.brandId?._id || s.brandId?.id : s.brandId);
+        return bId === String(activeApplianceBrandId);
       });
-      if (cHit) nextCat[String(c.id)] = true;
+    } else if (selectedBrand !== "all") {
+      list = list.filter((s) => {
+        const bId = String(typeof s.brandId === "object" ? s.brandId?._id || s.brandId?.id : s.brandId);
+        return bId === String(selectedBrand);
+      });
+    }
+
+    // Sub-category filter
+    if (selectedSubCategory !== "all") {
+      list = list.filter((s) => {
+        const cId = String(typeof s.categoryId === "object" ? s.categoryId?._id || s.categoryId?.id : s.categoryId);
+        return cId === String(selectedSubCategory);
+      });
+    }
+
+    // Stat card click filter
+    if (activeStatFilter === "needs-attention") {
+      list = list.filter((s) => {
+        const sId = String(s.id || s._id);
+        return needsAttentionMap.has(sId) || !s.workersMapped || s.workersMapped === 0 || !s.iconUrl || !s.basePrice;
+      });
+    } else if (activeStatFilter === "draft") {
+      list = list.filter((s) => s.publishStatus === "draft");
+    } else if (activeStatFilter === "active") {
+      list = list.filter((s) => s.status === "active");
+    }
+
+    // Search query: title, slug, ID
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(
+        (s) =>
+          (s.title || "").toLowerCase().includes(q) ||
+          (s.slug || "").toLowerCase().includes(q) ||
+          String(s.id || s._id || "").toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [
+    services,
+    isApplianceCategory,
+    activeApplianceBrandId,
+    selectedBrand,
+    selectedSubCategory,
+    activeStatFilter,
+    needsAttentionMap,
+    searchTerm,
+  ]);
+
+  // Pagination slice
+  const paginatedServices = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return filteredServices.slice(startIndex, startIndex + pageSize);
+  }, [filteredServices, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredServices.length / pageSize) || 1;
+
+  // ─── SELECTION HELPERS ────────────────────────────────────────────────
+  const allCurrentSelected = useMemo(() => {
+    if (paginatedServices.length === 0) return false;
+    return paginatedServices.every((s) => selectedServiceIds.includes(s.id || s._id));
+  }, [paginatedServices, selectedServiceIds]);
+
+  const handleToggleSelectAll = () => {
+    if (allCurrentSelected) {
+      const currentIds = new Set(paginatedServices.map((s) => s.id || s._id));
+      setSelectedServiceIds((prev) => prev.filter((id) => !currentIds.has(id)));
+    } else {
+      const nextIds = new Set(selectedServiceIds);
+      paginatedServices.forEach((s) => nextIds.add(s.id || s._id));
+      setSelectedServiceIds(Array.from(nextIds));
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // ─── ROW ACTIONS ──────────────────────────────────────────────────────
+  // Single status toggle
+  const handleToggleStatus = async (service) => {
+    const id = service.id || service._id;
+    const nextStatus = service.status === "active" ? "inactive" : "active";
+    try {
+      const res = await serviceService.bulkStatus([id], nextStatus);
+      if (res?.success) {
+        toast.success(`Service marked ${nextStatus}`);
+        publicCatalogService.invalidateCache();
+        setServices((prev) =>
+          prev.map((s) => ((s.id || s._id) === id ? { ...s, status: nextStatus } : s))
+        );
+        loadHealth();
+      } else {
+        toast.error(res?.message || "Status change failed");
+      }
+    } catch (err) {
+      console.error("Status change error:", err);
+      toast.error("Failed to update status");
+    }
+  };
+
+  // Duplicate service
+  const handleDuplicate = async (service) => {
+    const id = service.id || service._id;
+    try {
+      const res = await serviceService.duplicate(id);
+      if (res?.success) {
+        toast.success("Service duplicated as draft!");
+        publicCatalogService.invalidateCache();
+        fetchServices();
+        loadHealth();
+      } else {
+        toast.error(res?.message || "Duplicate failed");
+      }
+    } catch (err) {
+      console.error("Duplicate error:", err);
+      toast.error(err?.response?.data?.message || "Failed to duplicate service");
+    }
+  };
+
+  // Open Dependency Modal for Delete / Archive
+  const handleOpenDelete = async (service) => {
+    const id = service.id || service._id;
+    setDepModal({
+      isOpen: true,
+      item: service,
+      report: null,
+      loading: true,
     });
-    setExpanded((prev) => ({ ...prev, ...nextCat }));
-    setExpandedBrand((prev) => ({ ...prev, ...nextBrand }));
-  }, [search, categories, brandsByCategory, servicesByBrand]);
 
-  // Flip category.status between 'active' and 'inactive' (soft hide).
-  const toggleCategoryActive = async (cat) => {
-    const next = cat.status === "active" ? "inactive" : "active";
     try {
-      setBusyId(cat.id);
-      const res = await categoryService.update(cat.id, { status: next });
-      if (res?.success) {
-        setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, status: next } : c)));
-        toast.success(`Category ${next === "active" ? "activated" : "hidden"}`);
-      } else {
-        toast.error(res?.message || "Update failed");
-      }
+      const depRes = await serviceService.getDependencies(id);
+      setDepModal((prev) => ({
+        ...prev,
+        report: depRes?.dependencies || depRes || {},
+        loading: false,
+      }));
     } catch (err) {
-      toast.error(err.response?.data?.message || "Update failed");
-    } finally {
-      setBusyId(null);
+      console.error("Dependencies error:", err);
+      setDepModal((prev) => ({
+        ...prev,
+        report: { hasDependencies: false },
+        loading: false,
+      }));
     }
   };
 
-  const toggleBrandActive = async (brand) => {
-    const next = brand.status === "active" ? "inactive" : "active";
+  const handleConfirmArchive = async () => {
+    if (!depModal.item) return;
+    const id = depModal.item.id || depModal.item._id;
+    setDepModal((prev) => ({ ...prev, loading: true }));
     try {
-      setBusyId(brand.id);
-      const res = await brandService.update(brand.id, { status: next });
+      const res = await serviceService.archive(id);
       if (res?.success) {
-        setBrands((prev) => prev.map((b) => (b.id === brand.id ? { ...b, status: next } : b)));
-        toast.success(`Brand ${next === "active" ? "activated" : "hidden"}`);
+        toast.success("Service safely archived!");
+        publicCatalogService.invalidateCache();
+        setDepModal({ isOpen: false, item: null, report: null, loading: false });
+        fetchServices();
+        loadHealth();
       } else {
-        toast.error(res?.message || "Update failed");
+        toast.error(res?.message || "Archive failed");
+        setDepModal((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Update failed");
-    } finally {
-      setBusyId(null);
+      console.error("Archive error:", err);
+      toast.error(err?.response?.data?.message || "Failed to archive service");
+      setDepModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  const toggleServiceActive = async (svc) => {
-    const next = svc.status === "active" ? "inactive" : "active";
+  const handleConfirmForceDelete = async () => {
+    if (!depModal.item) return;
+    const id = depModal.item.id || depModal.item._id;
+    setDepModal((prev) => ({ ...prev, loading: true }));
     try {
-      setBusyId(svc.id);
-      const res = await serviceService.update(svc.id, { status: next });
+      const res = await serviceService.delete(id, true);
       if (res?.success) {
-        setServices((prev) => prev.map((s) => (s.id === svc.id ? { ...s, status: next } : s)));
-        toast.success(`Service ${next === "active" ? "activated" : "hidden"}`);
-      } else {
-        toast.error(res?.message || "Update failed");
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Update failed");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const confirmAndDelete = async (kind, entity) => {
-    const label = `${kind} "${entity.title}"`;
-    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
-    try {
-      setBusyId(entity.id);
-      let res;
-      if (kind === "category") res = await categoryService.delete(entity.id);
-      else if (kind === "brand") res = await brandService.delete(entity.id);
-      else res = await serviceService.delete(entity.id);
-      if (res?.success) {
-        toast.success(`${label} deleted`);
-        if (kind === "category") setCategories((prev) => prev.filter((c) => c.id !== entity.id));
-        else if (kind === "brand") setBrands((prev) => prev.filter((b) => b.id !== entity.id));
-        else setServices((prev) => prev.filter((s) => s.id !== entity.id));
+        toast.success("Service deleted!");
+        publicCatalogService.invalidateCache();
+        setDepModal({ isOpen: false, item: null, report: null, loading: false });
+        fetchServices();
+        loadHealth();
       } else {
         toast.error(res?.message || "Delete failed");
+        setDepModal((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Delete failed");
-    } finally {
-      setBusyId(null);
+      console.error("Force delete error:", err);
+      toast.error(err?.response?.data?.message || "Failed to delete service");
+      setDepModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  // Totals for the header stat cards
-  const totals = useMemo(() => ({
-    categories: categories.length,
-    activeCategories: categories.filter((c) => c.status === "active").length,
-    brands: brands.length,
-    services: services.length,
-    orphans: brands.filter((b) => {
-      const parents = Array.isArray(b.categoryIds) && b.categoryIds.length > 0
-        ? b.categoryIds
-        : (b.categoryId ? [b.categoryId] : []);
-      return parents.length === 0;
-    }).length,
-  }), [categories, brands, services]);
+  // Reordering up/down
+  const handleMoveServiceOrder = (index, direction) => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= paginatedServices.length) return;
+
+    const listCopy = [...services];
+    const sourceItem = paginatedServices[index];
+    const targetItem = paginatedServices[targetIndex];
+
+    const sIdx = listCopy.findIndex((x) => (x.id || x._id) === (sourceItem.id || sourceItem._id));
+    const tIdx = listCopy.findIndex((x) => (x.id || x._id) === (targetItem.id || targetItem._id));
+
+    if (sIdx !== -1 && tIdx !== -1) {
+      const temp = listCopy[sIdx];
+      listCopy[sIdx] = listCopy[tIdx];
+      listCopy[tIdx] = temp;
+      setServices(listCopy);
+      toast.success("Order rearranged locally");
+    }
+  };
+
+  // ─── BULK ACTIONS ─────────────────────────────────────────────────────
+  const handleBulkStatusChange = async (newStatus) => {
+    if (selectedServiceIds.length === 0) return;
+    try {
+      const res = await serviceService.bulkStatus(selectedServiceIds, newStatus);
+      if (res?.success) {
+        toast.success(`Updated ${selectedServiceIds.length} services to ${newStatus}`);
+        publicCatalogService.invalidateCache();
+        setSelectedServiceIds([]);
+        fetchServices();
+        loadHealth();
+      } else {
+        toast.error(res?.message || "Bulk status update failed");
+      }
+    } catch (err) {
+      console.error("Bulk status error:", err);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleOpenBulkMove = () => {
+    if (selectedServiceIds.length === 0) return;
+    setBulkMoveTargetIds(selectedServiceIds);
+    setIsBulkMoveOpen(true);
+  };
+
+  const handleConfirmBulkMove = async ({ brandId, categoryId }) => {
+    try {
+      setMovingBulk(true);
+      const res = await serviceService.bulkMove({
+        ids: bulkMoveTargetIds,
+        brandId,
+        categoryId,
+      });
+
+      if (res?.success) {
+        toast.success(`Moved ${bulkMoveTargetIds.length} services successfully!`);
+        publicCatalogService.invalidateCache();
+        setIsBulkMoveOpen(false);
+        setSelectedServiceIds([]);
+        fetchServices();
+        loadHealth();
+      } else {
+        toast.error(res?.message || "Failed to move services");
+      }
+    } catch (err) {
+      console.error("Bulk move error:", err);
+      toast.error(err?.response?.data?.message || "Failed to move services");
+    } finally {
+      setMovingBulk(false);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedServiceIds.length === 0) return;
+    try {
+      await Promise.all(selectedServiceIds.map((id) => serviceService.archive(id)));
+      toast.success(`Archived ${selectedServiceIds.length} services`);
+      publicCatalogService.invalidateCache();
+      setSelectedServiceIds([]);
+      fetchServices();
+      loadHealth();
+    } catch (err) {
+      console.error("Bulk archive error:", err);
+      toast.error("Error archiving services");
+    }
+  };
+
+  // ─── RENDER BREADCRUMB ────────────────────────────────────────────────
+  const renderBreadcrumb = () => {
+    const selectedCatObj = categories.find((c) => String(c.id || c._id) === String(selectedCategory));
+    const selectedSubObj = subCategories.find((c) => String(c.id || c._id) === String(selectedSubCategory));
+    const selectedBrandObj = brands.find(
+      (b) =>
+        String(b.id || b._id) ===
+        String(isApplianceCategory ? activeApplianceBrandId : selectedBrand)
+    );
+
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedCategory("all");
+            setSelectedSubCategory("all");
+            setSelectedBrand("all");
+          }}
+          className="font-medium text-blue-600 hover:underline"
+        >
+          All Catalog
+        </button>
+
+        {selectedCatObj && (
+          <>
+            <FiChevronRight className="w-3.5 h-3.5 text-gray-400" />
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedSubCategory("all");
+                setSelectedBrand("all");
+              }}
+              className={`font-medium ${
+                !selectedSubObj && !selectedBrandObj ? "text-gray-900 font-bold" : "text-blue-600 hover:underline"
+              }`}
+            >
+              {selectedCatObj.title}
+            </button>
+          </>
+        )}
+
+        {selectedSubObj && (
+          <>
+            <FiChevronRight className="w-3.5 h-3.5 text-gray-400" />
+            <button
+              type="button"
+              onClick={() => setSelectedBrand("all")}
+              className={`font-medium ${
+                !selectedBrandObj ? "text-gray-900 font-bold" : "text-blue-600 hover:underline"
+              }`}
+            >
+              {selectedSubObj.title}
+            </button>
+          </>
+        )}
+
+        {selectedBrandObj && (
+          <>
+            <FiChevronRight className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-gray-900 font-bold">{selectedBrandObj.title}</span>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5">
+      {/* ─── TOP HEADER ────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Service Management</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            One dashboard for your entire catalog: categories, brands, and services pulled live from the database.
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2.5">
+            <FiBox className="text-[#2874F0]" />
+            Catalog & Service Management
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Dynamic catalog control: manage services, category hierarchies, pricing, brands, and public visibility.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
           <button
-            onClick={loadAll}
-            disabled={loading}
-            className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+            type="button"
+            onClick={() => {
+              fetchServices();
+              loadHealth();
+            }}
+            disabled={loadingServices}
+            className="p-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+            title="Refresh All"
           >
-            <FiRefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            <FiRefreshCw className={`w-3.5 h-3.5 ${loadingServices ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-          <Link
-            to="/admin/user-categories/categories"
-            className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingService(null);
+              setIsWizardOpen(true);
+            }}
+            className="px-4 py-2.5 bg-[#2874F0] hover:bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <FiPlus className="w-4 h-4" />
-            Add Category
-          </Link>
+            Create Service
+          </button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={FiFolder} label="Categories" value={totals.categories} tint="#2874F0" />
-        <StatCard icon={FiTag} label="Brands" value={totals.brands} tint="#8E42E5" />
-        <StatCard icon={FiBox} label="Services" value={totals.services} tint="#10B981" />
-        <StatCard icon={FiAlertTriangle} label="Brands w/o Category" value={totals.orphans} tint="#F59E0B" />
-      </div>
+      {/* ─── STAT CARDS (HEALTH BAR) ────────────────────────────────────── */}
+      <CatalogHealthBar
+        health={healthData}
+        activeFilter={activeStatFilter}
+        onFilterChange={(f) => {
+          setActiveStatFilter(f);
+          setPage(1);
+        }}
+        loading={loadingHealth}
+      />
 
-      {/* Search */}
-      <div className="relative">
-        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search categories, brands, or services..."
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-
-      {/* Catalog tree */}
-      {loading ? (
-        <div className="py-20 text-center text-gray-400 text-sm">Loading catalog...</div>
-      ) : filteredCategories.length === 0 ? (
-        <div className="py-20 text-center">
-          <FiFolder className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <div className="text-sm text-gray-500">
-            {search ? "No matches." : "No categories yet."}{" "}
-            <Link to="/admin/user-categories/categories" className="text-blue-600 font-semibold hover:underline">
-              Create one →
-            </Link>
+      {/* If "Needs Attention" filter is active, show banner */}
+      {activeStatFilter === "needs-attention" && (
+        <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-xl flex items-center justify-between gap-3 text-xs text-rose-800">
+          <div className="flex items-center gap-2">
+            <FiAlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>
+              <strong>Filtered by Needs Attention:</strong> Showing services with unmapped workers, missing thumbnail, missing price, or inactive parent categories.
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setActiveStatFilter("all")}
+            className="px-2.5 py-1 bg-white border border-rose-300 rounded text-rose-700 font-bold hover:bg-rose-100"
+          >
+            Clear Filter
+          </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredCategories.map((cat) => {
-            const bList = brandsByCategory[String(cat.id)] || [];
-            const isOpen = !!expanded[String(cat.id)];
-            const svcCountForCat = bList.reduce((n, b) => n + ((servicesByBrand[String(b.id)] || []).length), 0);
-            return (
-              <div key={cat.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                {/* Category row */}
-                <div className="flex items-center gap-3 p-4 hover:bg-gray-50">
+      )}
+
+      {/* ─── 5 MAIN TABS ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 border-b border-gray-200 bg-white px-2 pt-2 rounded-t-xl overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab("services")}
+          className={`px-4 py-2.5 text-xs font-bold transition-all relative flex items-center gap-2 shrink-0 ${
+            activeTab === "services"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <FiBox className="w-4 h-4" />
+          Services ({services.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("categories")}
+          className={`px-4 py-2.5 text-xs font-bold transition-all relative flex items-center gap-2 shrink-0 ${
+            activeTab === "categories"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <FiLayers className="w-4 h-4" />
+          Categories ({categories.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("brands")}
+          className={`px-4 py-2.5 text-xs font-bold transition-all relative flex items-center gap-2 shrink-0 ${
+            activeTab === "brands"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <FiTag className="w-4 h-4" />
+          Sections and brands ({brands.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("draft-archive")}
+          className={`px-4 py-2.5 text-xs font-bold transition-all relative flex items-center gap-2 shrink-0 ${
+            activeTab === "draft-archive"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <FiArchive className="w-4 h-4" />
+          Draft and archive
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("audit-log")}
+          className={`px-4 py-2.5 text-xs font-bold transition-all relative flex items-center gap-2 shrink-0 ${
+            activeTab === "audit-log"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <FiActivity className="w-4 h-4" />
+          Audit log
+        </button>
+      </div>
+
+      {/* ─── TAB 1: SERVICES (MAIN LIST) ────────────────────────────────── */}
+      {activeTab === "services" && (
+        <div className="space-y-4">
+          {/* Breadcrumb Navigation */}
+          {renderBreadcrumb()}
+
+          {/* Filter Bar */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+              {/* City Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  City
+                </label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => {
+                    setSelectedCity(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Cities</option>
+                  {cities.map((c) => {
+                    const cId = c._id || c.id;
+                    return (
+                      <option key={cId} value={cId}>
+                        {c.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Category
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setSelectedSubCategory("all");
+                    setSelectedBrand("all");
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map((c) => {
+                    const cId = c.id || c._id;
+                    return (
+                      <option key={cId} value={cId}>
+                        {c.title} {c.hasBrands ? "★ (Brands)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Sub-Category Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Sub-Category
+                </label>
+                <select
+                  disabled={subCategories.length === 0}
+                  value={selectedSubCategory}
+                  onChange={(e) => {
+                    setSelectedSubCategory(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  <option value="all">
+                    {subCategories.length === 0 ? "None Available" : "All Sub-Categories"}
+                  </option>
+                  {subCategories.map((sc) => {
+                    const scId = sc.id || sc._id;
+                    return (
+                      <option key={scId} value={scId}>
+                        {sc.title}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Brand / Section Filter (if not appliance flow) */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Section / Brand
+                </label>
+                <select
+                  value={selectedBrand}
+                  onChange={(e) => {
+                    setSelectedBrand(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Brands ({brands.length})</option>
+                  {categoryBrands.map((b) => {
+                    const bId = b.id || b._id;
+                    return (
+                      <option key={bId} value={bId}>
+                        {b.title}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => {
+                    setSelectedStatus(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                  <option value="deleted">Archived</option>
+                </select>
+              </div>
+
+              {/* Publish Status Filter */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Publish State
+                </label>
+                <select
+                  value={selectedPublishStatus}
+                  onChange={(e) => {
+                    setSelectedPublishStatus(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">Published & Drafts</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Drafts</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Search and View Toggle Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-gray-100">
+              <div className="relative flex-1 w-full sm:max-w-md">
+                <input
+                  type="text"
+                  placeholder="Search by title, slug, or ID..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs px-3 py-2 pl-8 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                />
+                <FiSearch className="absolute left-2.5 top-2.5 text-gray-400 w-3.5 h-3.5" />
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <span className="text-xs text-gray-500 font-medium">
+                  {filteredServices.length} service{filteredServices.length !== 1 ? "s" : ""}
+                </span>
+
+                {/* Card vs Table View Toggle */}
+                <div className="p-0.5 bg-gray-100 border border-gray-200 rounded-lg flex items-center">
                   <button
-                    onClick={() => setExpanded((prev) => ({ ...prev, [String(cat.id)]: !isOpen }))}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-500"
-                    aria-label={isOpen ? "Collapse" : "Expand"}
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    className={`p-1.5 rounded-md transition-all ${
+                      viewMode === "table" ? "bg-white text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-800"
+                    }`}
+                    title="Table View"
                   >
-                    {isOpen ? <FiChevronDown className="w-4 h-4" /> : <FiChevronRight className="w-4 h-4" />}
+                    <FiList className="w-4 h-4" />
                   </button>
-                  {cat.homeIconUrl ? (
-                    <img src={cat.homeIconUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-200 bg-gray-50" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <FiFolder className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="font-semibold text-gray-900 truncate">{cat.title}</div>
-                      <StatusPill active={cat.status === "active"} />
-                      {cat.hasSaleBadge && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">SALE</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {bList.length} brand{bList.length === 1 ? "" : "s"} · {svcCountForCat} service{svcCountForCat === 1 ? "" : "s"}
-                      {cat.slug && <span className="ml-2 text-gray-400">/{cat.slug}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => toggleCategoryActive(cat)}
-                      disabled={busyId === cat.id}
-                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-                      title={cat.status === "active" ? "Hide from user app" : "Show in user app"}
-                    >
-                      {cat.status === "active" ? <FiEye className="w-4 h-4" /> : <FiEyeOff className="w-4 h-4" />}
-                    </button>
-                    <Link
-                      to="/admin/user-categories/categories"
-                      className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
-                      title="Edit in Categories page"
-                    >
-                      <FiEdit2 className="w-4 h-4" />
-                    </Link>
-                    <button
-                      onClick={() => confirmAndDelete("category", cat)}
-                      disabled={busyId === cat.id}
-                      className="p-2 rounded-lg hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                      title="Delete category"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("card")}
+                    className={`p-1.5 rounded-md transition-all ${
+                      viewMode === "card" ? "bg-white text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-800"
+                    }`}
+                    title="Card View"
+                  >
+                    <FiGrid className="w-4 h-4" />
+                  </button>
                 </div>
 
-                {/* Brands under this category */}
-                {isOpen && (
-                  <div className="border-t border-gray-100 bg-gray-50/40">
-                    {bList.length === 0 ? (
-                      <div className="px-6 py-5 text-sm text-gray-500 flex items-center justify-between">
-                        <span>No brands in this category yet.</span>
-                        <Link
-                          to="/admin/user-categories/brands"
-                          className="text-blue-600 font-semibold text-xs flex items-center gap-1 hover:underline"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCity("");
+                    setSelectedCategory("all");
+                    setSelectedSubCategory("all");
+                    setSelectedBrand("all");
+                    setSelectedStatus("all");
+                    setSelectedPublishStatus("all");
+                    setActiveStatFilter("all");
+                    setSearchTerm("");
+                    setPage(1);
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-800 underline px-1"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── APPLIANCE FLOW (2-COLUMN) OR REGULAR FULL-WIDTH ───────────── */}
+          <div className={`grid gap-4 items-start ${isApplianceCategory ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1"}`}>
+            {/* Left Brand Column (Only when hasBrands=true category is chosen) */}
+            {isApplianceCategory && (
+              <div className="lg:col-span-1 bg-white p-3 rounded-xl border border-gray-200 shadow-sm space-y-2">
+                <div className="flex items-center justify-between px-1 pb-2 border-b border-gray-100">
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                    Brands ({categoryBrands.length})
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded">
+                    Appliance Flow
+                  </span>
+                </div>
+
+                <div className="max-h-[550px] overflow-y-auto space-y-1.5 pr-1">
+                  {categoryBrands.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-gray-400">
+                      No brands in this category
+                    </div>
+                  ) : (
+                    categoryBrands.map((brand) => {
+                      const bId = brand.id || brand._id;
+                      const isSelected = activeApplianceBrandId === bId;
+                      return (
+                        <div
+                          key={bId}
+                          onClick={() => {
+                            setActiveApplianceBrandId(bId);
+                            setPage(1);
+                          }}
+                          className={`p-2.5 rounded-lg border cursor-pointer transition-all flex items-center gap-2.5 ${
+                            isSelected
+                              ? "bg-blue-50/70 border-blue-500 shadow-xs ring-1 ring-blue-300"
+                              : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
                         >
-                          <FiPlus className="w-3.5 h-3.5" /> Add brand
-                        </Link>
+                          {brand.iconUrl ? (
+                            <img
+                              src={toAssetUrl(brand.iconUrl)}
+                              alt={brand.title}
+                              className="w-7 h-7 rounded-md object-contain bg-white border border-gray-100 p-0.5"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">
+                              {brand.title?.charAt(0) || "—"}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <span
+                              className={`text-xs font-bold block truncate ${
+                                isSelected ? "text-blue-700" : "text-gray-800"
+                              }`}
+                            >
+                              {brand.title}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono block truncate">
+                              /{brand.slug || "slug"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Right / Main Content Column */}
+            <div className={isApplianceCategory ? "lg:col-span-3 space-y-3" : "space-y-3"}>
+              {/* Table or Card View Container */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {loadingServices ? (
+                  <div className="p-8 space-y-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="animate-pulse flex items-center justify-between py-3 border-b border-gray-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                          <div className="space-y-1.5">
+                            <div className="w-36 h-4 bg-gray-200 rounded" />
+                            <div className="w-24 h-3 bg-gray-100 rounded" />
+                          </div>
+                        </div>
+                        <div className="w-20 h-4 bg-gray-200 rounded" />
+                        <div className="w-16 h-6 bg-gray-200 rounded-full" />
                       </div>
-                    ) : (
-                      <div className="divide-y divide-gray-100">
-                        {bList.map((brand) => {
-                          const sList = servicesByBrand[String(brand.id)] || [];
-                          const brandOpen = !!expandedBrand[String(brand.id)];
+                    ))}
+                  </div>
+                ) : servicesError ? (
+                  <div className="p-12 text-center">
+                    <FiAlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+                    <h3 className="text-sm font-bold text-gray-800">Error loading catalog</h3>
+                    <p className="text-xs text-gray-500 mt-1">{servicesError}</p>
+                    <button
+                      onClick={fetchServices}
+                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                    >
+                      Retry Loading
+                    </button>
+                  </div>
+                ) : filteredServices.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <FiBox className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <h3 className="text-sm font-bold text-gray-700">No services match your filters</h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Try clearing your search query or reset your category/status filters.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("all");
+                        setSelectedBrand("all");
+                        setSelectedStatus("all");
+                        setSelectedPublishStatus("all");
+                        setActiveStatFilter("all");
+                        setSearchTerm("");
+                      }}
+                      className="mt-3 px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                ) : viewMode === "table" ? (
+                  /* ─── TABLE VIEW ─────────────────────────────────────── */
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider">
+                          <th className="py-3 px-3 text-center w-10">
+                            <button
+                              type="button"
+                              onClick={handleToggleSelectAll}
+                              className="text-gray-500 hover:text-blue-600"
+                            >
+                              {allCurrentSelected ? (
+                                <FiCheckSquare className="w-4 h-4 text-blue-600" />
+                              ) : (
+                                <FiSquare className="w-4 h-4" />
+                              )}
+                            </button>
+                          </th>
+                          <th className="py-3 px-2 text-center w-12">Order</th>
+                          <th className="py-3 px-3">Service</th>
+                          <th className="py-3 px-3">Category</th>
+                          <th className="py-3 px-3">Price / Model</th>
+                          <th className="py-3 px-3 text-center">Variants</th>
+                          <th className="py-3 px-3 text-center">Workers Mapped</th>
+                          <th className="py-3 px-3 text-center">Bookings (30d)</th>
+                          <th className="py-3 px-3 text-center">Status</th>
+                          <th className="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-gray-700">
+                        {paginatedServices.map((service, idx) => {
+                          const id = service.id || service._id;
+                          const isSelected = selectedServiceIds.includes(id);
+                          const isDraft = service.publishStatus === "draft";
+                          const isArchived = service.status === "deleted";
+                          const reasons = needsAttentionMap.get(String(id)) || [];
+                          const workersCount = service.workersMapped || 0;
+
+                          // Category & Brand info
+                          const catTitle =
+                            typeof service.categoryId === "object"
+                              ? service.categoryId?.title
+                              : categories.find((c) => (c.id || c._id) === service.categoryId)?.title || "—";
+
+                          const brandTitle =
+                            typeof service.brandId === "object"
+                              ? service.brandId?.title
+                              : brands.find((b) => (b.id || b._id) === service.brandId)?.title || "";
+
                           return (
-                            <div key={brand.id}>
-                              {/* Brand row */}
-                              <div className="flex items-center gap-3 pl-10 pr-4 py-3 hover:bg-white">
+                            <tr
+                              key={id}
+                              className={`transition-colors ${
+                                isSelected ? "bg-blue-50/60" : "hover:bg-blue-50/30"
+                              }`}
+                            >
+                              {/* Bulk Checkbox */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
                                 <button
-                                  onClick={() => setExpandedBrand((prev) => ({ ...prev, [String(brand.id)]: !brandOpen }))}
-                                  className="p-1 rounded hover:bg-gray-100 text-gray-400"
-                                  aria-label={brandOpen ? "Collapse" : "Expand"}
+                                  type="button"
+                                  onClick={() => handleToggleSelectOne(id)}
+                                  className="text-gray-500 hover:text-blue-600"
                                 >
-                                  {brandOpen ? <FiChevronDown className="w-3.5 h-3.5" /> : <FiChevronRight className="w-3.5 h-3.5" />}
+                                  {isSelected ? (
+                                    <FiCheckSquare className="w-4 h-4 text-blue-600" />
+                                  ) : (
+                                    <FiSquare className="w-4 h-4" />
+                                  )}
                                 </button>
-                                {brand.iconUrl ? (
-                                  <img src={brand.iconUrl} alt="" className="w-8 h-8 rounded-lg object-cover border border-gray-200 bg-white" />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                                    <FiTag className="w-4 h-4" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <div className="font-medium text-gray-900 truncate text-sm">{brand.title}</div>
-                                    <StatusPill active={brand.status === "active"} />
-                                  </div>
-                                  <div className="text-[11px] text-gray-500 mt-0.5">
-                                    {sList.length} service{sList.length === 1 ? "" : "s"}
-                                    {brand.basePrice ? ` · from ₹${brand.basePrice}` : ""}
+                              </td>
+
+                              {/* Reorder Up/Down */}
+                              <td className="py-3 px-2 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveServiceOrder(idx, "up")}
+                                    disabled={idx === 0}
+                                    className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
+                                    title="Move Up"
+                                  >
+                                    <FiChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveServiceOrder(idx, "down")}
+                                    disabled={idx === paginatedServices.length - 1}
+                                    className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
+                                    title="Move Down"
+                                  >
+                                    <FiChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Service Name & Thumbnail */}
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2.5 max-w-xs">
+                                  {service.iconUrl ? (
+                                    <img
+                                      src={toAssetUrl(service.iconUrl)}
+                                      alt={service.title}
+                                      className="w-9 h-9 rounded-lg object-contain bg-gray-50 border border-gray-200 p-0.5 shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs text-gray-400 shrink-0">
+                                      {service.title?.charAt(0) || "—"}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-gray-900 block truncate" title={service.title}>
+                                      {service.title}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[10px] text-gray-400 font-mono truncate">
+                                        /{service.slug || "no-slug"}
+                                      </span>
+                                      {isDraft && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                                          DRAFT
+                                        </span>
+                                      )}
+                                      {isArchived && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">
+                                          ARCHIVED
+                                        </span>
+                                      )}
+                                      {reasons.length > 0 && (
+                                        <span
+                                          className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200"
+                                          title={`Needs attention: ${reasons.join(", ")}`}
+                                        >
+                                          ⚠️ {reasons[0]}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    onClick={() => toggleBrandActive(brand)}
-                                    disabled={busyId === brand.id}
-                                    className="p-1.5 rounded hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-                                    title={brand.status === "active" ? "Hide" : "Show"}
+                              </td>
+
+                              {/* Category & Section */}
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <div className="space-y-0.5">
+                                  <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 font-medium">
+                                    {catTitle}
+                                  </span>
+                                  {brandTitle && (
+                                    <span className="block text-[10px] text-gray-500 font-medium">
+                                      {brandTitle}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Price or Starts At */}
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <div>
+                                  <div className="font-bold text-gray-900 flex items-baseline gap-1">
+                                    {service.pricingType === "starting_from" && (
+                                      <span className="text-[10px] font-normal text-gray-500">Starts at</span>
+                                    )}
+                                    <span>₹{service.discountPrice ?? service.basePrice ?? 0}</span>
+                                    {service.discountPrice && service.basePrice > service.discountPrice && (
+                                      <span className="text-[10px] text-gray-400 line-through">
+                                        ₹{service.basePrice}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 capitalize">
+                                    {service.pricingType?.replace("_", " ") || "fixed"}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Variants Count */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
+                                {Array.isArray(service.variants) && service.variants.length > 0 ? (
+                                  <span
+                                    className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200"
+                                    title={service.variants.map((v) => `${v.title}: ₹${v.price}`).join("\n")}
                                   >
-                                    {brand.status === "active" ? <FiEye className="w-3.5 h-3.5" /> : <FiEyeOff className="w-3.5 h-3.5" />}
-                                  </button>
-                                  <Link
-                                    to="/admin/user-categories/brands"
-                                    className="p-1.5 rounded hover:bg-blue-50 text-blue-600"
-                                    title="Edit in Brands page"
+                                    {service.variants.length} variant{service.variants.length > 1 ? "s" : ""}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+
+                              {/* Workers Mapped */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-full ${
+                                    workersCount > 0
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : "bg-rose-100 text-rose-700 border border-rose-300 animate-pulse"
+                                  }`}
+                                >
+                                  <FiUsers className="w-3 h-3" />
+                                  {workersCount}
+                                </span>
+                              </td>
+
+                              {/* Bookings Last 30 Days */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-gray-700 bg-gray-100 rounded-full">
+                                  <FiCalendar className="w-3 h-3 text-gray-400" />
+                                  {service.bookingsLast30Days || 0}
+                                </span>
+                              </td>
+
+                              {/* Status Toggle */}
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
+                                <ToggleSwitch
+                                  checked={service.status === "active"}
+                                  onChange={() => handleToggleStatus(service)}
+                                />
+                              </td>
+
+                              {/* Actions Dropdown / Buttons */}
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingService(service);
+                                      setIsWizardOpen(true);
+                                    }}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Edit Service"
                                   >
                                     <FiEdit2 className="w-3.5 h-3.5" />
-                                  </Link>
+                                  </button>
+
                                   <button
-                                    onClick={() => confirmAndDelete("brand", brand)}
-                                    disabled={busyId === brand.id}
-                                    className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                                    title="Delete brand"
+                                    type="button"
+                                    onClick={() => handleDuplicate(service)}
+                                    className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                    title="Duplicate Service"
+                                  >
+                                    <FiCopy className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBulkMoveTargetIds([id]);
+                                      setIsBulkMoveOpen(true);
+                                    }}
+                                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                    title="Move Category / Brand"
+                                  >
+                                    <FiMove className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDelete(service)}
+                                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Delete / Archive"
                                   >
                                     <FiTrash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
-                              </div>
-
-                              {/* Services under this brand */}
-                              {brandOpen && (
-                                <div className="pl-20 pr-4 pb-3 bg-white">
-                                  {sList.length === 0 ? (
-                                    <div className="py-3 text-xs text-gray-500 flex items-center justify-between">
-                                      <span>No services yet.</span>
-                                      <Link
-                                        to="/admin/user-categories/sections"
-                                        className="text-blue-600 font-semibold flex items-center gap-1 hover:underline"
-                                      >
-                                        <FiPlus className="w-3 h-3" /> Add service
-                                      </Link>
-                                    </div>
-                                  ) : (
-                                    <div className="divide-y divide-gray-100">
-                                      {sList.map((svc) => (
-                                        <div key={svc.id} className="flex items-center gap-3 py-2.5">
-                                          {svc.iconUrl ? (
-                                            <img src={svc.iconUrl} alt="" className="w-7 h-7 rounded-md object-cover border border-gray-200" />
-                                          ) : (
-                                            <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                              <FiBox className="w-3.5 h-3.5" />
-                                            </div>
-                                          )}
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                              <div className="text-sm text-gray-800 truncate">{svc.title}</div>
-                                              <StatusPill active={svc.status === "active"} />
-                                            </div>
-                                            {(svc.basePrice || svc.price) && (
-                                              <div className="text-[11px] text-gray-500 mt-0.5">
-                                                ₹{svc.basePrice || svc.price}
-                                                {svc.discountPrice && <span className="ml-1 line-through text-gray-400">₹{svc.discountPrice}</span>}
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <button
-                                              onClick={() => toggleServiceActive(svc)}
-                                              disabled={busyId === svc.id}
-                                              className="p-1.5 rounded hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-                                              title={svc.status === "active" ? "Hide" : "Show"}
-                                            >
-                                              {svc.status === "active" ? <FiEye className="w-3.5 h-3.5" /> : <FiEyeOff className="w-3.5 h-3.5" />}
-                                            </button>
-                                            <Link
-                                              to="/admin/user-categories/sections"
-                                              className="p-1.5 rounded hover:bg-blue-50 text-blue-600"
-                                              title="Edit in Services page"
-                                            >
-                                              <FiEdit2 className="w-3.5 h-3.5" />
-                                            </Link>
-                                            <button
-                                              onClick={() => confirmAndDelete("service", svc)}
-                                              disabled={busyId === svc.id}
-                                              className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                                              title="Delete service"
-                                            >
-                                              <FiTrash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </div>
-                    )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  /* ─── CARD VIEW ──────────────────────────────────────── */
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {paginatedServices.map((service, idx) => {
+                      const id = service.id || service._id;
+                      const isSelected = selectedServiceIds.includes(id);
+                      const isDraft = service.publishStatus === "draft";
+                      const isArchived = service.status === "deleted";
+                      const reasons = needsAttentionMap.get(String(id)) || [];
+                      const workersCount = service.workersMapped || 0;
+
+                      return (
+                        <div
+                          key={id}
+                          className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
+                            isSelected
+                              ? "bg-blue-50/50 border-blue-500 shadow-sm"
+                              : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-xs"
+                          }`}
+                        >
+                          <div>
+                            {/* Card Header */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSelectOne(id)}
+                                  className="text-gray-400 hover:text-blue-600"
+                                >
+                                  {isSelected ? (
+                                    <FiCheckSquare className="w-4 h-4 text-blue-600" />
+                                  ) : (
+                                    <FiSquare className="w-4 h-4" />
+                                  )}
+                                </button>
+                                {service.iconUrl ? (
+                                  <img
+                                    src={toAssetUrl(service.iconUrl)}
+                                    alt={service.title}
+                                    className="w-10 h-10 rounded-lg object-contain bg-gray-50 border border-gray-200 p-1"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs text-gray-400">
+                                    {service.title?.charAt(0) || "—"}
+                                  </div>
+                                )}
+                                <div>
+                                  <h4 className="text-xs font-bold text-gray-900 leading-snug line-clamp-1">
+                                    {service.title}
+                                  </h4>
+                                  <span className="text-[10px] text-gray-400 font-mono block">
+                                    /{service.slug || "slug"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <ToggleSwitch
+                                checked={service.status === "active"}
+                                onChange={() => handleToggleStatus(service)}
+                              />
+                            </div>
+
+                            {/* Badges / Attention */}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                              {isDraft && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                                  DRAFT
+                                </span>
+                              )}
+                              {isArchived && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
+                                  ARCHIVED
+                                </span>
+                              )}
+                              {reasons.map((r, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200"
+                                >
+                                  ⚠️ {r}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-2 text-[11px] mt-3 pt-3 border-t border-gray-100">
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-semibold">
+                                  Price
+                                </span>
+                                <span className="font-bold text-gray-900">
+                                  {service.pricingType === "starting_from" ? "Starts ₹" : "₹"}
+                                  {service.discountPrice ?? service.basePrice ?? 0}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-semibold">
+                                  Workers Mapped
+                                </span>
+                                <span
+                                  className={`font-bold ${
+                                    workersCount > 0 ? "text-emerald-700" : "text-rose-600 font-extrabold"
+                                  }`}
+                                >
+                                  {workersCount} mapped
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-semibold">
+                                  Variants
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {service.variants?.length || 0} variants
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-semibold">
+                                  Bookings (30d)
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {service.bookingsLast30Days || 0} booked
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Footer Actions */}
+                          <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveServiceOrder(idx, "up")}
+                                disabled={idx === 0}
+                                className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
+                                title="Move Up"
+                              >
+                                <FiChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveServiceOrder(idx, "down")}
+                                disabled={idx === paginatedServices.length - 1}
+                                className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
+                                title="Move Down"
+                              >
+                                <FiChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingService(service);
+                                  setIsWizardOpen(true);
+                                }}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <FiEdit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicate(service)}
+                                className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                title="Duplicate"
+                              >
+                                <FiCopy className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDelete(service)}
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <FiTrash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-600">
+                    <span>
+                      Page {page} of {totalPages} ({filteredServices.length} total)
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* ─── FLOATING BULK SELECTION BAR ──────────────────────────────── */}
+          {selectedServiceIds.length > 0 && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in slide-in-from-bottom-5">
+              <span className="text-xs font-bold text-slate-200 whitespace-nowrap">
+                {selectedServiceIds.length} service{selectedServiceIds.length > 1 ? "s" : ""} selected
+              </span>
+
+              <div className="h-4 w-px bg-slate-700" />
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleBulkStatusChange("active")}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <FiCheck className="w-3.5 h-3.5" />
+                  Activate
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleBulkStatusChange("inactive")}
+                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <FiEyeOff className="w-3.5 h-3.5" />
+                  Deactivate
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenBulkMove}
+                  className="px-3 py-1.5 bg-[#2874F0] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <FiMove className="w-3.5 h-3.5" />
+                  Move Category / Brand
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBulkArchive}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <FiArchive className="w-3.5 h-3.5" />
+                  Archive
+                </button>
+              </div>
+
+              <div className="h-4 w-px bg-slate-700" />
+
+              <button
+                type="button"
+                onClick={() => setSelectedServiceIds([])}
+                className="text-xs text-slate-400 hover:text-white underline"
+              >
+                Deselect
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Deep-link footer */}
-      <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 flex flex-wrap items-center gap-4">
-        <span className="font-semibold text-gray-700">Dedicated editors:</span>
-        <Link to="/admin/user-categories/categories" className="text-blue-600 hover:underline flex items-center gap-1">
-          Categories <FiExternalLink className="w-3 h-3" />
-        </Link>
-        <Link to="/admin/user-categories/brands" className="text-blue-600 hover:underline flex items-center gap-1">
-          Brands <FiExternalLink className="w-3 h-3" />
-        </Link>
-        <Link to="/admin/user-categories/sections" className="text-blue-600 hover:underline flex items-center gap-1">
-          Services <FiExternalLink className="w-3 h-3" />
-        </Link>
-        <Link to="/admin/user-categories/home" className="text-blue-600 hover:underline flex items-center gap-1">
-          Homepage sections <FiExternalLink className="w-3 h-3" />
-        </Link>
-      </div>
+      {/* ─── TAB 2: CATEGORIES ────────────────────────────────────────── */}
+      {activeTab === "categories" && (
+        <CategoriesListView selectedCity={selectedCity} onRefreshHealth={loadHealth} />
+      )}
+
+      {/* ─── TAB 3: SECTIONS AND BRANDS ───────────────────────────────── */}
+      {activeTab === "brands" && (
+        <BrandsListView selectedCity={selectedCity} onRefreshHealth={loadHealth} />
+      )}
+
+      {/* ─── TAB 4: DRAFT AND ARCHIVE ─────────────────────────────────── */}
+      {activeTab === "draft-archive" && (
+        <DraftArchiveView
+          onRefreshMain={() => {
+            fetchServices();
+            loadHealth();
+          }}
+        />
+      )}
+
+      {/* ─── TAB 5: AUDIT LOG ─────────────────────────────────────────── */}
+      {activeTab === "audit-log" && <AuditLogView />}
+
+      {/* ─── SERVICE WIZARD MODAL (EDIT / CREATE) ─────────────────────── */}
+      <ServiceWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => {
+          setIsWizardOpen(false);
+          setEditingService(null);
+        }}
+        service={editingService}
+        categories={categories}
+        brands={brands}
+        cities={cities}
+        onSaved={() => {
+          fetchServices();
+          loadHealth();
+        }}
+      />
+
+      {/* ─── DEPENDENCY MODAL (DELETE / ARCHIVE) ───────────────────────── */}
+      <DependencyModal
+        isOpen={depModal.isOpen}
+        onClose={() => setDepModal({ isOpen: false, item: null, report: null, loading: false })}
+        report={depModal.report}
+        entityName={depModal.item?.title || "Service"}
+        entityType="service"
+        onConfirmArchive={handleConfirmArchive}
+        onConfirmForceDelete={handleConfirmForceDelete}
+        loading={depModal.loading}
+      />
+
+      {/* ─── BULK MOVE MODAL ──────────────────────────────────────────── */}
+      <BulkMoveModal
+        isOpen={isBulkMoveOpen}
+        onClose={() => setIsBulkMoveOpen(false)}
+        selectedCount={bulkMoveTargetIds.length}
+        brands={brands}
+        categories={categories}
+        onConfirmMove={handleConfirmBulkMove}
+        loading={movingBulk}
+      />
     </div>
   );
 };

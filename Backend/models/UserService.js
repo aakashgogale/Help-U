@@ -21,6 +21,12 @@ const userServiceSchema = new mongoose.Schema({
     ref: 'Category',
     index: true
   },
+  // Cities where this service is available (inherits from category if blank)
+  cityIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'City',
+    index: true
+  }],
   title: {
     type: String,
     required: [true, 'Please provide a service title'],
@@ -144,6 +150,96 @@ const userServiceSchema = new mongoose.Schema({
         question: { type: String, trim: true, required: true },
         answer: { type: String, trim: true, required: true }
       }
+    ],
+    default: []
+  },
+
+  // Draft/published lifecycle (Phase-2b). publishStatus=draft keeps the row
+  // out of public listings even while status='active'. Default 'published'
+  // so existing rows keep behaving as today.
+  publishStatus: {
+    type: String,
+    enum: ['draft', 'published'],
+    default: 'published',
+    index: true
+  },
+  // Admin-chosen custom sort order within a brand/section. Independent of
+  // Brand.displayOrder. Default 0.
+  sortOrder: {
+    type: Number,
+    default: 0,
+    index: true
+  },
+  // Snapshot of the previous status before archive, so restore returns to the
+  // original state. Set by the archive endpoint, cleared by restore.
+  previousStatus: {
+    type: String,
+    default: null
+  },
+
+  // ==========================================
+  // DISPLAY (Urban-Company-style catalog)
+  // All optional. Omitting them falls back to current behaviour: the modal
+  // keeps using basePrice, the single iconUrl and no struck-through price.
+  // ==========================================
+  originalPrice: {
+    type: Number,
+    min: 0,
+    default: null
+  },
+  discountLabel: {
+    type: String,
+    default: ''
+  },
+  durationMinutes: {
+    type: Number,
+    min: 0,
+    default: null
+  },
+  displayRating: {
+    type: String,
+    default: ''
+  },
+  reviewsLabel: {
+    type: String,
+    default: ''
+  },
+  isPackage: {
+    type: Boolean,
+    default: false
+  },
+  // Additional gallery images beyond the single `iconUrl`. The catalog modal
+  // prefers images[0] when present and falls back to iconUrl.
+  images: {
+    type: [String],
+    default: []
+  },
+
+  // ==========================================
+  // VARIANTS / PACKAGES (approved sub-document approach)
+  // Services without variants keep working: an empty array means pricing
+  // follows basePrice/pricingType above. Each variant's pricingType enum is
+  // intentionally identical to the parent service's pricingType enum so a
+  // variant can be fixed, hourly, starting_from, inspection_fee or
+  // quote_required. If this parent enum ever changes, update it here too.
+  // ==========================================
+  variants: {
+    type: [
+      new mongoose.Schema({
+        title: { type: String, trim: true, required: true },
+        price: { type: Number, min: 0, required: true },
+        originalPrice: { type: Number, min: 0, default: null },
+        durationMinutes: { type: Number, min: 0, default: null },
+        pricingType: {
+          type: String,
+          enum: ['fixed', 'hourly', 'starting_from', 'inspection_fee', 'quote_required'],
+          default: 'fixed'
+        },
+        inclusions: { type: [String], default: [] },
+        imageUrl: { type: String, default: '' },
+        isActive: { type: Boolean, default: true },
+        order: { type: Number, default: 0 }
+      }, { _id: true, timestamps: false })
     ],
     default: []
   }

@@ -78,6 +78,30 @@ const brandSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Controls the order a brand appears as a section inside the service
+  // catalog modal under its category. Rows left at 0 (today's default) fall
+  // through to the current createdAt ordering, so untouched brands keep
+  // showing in the same order they did before this field existed.
+  displayOrder: {
+    type: Number,
+    default: 0,
+    index: true
+  },
+  // Promotional banner shown above a brand's services inside the catalog
+  // modal (e.g. "Spatula waxing starting at ₹1,039"). All fields optional;
+  // the UI skips the banner when title/imageUrl are both empty.
+  bannerPromo: {
+    title: { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    originalPrice: { type: Number, default: null, min: 0 },
+    imageUrl: { type: String, default: '' }
+  },
+  // Snapshot of the previous status before archive, so restore returns to the
+  // original state. Set by the archive endpoint, cleared by restore.
+  previousStatus: {
+    type: String,
+    default: null
+  },
 
   // Admin tracking
   createdBy: {
@@ -89,8 +113,8 @@ const brandSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate slug from title before saving
-brandSchema.pre('save', async function (next) {
+// Generate slug from title before validation so the `required` check passes
+brandSchema.pre('validate', function (next) {
   if (this.isModified('title') && !this.slug) {
     this.slug = this.title
       .toLowerCase()
@@ -99,6 +123,10 @@ brandSchema.pre('save', async function (next) {
       .replace(/-+/g, '-')
       .replace(/(^-|-$)/g, '');
   }
+  next();
+});
+
+brandSchema.pre('save', async function (next) {
   // Auto-generate routePath from slug
   if (this.isModified('slug') && !this.routePath) {
     this.routePath = `/user/brand/${this.slug}`;

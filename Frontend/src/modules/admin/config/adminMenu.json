@@ -119,10 +119,11 @@
       "admin"
     ],
     "children": [
-      "Home",
+      "Service Management",
+      "Manage Services",
       "Manage Categories",
       "Manage Brands",
-      "Manage Services"
+      "Home"
     ]
   },
   {

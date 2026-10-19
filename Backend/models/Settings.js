@@ -376,6 +376,20 @@ const settingsSchema = new mongoose.Schema({
   maxReassignments: { type: Number, default: 3, min: 0, max: 10 },
 
   // ==========================================
+  // TIME-SLOT WINDOW (Phase 1)
+  // Powers the dynamic time-slot API that replaces the hard-coded 09:00..20:00
+  // grid in Checkout. Defaults match today's frontend behaviour exactly
+  // (slots 09:00..20:00, 60-minute buckets, 7-day lookahead, 1-hour lead),
+  // so no admin edit = no behaviour change. Phase 2 (real worker-availability)
+  // will override these when it ships.
+  // ==========================================
+  slotStartHour: { type: Number, default: 9, min: 0, max: 23 },
+  slotEndHour: { type: Number, default: 20, min: 1, max: 24 },
+  slotDurationMinutes: { type: Number, default: 60, min: 15, max: 240 },
+  slotMaxDaysAhead: { type: Number, default: 7, min: 1, max: 30 },
+  slotMinLeadMinutes: { type: Number, default: 60, min: 0, max: 1440 },
+
+  // ==========================================
   // COMMISSION (global default)
   // Category, worker and worker+category overrides live in CommissionRule.
   // 'percentage' uses servicePayoutPercentage above; 'fixed' keeps

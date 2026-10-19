@@ -10,6 +10,24 @@ const cartItemSchema = new mongoose.Schema({
     ref: 'UserService',
     required: false
   },
+  // Optional — set only when the customer picked a specific variant/package
+  // from UserService.variants[]. Items added before this field existed read
+  // `null` and are priced from UserService.basePrice as today, so the change
+  // is fully backward compatible. The server-side cart pricing path (STEP 2)
+  // will prefer the variant's live price when variantId is set and never
+  // trust the client's `price`.
+  variantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
+  },
+  // UI-only snapshot of the variant at add-time, so the cart list can show
+  // its title/duration/inclusions without a second lookup. Not authoritative
+  // for billing; the server re-reads the live variant at price-recalc time.
+  variantSnapshot: {
+    title: { type: String, default: '' },
+    durationMinutes: { type: Number, default: null },
+    inclusions: { type: [String], default: [] }
+  },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',

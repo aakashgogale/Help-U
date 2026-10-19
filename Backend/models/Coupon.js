@@ -99,6 +99,16 @@ const couponSchema = new mongoose.Schema({
     default: false
   },
 
+  // When true, the UI advertises this coupon in the service catalog modal's
+  // coupon card and auto-fills the code at checkout. Scoping to a specific
+  // category uses the existing `categories: [ObjectId]` field above (empty
+  // array = app-wide), so no duplicate scope field is introduced. The
+  // discount is always computed server-side; this flag is advertise-only.
+  isAutoApply: {
+    type: Boolean,
+    default: false
+  },
+
   isActive: {
     type: Boolean,
     default: true,

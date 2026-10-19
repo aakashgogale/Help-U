@@ -1,17 +1,151 @@
 const Category = require('../../models/Category');
+const Brand = require('../../models/Brand');
+const UserService = require('../../models/UserService');
+const Booking = require('../../models/Booking');
+const Cart = require('../../models/Cart');
+const Coupon = require('../../models/Coupon');
+const HomeContent = require('../../models/HomeContent');
 const { validationResult } = require('express-validator');
 const { SERVICE_STATUS } = require('../../utils/constants');
+const { validateSubCategorySlug, subCategorySlugError, toSlugSegment } = require('../../utils/categorySlug');
+const { invalidatePublicCatalogKeys } = require('../../utils/catalogCache');
+const { writeAudit } = require('../../utils/auditLog');
 
 /**
- * Get all categories
+ * Shared mapper so every response returns the same, documented shape.
+ * Includes the Phase-1/Phase-2 additive fields (parentId, hasBrands, heroBanner, …)
+ * so the admin UI can render them without a second lookup.
+ */
+const toCategoryResponse = (cat) => ({
+  id: cat._id,
+  title: cat.title,
+  slug: cat.slug,
+  parentId: cat.parentId ? cat.parentId.toString() : null,
+  hasBrands: cat.hasBrands === true,
+  homeIconUrl: cat.homeIconUrl,
+  homeBadge: cat.homeBadge,
+  hasSaleBadge: !!cat.hasSaleBadge,
+  showOnHome: !!cat.showOnHome,
+  homeOrder: cat.homeOrder || 0,
+  description: cat.description,
+  imageUrl: cat.imageUrl,
+  status: cat.status,
+  isPopular: !!cat.isPopular,
+  isEmergencyAvailable: !!cat.isEmergencyAvailable,
+  cityIds: cat.cityIds || [],
+  metaTitle: cat.metaTitle,
+  metaDescription: cat.metaDescription,
+  // Phase-1 display fields
+  displayRating: cat.displayRating || '',
+  bookingsLabel: cat.bookingsLabel || '',
+  etaDefaultMinutes: cat.etaDefaultMinutes ?? null,
+  heroBanner: cat.heroBanner || { tag: '', title: '', startingPrice: '', imageUrl: '' },
+  subCategoryBadge: cat.subCategoryBadge || '',
+  createdAt: cat.createdAt,
+  updatedAt: cat.updatedAt
+});
+
+/**
+ * Build the `parentId` filter chunk from a raw query value.
+ * - undefined / '' / null  -> { parentId: null }  (default: top-level only)
+ * - 'all'                  -> {}                   (no filter)
+ * - '<objectId>'           -> { parentId: '<id>' }
+ */
+const parentIdFilter = (raw) => {
+  if (raw === undefined || raw === null || raw === '' || raw === 'null' || raw === 'undefined') return { parentId: null };
+  if (raw === 'all') return {};
+  return { parentId: raw };
+};
+
+/**
+ * Reject a parentId that would create a cycle (`parent === self`, or
+ * the proposed parent is itself a descendant of this category) or that
+ * would push the tree past 2 levels (parent cannot itself have a parent).
+ * Returns null when valid, otherwise an error message.
+ */
+const validateParentId = async ({ categoryId, parentId }) => {
+  if (!parentId || parentId === 'null' || parentId === 'undefined') return null;
+  if (categoryId && String(parentId) === String(categoryId)) {
+    return 'A category cannot be its own parent.';
+  }
+  const parent = await Category.findById(parentId).select('_id parentId status').lean();
+  if (!parent) return 'Parent category not found.';
+  if (parent.parentId) {
+    return 'Nesting deeper than 2 levels is not allowed. The parent must itself be a top-level category.';
+  }
+  if (categoryId) {
+    // The proposed parent must not already be a child of this category.
+    const descendantParent = await Category.findOne({ _id: parentId, parentId: categoryId }).lean();
+    if (descendantParent) return 'Cyclic parent is not allowed.';
+  }
+  return null;
+};
+
+/**
+ * Count every reference to this category and its descendants so the admin UI
+ * can show "cannot delete, 3 active bookings + 2 carts still use it".
+ */
+const buildDependencyReport = async (categoryId) => {
+  const children = await Category.find({ parentId: categoryId }).select('_id').lean();
+  const brandCount = await Brand.countDocuments({ categoryIds: categoryId, status: { $ne: 'deleted' } });
+  const brandIds = (await Brand.find({ categoryIds: categoryId }).select('_id').lean()).map(b => b._id);
+  const serviceCount = await UserService.countDocuments({ $or: [{ categoryId }, { brandId: { $in: brandIds } }], status: { $ne: 'deleted' } });
+
+  const categoryDoc = await Category.findById(categoryId).select('title slug').lean();
+  const categoryTitles = categoryDoc ? [categoryDoc.title, categoryDoc.slug].filter(Boolean) : [];
+
+  const [activeBookings, activeCarts, couponRefs, homeContentRefs] = await Promise.all([
+    Booking.countDocuments({
+      $or: [
+        { categoryId },
+        ...(categoryTitles.length > 0 ? [{ serviceCategory: { $in: categoryTitles } }] : [])
+      ],
+      status: { $nin: ['completed', 'cancelled', 'rejected'] }
+    }).catch(() => 0),
+    Cart.countDocuments({ 'items.categoryId': categoryId }).catch(() => 0),
+    Coupon.countDocuments({ categories: categoryId, isActive: true }).catch(() => 0),
+    HomeContent.countDocuments({
+      $or: [
+        { 'banners.targetCategoryId': categoryId },
+        { 'promos.targetCategoryId': categoryId },
+        { 'noteworthy.targetCategoryId': categoryId },
+        { 'booked.targetCategoryId': categoryId },
+        { 'spotlight.targetCategoryId': categoryId },
+        { 'categorySections.seeAllTargetCategoryId': categoryId },
+        { 'categorySections.cards.targetCategoryId': categoryId }
+      ]
+    }).catch(() => 0)
+  ]);
+
+  const total = children.length + brandCount + serviceCount + activeBookings + activeCarts + couponRefs + homeContentRefs;
+  return {
+    hasDependencies: total > 0,
+    childCategories: children.length,
+    brands: brandCount,
+    services: serviceCount,
+    activeBookings,
+    activeCarts,
+    coupons: couponRefs,
+    homeContentReferences: homeContentRefs
+  };
+};
+
+// ============================================================================
+// LIST / READ
+// ============================================================================
+
+/**
+ * Get all categories.
  * GET /api/admin/categories
+ * Query: status, showOnHome, isPopular, cityId, parentId
+ *   parentId: default = null (top-level only); 'all' = no filter;
+ *             '<id>' = children of that id.
  */
 const getAllCategories = async (req, res) => {
   try {
-    const { status, showOnHome, isPopular, cityId } = req.query;
+    const { status, showOnHome, isPopular, cityId, parentId } = req.query;
 
-    // Build query
-    const query = {};
+    const query = { ...parentIdFilter(parentId) };
     if (status) query.status = status;
     if (showOnHome !== undefined) query.showOnHome = showOnHome === 'true';
     if (isPopular !== undefined) query.isPopular = isPopular === 'true';
@@ -25,26 +159,7 @@ const getAllCategories = async (req, res) => {
     res.status(200).json({
       success: true,
       count: categories.length,
-      categories: categories.map(cat => ({
-        id: cat._id,
-        title: cat.title,
-        slug: cat.slug,
-        homeIconUrl: cat.homeIconUrl,
-        homeBadge: cat.homeBadge,
-        hasSaleBadge: cat.hasSaleBadge,
-        showOnHome: cat.showOnHome,
-        homeOrder: cat.homeOrder,
-        description: cat.description,
-        imageUrl: cat.imageUrl,
-        status: cat.status,
-        isPopular: cat.isPopular,
-        isEmergencyAvailable: !!cat.isEmergencyAvailable,
-        cityIds: cat.cityIds || [],
-        metaTitle: cat.metaTitle,
-        metaDescription: cat.metaDescription,
-        createdAt: cat.createdAt,
-        updatedAt: cat.updatedAt
-      }))
+      categories: categories.map(toCategoryResponse)
     });
   } catch (error) {
     console.error('Get all categories error:', error);
@@ -56,415 +171,468 @@ const getAllCategories = async (req, res) => {
 };
 
 /**
- * Get single category by ID
+ * Get children of a category.
+ * GET /api/admin/categories/:id/children
+ */
+const getCategoryChildren = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const children = await Category.find({ parentId: id })
+      .select('-__v')
+      .sort({ homeOrder: 1, createdAt: -1 })
+      .lean();
+    res.status(200).json({
+      success: true,
+      count: children.length,
+      categories: children.map(toCategoryResponse)
+    });
+  } catch (error) {
+    console.error('Get category children error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch sub-categories.' });
+  }
+};
+
+/**
+ * Get single category by ID.
  * GET /api/admin/categories/:id
  */
 const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
-
     const category = await Category.findById(id).select('-__v').lean();
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      category: {
-        id: category._id,
-        title: category.title,
-        slug: category.slug,
-        homeIconUrl: category.homeIconUrl,
-        homeBadge: category.homeBadge,
-        hasSaleBadge: category.hasSaleBadge,
-        showOnHome: category.showOnHome,
-        homeOrder: category.homeOrder,
-        description: category.description,
-        imageUrl: category.imageUrl,
-        status: category.status,
-        isPopular: category.isPopular,
-        isEmergencyAvailable: !!category.isEmergencyAvailable,
-        metaTitle: category.metaTitle,
-        metaDescription: category.metaDescription,
-        createdAt: category.createdAt,
-        updatedAt: category.updatedAt
-      }
-    });
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    res.status(200).json({ success: true, category: toCategoryResponse(category) });
   } catch (error) {
     console.error('Get category by ID error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch category. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch category. Please try again.' });
   }
 };
 
 /**
- * Create new category
+ * Slug availability check.
+ * GET /api/admin/categories/slug-available?slug=&parentId=&excludeId=
+ *
+ * Returns { available, reason, suggestion } so the admin UI can show inline
+ * feedback as the admin types. For sub-categories the slug must be
+ * namespaced with the parent's slug (validateSubCategorySlug).
+ */
+const checkSlugAvailability = async (req, res) => {
+  try {
+    const { slug, parentId, excludeId } = req.query;
+    if (!slug) return res.status(400).json({ success: false, message: 'slug is required' });
+
+    const normalised = String(slug).toLowerCase();
+
+    // Namespacing rule for sub-categories.
+    if (parentId) {
+      const parent = await Category.findById(parentId).select('slug parentId').lean();
+      if (!parent) return res.status(404).json({ success: false, message: 'Parent not found' });
+      if (parent.parentId) {
+        return res.status(400).json({ success: false, message: 'Parent is itself a sub-category; nesting beyond 2 levels is not allowed.' });
+      }
+      const check = validateSubCategorySlug(parent.slug, normalised);
+      if (!check.ok) {
+        return res.status(200).json({
+          success: true,
+          available: false,
+          reason: check.reason,
+          message: subCategorySlugError(check.reason, { parentSlug: parent.slug }),
+          suggestion: `${parent.slug}-${toSlugSegment(normalised)}`
+        });
+      }
+    }
+
+    // Global unique index on slug — one lookup settles the question.
+    const query = { slug: normalised };
+    if (excludeId) query._id = { $ne: excludeId };
+    const existing = await Category.findOne(query).select('_id').lean();
+    return res.status(200).json({
+      success: true,
+      available: !existing,
+      reason: existing ? 'in-use' : null,
+      message: existing ? 'Slug is already in use by another category.' : 'Slug is available.'
+    });
+  } catch (error) {
+    console.error('Slug availability error:', error);
+    res.status(500).json({ success: false, message: 'Failed to check slug.' });
+  }
+};
+
+/**
+ * Dependency report (what still points at this category).
+ * GET /api/admin/categories/:id/dependencies
+ */
+const getCategoryDependencies = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findById(id).select('_id title').lean();
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    const report = await buildDependencyReport(id);
+    res.status(200).json({ success: true, categoryId: id, title: category.title, ...report });
+  } catch (error) {
+    console.error('Category dependencies error:', error);
+    res.status(500).json({ success: false, message: 'Failed to build dependency report.' });
+  }
+};
+
+// ============================================================================
+// WRITE
+// ============================================================================
+
+/**
+ * Accept the full admin payload and build a Category-shaped object. Only
+ * known fields are copied — unknown keys from the admin UI are silently
+ * dropped so forward-compat changes do not corrupt the document.
+ */
+const buildCategoryFields = (body) => {
+  const fields = {};
+  if (body.title !== undefined) fields.title = body.title.trim();
+  if (body.slug !== undefined) fields.slug = body.slug?.trim().toLowerCase() || undefined;
+  if (body.parentId !== undefined) fields.parentId = body.parentId || null;
+  if (body.hasBrands !== undefined) fields.hasBrands = Boolean(body.hasBrands);
+  if (body.homeIconUrl !== undefined) fields.homeIconUrl = body.homeIconUrl || null;
+  if (body.homeBadge !== undefined) fields.homeBadge = body.homeBadge?.trim() || null;
+  if (body.hasSaleBadge !== undefined) fields.hasSaleBadge = Boolean(body.hasSaleBadge);
+  if (body.showOnHome !== undefined) fields.showOnHome = body.showOnHome !== false;
+  if (body.homeOrder !== undefined) fields.homeOrder = Number(body.homeOrder) || 0;
+  if (body.description !== undefined) fields.description = body.description?.trim() || null;
+  if (body.imageUrl !== undefined) fields.imageUrl = body.imageUrl || null;
+  if (body.status !== undefined) fields.status = body.status;
+  if (body.isPopular !== undefined) fields.isPopular = Boolean(body.isPopular);
+  if (body.isEmergencyAvailable !== undefined) fields.isEmergencyAvailable = Boolean(body.isEmergencyAvailable);
+  if (body.metaTitle !== undefined) fields.metaTitle = body.metaTitle?.trim() || null;
+  if (body.metaDescription !== undefined) fields.metaDescription = body.metaDescription?.trim() || null;
+  if (body.cityIds !== undefined) fields.cityIds = body.cityIds || [];
+  // Display fields
+  if (body.displayRating !== undefined) fields.displayRating = String(body.displayRating || '').trim();
+  if (body.bookingsLabel !== undefined) fields.bookingsLabel = String(body.bookingsLabel || '').trim();
+  if (body.etaDefaultMinutes !== undefined) {
+    const n = Number(body.etaDefaultMinutes);
+    fields.etaDefaultMinutes = Number.isFinite(n) ? n : null;
+  }
+  if (body.subCategoryBadge !== undefined) fields.subCategoryBadge = String(body.subCategoryBadge || '').trim();
+  if (body.heroBanner !== undefined && body.heroBanner && typeof body.heroBanner === 'object') {
+    fields.heroBanner = {
+      tag: String(body.heroBanner.tag || '').trim(),
+      title: String(body.heroBanner.title || '').trim(),
+      startingPrice: String(body.heroBanner.startingPrice || '').trim(),
+      imageUrl: String(body.heroBanner.imageUrl || '').trim()
+    };
+  }
+  if (body.publishStatus !== undefined) {
+    fields.publishStatus = body.publishStatus === 'draft' ? 'draft' : 'published';
+  }
+  if (body.sortOrder !== undefined) {
+    const n = Number(body.sortOrder);
+    fields.sortOrder = Number.isFinite(n) ? n : 0;
+  }
+  return fields;
+};
+
+/**
+ * Create new category (top-level or sub-category).
  * POST /api/admin/categories
  */
 const createCategory = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Category Create Validation Errors:', errors.array());
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
-    const {
-      title,
-      slug,
-      homeIconUrl,
-      homeBadge,
-      hasSaleBadge,
-      showOnHome,
-      homeOrder,
-      description,
-      imageUrl,
-      status,
-      isPopular,
-      isEmergencyAvailable,
-      metaTitle,
-      metaDescription,
-      cityIds
-    } = req.body;
+    const fields = buildCategoryFields(req.body);
+    fields.createdBy = req.user.id;
 
-    console.log('Creating category with payload:', req.body);
+    // Parent / depth / cycle check.
+    const parentErr = await validateParentId({ parentId: fields.parentId });
+    if (parentErr) return res.status(400).json({ success: false, message: parentErr });
 
-    // Check for duplicate slug ONLY within the same cities
-    // Logic:
-    // 1. If cityIds provided, check if any existing category with same slug has overlapping cityIds
-    // 2. If no cityIds (global), check if global category with same slug exists
-
-    const slugToCheck = slug?.trim().toLowerCase() || title.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
-
-    // Build query for duplicate check
-    const duplicateQuery = {
-      $or: [
-        { slug: slugToCheck }
-      ]
-    };
-
-    const existingCategory = await Category.findOne(duplicateQuery);
-
-    let isDuplicate = false;
-    if (existingCategory) {
-      // If found, check city overlap
-      const existingCities = existingCategory.cityIds.map(id => id.toString());
-      const newCities = (cityIds || []).map(id => id.toString());
-
-      if (newCities.length === 0) {
-        // Trying to create Global. Duplicate if existing is also Global
-        if (existingCities.length === 0) isDuplicate = true;
-      } else {
-        // Trying to create City-specific. Duplicate if ANY overlap
-        const hasOverlap = newCities.some(cityId => existingCities.includes(cityId));
-        if (hasOverlap) isDuplicate = true;
-
-        // Also duplicate if existing is Global (Global covers all cities)
-        if (existingCities.length === 0) isDuplicate = true;
+    // Sub-category slug namespacing.
+    if (fields.parentId) {
+      const parent = await Category.findById(fields.parentId).select('slug').lean();
+      const slugToCheck = fields.slug || toSlugSegment(fields.title || '');
+      const check = validateSubCategorySlug(parent.slug, slugToCheck);
+      if (!check.ok) {
+        return res.status(400).json({
+          success: false,
+          message: subCategorySlugError(check.reason, { parentSlug: parent.slug }),
+          reason: check.reason,
+          suggestion: `${parent.slug}-${toSlugSegment(slugToCheck)}`
+        });
       }
+      fields.slug = slugToCheck;
     }
 
-    if (isDuplicate && existingCategory) {
-      console.log('Category with this title/slug already exists:', existingCategory.title, existingCategory.slug);
-      return res.status(400).json({
-        success: false,
-        message: 'Category with this title or slug already exists'
-      });
+    // Duplicate slug check (global, matches the unique index).
+    const slugToCheck = fields.slug || toSlugSegment(fields.title || '');
+    const duplicate = await Category.findOne({ slug: slugToCheck }).select('_id').lean();
+    if (duplicate) {
+      return res.status(400).json({ success: false, message: 'Category with this slug already exists' });
     }
 
-    const category = await Category.create({
-      title: title.trim(),
-      slug: slug?.trim().toLowerCase() || undefined, // Will be auto-generated if not provided
-      homeIconUrl: homeIconUrl || null,
-      homeBadge: homeBadge?.trim() || null,
-      hasSaleBadge: Boolean(hasSaleBadge),
-      showOnHome: showOnHome !== false,
-      homeOrder: Number(homeOrder) || 0,
-      description: description?.trim() || null,
-      imageUrl: imageUrl || null,
-      status: status || SERVICE_STATUS.ACTIVE,
-      isPopular: Boolean(isPopular),
-      isEmergencyAvailable: Boolean(isEmergencyAvailable),
-      metaTitle: metaTitle?.trim() || null,
-      metaDescription: metaDescription?.trim() || null,
-      cityIds: cityIds || [],
-      createdBy: req.user.id
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Category created successfully',
-      category: {
-        id: category._id,
-        title: category.title,
-        slug: category.slug,
-        homeIconUrl: category.homeIconUrl,
-        homeBadge: category.homeBadge,
-        hasSaleBadge: category.hasSaleBadge,
-        showOnHome: category.showOnHome,
-        homeOrder: category.homeOrder,
-        description: category.description,
-        imageUrl: category.imageUrl,
-        status: category.status,
-        isPopular: category.isPopular,
-        isEmergencyAvailable: !!category.isEmergencyAvailable,
-        createdAt: category.createdAt,
-        updatedAt: category.updatedAt
-      }
-    });
+    const category = await Category.create(fields);
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'create', entityType: 'category', entityId: category._id, after: category });
+    res.status(201).json({ success: true, message: 'Category created successfully', category: toCategoryResponse(category) });
   } catch (error) {
     console.error('Create category error:', error);
-
-    // Handle duplicate key error
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Category with this title or slug already exists'
-      });
+      return res.status(400).json({ success: false, message: 'Category with this title or slug already exists' });
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create category. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to create category. Please try again.' });
   }
 };
 
 /**
- * Update category
+ * Update category.
  * PUT /api/admin/categories/:id
  */
 const updateCategory = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
     const { id } = req.params;
-    const {
-      title,
-      slug,
-      homeIconUrl,
-      homeBadge,
-      hasSaleBadge,
-      showOnHome,
-      homeOrder,
-      description,
-      imageUrl,
-      status,
-      isPopular,
-      isEmergencyAvailable,
-      metaTitle,
-      metaDescription,
-      cityIds: updateCityIds
-    } = req.body;
-
     const category = await Category.findById(id);
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    const before = category.toObject();
 
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found'
-      });
-    }
+    const fields = buildCategoryFields(req.body);
 
-    // Check for duplicate slug ONLY within the same cities
-    if (title || slug || updateCityIds) {
-      const slugToCheck = slug?.trim().toLowerCase() || (title ? title.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-') : category.slug);
+    // Parent change needs the cycle/depth check against the *new* parent.
+    if (fields.parentId !== undefined) {
+      const parentErr = await validateParentId({ categoryId: id, parentId: fields.parentId });
+      if (parentErr) return res.status(400).json({ success: false, message: parentErr });
 
-      const duplicateQuery = {
-        _id: { $ne: id },
-        slug: slugToCheck
-      };
-
-      const existingCategory = await Category.findOne(duplicateQuery);
-
-      if (existingCategory) {
-        let isDuplicate = false;
-        const existingCities = existingCategory.cityIds.map(id => id.toString());
-        // For update, if updateCityIds provided use it, else use existing category.cityIds
-        const newCities = (updateCityIds ? updateCityIds : category.cityIds).map(id => id.toString());
-
-        if (newCities.length === 0) {
-          if (existingCities.length === 0) isDuplicate = true;
-        } else {
-          const hasOverlap = newCities.some(cityId => existingCities.includes(cityId));
-          if (hasOverlap) isDuplicate = true;
-          if (existingCities.length === 0) isDuplicate = true;
-        }
-
-        if (isDuplicate) {
+      // A category that currently has children cannot become a sub-category
+      // itself (would make the children 3-level nested).
+      if (fields.parentId) {
+        const childCount = await Category.countDocuments({ parentId: id });
+        if (childCount > 0) {
           return res.status(400).json({
             success: false,
-            message: 'Category with this title or slug already exists'
+            message: 'This category has sub-categories, so it cannot become a sub-category itself.'
           });
         }
       }
     }
 
-    // Update fields
-    if (title !== undefined) category.title = title.trim();
-    if (slug !== undefined) category.slug = slug.trim().toLowerCase();
-    if (homeIconUrl !== undefined) category.homeIconUrl = homeIconUrl || null;
-    if (homeBadge !== undefined) category.homeBadge = homeBadge?.trim() || null;
-    if (hasSaleBadge !== undefined) category.hasSaleBadge = Boolean(hasSaleBadge);
-    if (showOnHome !== undefined) category.showOnHome = showOnHome !== false;
-    if (homeOrder !== undefined) category.homeOrder = Number(homeOrder) || 0;
-    if (description !== undefined) category.description = description?.trim() || null;
-    if (imageUrl !== undefined) category.imageUrl = imageUrl || null;
-    if (status !== undefined) category.status = status;
-    if (isPopular !== undefined) category.isPopular = Boolean(isPopular);
-    if (isEmergencyAvailable !== undefined) category.isEmergencyAvailable = Boolean(isEmergencyAvailable);
-    if (metaTitle !== undefined) category.metaTitle = metaTitle?.trim() || null;
-    if (metaDescription !== undefined) category.metaDescription = metaDescription?.trim() || null;
-
-    if (updateCityIds !== undefined) {
-      category.cityIds = updateCityIds;
-      category.markModified('cityIds'); // Explicitly mark modified for array
+    // Slug change requires global uniqueness; sub-cat slug requires namespacing.
+    if (fields.slug !== undefined && fields.slug !== category.slug) {
+      const effectiveParentId = fields.parentId !== undefined ? fields.parentId : category.parentId;
+      if (effectiveParentId) {
+        const parent = await Category.findById(effectiveParentId).select('slug').lean();
+        const check = validateSubCategorySlug(parent.slug, fields.slug);
+        if (!check.ok) {
+          return res.status(400).json({
+            success: false,
+            message: subCategorySlugError(check.reason, { parentSlug: parent.slug }),
+            reason: check.reason
+          });
+        }
+      }
+      const duplicate = await Category.findOne({ slug: fields.slug, _id: { $ne: id } }).select('_id').lean();
+      if (duplicate) return res.status(400).json({ success: false, message: 'Slug is already in use.' });
     }
 
+    Object.assign(category, fields);
+    if (fields.cityIds !== undefined) category.markModified('cityIds');
+    if (fields.heroBanner !== undefined) category.markModified('heroBanner');
     await category.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'update', entityType: 'category', entityId: category._id, before, after: category });
 
-    res.status(200).json({
-      success: true,
-      message: 'Category updated successfully',
-      category: {
-        id: category._id,
-        title: category.title,
-        slug: category.slug,
-        homeIconUrl: category.homeIconUrl,
-        homeBadge: category.homeBadge,
-        hasSaleBadge: category.hasSaleBadge,
-        showOnHome: category.showOnHome,
-        homeOrder: category.homeOrder,
-        description: category.description,
-        imageUrl: category.imageUrl,
-        status: category.status,
-        isPopular: category.isPopular,
-        isEmergencyAvailable: !!category.isEmergencyAvailable,
-        createdAt: category.createdAt,
-        updatedAt: category.updatedAt
-      }
-    });
+    res.status(200).json({ success: true, message: 'Category updated successfully', category: toCategoryResponse(category) });
   } catch (error) {
     console.error('Update category error:', error);
-
-    // Handle duplicate key error
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Category with this title or slug already exists'
-      });
+      return res.status(400).json({ success: false, message: 'Category with this title or slug already exists' });
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update category. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update category. Please try again.' });
   }
 };
 
 /**
- * Delete category (soft delete - set status to deleted)
+ * Soft delete category.
  * DELETE /api/admin/categories/:id
+ * Query: force=true to bypass the dependency check (admin override).
+ * Returns 409 with the full dependency report when the category is still in use.
  */
 const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
 
     const category = await Category.findById(id);
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
 
-    if (!category) {
-      return res.status(404).json({
+    const report = await buildDependencyReport(id);
+    if (report.hasDependencies && !force) {
+      return res.status(409).json({
         success: false,
-        message: 'Category not found'
+        message: 'Category is still in use and cannot be deleted. Review dependencies or deactivate instead.',
+        dependencies: report
       });
     }
 
-    // Soft delete - set status to deleted
+    const before = category.toObject();
+    category.previousStatus = category.status || 'active';
     category.status = SERVICE_STATUS.DELETED;
     await category.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'delete', entityType: 'category', entityId: id, before, after: category, note: force ? 'force=true' : 'soft' });
 
-    res.status(200).json({
-      success: true,
-      message: 'Category deleted successfully'
-    });
+    res.status(200).json({ success: true, message: 'Category soft-deleted successfully', dependencies: report });
   } catch (error) {
     console.error('Delete category error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete category. Please try again.'
-    });
+    res.status(500).json({ success: false, message: 'Failed to delete category. Please try again.' });
   }
 };
 
 /**
- * Update category order
+ * Update single category order (legacy).
  * PATCH /api/admin/categories/:id/order
  */
 const updateCategoryOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { homeOrder } = req.body;
-
     if (homeOrder === undefined || isNaN(homeOrder)) {
-      return res.status(400).json({
-        success: false,
-        message: 'homeOrder is required and must be a number'
-      });
+      return res.status(400).json({ success: false, message: 'homeOrder is required and must be a number' });
     }
-
     const category = await Category.findById(id);
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Category not found'
-      });
-    }
-
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
     category.homeOrder = Number(homeOrder);
     await category.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Category order updated successfully',
-      category: {
-        id: category._id,
-        title: category.title,
-        homeOrder: category.homeOrder
-      }
-    });
+    await invalidatePublicCatalogKeys();
+    res.status(200).json({ success: true, message: 'Category order updated successfully', category: { id: category._id, title: category.title, homeOrder: category.homeOrder } });
   } catch (error) {
     console.error('Update category order error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update category order. Please try again.'
+    res.status(500).json({ success: false, message: 'Failed to update category order. Please try again.' });
+  }
+};
+
+/**
+ * Bulk reorder.
+ * PATCH /api/admin/categories/reorder
+ * body: { items: [{ id, homeOrder }] }
+ */
+const bulkReorderCategories = async (req, res) => {
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    if (items.length === 0) return res.status(400).json({ success: false, message: 'items[] is required' });
+    const ops = items
+      .filter(i => i && i.id)
+      .map(i => ({ updateOne: { filter: { _id: i.id }, update: { $set: { homeOrder: Number(i.homeOrder) || 0 } } } }));
+    if (ops.length === 0) return res.status(400).json({ success: false, message: 'No valid items supplied' });
+    const result = await Category.bulkWrite(ops);
+    await invalidatePublicCatalogKeys();
+    res.status(200).json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) {
+    console.error('Bulk reorder categories error:', error);
+    res.status(500).json({ success: false, message: 'Failed to reorder categories.' });
+  }
+};
+
+/**
+ * Bulk status change.
+ * PATCH /api/admin/categories/bulk-status
+ * body: { ids: [], status: 'active'|'inactive'|'deleted' }
+ */
+const bulkCategoryStatus = async (req, res) => {
+  try {
+    const { ids, status } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ success: false, message: 'ids[] is required' });
+    const allowed = ['active', 'inactive', 'deleted'];
+    if (!allowed.includes(status)) return res.status(400).json({ success: false, message: `status must be one of: ${allowed.join(', ')}` });
+    const result = await Category.updateMany({ _id: { $in: ids } }, { $set: { status } });
+    await invalidatePublicCatalogKeys();
+    writeAudit({
+      adminId: req.user.id, action: 'bulk-status', entityType: 'category',
+      entityId: ids[0], after: { status, ids },
+      note: `bulk-status->${status}, ${ids.length} ids`
     });
+    res.status(200).json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) {
+    console.error('Bulk category status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update categories.' });
+  }
+};
+
+/**
+ * Archive a category (soft delete). Honours the dependency check unless
+ * ?force=true. Snapshots the current status in `previousStatus`. Idempotent.
+ * POST /api/admin/categories/:id/archive
+ */
+const archiveCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const force = req.query.force === 'true';
+    const category = await Category.findById(id);
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    if (category.status === SERVICE_STATUS.DELETED) {
+      return res.status(200).json({ success: true, message: 'Category is already archived', category: toCategoryResponse(category) });
+    }
+
+    const report = await buildDependencyReport(id);
+    if (report.hasDependencies && !force) {
+      return res.status(409).json({ success: false, message: 'Category is still in use. Review dependencies or pass ?force=true.', dependencies: report });
+    }
+
+    const before = category.toObject();
+    category.previousStatus = category.status || 'active';
+    category.status = SERVICE_STATUS.DELETED;
+    await category.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'archive', entityType: 'category', entityId: id, before, after: category, note: force ? 'force=true' : 'soft' });
+    res.status(200).json({ success: true, message: 'Category archived', category: toCategoryResponse(category), dependencies: report });
+  } catch (error) {
+    console.error('Archive category error:', error);
+    res.status(500).json({ success: false, message: 'Failed to archive category.' });
+  }
+};
+
+/**
+ * Restore an archived category to its previous status.
+ * POST /api/admin/categories/:id/restore
+ */
+const restoreCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findById(id);
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    if (category.status !== SERVICE_STATUS.DELETED) {
+      return res.status(200).json({ success: true, message: 'Category is not archived', category: toCategoryResponse(category) });
+    }
+    const before = category.toObject();
+    category.status = category.previousStatus || 'active';
+    category.previousStatus = null;
+    await category.save();
+    await invalidatePublicCatalogKeys();
+    writeAudit({ adminId: req.user.id, action: 'restore', entityType: 'category', entityId: id, before, after: category });
+    res.status(200).json({ success: true, message: 'Category restored', category: toCategoryResponse(category) });
+  } catch (error) {
+    console.error('Restore category error:', error);
+    res.status(500).json({ success: false, message: 'Failed to restore category.' });
   }
 };
 
 module.exports = {
   getAllCategories,
+  getCategoryChildren,
   getCategoryById,
+  checkSlugAvailability,
+  getCategoryDependencies,
   createCategory,
   updateCategory,
   deleteCategory,
-  updateCategoryOrder
+  updateCategoryOrder,
+  bulkReorderCategories,
+  bulkCategoryStatus,
+  archiveCategory,
+  restoreCategory,
+  validateParentId,
+  buildDependencyReport
 };
-

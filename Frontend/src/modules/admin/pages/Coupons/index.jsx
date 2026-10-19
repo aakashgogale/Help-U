@@ -28,7 +28,7 @@ const EMPTY_FORM = {
   validFrom: new Date().toISOString().slice(0, 10),
   validUntil: '',
   usageLimit: '', usageLimitPerUser: 1,
-  firstBookingOnly: false, isActive: true,
+  firstBookingOnly: false, isAutoApply: false, isActive: true,
   categories: [], cities: [],
 };
 
@@ -224,6 +224,15 @@ const CouponModal = ({ coupon, categories, cities, onClose, onSave }) => {
                 <p className="text-sm font-semibold text-gray-700">Active</p>
                 <p className="text-xs text-gray-400">Coupon is live & usable</p>
               </div>
+            </div>
+          </div>
+
+          {/* Auto-apply — shows as the offer strip inside the catalog */}
+          <div className="flex items-center gap-3 bg-amber-50 rounded-xl px-4 py-3 border border-amber-100">
+            <Toggle checked={form.isAutoApply} onChange={v => set('isAutoApply', v)} color="bg-amber-500" />
+            <div>
+              <p className="text-sm font-semibold text-gray-700">Auto-apply offer strip</p>
+              <p className="text-xs text-gray-400">Show this coupon as a banner inside the service catalog without the customer typing a code</p>
             </div>
           </div>
 
