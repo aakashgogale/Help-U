@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FiUser, FiMail, FiPhone, FiFileText, FiUpload, FiX, FiArrowRight, FiChevronLeft, FiCheckCircle, FiCamera, FiGift } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiFileText, FiUpload, FiX, FiArrowRight, FiChevronLeft, FiCheckCircle, FiCamera, FiGift, FiBriefcase, FiChevronDown, FiSearch, FiCheck } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../theme';
 import { register, sendOTP as sendWorkerOTP } from '../services/authService';
 import LogoLoader from '../../../components/common/LogoLoader';
 import Logo from '../../../components/common/Logo';
 import { compressImage } from '../../../utils/imageCompression';
+import { publicCatalogService } from '../../../services/catalogService';
 
 import { z } from "zod";
 
@@ -29,7 +30,7 @@ const WorkerSignup = () => {
     phoneNumber: '',
     aadhar: '',
     pan: '',
-    service: '',
+    service: [],
     referralCode: '',
     documents: []
   });
@@ -41,6 +42,12 @@ const WorkerSignup = () => {
   const [documentPreview, setDocumentPreview] = useState({});
   const [uploadingDocs, setUploadingDocs] = useState({});
   const [resendTimer, setResendTimer] = useState(0);
+
+  // Service categories (dynamic from admin)
+  const [categories, setCategories] = useState([]);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const categoryDropdownRef = useRef(null);
 
   // Refs for auto-focus
   const nameInputRef = useRef(null);
@@ -76,6 +83,59 @@ const WorkerSignup = () => {
     localStorage.removeItem('workerRefreshToken');
     localStorage.removeItem('workerData');
   }, []);
+
+  // Load service categories dynamically from admin catalog
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        if (publicCatalogService.invalidateCache) {
+          publicCatalogService.invalidateCache();
+        }
+        const res = await publicCatalogService.getCategories();
+        if (res?.success) {
+          // Strictly keep top-level categories only (no sub-services) & omit dummy seed numbers
+          const cleanCategories = (res.categories || []).filter(cat => {
+            return !cat.parentId && !/\s\d{4}$/.test(cat.title);
+          });
+          cleanCategories.sort((a, b) => a.title.localeCompare(b.title));
+          setCategories(cleanCategories);
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+        setIsCategoryOpen(false);
+        setCategorySearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCategories = categories.filter(cat =>
+    cat.title.toLowerCase().includes(categorySearch.toLowerCase())
+  );
+
+  // Toggle a service category selection
+  const handleCategoryToggle = (title) => {
+    setFormData(prev => {
+      const current = Array.isArray(prev.service) ? prev.service : [];
+      const updated = current.includes(title)
+        ? current.filter(c => c !== title)
+        : [...current, title];
+      return { ...prev, service: updated };
+    });
+    if (fieldErrors.service) {
+      setFieldErrors(prev => ({ ...prev, service: '' }));
+    }
+  };
 
   // Auto-focus logic
   useEffect(() => {
@@ -214,6 +274,13 @@ const WorkerSignup = () => {
     if (!hasAadharBackDoc) { toast.error('Please upload Aadhar Back document'); return; }
     if (!hasPanDoc) { toast.error('Please upload PAN document'); return; }
 
+    // Service Categories Validation
+    if (!Array.isArray(formData.service) || formData.service.length === 0) {
+      setFieldErrors(prev => ({ ...prev, service: 'Please select at least one service category' }));
+      toast.error('Please select at least one service category');
+      return;
+    }
+
     setIsLoading(true);
 
     if (verificationToken) {
@@ -229,7 +296,7 @@ const WorkerSignup = () => {
           phone: formData.phoneNumber.trim(),
           aadhar: formData.aadhar.trim(),
           pan: formData.pan.trim(),
-          service: [],
+          service: Array.isArray(formData.service) ? formData.service : [],
           aadharDocument: aadharDoc,
           aadharBackDocument: aadharBackDoc,
           panDocument: panDoc,
@@ -374,8 +441,9 @@ const WorkerSignup = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl relative z-10">
-        <div className="bg-white py-8 px-4 shadow-2xl shadow-gray-200/50 sm:rounded-2xl sm:px-10 border border-gray-100 relative overflow-hidden animate-slide-in-bottom">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#347989] via-[#D68F35] to-[#BB5F36]" />
+        <div className="bg-white py-8 px-4 shadow-2xl shadow-gray-200/50 sm:rounded-2xl sm:px-10 border border-gray-100 relative z-20 animate-slide-in-bottom">
+          {/* Top accent bar — kept as a separate element since overflow-hidden was removed to allow dropdowns to escape */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#347989] via-[#D68F35] to-[#BB5F36] rounded-t-2xl" />
 
           {step === 'details' ? (
             <form onSubmit={handleDetailsSubmit} className="space-y-8" noValidate>
@@ -523,6 +591,7 @@ const WorkerSignup = () => {
                       />
                     </div>
                   </div>
+
                 </div>
 
                 {/* Documents Section */}
@@ -630,7 +699,170 @@ const WorkerSignup = () => {
                 </div>
               </div>
 
-              <div className="animate-stagger-3 animate-fade-in">
+              {/* ── Service Categories — full width, proper dropdown with elevated stacking context ── */}
+              <div
+                className={`transition-all duration-200 ${isCategoryOpen ? 'relative z-40' : 'relative z-10'} animate-fade-in`}
+                style={{ animationDelay: '0.7s' }}
+                ref={categoryDropdownRef}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex text-sm font-medium text-gray-700 items-center gap-1.5">
+                    <FiBriefcase className="text-gray-400 w-4 h-4" />
+                    Service Categories <span className="text-red-500">*</span>
+                  </label>
+                  {Array.isArray(formData.service) && formData.service.length > 0 && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: `${brandColor}15`, color: brandColor }}>
+                      {formData.service.length} selected
+                    </span>
+                  )}
+                </div>
+
+                {/* Selected chips */}
+                {Array.isArray(formData.service) && formData.service.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {formData.service.map((cat, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold border transition-all"
+                        style={{
+                          background: `${brandColor}12`,
+                          color: brandColor,
+                          borderColor: `${brandColor}30`
+                        }}
+                      >
+                        {cat}
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryToggle(cat)}
+                          className="hover:opacity-70 p-0.5 rounded-full"
+                          title={`Remove ${cat}`}
+                        >
+                          <FiX className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Dropdown trigger */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => { setIsCategoryOpen(prev => !prev); setCategorySearch(''); }}
+                    className={`w-full text-left px-4 py-2.5 bg-white border rounded-xl flex items-center justify-between transition-all duration-200 outline-none shadow-xs ${
+                      fieldErrors.service
+                        ? 'border-red-500 ring-2 ring-red-200'
+                        : isCategoryOpen
+                          ? 'ring-2 ring-offset-1 border-transparent'
+                          : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    style={{ '--tw-ring-color': fieldErrors.service ? '#EF4444' : brandColor }}
+                  >
+                    <span className={`text-sm ${formData.service.length > 0 ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                      {formData.service.length > 0
+                        ? `${formData.service.length} service${formData.service.length > 1 ? 's' : ''} selected`
+                        : 'Select your services'}
+                    </span>
+                    <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isCategoryOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown panel */}
+                  {isCategoryOpen && (
+                    <div className="absolute left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5 animate-fade-in">
+                      {/* Search */}
+                      <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                        <div className="relative">
+                          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={categorySearch}
+                            onChange={(e) => setCategorySearch(e.target.value)}
+                            className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-100 transition-all placeholder:text-gray-400"
+                            placeholder="Search services..."
+                            autoFocus
+                          />
+                          {categorySearch && (
+                            <button
+                              type="button"
+                              onClick={() => setCategorySearch('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                            >
+                              <FiX className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Options List */}
+                      <div className="max-h-56 overflow-y-auto divide-y divide-gray-50">
+                        {categories.length === 0 ? (
+                          <div className="px-4 py-6 text-gray-400 text-sm text-center">Loading services...</div>
+                        ) : filteredCategories.length === 0 ? (
+                          <div className="px-4 py-6 text-gray-400 text-sm text-center">No match found</div>
+                        ) : (
+                          filteredCategories.map((cat, index) => {
+                            const isSelected = Array.isArray(formData.service) && formData.service.includes(cat.title);
+                            return (
+                              <button
+                                key={cat.id || cat._id || index}
+                                type="button"
+                                onClick={() => handleCategoryToggle(cat.title)}
+                                className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm transition-colors ${
+                                  isSelected
+                                    ? 'bg-blue-50/70 text-blue-900 font-semibold'
+                                    : 'text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                                      isSelected ? 'border-transparent text-white' : 'border-gray-300 bg-white'
+                                    }`}
+                                    style={{ backgroundColor: isSelected ? brandColor : undefined }}
+                                  >
+                                    {isSelected && <FiCheck className="w-3 h-3 stroke-[3]" />}
+                                  </div>
+                                  <span className="leading-snug">{cat.title}</span>
+                                </div>
+                                {isSelected && (
+                                  <span
+                                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                    style={{ background: `${brandColor}18`, color: brandColor }}
+                                  >
+                                    Selected
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer bar */}
+                      <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs text-gray-500">
+                          {formData.service.length > 0
+                            ? `${formData.service.length} service${formData.service.length > 1 ? 's' : ''} chosen`
+                            : 'No services chosen'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsCategoryOpen(false)}
+                          className="px-4 py-1.5 text-white font-bold rounded-lg text-xs transition-opacity hover:opacity-90 shadow-sm active:scale-95"
+                          style={{ backgroundColor: brandColor }}
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {fieldErrors.service && (
+                  <p className="text-xs text-red-500 mt-1.5 font-medium">{fieldErrors.service}</p>
+                )}
+              </div>
+
+              <div className="relative z-0 animate-stagger-3 animate-fade-in">
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -731,7 +963,7 @@ const WorkerSignup = () => {
           )}
         </div>
 
-        <p className="mt-8 text-center text-sm text-gray-600 animate-fade-in animate-stagger-4">
+        <p className="mt-8 text-center text-sm text-gray-600 relative z-10 animate-fade-in animate-stagger-4">
           Already a partner?{' '}
           <Link to="/worker/login" className="font-bold hover:text-[#D68F35] transition-colors" style={{ color: brandColor }}>
             Login here

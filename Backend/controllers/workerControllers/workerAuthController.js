@@ -190,7 +190,7 @@ const register = async (req, res) => {
     }
 
     // verificationToken handling
-    const { name, email, verificationToken, aadhar, pan, gstin, referralCode } = req.body;
+    const { name, email, verificationToken, aadhar, pan, gstin, referralCode, service } = req.body;
     let phone = req.body.phone;
 
     if (verificationToken) {
@@ -250,7 +250,7 @@ const register = async (req, res) => {
 
     const worker = await Worker.create({
       name, email, phone,
-      service: [], // Default empty as requested
+      service: Array.isArray(service) ? service.map(s => String(s).trim()).filter(Boolean) : [],
       aadhar: {
         number: aadhar,
         document: aadharUrl,
