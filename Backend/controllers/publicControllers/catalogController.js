@@ -85,23 +85,30 @@ const getPublicCategories = async (req, res) => {
     }
 
     const categories = await Category.find(query)
-      .select('title slug homeIconUrl homeBadge hasSaleBadge homeOrder showOnHome parentId subCategoryBadge')
+      .select('title slug homeIconUrl homeBadge hasSaleBadge homeOrder showOnHome parentId subCategoryBadge etaDefaultMinutes displayRating bookingsLabel heroBanner')
       .sort({ homeOrder: 1, createdAt: -1 })
       .lean();
 
-    // Fetch only necessary fields for initial category list. parentId and
-    // subCategoryBadge are additive and ignored by callers that don't need
-    // them (the Home grid already uses only id/title/slug/icon/badge).
+    // Fetch necessary fields for initial category list. parentId, subCategoryBadge,
+    // etaDefaultMinutes, displayRating, and heroBanner are included so client reflects admin values.
     const initialCategories = categories.map(cat => ({
       id: cat._id.toString(),
+      _id: cat._id.toString(),
       title: cat.title,
       slug: cat.slug,
       icon: cat.homeIconUrl || '',
+      homeIconUrl: cat.homeIconUrl || '',
       badge: cat.homeBadge || '',
+      homeBadge: cat.homeBadge || '',
       hasSaleBadge: cat.hasSaleBadge || false,
-      showOnHome: cat.showOnHome || false,
+      showOnHome: cat.showOnHome !== false,
       parentId: cat.parentId ? cat.parentId.toString() : null,
-      subCategoryBadge: cat.subCategoryBadge || ''
+      subCategoryBadge: cat.subCategoryBadge || '',
+      etaDefaultMinutes: cat.etaDefaultMinutes ?? null,
+      displayRating: cat.displayRating || '',
+      bookingsLabel: cat.bookingsLabel || '',
+      heroBanner: cat.heroBanner || null,
+      homeOrder: cat.homeOrder || 0
     }));
 
     res.status(200).json({
@@ -690,7 +697,7 @@ const getPublicHomeData = async (req, res) => {
     const matchedZone = await resolveZone({ zoneId, lat, lng, cityId });
     const activeZoneId = matchedZone ? String(matchedZone._id) : (zoneId || null);
 
-    const catQuery = { status: 'active', parentId: null, publishStatus: { $ne: 'draft' } };
+    const catQuery = { status: 'active', parentId: null, publishStatus: { $ne: 'draft' }, showOnHome: { $ne: false } };
     if (cityId) {
       catQuery.$or = [
         { cityIds: cityId },
@@ -702,9 +709,22 @@ const getPublicHomeData = async (req, res) => {
       catQuery._id = { $in: matchedZone.allowedCategories.map(c => c._id || c) };
     }
 
-    const [categoriesRes, homeContent, settings] = await Promise.all([
+    const allCatQuery = { status: 'active', publishStatus: { $ne: 'draft' } };
+    if (cityId) {
+      allCatQuery.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
+    }
+
+    const [categoriesRes, allCategoriesRes, homeContent, settings] = await Promise.all([
       Category.find(catQuery)
-        .select('title slug homeIconUrl homeBadge hasSaleBadge')
+        .select('title slug homeIconUrl homeBadge hasSaleBadge etaDefaultMinutes displayRating bookingsLabel heroBanner showOnHome homeOrder')
+        .sort({ homeOrder: 1 })
+        .lean(),
+      Category.find(allCatQuery)
+        .select('title slug parentId homeIconUrl homeBadge hasSaleBadge etaDefaultMinutes displayRating bookingsLabel heroBanner showOnHome homeOrder')
         .sort({ homeOrder: 1 })
         .lean(),
       HomeContent.getHomeContent(cityId),
@@ -715,11 +735,39 @@ const getPublicHomeData = async (req, res) => {
 
     const formattedCategories = categoriesRes.map(cat => ({
       id: cat._id.toString(),
+      _id: cat._id.toString(),
       title: cat.title,
       slug: cat.slug,
       icon: cat.homeIconUrl || '',
+      homeIconUrl: cat.homeIconUrl || '',
       badge: cat.homeBadge || '',
-      hasSaleBadge: cat.hasSaleBadge || false
+      homeBadge: cat.homeBadge || '',
+      hasSaleBadge: cat.hasSaleBadge || false,
+      etaDefaultMinutes: cat.etaDefaultMinutes ?? null,
+      displayRating: cat.displayRating || '',
+      bookingsLabel: cat.bookingsLabel || '',
+      heroBanner: cat.heroBanner || null,
+      showOnHome: cat.showOnHome !== false,
+      homeOrder: cat.homeOrder || 0
+    }));
+
+    const formattedAllCategories = allCategoriesRes.map(cat => ({
+      id: cat._id.toString(),
+      _id: cat._id.toString(),
+      parentId: cat.parentId ? cat.parentId.toString() : null,
+      title: cat.title,
+      slug: cat.slug,
+      icon: cat.homeIconUrl || '',
+      homeIconUrl: cat.homeIconUrl || '',
+      badge: cat.homeBadge || '',
+      homeBadge: cat.homeBadge || '',
+      hasSaleBadge: cat.hasSaleBadge || false,
+      etaDefaultMinutes: cat.etaDefaultMinutes ?? null,
+      displayRating: cat.displayRating || '',
+      bookingsLabel: cat.bookingsLabel || '',
+      heroBanner: cat.heroBanner || null,
+      showOnHome: cat.showOnHome !== false,
+      homeOrder: cat.homeOrder || 0
     }));
 
     let formattedContent = null;
@@ -811,6 +859,7 @@ const getPublicHomeData = async (req, res) => {
     res.status(200).json({
       success: true,
       categories: formattedCategories,
+      allCategories: formattedAllCategories,
       homeContent: formattedContent,
       isScrapEnabled: isGlobalScrapEnabled,
       zone: matchedZone ? {

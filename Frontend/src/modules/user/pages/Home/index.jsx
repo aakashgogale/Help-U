@@ -53,14 +53,25 @@ const getLocalIcon = (title) => {
   return null;
 };
 
-const mapCategories = (list) => (list || []).map(cat => ({
-  id: cat.id,
-  title: cat.title,
-  slug: cat.slug,
-  icon: getCategoryIllustration(cat.title) || toAssetUrl(cat.icon),
-  hasSaleBadge: cat.hasSaleBadge,
-  badge: cat.badge
-}));
+const mapCategories = (list) => (list || []).map(cat => {
+  const dbIcon = cat.homeIconUrl || cat.icon || cat.iconUrl || cat.image || cat.imageUrl;
+  return {
+    id: cat.id || cat._id,
+    _id: cat._id || cat.id,
+    title: cat.title,
+    slug: cat.slug,
+    icon: (dbIcon ? toAssetUrl(dbIcon) : null) || getCategoryIllustration(cat.title),
+    hasSaleBadge: Boolean(cat.hasSaleBadge),
+    badge: cat.badge || cat.homeBadge || '',
+    etaMinutes: cat.etaDefaultMinutes || cat.etaMinutes || null,
+    etaDefaultMinutes: cat.etaDefaultMinutes || null,
+    displayRating: cat.displayRating || '',
+    bookingsLabel: cat.bookingsLabel || '',
+    heroBanner: cat.heroBanner || null,
+    showOnHome: cat.showOnHome !== false,
+    homeOrder: cat.homeOrder || 0
+  };
+});
 
 // Keyword fallback for home cards whose admin category link is missing
 const CATEGORY_KEYWORDS = [
@@ -314,11 +325,13 @@ const Home = () => {
         const cityId = currentCity?._id || currentCity?.id;
         const response = await publicCatalogService.getHomeData(cityId, zoneId);
 
-        if (response.success) {
-          if (response.categories) setCategories(mapCategories(response.categories));
-          if (response.homeContent) setHomeContent(response.homeContent);
-          hasDataRef.current = true;
+        if (response.allCategories && response.allCategories.length > 0) {
+          setCategories(mapCategories(response.allCategories));
+        } else if (response.categories) {
+          setCategories(mapCategories(response.categories));
         }
+        if (response.homeContent) setHomeContent(response.homeContent);
+        hasDataRef.current = true;
       } catch {
         // Keep showing the last known content
       } finally {

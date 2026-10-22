@@ -55,17 +55,28 @@ export const getCategoryIllustration = (title) => {
     return catFile('mens-salon.png');
   }
 
+  // Men's specific grooming items
+  if ((t.includes('men') || t.includes('man') || t.includes('beard') || t.includes('shave')) && (t.includes('hair') || t.includes('cut') || t.includes('beard') || t.includes('styling'))) {
+    return '/services/mens-salon/haircut.jpg';
+  }
+  if ((t.includes('men') || t.includes('man')) && t.includes('massage')) {
+    return '/services/mens-salon/massage.jpg';
+  }
+  if ((t.includes('men') || t.includes('man')) && (t.includes('detan') || t.includes('facial'))) {
+    return '/services/mens-salon/detan-facial.jpg';
+  }
+
   // Specific Subcategory: Spa for Women (standalone)
   if (t.includes('spa')) {
     return catFile('spa-women.svg');
   }
-  // Specific Subcategory: Hair Studio
-  if (t.includes('hair')) {
+  // Specific Subcategory: Hair Studio for Women
+  if (t.includes('hair') && !t.includes('men')) {
     return catFile('hair-dryer.svg');
   }
   // Specific Subcategory: Massage for Men (standalone)
-  if (t.includes('massage') && (t.includes('men') || t.includes('man'))) {
-    return catFile('massage-men.svg');
+  if (t.includes('massage')) {
+    return '/services/mens-salon/massage.jpg';
   }
 
   // Appliances

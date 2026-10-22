@@ -392,9 +392,13 @@ const matchToDatabaseCategory = (item, categories) => {
     return { id: item.id, title: item.title, slug: item.slug, icon: item.icon };
   }
   const itemSlug = (item.slug || '').toLowerCase();
+  const itemTitle = (item.title || '').toLowerCase().trim();
+
   const directMatch = categories.find(
     (c) =>
       (c.slug && c.slug.toLowerCase() === itemSlug) ||
+      (itemSlug && c.slug && c.slug.toLowerCase().endsWith('-' + itemSlug)) ||
+      (c.title && itemTitle && c.title.toLowerCase().trim() === itemTitle) ||
       c.id === item.id ||
       c._id === item.id
   );
@@ -405,19 +409,20 @@ const matchToDatabaseCategory = (item, categories) => {
     if (item.id === 'electrician' && resolvedIcon && (resolvedIcon.includes('ac.svg') || resolvedIcon.includes('ac-appliance') || resolvedIcon.includes('AC.'))) {
       resolvedIcon = item.icon;
     }
-    // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars
-    if (item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) {
-      resolvedIcon = item.icon;
-    }
-    // Dedicated subcategories (plumber, carpenter, furniture, etc.) must NEVER get overridden by generic parent icon
-    if (item.icon && item.id !== 'electrician') {
+    // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars unless admin uploaded custom icon
+    if ((item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) && !customIcon) {
       resolvedIcon = item.icon;
     }
     return {
       ...directMatch,
-      title: item.title || directMatch.title,
-      slug: item.slug || directMatch.slug,
-      icon: resolvedIcon
+      id: directMatch.id || directMatch._id || item.id,
+      title: directMatch.title || item.title,
+      slug: directMatch.slug || item.slug,
+      icon: resolvedIcon,
+      etaMinutes: directMatch.etaDefaultMinutes || directMatch.etaMinutes || item.defaultEta || item.eta,
+      displayRating: directMatch.displayRating || '',
+      bookingsLabel: directMatch.bookingsLabel || '',
+      heroBanner: directMatch.heroBanner || null
     };
   }
 
@@ -446,19 +451,20 @@ const matchToDatabaseCategory = (item, categories) => {
         if (item.id === 'electrician' && resolvedIcon && (resolvedIcon.includes('ac.svg') || resolvedIcon.includes('ac-appliance') || resolvedIcon.includes('AC.'))) {
           resolvedIcon = item.icon;
         }
-        // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars
-        if (item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) {
-          resolvedIcon = item.icon;
-        }
-        // Dedicated subcategories (plumber, carpenter, furniture, etc.) must NEVER get overridden by generic parent icon
-        if (item.icon && item.id !== 'electrician') {
+        // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars unless admin uploaded custom icon
+        if ((item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) && !customIcon) {
           resolvedIcon = item.icon;
         }
         return {
           ...found,
-          title: item.title || found.title,
-          slug: item.slug || found.slug,
-          icon: resolvedIcon
+          id: found.id || found._id || item.id,
+          title: found.title || item.title,
+          slug: found.slug || item.slug,
+          icon: resolvedIcon,
+          etaMinutes: found.etaDefaultMinutes || found.etaMinutes || item.defaultEta || item.eta,
+          displayRating: found.displayRating || '',
+          bookingsLabel: found.bookingsLabel || '',
+          heroBanner: found.heroBanner || null
         };
       }
     }
@@ -526,17 +532,18 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
                     {section.items.map((item) => {
                       const resolvedCat = matchToDatabaseCategory(item, categories);
                       const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
-                      const tileIcon = item.isAvatar ? item.icon : (item.icon || resolvedCat?.icon);
+                      const tileTitle = resolvedCat?.title || item.title;
+                      const tileIcon = item.isAvatar && !resolvedCat?.homeIconUrl ? item.icon : (resolvedCat?.icon || item.icon);
                       return (
                         <ServiceTile
                           key={item.id}
-                          title={item.title}
+                          title={tileTitle}
                           icon={tileIcon}
                           fallbackIcon={item.icon}
                           isAvatar={item.isAvatar}
                           etaMinutes={liveEta}
                           onClick={() => {
-                            onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
+                            onPick({ ...resolvedCat, icon: tileIcon, title: tileTitle, slug: resolvedCat?.slug || item.slug, etaMinutes: liveEta });
                             onClose();
                           }}
                         />
@@ -557,17 +564,18 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
                           {sub.items.map((item) => {
                             const resolvedCat = matchToDatabaseCategory(item, categories);
                             const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
-                            const tileIcon = item.icon || resolvedCat?.icon;
+                            const tileTitle = resolvedCat?.title || item.title;
+                            const tileIcon = resolvedCat?.icon || item.icon;
                             return (
                               <ServiceTile
                                 key={item.id}
-                                title={item.title}
+                                title={tileTitle}
                                 icon={tileIcon}
                                 fallbackIcon={item.icon}
                                 compact={sub.gridCols === 'grid-cols-4'}
                                 etaMinutes={liveEta}
                                 onClick={() => {
-                                  onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
+                                  onPick({ ...resolvedCat, icon: tileIcon, title: tileTitle, slug: resolvedCat?.slug || item.slug, etaMinutes: liveEta });
                                   onClose();
                                 }}
                               />
@@ -713,17 +721,18 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                         {section.items.map((item) => {
                           const resolvedCat = matchToDatabaseCategory(item, categories);
                           const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
-                          const tileIcon = item.isAvatar ? item.icon : (item.icon || resolvedCat?.icon);
+                          const tileTitle = resolvedCat?.title || item.title;
+                          const tileIcon = item.isAvatar && !resolvedCat?.homeIconUrl ? item.icon : (resolvedCat?.icon || item.icon);
                           return (
                             <ServiceTile
                               key={item.id}
-                              title={item.title}
+                              title={tileTitle}
                               icon={tileIcon}
                               fallbackIcon={item.icon}
                               isAvatar={item.isAvatar}
                               etaMinutes={liveEta}
                               onClick={() => {
-                                onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
+                                onPick({ ...resolvedCat, icon: tileIcon, title: tileTitle, slug: resolvedCat?.slug || item.slug, etaMinutes: liveEta });
                                 onClose();
                               }}
                             />
@@ -744,17 +753,18 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                               {sub.items.map((item) => {
                                 const resolvedCat = matchToDatabaseCategory(item, categories);
                                 const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
-                                const tileIcon = item.icon || resolvedCat?.icon;
+                                const tileTitle = resolvedCat?.title || item.title;
+                                const tileIcon = resolvedCat?.icon || item.icon;
                                 return (
                                   <ServiceTile
                                     key={item.id}
-                                    title={item.title}
+                                    title={tileTitle}
                                     icon={tileIcon}
                                     fallbackIcon={item.icon}
                                     compact={sub.gridCols === 'grid-cols-4'}
                                     etaMinutes={liveEta}
                                     onClick={() => {
-                                      onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
+                                      onPick({ ...resolvedCat, icon: tileIcon, title: tileTitle, slug: resolvedCat?.slug || item.slug, etaMinutes: liveEta });
                                       onClose();
                                     }}
                                   />
@@ -830,14 +840,14 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
       <div className="grid grid-cols-3 gap-x-3 gap-y-4">
         {PRIMARY_SERVICES.map((item) => {
           const resolvedCat = matchToDatabaseCategory(item, categories);
-          const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.defaultEta;
-          const isAvatar = item.id === 'womens-salon' || item.id === 'mens-salon';
+          const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || resolvedCat?.etaMinutes || resolvedCat?.etaDefaultMinutes || item.defaultEta;
+          const isAvatar = (item.id === 'womens-salon' || item.id === 'mens-salon') && (!resolvedCat?.icon || resolvedCat.icon.includes('salon.png'));
 
           return (
             <ServiceTile
               key={item.id}
-              title={item.title}
-              icon={isAvatar ? item.icon : (resolvedCat?.icon || item.icon)}
+              title={resolvedCat?.title || item.title}
+              icon={resolvedCat?.icon || item.icon}
               fallbackIcon={item.icon}
               etaMinutes={liveEta}
               isAvatar={isAvatar}

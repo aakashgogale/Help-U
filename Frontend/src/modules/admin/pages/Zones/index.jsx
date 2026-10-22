@@ -3,7 +3,8 @@ import {
   GoogleMap,
   useJsApiLoader,
   Polygon,
-  DrawingManager,
+  Polyline,
+  Marker,
 } from "@react-google-maps/api";
 import {
   FiPlus,
@@ -20,13 +21,14 @@ import {
   FiLayers,
   FiCheck,
   FiAlertCircle,
+  FiRotateCcw,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import zoneService from "../../services/zoneService";
 import { cityService } from "../../services/cityService";
 import { categoryService } from "../../../../services/catalogService";
 
-const LIBRARIES = ["drawing", "places", "geometry"];
+const LIBRARIES = ["places", "geometry"];
 
 const MAP_CONTAINER = { width: "100%", height: "100%" };
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.209 };
@@ -38,6 +40,48 @@ const ZONE_COLORS = [
 ];
 
 const SURGE_PRESETS = [1.2, 1.5, 1.8, 2.0, 2.5];
+
+// Class Error Boundary to catch any unexpected React crash and prevent blank page
+class ZonesErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ZonesPage Error Boundary caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center bg-white rounded-2xl m-6 border border-gray-200 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+            <FiAlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-gray-900 mb-1">Zone Management View Error</h2>
+          <p className="text-xs text-gray-500 max-w-md mb-4">
+            {this.state.error?.message || "An unexpected error occurred while loading map or zone data."}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const ZonesPage = () => {
   const { isLoaded, loadError } = useJsApiLoader({
@@ -68,9 +112,9 @@ const ZonesPage = () => {
   });
   const [saving, setSaving] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingPoints, setDrawingPoints] = useState([]);
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
 
-  const drawingManagerRef = useRef(null);
   const mapRef = useRef(null);
   const editablePolygonRef = useRef(null);
   const pathListenersRef = useRef([]);
@@ -114,11 +158,11 @@ const ZonesPage = () => {
   // Center map on selected city
   useEffect(() => {
     if (!selectedCityId || !isLoaded || !window.google?.maps?.Geocoder) return;
-    const city = cities.find((c) => (c.id || c._id) === selectedCityId);
+    const city = (cities || []).find((c) => (c.id || c._id) === selectedCityId);
     if (city) {
       const geocoder = new window.google.maps.Geocoder();
       geocoder.geocode({ address: `${city.name}, ${city.state || ""}, ${city.country || "India"}` }, (results, status) => {
-        if (status === "OK" && results[0]) {
+        if (status === "OK" && results && results[0]) {
           const loc = results[0].geometry.location;
           const pos = { lat: loc.lat(), lng: loc.lng() };
           setMapCenter(pos);
@@ -135,11 +179,11 @@ const ZonesPage = () => {
   const handleFormCityChange = (cityId) => {
     setForm((p) => ({ ...p, cityId }));
     if (!cityId || !isLoaded || !window.google?.maps?.Geocoder) return;
-    const city = cities.find((c) => (c.id || c._id) === cityId);
+    const city = (cities || []).find((c) => (c.id || c._id) === cityId);
     if (city) {
       const geocoder = new window.google.maps.Geocoder();
       geocoder.geocode({ address: `${city.name}, ${city.state || ""}, ${city.country || "India"}` }, (results, status) => {
-        if (status === "OK" && results[0]) {
+        if (status === "OK" && results && results[0]) {
           const loc = results[0].geometry.location;
           const pos = { lat: loc.lat(), lng: loc.lng() };
           setMapCenter(pos);
@@ -152,10 +196,22 @@ const ZonesPage = () => {
     }
   };
 
-  // Convert GeoJSON [lng, lat] to Google Maps {lat, lng}
+  // Convert GeoJSON [lng, lat] to Google Maps {lat, lng} for static polygon display
   const geoJsonToLatLng = useCallback((coords) => {
-    if (!coords || !coords[0]) return [];
-    return coords[0].map(([lng, lat]) => ({ lat, lng }));
+    if (!coords || !Array.isArray(coords) || !Array.isArray(coords[0])) return [];
+    return coords[0]
+      .filter((pt) => Array.isArray(pt) && pt.length >= 2 && !isNaN(pt[0]) && !isNaN(pt[1]))
+      .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }));
+  }, []);
+
+  // Convert GeoJSON to unique vertices for editable polygon (excludes trailing closing duplicate)
+  const geoJsonToUniqueLatLng = useCallback((coords) => {
+    if (!coords || !Array.isArray(coords) || !Array.isArray(coords[0])) return [];
+    const pts = coords[0].filter((pt) => Array.isArray(pt) && pt.length >= 2 && !isNaN(pt[0]) && !isNaN(pt[1]));
+    if (pts.length <= 1) return [];
+    const isClosed = pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1];
+    const unique = isClosed && pts.length > 3 ? pts.slice(0, -1) : pts;
+    return unique.map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }));
   }, []);
 
   // Zoom map to fit a specific zone
@@ -166,7 +222,9 @@ const ZonesPage = () => {
     try {
       const bounds = new window.google.maps.LatLngBounds();
       zone.coordinates.coordinates[0].forEach(([lng, lat]) => {
-        bounds.extend({ lat, lng });
+        if (!isNaN(lat) && !isNaN(lng)) {
+          bounds.extend({ lat: Number(lat), lng: Number(lng) });
+        }
       });
       mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
     } catch {
@@ -174,26 +232,62 @@ const ZonesPage = () => {
     }
   }, []);
 
-  // Drawing complete handler
-  const onPolygonComplete = useCallback((polygon) => {
-    const path = polygon.getPath();
-    const coords = [];
-    for (let i = 0; i < path.getLength(); i++) {
-      const point = path.getAt(i);
-      coords.push([point.lng(), point.lat()]);
-    }
-    // Ensure ring is closed
-    if (coords.length > 0) {
-      coords.push([...coords[0]]);
-    }
+  // Native map click-to-draw handler (Rock solid, 0 library dependencies!)
+  const handleMapClick = (e) => {
+    if (!isDrawing || !e || !e.latLng) return;
+    const lat = typeof e.latLng.lat === "function" ? e.latLng.lat() : e.latLng.lat;
+    const lng = typeof e.latLng.lng === "function" ? e.latLng.lng() : e.latLng.lng;
+    if (isNaN(lat) || isNaN(lng)) return;
+    setDrawingPoints((prev) => [...prev, { lat: Number(lat), lng: Number(lng) }]);
+  };
 
-    // Clean up drawing overlay so React <Polygon> takes over cleanly
-    polygon.setMap(null);
-
-    setForm((prev) => ({ ...prev, coordinates: [coords] }));
+  const finishDrawing = () => {
+    if (drawingPoints.length < 3) {
+      toast.error("Please click at least 3 points on the map to define a zone.");
+      return;
+    }
+    const ring = drawingPoints.map((p) => [
+      Number(p.lng.toFixed(6)),
+      Number(p.lat.toFixed(6)),
+    ]);
+    ring.push([...ring[0]]); // Close the GeoJSON ring
+    setForm((prev) => ({ ...prev, coordinates: [ring] }));
+    setDrawingPoints([]);
     setIsDrawing(false);
-    toast.success("Zone boundary marked! You can drag points to fine-tune.");
-  }, []);
+    toast.success(`Zone boundary created with ${drawingPoints.length} vertices! Drag handles on map to fine-tune.`);
+  };
+
+  const undoLastDrawingPoint = () => {
+    setDrawingPoints((prev) => prev.slice(0, -1));
+  };
+
+  const cancelDrawing = () => {
+    setDrawingPoints([]);
+    setIsDrawing(false);
+    toast("Drawing cancelled", { icon: "↩️" });
+  };
+
+  // Quick preset: instantly place a 4-point rectangular zone around map center
+  const handleCreateQuickBox = () => {
+    const center = mapRef.current?.getCenter();
+    const lat = center ? (typeof center.lat === "function" ? center.lat() : center.lat) : (mapCenter.lat || 28.6139);
+    const lng = center ? (typeof center.lng === "function" ? center.lng() : center.lng) : (mapCenter.lng || 77.209);
+    const dLat = 0.025; // ~2.5km box
+    const dLng = 0.025;
+    const ring = [
+      [Number((lng - dLng).toFixed(6)), Number((lat - dLat).toFixed(6))],
+      [Number((lng + dLng).toFixed(6)), Number((lat - dLat).toFixed(6))],
+      [Number((lng + dLng).toFixed(6)), Number((lat + dLat).toFixed(6))],
+      [Number((lng - dLng).toFixed(6)), Number((lat + dLat).toFixed(6))],
+      [Number((lng - dLng).toFixed(6)), Number((lat - dLat).toFixed(6))],
+    ];
+    setForm((prev) => ({ ...prev, coordinates: [ring] }));
+    setDrawingPoints([]);
+    setIsDrawing(false);
+    toast.success("Zone box placed! Drag any corner on the map to resize.");
+  };
+
+  const syncTimerRef = useRef(null);
 
   // Listen to vertex drag/edit events on the preview polygon
   const onEditablePolygonLoad = useCallback((polygon) => {
@@ -205,23 +299,37 @@ const ZonesPage = () => {
     pathListenersRef.current = [];
 
     const syncCoords = () => {
-      const p = polygon.getPath();
-      const updated = [];
-      for (let i = 0; i < p.getLength(); i++) {
-        const pt = p.getAt(i);
-        updated.push([pt.lng(), pt.lat()]);
+      try {
+        const p = polygon.getPath();
+        const updated = [];
+        for (let i = 0; i < p.getLength(); i++) {
+          const pt = p.getAt(i);
+          updated.push([Number(pt.lng().toFixed(6)), Number(pt.lat().toFixed(6))]);
+        }
+        if (updated.length >= 3) {
+          const first = updated[0];
+          const last = updated[updated.length - 1];
+          const isClosed = first[0] === last[0] && first[1] === last[1];
+          const ring = isClosed ? updated : [...updated, [...first]];
+          setForm((prev) => ({ ...prev, coordinates: [ring] }));
+        }
+      } catch (err) {
+        console.error("Error syncing editable polygon coords:", err);
       }
-      if (updated.length > 0) {
-        updated.push([...updated[0]]);
-      }
-      setForm((prev) => ({ ...prev, coordinates: [updated] }));
     };
 
-    pathListenersRef.current = [
-      path.addListener("set_at", syncCoords),
-      path.addListener("insert_at", syncCoords),
-      path.addListener("remove_at", syncCoords),
-    ];
+    const debouncedSync = () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(syncCoords, 100);
+    };
+
+    if (path) {
+      pathListenersRef.current = [
+        path.addListener("set_at", debouncedSync),
+        path.addListener("insert_at", debouncedSync),
+        path.addListener("remove_at", debouncedSync),
+      ];
+    }
   }, []);
 
   const handleOpenCreate = () => {
@@ -234,6 +342,7 @@ const ZonesPage = () => {
       surgePricing: { enabled: false, multiplier: 1 },
       status: "active",
     });
+    setDrawingPoints([]);
     setCategorySearchQuery("");
     setIsDrawing(false);
     setIsFormOpen(true);
@@ -247,11 +356,12 @@ const ZonesPage = () => {
       cityId: cityId || "",
       coordinates: zone.coordinates?.coordinates || null,
       allowedCategories: (zone.allowedCategories || []).map((c) =>
-        typeof c === "object" ? c._id || c.id : c
-      ),
+        typeof c === "object" ? c?._id || c?.id : c
+      ).filter(Boolean),
       surgePricing: zone.surgePricing || { enabled: false, multiplier: 1 },
       status: zone.status || "active",
     });
+    setDrawingPoints([]);
     setCategorySearchQuery("");
     setIsDrawing(false);
     setIsFormOpen(true);
@@ -262,27 +372,25 @@ const ZonesPage = () => {
     setIsFormOpen(false);
     setEditingZone(null);
     setIsDrawing(false);
+    setDrawingPoints([]);
     pathListenersRef.current.forEach((l) => window.google?.maps?.event?.removeListener(l));
     pathListenersRef.current = [];
   };
 
   const startDrawing = () => {
     if (!form.cityId) {
-      toast("Please select a city first to focus the map.", { icon: "ℹ️" });
+      toast("Please select an operating city first to focus the map.", { icon: "ℹ️" });
     }
     setForm((prev) => ({ ...prev, coordinates: null }));
+    setDrawingPoints([]);
     setIsDrawing(true);
-  };
-
-  const cancelDrawing = () => {
-    setIsDrawing(false);
-    toast("Drawing cancelled", { icon: "↩️" });
+    toast("Drawing mode active: Click anywhere on the map to add corner points.", { icon: "📍" });
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error("Zone name is required");
-    if (!form.cityId) return toast.error("Please select a city");
-    if (!form.coordinates || !form.coordinates[0] || form.coordinates[0].length < 4) {
+    if (!form.cityId) return toast.error("Please select an operating city");
+    if (!form.coordinates || !Array.isArray(form.coordinates[0]) || form.coordinates[0].length < 4) {
       return toast.error("Please draw a zone boundary on the map (at least 3 vertices)");
     }
 
@@ -292,9 +400,9 @@ const ZonesPage = () => {
         name: form.name.trim(),
         cityId: form.cityId,
         coordinates: form.coordinates,
-        allowedCategories: form.allowedCategories,
-        surgePricing: form.surgePricing,
-        status: form.status,
+        allowedCategories: form.allowedCategories || [],
+        surgePricing: form.surgePricing || { enabled: false, multiplier: 1 },
+        status: form.status || "active",
       };
 
       if (editingZone) {
@@ -319,7 +427,8 @@ const ZonesPage = () => {
       }
     } catch (err) {
       console.error("Save zone error:", err);
-      toast.error(err?.response?.data?.message || "Failed to save zone");
+      const errorMsg = err?.response?.data?.errors?.[0]?.msg || err?.response?.data?.message || "Failed to save zone";
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -344,7 +453,7 @@ const ZonesPage = () => {
       const id = zone.id || zone._id;
       const res = await zoneService.toggleStatus(id);
       if (res?.success) {
-        toast.success(res.message);
+        toast.success(res.message || "Zone status updated");
         fetchZones();
       }
     } catch (err) {
@@ -354,9 +463,10 @@ const ZonesPage = () => {
 
   const handleCategoryToggle = (catId) => {
     setForm((prev) => {
-      const list = prev.allowedCategories.includes(catId)
-        ? prev.allowedCategories.filter((c) => c !== catId)
-        : [...prev.allowedCategories, catId];
+      const current = prev.allowedCategories || [];
+      const list = current.includes(catId)
+        ? current.filter((c) => c !== catId)
+        : [...current, catId];
       return { ...prev, allowedCategories: list };
     });
   };
@@ -365,7 +475,7 @@ const ZonesPage = () => {
     const allIds = filteredCategories.map((c) => c.id || c._id);
     setForm((prev) => ({
       ...prev,
-      allowedCategories: Array.from(new Set([...prev.allowedCategories, ...allIds])),
+      allowedCategories: Array.from(new Set([...(prev.allowedCategories || []), ...allIds])),
     }));
   };
 
@@ -377,17 +487,17 @@ const ZonesPage = () => {
   const filteredCategories = useMemo(() => {
     if (!categorySearchQuery.trim()) return categories;
     const q = categorySearchQuery.toLowerCase();
-    return categories.filter((c) => (c.title || "").toLowerCase().includes(q));
+    return (categories || []).filter((c) => (c.title || "").toLowerCase().includes(q));
   }, [categories, categorySearchQuery]);
 
   // Filtered zones for the left sidebar
   const filteredZones = useMemo(() => {
     if (!searchQuery.trim()) return zones;
     const q = searchQuery.toLowerCase();
-    return zones.filter((z) => (z.name || "").toLowerCase().includes(q));
+    return (zones || []).filter((z) => (z.name || "").toLowerCase().includes(q));
   }, [zones, searchQuery]);
 
-  const activeCount = useMemo(() => zones.filter((z) => z.status === "active").length, [zones]);
+  const activeCount = useMemo(() => (zones || []).filter((z) => z.status === "active").length, [zones]);
 
   if (loadError) {
     return (
@@ -395,7 +505,7 @@ const ZonesPage = () => {
         <FiAlertCircle className="w-12 h-12 text-rose-500 mb-3" />
         <h3 className="text-base font-bold text-gray-900">Google Maps Failed to Load</h3>
         <p className="text-xs text-gray-500 mt-1 max-w-md">
-          Please check that VITE_GOOGLE_MAPS_API_KEY is properly configured with Maps JavaScript API and Drawing library enabled.
+          Please check that VITE_GOOGLE_MAPS_API_KEY is properly configured with Maps JavaScript API.
         </p>
       </div>
     );
@@ -405,10 +515,12 @@ const ZonesPage = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        <span className="ml-3 text-sm text-gray-600 font-medium">Loading Google Maps & Drawing Tools...</span>
+        <span className="ml-3 text-sm text-gray-600 font-medium">Loading Google Maps...</span>
       </div>
     );
   }
+
+  const hasCoordinates = Array.isArray(form.coordinates?.[0]) && form.coordinates[0].length >= 4;
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col bg-gray-50">
@@ -441,10 +553,10 @@ const ZonesPage = () => {
             <select
               value={selectedCityId}
               onChange={(e) => setSelectedCityId(e.target.value)}
-              className="text-xs font-semibold bg-transparent border-none text-gray-700 focus:outline-none cursor-pointer"
+              className="text-xs bg-transparent border-none focus:outline-none font-medium text-gray-700 cursor-pointer"
             >
-              <option value="">All Cities</option>
-              {cities.map((city) => (
+              <option value="">All Operating Cities</option>
+              {(cities || []).map((city) => (
                 <option key={city.id || city._id} value={city.id || city._id}>
                   {city.name}
                 </option>
@@ -454,9 +566,8 @@ const ZonesPage = () => {
 
           <button
             onClick={fetchZones}
-            disabled={loading}
-            className="p-2 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Refresh zones"
+            title="Refresh Zones"
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
           >
             <FiRefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -598,42 +709,36 @@ const ZonesPage = () => {
                               e.stopPropagation();
                               handleToggleStatus(zone);
                             }}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              zone.status === "active"
-                                ? "text-emerald-600 hover:bg-emerald-50"
-                                : "text-gray-400 hover:bg-gray-100"
-                            }`}
-                            title={zone.status === "active" ? "Deactivate" : "Activate"}
+                            title={zone.status === "active" ? "Pause Zone" : "Activate Zone"}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100"
                           >
-                            <div
-                              className={`w-3 h-3 rounded-full border-2 ${
-                                zone.status === "active"
-                                  ? "border-emerald-500 bg-emerald-500"
-                                  : "border-gray-400"
+                            <span
+                              className={`w-2 h-2 rounded-full inline-block ${
+                                zone.status === "active" ? "bg-emerald-500" : "bg-gray-400"
                               }`}
                             />
                           </button>
 
-                          {/* Edit */}
+                          {/* Edit button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenEdit(zone);
                             }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit Zone"
+                            className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md hover:bg-blue-50"
                           >
                             <FiEdit2 className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Delete */}
+                          {/* Delete button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(zone);
                             }}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                             title="Delete Zone"
+                            className="p-1.5 text-gray-400 hover:text-rose-600 rounded-md hover:bg-rose-50"
                           >
                             <FiTrash2 className="w-3.5 h-3.5" />
                           </button>
@@ -653,6 +758,7 @@ const ZonesPage = () => {
             mapContainerStyle={MAP_CONTAINER}
             center={mapCenter}
             zoom={DEFAULT_ZOOM}
+            onClick={handleMapClick}
             onLoad={(map) => {
               mapRef.current = map;
             }}
@@ -661,10 +767,11 @@ const ZonesPage = () => {
               streetViewControl: false,
               mapTypeControl: true,
               mapTypeControlOptions: { position: 3 },
+              draggableCursor: isDrawing ? "crosshair" : undefined,
             }}
           >
             {/* Existing Zone Polygons (hide polygon currently being edited to avoid duplicate rendering) */}
-            {zones
+            {(zones || [])
               .filter(
                 (z) =>
                   !isFormOpen ||
@@ -687,19 +794,19 @@ const ZonesPage = () => {
                       strokeColor: color,
                       strokeOpacity: 0.95,
                       strokeWeight: isHovered ? 3.5 : 2,
-                      clickable: true,
+                      clickable: !isDrawing,
                     }}
-                    onMouseOver={() => setHoveredZoneId(id)}
-                    onMouseOut={() => setHoveredZoneId(null)}
-                    onClick={() => handleOpenEdit(zone)}
+                    onMouseOver={() => !isDrawing && setHoveredZoneId(id)}
+                    onMouseOut={() => !isDrawing && setHoveredZoneId(null)}
+                    onClick={() => !isDrawing && handleOpenEdit(zone)}
                   />
                 );
               })}
 
             {/* Editable Form Preview Polygon */}
-            {isFormOpen && form.coordinates && !isDrawing && (
+            {isFormOpen && hasCoordinates && !isDrawing && (
               <Polygon
-                paths={geoJsonToLatLng(form.coordinates)}
+                paths={geoJsonToUniqueLatLng(form.coordinates)}
                 onLoad={onEditablePolygonLoad}
                 options={{
                   fillColor: "#2563EB",
@@ -714,62 +821,156 @@ const ZonesPage = () => {
               />
             )}
 
-            {/* Drawing Manager for marking vertices */}
-            {isDrawing && (
-              <DrawingManager
-                onLoad={(dm) => {
-                  drawingManagerRef.current = dm;
-                }}
-                onPolygonComplete={onPolygonComplete}
+            {/* Live Interactive Polyline while drawing */}
+            {isDrawing && drawingPoints.length >= 2 && (
+              <Polyline
+                paths={drawingPoints}
                 options={{
-                  drawingMode:
-                    window.google?.maps?.drawing?.OverlayType?.POLYGON || "polygon",
-                  drawingControl: false,
-                  polygonOptions: {
-                    fillColor: "#2563EB",
-                    fillOpacity: 0.35,
-                    strokeColor: "#1D4ED8",
-                    strokeWeight: 2.5,
-                    editable: true,
-                    zIndex: 20,
-                  },
+                  strokeColor: "#2563EB",
+                  strokeOpacity: 0.95,
+                  strokeWeight: 3,
+                  zIndex: 25,
                 }}
               />
             )}
+
+            {/* Live Polygon fill preview when >= 3 points are placed */}
+            {isDrawing && drawingPoints.length >= 3 && (
+              <Polygon
+                paths={drawingPoints}
+                options={{
+                  fillColor: "#2563EB",
+                  fillOpacity: 0.25,
+                  strokeColor: "#1D4ED8",
+                  strokeOpacity: 0.9,
+                  strokeWeight: 2,
+                  zIndex: 24,
+                }}
+              />
+            )}
+
+            {/* Vertex Markers while drawing */}
+            {isDrawing &&
+              drawingPoints.map((pt, idx) => {
+                const isFirst = idx === 0;
+                const canFinish = drawingPoints.length >= 3;
+                return (
+                  <Marker
+                    key={`draw-pt-${idx}-${pt.lat}-${pt.lng}`}
+                    position={pt}
+                    title={isFirst && canFinish ? "Click here to close & finish zone" : `Point ${idx + 1}`}
+                    label={{
+                      text: String(idx + 1),
+                      color: "#FFFFFF",
+                      fontWeight: "bold",
+                      fontSize: "11px",
+                    }}
+                    icon={
+                      typeof window !== "undefined" && window.google?.maps?.SymbolPath?.CIRCLE !== undefined
+                        ? {
+                            path: window.google.maps.SymbolPath.CIRCLE,
+                            scale: 13,
+                            fillColor: isFirst && canFinish ? "#10B981" : "#2563EB",
+                            fillOpacity: 1,
+                            strokeColor: "#FFFFFF",
+                            strokeWeight: 2.5,
+                          }
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (isFirst && canFinish) {
+                        finishDrawing();
+                      }
+                    }}
+                  />
+                );
+              })}
+
           </GoogleMap>
 
-          {/* Floating Drawing Mode Banner */}
-          {isDrawing && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md text-white px-5 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold z-20 border border-white/10 animate-in fade-in">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
-              <span>Click on the map to place vertices. Double-click to close &amp; finish zone.</span>
-              <button
-                type="button"
-                onClick={cancelDrawing}
-                className="ml-2 px-2.5 py-1 bg-white/20 hover:bg-white/30 active:scale-95 text-white rounded-lg text-[11px] font-bold transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {/* Floating "Draw Zone" shortcut if form is open and no boundary */}
-          {isFormOpen && !form.coordinates && !isDrawing && (
-            <button
-              onClick={startDrawing}
-              className="absolute top-4 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-xs font-bold z-10 transition-transform active:scale-95"
-            >
-              <FiMap className="w-4 h-4" />
-              Click Here to Start Drawing Boundary
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Create / Edit Slide-over Drawer */}
-      {isFormOpen && (
+      {/* Floating Drawing Mode Toolbar (Fixed at Top, z-50, always interactive) */}
+      {isDrawing && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50 border border-slate-700/80 animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+            </span>
+            <div className="text-left">
+              <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                Drawing Zone Boundary
+                <span className="text-[10px] font-semibold bg-blue-600/70 px-2 py-0.5 rounded-full text-blue-200">
+                  {drawingPoints.length} {drawingPoints.length === 1 ? "point" : "points"}
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-300">
+                {drawingPoints.length === 0
+                  ? "Click anywhere on the map to place Point 1"
+                  : drawingPoints.length === 1
+                  ? "Click on map to place Point 2"
+                  : drawingPoints.length === 2
+                  ? "Click to place Point 3 (minimum 3 needed to form an area)"
+                  : "Click 'Finish Zone' or click Point 1 (green circle) to complete"}
+              </p>
+            </div>
+          </div>
+
+          <div className="h-6 w-px bg-slate-700 mx-1" />
+
+          <div className="flex items-center gap-2">
+            {drawingPoints.length === 0 && (
+              <button
+                type="button"
+                onClick={handleCreateQuickBox}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                title="Create a quick 3km square zone around map center"
+              >
+                <FiZap className="w-3.5 h-3.5" />
+                Quick Box
+              </button>
+            )}
+
+            {drawingPoints.length >= 3 && (
+              <button
+                type="button"
+                onClick={finishDrawing}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 animate-pulse"
+              >
+                <FiCheck className="w-4 h-4" />
+                Finish Zone
+              </button>
+            )}
+
+            {drawingPoints.length > 0 && (
+              <button
+                type="button"
+                onClick={undoLastDrawingPoint}
+                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white rounded-lg text-xs font-semibold transition-all border border-slate-700 flex items-center gap-1"
+              >
+                <FiRotateCcw className="w-3.5 h-3.5" />
+                Undo
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={cancelDrawing}
+              className="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white rounded-lg text-xs font-semibold transition-all flex items-center gap-1"
+            >
+              <FiX className="w-3.5 h-3.5" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit Slide-over Drawer (Only shown when NOT actively drawing to avoid blocking map) */}
+      {isFormOpen && !isDrawing && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={handleCloseForm} />
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" onClick={handleCloseForm} />
           <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
             <div className="border-b border-gray-200 px-5 py-4 flex items-center justify-between shrink-0 bg-gray-50/50">
@@ -821,7 +1022,7 @@ const ZonesPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
                 >
                   <option value="">Select city...</option>
-                  {cities.map((city) => (
+                  {(cities || []).map((city) => (
                     <option key={city.id || city._id} value={city.id || city._id}>
                       {city.name} ({city.state || "India"})
                     </option>
@@ -830,53 +1031,66 @@ const ZonesPage = () => {
               </div>
 
               {/* Zone Boundary Tool */}
-              <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+              <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <FiMap className="w-3.5 h-3.5 text-blue-600" />
                     Geographic Boundary <span className="text-red-500">*</span>
                   </label>
-                  {form.coordinates && (
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {form.coordinates[0]?.length - 1} Vertices
+                  {hasCoordinates && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <FiCheck className="w-3 h-3" />
+                      {form.coordinates[0].length - 1} Vertices Set
                     </span>
                   )}
                 </div>
 
-                {form.coordinates ? (
+                {hasCoordinates ? (
                   <div className="space-y-2">
                     <p className="text-[11px] text-gray-600">
-                      Boundary set. You can drag vertices directly on the map to adjust boundaries.
+                      Boundary defined. You can drag corner handles directly on the map to adjust, or use the actions below:
                     </p>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={startDrawing}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                        className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
                       >
-                        Redraw Polygon
+                        <FiEdit2 className="w-3.5 h-3.5" />
+                        Redraw on Map
                       </button>
                       <button
                         type="button"
                         onClick={() => setForm((p) => ({ ...p, coordinates: null }))}
-                        className="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold"
+                        className="px-3 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold transition-colors"
                       >
                         Clear
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-[11px] text-gray-500 mb-2.5">
-                      Click below to activate the polygon tool. Click on the map to mark boundary corners and double-click to finish.
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-gray-500">
+                      Click below to activate interactive drawing on the map, or create a quick rectangular zone.
                     </p>
-                    <button
-                      type="button"
-                      onClick={startDrawing}
-                      className="w-full py-2.5 border-2 border-dashed border-blue-400 bg-white hover:bg-blue-50/80 rounded-xl text-xs font-bold text-blue-700 flex items-center justify-center gap-2 transition-all shadow-sm"
-                    >
-                      <FiMap className="w-4 h-4 text-blue-600" />
-                      Draw Zone on Map
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={startDrawing}
+                        className="py-2.5 border-2 border-dashed border-blue-400 bg-white hover:bg-blue-50/80 rounded-xl text-xs font-bold text-blue-700 flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      >
+                        <FiMap className="w-4 h-4 text-blue-600" />
+                        Draw on Map
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCreateQuickBox}
+                        className="py-2.5 border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100/80 rounded-xl text-xs font-bold text-indigo-700 flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      >
+                        <FiZap className="w-4 h-4 text-indigo-600" />
+                        Quick Box
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -885,7 +1099,7 @@ const ZonesPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                    Allowed Services ({form.allowedCategories.length} selected)
+                    Allowed Services ({(form.allowedCategories || []).length} selected)
                   </label>
                   <div className="flex items-center gap-2">
                     <button
@@ -921,7 +1135,7 @@ const ZonesPage = () => {
                   ) : (
                     filteredCategories.map((cat) => {
                       const catId = cat.id || cat._id;
-                      const isChecked = form.allowedCategories.includes(catId);
+                      const isChecked = (form.allowedCategories || []).includes(catId);
                       return (
                         <label
                           key={catId}
@@ -948,11 +1162,11 @@ const ZonesPage = () => {
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={form.surgePricing.enabled}
+                    checked={Boolean(form.surgePricing?.enabled)}
                     onChange={(e) =>
                       setForm((p) => ({
                         ...p,
-                        surgePricing: { ...p.surgePricing, enabled: e.target.checked },
+                        surgePricing: { ...(p.surgePricing || {}), enabled: e.target.checked },
                       }))
                     }
                     className="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 mt-0.5"
@@ -968,11 +1182,11 @@ const ZonesPage = () => {
                   </div>
                 </label>
 
-                {form.surgePricing.enabled && (
+                {form.surgePricing?.enabled && (
                   <div className="pt-2 border-t border-amber-100 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] text-gray-700 font-bold">
-                        Multiplier: <span className="text-amber-700 text-xs">{form.surgePricing.multiplier}x</span>
+                        Multiplier: <span className="text-amber-700 text-xs">{form.surgePricing?.multiplier || 1}x</span>
                       </label>
                       {/* Presets */}
                       <div className="flex items-center gap-1">
@@ -983,11 +1197,11 @@ const ZonesPage = () => {
                             onClick={() =>
                               setForm((p) => ({
                                 ...p,
-                                surgePricing: { ...p.surgePricing, multiplier: val },
+                                surgePricing: { ...(p.surgePricing || {}), multiplier: val },
                               }))
                             }
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              form.surgePricing.multiplier === val
+                              form.surgePricing?.multiplier === val
                                 ? "bg-amber-600 text-white"
                                 : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                             }`}
@@ -1003,12 +1217,12 @@ const ZonesPage = () => {
                       min="1.0"
                       max="4.0"
                       step="0.1"
-                      value={form.surgePricing.multiplier}
+                      value={form.surgePricing?.multiplier || 1}
                       onChange={(e) =>
                         setForm((p) => ({
                           ...p,
                           surgePricing: {
-                            ...p.surgePricing,
+                            ...(p.surgePricing || {}),
                             multiplier: parseFloat(e.target.value),
                           },
                         }))
@@ -1025,7 +1239,7 @@ const ZonesPage = () => {
                   Status
                 </label>
                 <select
-                  value={form.status}
+                  value={form.status || "active"}
                   onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold"
                 >
@@ -1062,4 +1276,10 @@ const ZonesPage = () => {
   );
 };
 
-export default ZonesPage;
+const ExportedZonesPage = () => (
+  <ZonesErrorBoundary>
+    <ZonesPage />
+  </ZonesErrorBoundary>
+);
+
+export default ExportedZonesPage;

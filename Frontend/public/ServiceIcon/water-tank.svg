@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Tank Body -->
+  <rect x="14" y="16" width="36" height="34" rx="4" fill="#0284C7" stroke="#0369A1" stroke-width="2"/>
+  <rect x="18" y="22" width="28" height="4" rx="1" fill="#38BDF8"/>
+  <rect x="18" y="30" width="28" height="4" rx="1" fill="#38BDF8"/>
+  <rect x="18" y="38" width="28" height="4" rx="1" fill="#38BDF8"/>
+  <!-- Tank Lid -->
+  <rect x="24" y="10" width="16" height="6" rx="2" fill="#0369A1"/>
+  <!-- Water Drops / Sparkle -->
+  <path d="M48 38C48 42 44 46 44 46C44 46 40 42 40 38C40 35.79 41.79 34 44 34C46.21 34 48 35.79 48 38Z" fill="#38BDF8" stroke="#0284C7" stroke-width="1.5"/>
+</svg>

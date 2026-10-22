@@ -6,9 +6,16 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
  * Handles all API calls for Categories, Brands (formerly Services), Services (Sub-services), and Home Content
  */
 
+// Stale copy of home data per city, used only for instant display on revisit.
+const LAST_HOME_TTL = 5 * 60 * 1000;
+const lastHomeData = new Map();
+const lastHomeTimestamps = new Map();
+
 // Cache invalidation helper: sweeps out public catalog cache so admin writes reflect immediately
-const invalidatePublicCatalog = () => {
+export const invalidatePublicCatalog = () => {
   apiCache.invalidatePrefix('public:');
+  lastHomeData.clear();
+  lastHomeTimestamps.clear();
 };
 
 /**
@@ -453,12 +460,6 @@ export const homeContentService = {
  * Public Catalog Service (for user app - no authentication required)
  * Now with caching for faster data retrieval
  */
-// Stale copy of home data per city, used only for instant display on revisit.
-// Expires after 5 minutes so new admin-created categories appear without a hard refresh.
-const LAST_HOME_TTL = 5 * 60 * 1000;
-const lastHomeData = new Map();
-const lastHomeTimestamps = new Map();
-
 export const publicCatalogService = {
   // Get all active categories (cached for 5 minutes)
   getCategories: async (cityId, zoneId) => {

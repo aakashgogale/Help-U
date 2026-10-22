@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- CCTV Camera Body -->
+  <path d="M14 26L42 16L46 28L18 38L14 26Z" fill="#374151" stroke="#1F2937" stroke-width="2"/>
+  <rect x="42" y="16" width="12" height="14" rx="2" fill="#111827" stroke="#1F2937" stroke-width="1.5"/>
+  <circle cx="48" cy="23" r="3" fill="#3B82F6"/>
+  <circle cx="48" cy="23" r="1.5" fill="#60A5FA"/>
+  <!-- Wall mount stand -->
+  <path d="M14 32L8 38V48H14V42L22 36" stroke="#4B5563" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Status LED -->
+  <circle cx="20" cy="24" r="1.5" fill="#EF4444"/>
+</svg>

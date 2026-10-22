@@ -39,6 +39,13 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
     isEmergencyAvailable: false,
     homeIconUrl: "",
     homeBadge: "",
+    etaDefaultMinutes: "",
+    displayRating: "",
+    bookingsLabel: "",
+    heroTag: "",
+    heroTitle: "",
+    heroStartingPrice: "",
+    heroImageUrl: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -191,6 +198,13 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
       isEmergencyAvailable: false,
       homeIconUrl: "",
       homeBadge: "",
+      etaDefaultMinutes: "",
+      displayRating: "",
+      bookingsLabel: "",
+      heroTag: "",
+      heroTitle: "",
+      heroStartingPrice: "",
+      heroImageUrl: "",
     });
     setIsModalOpen(true);
   };
@@ -207,6 +221,13 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
       isEmergencyAvailable: !!category.isEmergencyAvailable,
       homeIconUrl: category.homeIconUrl || category.iconUrl || "",
       homeBadge: category.homeBadge || "",
+      etaDefaultMinutes: category.etaDefaultMinutes != null ? String(category.etaDefaultMinutes) : "",
+      displayRating: category.displayRating || "",
+      bookingsLabel: category.bookingsLabel || "",
+      heroTag: category.heroBanner?.tag || "",
+      heroTitle: category.heroBanner?.title || "",
+      heroStartingPrice: category.heroBanner?.startingPrice || "",
+      heroImageUrl: category.heroBanner?.imageUrl || "",
     });
     setIsModalOpen(true);
   };
@@ -221,6 +242,10 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
 
     try {
       setSaving(true);
+      const parsedEta = form.etaDefaultMinutes !== "" && !isNaN(Number(form.etaDefaultMinutes))
+        ? Number(form.etaDefaultMinutes)
+        : null;
+
       const payload = {
         title: form.title.trim(),
         slug: form.slug.trim() || slugify(form.title),
@@ -230,6 +255,15 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
         isEmergencyAvailable: !!form.isEmergencyAvailable,
         homeIconUrl: form.homeIconUrl,
         homeBadge: form.homeBadge,
+        etaDefaultMinutes: parsedEta,
+        displayRating: form.displayRating.trim(),
+        bookingsLabel: form.bookingsLabel.trim(),
+        heroBanner: {
+          tag: form.heroTag?.trim() || "",
+          title: form.heroTitle?.trim() || "",
+          startingPrice: form.heroStartingPrice?.trim() || "",
+          imageUrl: form.heroImageUrl?.trim() || ""
+        }
       };
 
       let res;
@@ -625,6 +659,97 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
               label="Category Icon (1:1 Squircle)"
               helperText="Upload a transparent PNG or SVG icon. Use the transparency buttons above to test on light, dark and alpha checkerboard backgrounds."
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                  Default Arrival ETA (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 55"
+                  value={form.etaDefaultMinutes}
+                  onChange={(e) => setForm((prev) => ({ ...prev, etaDefaultMinutes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <span className="text-[11px] text-gray-500 block mt-0.5">Shown in green pill badge on Home tile</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                  Display Rating (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 4.88"
+                  value={form.displayRating}
+                  onChange={(e) => setForm((prev) => ({ ...prev, displayRating: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                Bookings Count Label (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 1.8 M bookings"
+                value={form.bookingsLabel}
+                onChange={(e) => setForm((prev) => ({ ...prev, bookingsLabel: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <label className="block text-xs font-bold text-gray-800 uppercase tracking-wide mb-2">
+                Hero Promotion Banner (Catalog Header)
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">Tag</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. LUXE BEAUTY"
+                    value={form.heroTag}
+                    onChange={(e) => setForm((prev) => ({ ...prev, heroTag: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">Hero Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Korean Glass Glow Ritual"
+                    value={form.heroTitle}
+                    onChange={(e) => setForm((prev) => ({ ...prev, heroTitle: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">Starting Price (₹)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 499"
+                    value={form.heroStartingPrice}
+                    onChange={(e) => setForm((prev) => ({ ...prev, heroStartingPrice: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">Hero Image URL</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. /services/hair-studio-facial.jpg"
+                    value={form.heroImageUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, heroImageUrl: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
 
             <div className="pt-2 border-t border-gray-100 space-y-3">
               <label className="flex items-center gap-2 cursor-pointer">

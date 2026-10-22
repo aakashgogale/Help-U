@@ -1043,5 +1043,4 @@ const CATALOG_DATA = {
 };
 
 // =========================================================================
-// Category Matcher Helper
-// =========================================================================; module.exports = CATALOG_DATA;
+module.exports = CATALOG_DATA;

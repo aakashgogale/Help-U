@@ -49,8 +49,7 @@ const toAssetUrl = (url) => {
 };
 
 // Image with automatic fallback so broken image icons never appear.
-// Default fallback is a neutral tool SVG rather than salon avatar so other categories never show women salon avatars!
-const ImageWithFallback = ({ src, alt, className, fallback = '/categories/electrician-switch.svg' }) => {
+const ImageWithFallback = ({ src, alt, className, fallback }) => {
   const [imgSrc, setImgSrc] = useState(src || fallback);
   const [hasError, setHasError] = useState(false);
 
@@ -61,12 +60,12 @@ const ImageWithFallback = ({ src, alt, className, fallback = '/categories/electr
 
   return (
     <img
-      src={imgSrc}
+      src={imgSrc || fallback}
       alt={alt}
       className={className}
       loading="lazy"
       onError={() => {
-        if (!hasError) {
+        if (!hasError && fallback && imgSrc !== fallback) {
           setHasError(true);
           setImgSrc(fallback);
         }
@@ -1288,10 +1287,10 @@ const CATALOG_DATA = {
       code: 'MEN100'
     },
     subCategories: [
-      { id: 'packages', title: 'Super saver packages', badge: 'Upto 30% OFF', icon: '/categories/mens-salon.png' },
-      { id: 'haircut', title: 'Haircut & beard', icon: '/categories/mens-salon.png' },
-      { id: 'detan-facial', title: 'Detan & facial', icon: '/categories/mens-salon.png' },
-      { id: 'massage', title: 'Head & body massage', icon: '/categories/massage-men.svg' }
+      { id: 'packages', title: 'Super saver packages', badge: 'Upto 30% OFF', icon: '/services/mens-salon/super-saver.jpg' },
+      { id: 'haircut', title: 'Haircut & beard', icon: '/services/mens-salon/haircut.jpg' },
+      { id: 'detan-facial', title: 'Detan & facial', icon: '/services/mens-salon/detan-facial.jpg' },
+      { id: 'massage', title: 'Head & body massage', icon: '/services/mens-salon/massage.jpg' }
     ],
     sections: [
       {
@@ -1308,7 +1307,7 @@ const CATALOG_DATA = {
             originalPrice: 1299,
             discount: '30% OFF',
             duration: '1 hr 15 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/super-saver.jpg',
             bullets: [
               'Men\'s Designer Haircut + Beard Shaping & Styling',
               'O3+ Detan Face Pack & Scrub for sun protection',
@@ -1325,7 +1324,7 @@ const CATALOG_DATA = {
             originalPrice: 499,
             discount: '20% OFF',
             duration: '45 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/haircut.jpg',
             bullets: [
               'Custom haircut suited to your face shape',
               'Beard lining with straight razor finish and soothing aftershave'
@@ -1345,7 +1344,7 @@ const CATALOG_DATA = {
             price: 249,
             originalPrice: 299,
             duration: '30 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/haircut.jpg',
             bullets: [
               'Single-use towel, sanitized scissors & clipper guards',
               'Finishing hair wash and styling pomade application'
@@ -1359,7 +1358,7 @@ const CATALOG_DATA = {
             price: 199,
             originalPrice: 249,
             duration: '20 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/beard.jpg',
             bullets: [
               'Sharp razor lining and nourishing beard oil massage'
             ]
@@ -1379,7 +1378,7 @@ const CATALOG_DATA = {
             originalPrice: 650,
             discount: '23% OFF',
             duration: '35 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/detan-facial.jpg',
             bullets: [
               'Removes deep pollution and sunburn marks with herbal active agents'
             ]
@@ -1399,7 +1398,7 @@ const CATALOG_DATA = {
             originalPrice: 1699,
             discount: '23% OFF',
             duration: '60 mins',
-            image: '/categories/mens-salon.png',
+            image: '/services/mens-salon/massage.jpg',
             bullets: [
               'Warm sesame/olive oil targeting tight muscles and back fatigue',
               'Disposable sheets and portable massage mat provided by professional'
@@ -2759,6 +2758,343 @@ const CATALOG_DATA = {
       }
     ]
   },
+  'painting': {
+    title: 'Painting & Waterproofing',
+    etaMinutes: 120,
+    rating: '4.82',
+    bookings: '450K bookings',
+    hero: {
+      tag: 'EXPERT PAINTERS',
+      title: 'Waterproof Wall Painting & Texture',
+      startingPrice: '999',
+      image: '/ServiceIcon/painting-roller.svg'
+    },
+    subCategories: [
+      { id: 'wall-painting', title: 'Wall Painting', icon: '/ServiceIcon/painting-roller.svg' },
+      { id: 'waterproofing', title: 'Waterproofing & Crack Fill', icon: '/ServiceIcon/painting-roller.svg' }
+    ],
+    sections: [
+      {
+        id: 'wall-painting',
+        title: 'Wall Painting & Texture',
+        items: [
+          {
+            id: 'paint-single-room',
+            title: 'Single Room Painting (Walls & Ceiling)',
+            rating: '4.85',
+            reviews: '85K reviews',
+            price: 1899,
+            originalPrice: 2499,
+            duration: '3 hrs',
+            image: '/ServiceIcon/painting-roller.svg',
+            bullets: [
+              'Includes 2 coats of premium washable interior emulsion',
+              'Sanding, masking tape floor protection and complete cleanup'
+            ]
+          },
+          {
+            id: 'paint-feature-wall',
+            title: 'Designer Accent / Feature Wall',
+            rating: '4.88',
+            reviews: '62K reviews',
+            price: 1299,
+            originalPrice: 1699,
+            duration: '2 hrs',
+            image: '/ServiceIcon/painting-roller.svg',
+            bullets: [
+              'Metallic stencil or textured finish on 1 living/bedroom wall',
+              'Color consultation and shade card provided on-site'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'waterproofing',
+        title: 'Waterproofing & Crack Fill',
+        items: [
+          {
+            id: 'paint-crack-seepage',
+            title: 'Wall Seepage & Crack Repair Coating',
+            rating: '4.82',
+            reviews: '41K reviews',
+            price: 899,
+            originalPrice: 1199,
+            duration: '90 mins',
+            image: '/ServiceIcon/painting-roller.svg',
+            bullets: [
+              'Anti-efflorescence waterproof primer plus polymeric crack filler paste',
+              'Prevents paint flaking and dampness on interior walls'
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  'nail-art-extensions': {
+    title: 'Nail Art & Extensions',
+    etaMinutes: 60,
+    rating: '4.89',
+    bookings: '280K bookings',
+    hero: {
+      tag: 'TRENDING NAILS',
+      title: 'Gel Extensions & Custom Nail Art',
+      startingPrice: '599',
+      image: '/ServiceIcon/nail-art.svg'
+    },
+    subCategories: [
+      { id: 'gel-extensions', title: 'Gel & Acrylic Extensions', icon: '/ServiceIcon/nail-art.svg' },
+      { id: 'nail-art-polish', title: 'Nail Art & Gel Polish', icon: '/ServiceIcon/nail-art.svg' }
+    ],
+    sections: [
+      {
+        id: 'gel-extensions',
+        title: 'Gel & Acrylic Extensions',
+        items: [
+          {
+            id: 'nail-gel-extensions-both-hands',
+            title: 'Full Set Soft Gel Nail Extensions (Both Hands)',
+            rating: '4.91',
+            reviews: '74K reviews',
+            price: 1499,
+            originalPrice: 1999,
+            duration: '75 mins',
+            image: '/ServiceIcon/nail-art.svg',
+            bullets: [
+              'Custom nail sizing, cuticle trimming, tips application and UV gel curing',
+              'Chip-free lasting finish for up to 4 weeks'
+            ]
+          },
+          {
+            id: 'nail-extension-removal',
+            title: 'Extension Removal & Strengthening Care',
+            rating: '4.86',
+            reviews: '32K reviews',
+            price: 499,
+            originalPrice: 699,
+            duration: '35 mins',
+            image: '/ServiceIcon/nail-art.svg',
+            bullets: [
+              'Gentle acetone soak off, nail buffing and keratin cuticle oil massage'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'nail-art-polish',
+        title: 'Nail Art & Gel Polish',
+        items: [
+          {
+            id: 'nail-art-french-chrome',
+            title: 'French Tips / Chrome Glaze Nail Art',
+            rating: '4.90',
+            reviews: '55K reviews',
+            price: 699,
+            originalPrice: 899,
+            duration: '45 mins',
+            image: '/ServiceIcon/nail-art.svg',
+            bullets: [
+              'Trending glazed donut chrome or classic white French tip manicure'
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  'water-tank-cleaning': {
+    title: 'Water Tank Cleaning',
+    etaMinutes: 90,
+    rating: '4.88',
+    bookings: '310K bookings',
+    hero: {
+      tag: 'HYGIENIC WATER',
+      title: '6-Stage UV Tank Disinfection',
+      startingPrice: '799',
+      image: '/ServiceIcon/water-tank.svg'
+    },
+    subCategories: [
+      { id: 'overhead-tank', title: 'Overhead Tank', icon: '/ServiceIcon/water-tank.svg' },
+      { id: 'underground-sump', title: 'Underground Sump', icon: '/ServiceIcon/water-tank.svg' }
+    ],
+    sections: [
+      {
+        id: 'overhead-tank',
+        title: 'Overhead Water Tank Cleaning',
+        items: [
+          {
+            id: 'tank-overhead-1000l',
+            title: 'Mechanized 6-Stage Overhead Tank Clean (Up to 1000L)',
+            rating: '4.89',
+            reviews: '120K reviews',
+            price: 799,
+            originalPrice: 1099,
+            duration: '60 mins',
+            image: '/ServiceIcon/water-tank.svg',
+            bullets: [
+              'Sludge dewatering, high pressure rotary jet cleaning and antibacterial spray',
+              'UV germicidal radiation treatment destroys 99.9% pathogens'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'underground-sump',
+        title: 'Underground Sump Cleaning',
+        items: [
+          {
+            id: 'tank-sump-clean',
+            title: 'Underground Sump Heavy Sludge Removal (Up to 2000L)',
+            rating: '4.87',
+            reviews: '85K reviews',
+            price: 1199,
+            originalPrice: 1599,
+            duration: '90 mins',
+            image: '/ServiceIcon/water-tank.svg',
+            bullets: [
+              'Submersible pump vacuum extraction, floor descaling and chlorine disinfection'
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  'car-wash-at-home': {
+    title: 'Car Wash at Home',
+    etaMinutes: 60,
+    rating: '4.84',
+    bookings: '620K bookings',
+    hero: {
+      tag: 'DOORSTEP WASH',
+      title: 'Pressure Foam Wash & Interior Vacuum',
+      startingPrice: '399',
+      image: '/ServiceIcon/car-wash.svg'
+    },
+    subCategories: [
+      { id: 'hatchback-sedan', title: 'Hatchback & Sedan', icon: '/ServiceIcon/car-wash.svg' },
+      { id: 'suv-luxury', title: 'SUV & Luxury Car', icon: '/ServiceIcon/car-wash.svg' }
+    ],
+    sections: [
+      {
+        id: 'hatchback-sedan',
+        title: 'Hatchback & Sedan Doorstep Wash',
+        items: [
+          {
+            id: 'car-exterior-foam-wash',
+            title: 'Exterior High Pressure Foam Wash',
+            rating: '4.86',
+            reviews: '180K reviews',
+            price: 399,
+            originalPrice: 549,
+            duration: '40 mins',
+            image: '/ServiceIcon/car-wash.svg',
+            bullets: [
+              'High pressure water rinse, snow foam wash, tyre dressing & glass buffing'
+            ]
+          },
+          {
+            id: 'car-deep-interior-exterior',
+            title: 'Complete Deep Wash (Interior Vacuum + Foam Exterior)',
+            rating: '4.88',
+            reviews: '210K reviews',
+            price: 699,
+            originalPrice: 999,
+            duration: '70 mins',
+            image: '/ServiceIcon/car-wash.svg',
+            bullets: [
+              'Footmat scrubbing, seat vacuuming, dashboard polish and pressure exterior wash'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'suv-luxury',
+        title: 'SUV & Luxury Car Care',
+        items: [
+          {
+            id: 'car-suv-deep-clean',
+            title: 'SUV Full Deep Wash & Wax Polish',
+            rating: '4.87',
+            reviews: '95K reviews',
+            price: 899,
+            originalPrice: 1299,
+            duration: '80 mins',
+            image: '/ServiceIcon/car-wash.svg',
+            bullets: [
+              'SUV high pressure underbody rinse, carnuba wax gloss coat and boot vacuum'
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  'cctv-services': {
+    title: 'CCTV & Security Services',
+    etaMinutes: 60,
+    rating: '4.86',
+    bookings: '190K bookings',
+    hero: {
+      tag: 'HOME SECURITY',
+      title: 'HD CCTV Camera Setup & Online Link',
+      startingPrice: '499',
+      image: '/ServiceIcon/cctv.svg'
+    },
+    subCategories: [
+      { id: 'cctv-installation', title: 'CCTV Installation', icon: '/ServiceIcon/cctv.svg' },
+      { id: 'cctv-repair', title: 'CCTV Repair & Network Fix', icon: '/ServiceIcon/cctv.svg' }
+    ],
+    sections: [
+      {
+        id: 'cctv-installation',
+        title: 'CCTV Installation & Setup',
+        items: [
+          {
+            id: 'cctv-install-per-camera',
+            title: 'CCTV Camera Installation (Dome / Bullet / WiFi)',
+            rating: '4.88',
+            reviews: '64K reviews',
+            price: 499,
+            originalPrice: 699,
+            duration: '60 mins',
+            image: '/ServiceIcon/cctv.svg',
+            bullets: [
+              'Wall/ceiling mounting, cable routing, BNC connector crimping & angle calibration'
+            ]
+          },
+          {
+            id: 'cctv-dvr-mobile-setup',
+            title: 'DVR / NVR Configuration & Mobile Live View Link',
+            rating: '4.89',
+            reviews: '48K reviews',
+            price: 599,
+            originalPrice: 799,
+            duration: '45 mins',
+            image: '/ServiceIcon/cctv.svg',
+            bullets: [
+              'Port forwarding, WiFi connection, and iOS/Android app live viewing setup'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'cctv-repair',
+        title: 'CCTV Repair & Troubleshooting',
+        items: [
+          {
+            id: 'cctv-repair-checkup',
+            title: 'No Display / Video Loss Troubleshooting',
+            rating: '4.84',
+            reviews: '38K reviews',
+            price: 299,
+            originalPrice: 449,
+            duration: '40 mins',
+            image: '/ServiceIcon/cctv.svg',
+            bullets: [
+              'Power adapter test, video cable continuity check and camera sensor diagnostic'
+            ]
+          }
+        ]
+      }
+    ]
+  }
 };
 
 // =========================================================================
@@ -2771,6 +3107,31 @@ const resolveCategoryKey = (categoryOrService) => {
   const text = `${slug} ${title} ${categoryOrService.id || ''}`.replace(/[^a-z0-9]+/g, ' ');
 
   // 1. SPECIFIC SUB-SERVICE MATCHES FIRST (When clicked from home cards or direct search)
+  // Painting
+  if (text.includes('paint') || text.includes('waterproof') || text.includes('colour') || text.includes('color')) {
+    return 'painting';
+  }
+
+  // Nail Art
+  if (text.includes('nail')) {
+    return 'nail-art-extensions';
+  }
+
+  // Water Tank
+  if (text.includes('tank')) {
+    return 'water-tank-cleaning';
+  }
+
+  // Car Wash
+  if (text.includes('car wash') || text.includes('car-wash') || text.includes('car clean') || text.includes('car')) {
+    return 'car-wash-at-home';
+  }
+
+  // CCTV
+  if (text.includes('cctv') || text.includes('security') || text.includes('surveillance') || text.includes('camera')) {
+    return 'cctv-services';
+  }
+
   // Fan
   if (text.includes('fan')) return 'fan-repair';
 
@@ -2867,128 +3228,169 @@ const EMPTY_CATALOG = { sections: [], subCategories: [] };
 
 // Contextual fallback image resolver matching the exact category & service topic
 const resolveServiceImage = (item, category, categoryTitle) => {
-  const isGenericSvg = (url) => url && (url.includes('electrician.svg') || url.includes('womens-salon.jpg') || url.includes('womens-salon.png'));
-  if (item?.image && !isGenericSvg(item.image)) return toAssetUrl(item.image);
-  if (Array.isArray(item?.images) && item.images.length > 0 && item.images[0] && !isGenericSvg(item.images[0])) {
+  const catTitle = `${category?.title || ''} ${categoryTitle || ''} ${category?.slug || ''}`.toLowerCase();
+  const itemTitle = `${item?.title || ''} ${item?.name || ''}`.toLowerCase();
+
+  const isMenCategory =
+    catTitle.includes('men') ||
+    catTitle.includes('barber') ||
+    catTitle.includes('groom') ||
+    catTitle.includes('male');
+
+  const isWomenCategory =
+    (catTitle.includes('women') || catTitle.includes('female') || catTitle.includes('girl')) ||
+    (!isMenCategory && (catTitle.includes('salon') || catTitle.includes('spa') || catTitle.includes('beauty')));
+
+  const isCleaningCategory =
+    catTitle.includes('clean') || catTitle.includes('pest') || catTitle.includes('washroom') || catTitle.includes('kitech');
+
+  const isApplianceCategory =
+    catTitle.includes('appliance') || catTitle.includes('ac ') || catTitle === 'ac' ||
+    catTitle.includes('fridge') || catTitle.includes('refrigerator') ||
+    catTitle.includes('washing') || catTitle.includes('purifier') || catTitle.includes('prufier') ||
+    catTitle.includes('cooler') || catTitle.includes('geyser') || catTitle.includes('chimney') ||
+    catTitle.includes('microwave') || catTitle.includes('dish') || catTitle.includes('tv') || catTitle.includes('led');
+
+  const isPlumberCategory =
+    catTitle.includes('plumb') || catTitle.includes('tap') || catTitle.includes('pipe') || catTitle.includes('drain');
+
+  const isCarpenterCategory =
+    catTitle.includes('carpent') || catTitle.includes('door') || catTitle.includes('furniture') || catTitle.includes('assembly');
+
+  const isElectricianCategory =
+    catTitle.includes('electric') || catTitle.includes('wiring') || catTitle.includes('switch') || catTitle.includes('socket') || catTitle.includes('fan');
+
+  // Helper: check if a candidate image url belongs to the current category and is not cross-contaminating
+  const isImageValidForCategory = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    if (u.includes('placeholder') || u.includes('default')) return false;
+
+    // Strict cross-contamination filters:
+    if (isMenCategory) {
+      if (u.includes('switch-socket') || u.includes('electrician') || u.includes('plumber') || u.includes('carpenter') || u.includes('womens-salon') || u.includes('cleaning')) {
+        return false;
+      }
+    }
+    if (isWomenCategory) {
+      if (u.includes('switch-socket') || u.includes('electrician') || u.includes('plumber') || u.includes('mens-salon')) {
+        return false;
+      }
+    }
+    if (isCleaningCategory) {
+      if (u.includes('switch-socket') || u.includes('electrician') || u.includes('salon') || u.includes('mens-salon')) {
+        return false;
+      }
+    }
+    if (isApplianceCategory && !isElectricianCategory) {
+      if (u.includes('switch-socket') && !itemTitle.includes('switch') && !itemTitle.includes('socket')) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 1. Direct item image if valid for this category
+  if (item?.image && isImageValidForCategory(item.image)) return toAssetUrl(item.image);
+  if (Array.isArray(item?.images) && item.images.length > 0 && isImageValidForCategory(item.images[0])) {
     return toAssetUrl(item.images[0]);
   }
-  if (item?.iconUrl && !isGenericSvg(item.iconUrl)) return toAssetUrl(item.iconUrl);
-  if (item?.icon && !isGenericSvg(item.icon)) return toAssetUrl(item.icon);
+  if (item?.iconUrl && isImageValidForCategory(item.iconUrl)) return toAssetUrl(item.iconUrl);
+  if (item?.icon && isImageValidForCategory(item.icon)) return toAssetUrl(item.icon);
 
-  const itemTitle = `${item?.title || ''} ${item?.name || ''}`.toLowerCase();
-  const catTitle = `${category?.title || ''} ${categoryTitle || ''} ${category?.slug || ''}`.toLowerCase();
-  const combined = `${itemTitle} ${catTitle}`.toLowerCase();
+  // 2. DOMAIN-SPECIFIC FALLBACKS (Zero cross-contamination guaranteed)
 
-  // 1. Exact Item-Based Image Resolution (Matches each service with its exact photo)
-  if (itemTitle.includes('tap') || itemTitle.includes('faucet')) {
-    return '/services/tap-repair.jpg';
+  // === MEN'S SALON & GROOMING ===
+  if (isMenCategory) {
+    if (itemTitle.includes('massage') || itemTitle.includes('pain') || itemTitle.includes('tissue') || itemTitle.includes('relief')) {
+      return '/services/mens-salon/massage.jpg';
+    }
+    if (itemTitle.includes('detan') || itemTitle.includes('facial') || itemTitle.includes('tan') || itemTitle.includes('scrub') || itemTitle.includes('cleanup') || itemTitle.includes('face')) {
+      return '/services/mens-salon/detan-facial.jpg';
+    }
+    if (itemTitle.includes('beard') || itemTitle.includes('shave') || itemTitle.includes('trim') || itemTitle.includes('mustache')) {
+      return '/services/mens-salon/beard.jpg';
+    }
+    if (itemTitle.includes('package') || itemTitle.includes('combo') || itemTitle.includes('makeover') || itemTitle.includes('saver')) {
+      return '/services/mens-salon/super-saver.jpg';
+    }
+    return '/services/mens-salon/haircut.jpg';
   }
-  if (itemTitle.includes('plumb') || itemTitle.includes('pipe') || itemTitle.includes('drain') || itemTitle.includes('flush') || itemTitle.includes('toilet') || itemTitle.includes('leak') || itemTitle.includes('basin') || itemTitle.includes('sink') || itemTitle.includes('jet spray') || itemTitle.includes('shower') || itemTitle.includes('water tank') || itemTitle.includes('motor') || itemTitle.includes('valve')) {
-    return '/categories/plumber-toilet.svg';
+
+  // === WOMEN'S SALON & SPA ===
+  if (isWomenCategory) {
+    if (itemTitle.includes('wax')) return '/services/spatula-waxing.jpg';
+    if (itemTitle.includes('thread') || itemTitle.includes('eyebrow')) return '/services/threading.jpg';
+    if (itemTitle.includes('mani') || itemTitle.includes('pedi') || itemTitle.includes('nail')) return '/categories/spa-women.svg';
+    if (itemTitle.includes('glow') || itemTitle.includes('korean') || itemTitle.includes('japanese') || itemTitle.includes('ritual') || itemTitle.includes('gold')) {
+      return '/services/hair-studio-facial.jpg';
+    }
+    if (itemTitle.includes('facial') || itemTitle.includes('cleanup') || itemTitle.includes('detan')) {
+      return '/services/signature-facial.jpg';
+    }
+    if (itemTitle.includes('package') || itemTitle.includes('saver') || itemTitle.includes('combo')) {
+      return '/noteworthy/salon-luxe.jpg';
+    }
+    return '/services/signature-facial.jpg';
   }
-  if (itemTitle.includes('fan')) {
-    return '/services/fan-repair.jpg';
-  }
-  if (itemTitle.includes('geyser') || itemTitle.includes('water heater')) {
-    return '/services/geyser-repair.jpg';
-  }
-  if (itemTitle.includes('room heater') || itemTitle.includes('heater') || itemTitle.includes('blower') || itemTitle.includes('radiator') || itemTitle.includes('ofr')) {
-    return 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766829576/appzeto/heater-1766829573375.jpg';
-  }
-  if (itemTitle.includes('inverter') || itemTitle.includes('invertor')) {
-    return '/services/electrical/inverter.jpg';
-  }
-  if (itemTitle.includes('mcb') || itemTitle.includes('sub meter') || itemTitle.includes('changeover')) {
-    return '/services/electrical/mcb.jpg';
-  }
-  if (itemTitle.includes('wiring') || itemTitle.includes('short circuit') || itemTitle.includes('earthing')) {
-    return '/services/electrical/home-wiring.jpg';
-  }
-  if (itemTitle.includes('switch') || itemTitle.includes('socket')) {
-    return '/services/switch-socket.jpg';
-  }
-  if (itemTitle.includes('bathroom') || itemTitle.includes('toilet') || itemTitle.includes('washbasin')) {
+
+  // === CLEANING & PEST CONTROL ===
+  if (isCleaningCategory) {
+    if (itemTitle.includes('kitchen') || itemTitle.includes('chimney') || itemTitle.includes('stove') || itemTitle.includes('kitech')) {
+      return '/cleaning/kitchen-deep-cleaning.jpg';
+    }
+    if (itemTitle.includes('sofa') || itemTitle.includes('couch') || itemTitle.includes('cushion') || itemTitle.includes('carpet') || itemTitle.includes('mattress')) {
+      return '/cleaning/sofa-cleaning.jpg';
+    }
+    if (itemTitle.includes('bathroom') || itemTitle.includes('toilet') || itemTitle.includes('washroom') || itemTitle.includes('sink')) {
+      return '/cleaning-essentials/intense-bathroom.jpg';
+    }
     return '/cleaning-essentials/intense-bathroom.jpg';
   }
-  if (itemTitle.includes('sofa') || itemTitle.includes('couch') || itemTitle.includes('cushion')) {
-    return '/cleaning-essentials/sofa-cleaning.jpg';
-  }
-  if (itemTitle.includes('kitchen') || itemTitle.includes('chimney') || itemTitle.includes('stove')) {
-    return '/cleaning-essentials/kitchen-cleaning.jpg';
-  }
-  if (itemTitle.includes('threading') || itemTitle.includes('eyebrow')) {
-    return '/services/threading.jpg';
-  }
-  if (itemTitle.includes('wax') || itemTitle.includes('spatula')) {
-    return '/services/spatula-waxing.jpg';
-  }
-  if (itemTitle.includes('refrigerator') || itemTitle.includes('fridge')) {
-    return '/appliance/refrigerator-repair.jpg';
-  }
-  if (itemTitle.includes('washing machine')) {
-    return '/appliance/washing-machine-checkup.jpg';
-  }
-  if (itemTitle.includes('purifier') || itemTitle.includes('ro')) {
-    return '/appliance/water-purifier-service.jpg';
-  }
-  if (itemTitle.includes('ac') || itemTitle.includes('air condition') || itemTitle.includes('cooler')) {
+
+  // === APPLIANCE REPAIR & SERVICE ===
+  if (isApplianceCategory) {
+    if (itemTitle.includes('washing') || catTitle.includes('washing')) return '/appliance/washing-machine-checkup.jpg';
+    if (itemTitle.includes('fridge') || itemTitle.includes('refrigerator') || catTitle.includes('fridge') || catTitle.includes('refrigerator')) return '/appliance/refrigerator-repair.jpg';
+    if (itemTitle.includes('purifier') || itemTitle.includes('ro') || catTitle.includes('purifier') || catTitle.includes('prufier')) return '/appliance/water-purifier-service.jpg';
+    if (itemTitle.includes('geyser') || itemTitle.includes('water heater') || catTitle.includes('geyser')) return '/services/geyser-repair.jpg';
+    if (itemTitle.includes('chimney') || catTitle.includes('chimney')) return '/ServiceIcon/chimney.svg';
+    if (itemTitle.includes('cooler') || catTitle.includes('cooler')) return '/services/cooler-repair.jpg';
+    if (itemTitle.includes('microwave') || catTitle.includes('microwave')) return '/ServiceIcon/microwave.svg';
+    if (itemTitle.includes('dish') || catTitle.includes('dish')) return '/ServiceIcon/dishwasher.svg';
+    if (itemTitle.includes('led') || itemTitle.includes('tv') || catTitle.includes('led')) return '/ServiceIcon/led-tv.svg';
     return '/appliance/ac-repair.jpg';
   }
-  if (itemTitle.includes('carpent') || itemTitle.includes('door') || itemTitle.includes('lock') || itemTitle.includes('handle') || itemTitle.includes('hinge') || itemTitle.includes('drill') || itemTitle.includes('mesh') || itemTitle.includes('window') || itemTitle.includes('wardrobe') || itemTitle.includes('drawer') || itemTitle.includes('curtain')) {
+
+  // === PLUMBER ===
+  if (isPlumberCategory) {
+    if (itemTitle.includes('tap') || itemTitle.includes('faucet')) return '/services/tap-repair.jpg';
+    return '/categories/plumber-toilet.svg';
+  }
+
+  // === CARPENTER & FURNITURE ===
+  if (isCarpenterCategory) {
+    if (itemTitle.includes('furniture') || itemTitle.includes('assembly') || itemTitle.includes('table') || itemTitle.includes('bed')) {
+      return '/categories/furniture-assembly.svg';
+    }
     return '/categories/carpenter-door.svg';
   }
-  if (itemTitle.includes('furniture') || itemTitle.includes('assembly') || itemTitle.includes('bed') || itemTitle.includes('table') || itemTitle.includes('chair') || itemTitle.includes('desk') || itemTitle.includes('shelf')) {
-    return '/categories/furniture-assembly.svg';
+
+  // === ELECTRICIAN & ELECTRICAL ===
+  if (isElectricianCategory) {
+    if (itemTitle.includes('fan')) return '/services/fan-repair.jpg';
+    if (itemTitle.includes('wiring') || itemTitle.includes('circuit') || itemTitle.includes('short') || itemTitle.includes('earthing')) return '/services/electrical/home-wiring.jpg';
+    if (itemTitle.includes('inverter') || itemTitle.includes('battery')) return '/services/electrical/inverter.jpg';
+    if (itemTitle.includes('mcb') || itemTitle.includes('fuse') || itemTitle.includes('meter') || itemTitle.includes('changeover')) return '/services/electrical/mcb.jpg';
+    if (itemTitle.includes('switch') || itemTitle.includes('socket') || itemTitle.includes('board') || itemTitle.includes('plug')) return '/services/switch-socket.jpg';
+    return '/categories/electrician-switch.svg';
   }
 
-  // 2. Men's Salon & Grooming
-  const isMen =
-    combined.includes('men') ||
-    combined.includes('male') ||
-    combined.includes('boy') ||
-    combined.includes('barber') ||
-    combined.includes('groom') ||
-    combined.includes('beard') ||
-    combined.includes('shave');
+  // Fallbacks if category has an image
+  if (category?.imageUrl && isImageValidForCategory(category.imageUrl)) return toAssetUrl(category.imageUrl);
+  if (category?.image && isImageValidForCategory(category.image)) return toAssetUrl(category.image);
 
-  if (isMen) {
-    if (combined.includes('massage')) return '/categories/massage-men.svg';
-    return '/categories/mens-salon.png';
-  }
-
-  // 3. Women's Salon & Spa
-  if (combined.includes('facial') || combined.includes('cleanup')) return '/services/signature-facial.jpg';
-  if (combined.includes('glow') || combined.includes('korean') || combined.includes('japanese') || combined.includes('ritual')) return '/services/hair-studio-facial.jpg';
-  if (combined.includes('pedi') || combined.includes('mani') || combined.includes('nail')) return '/categories/spa-women.svg';
-  if (combined.includes('spa') || combined.includes('salon') || combined.includes('women')) return '/categories/womens-salon.jpg';
-
-  // 4. Fallbacks by Category Title
-  if (catTitle.includes('fan')) return '/services/fan-repair.jpg';
-  if (catTitle.includes('wiring')) return '/services/electrical/home-wiring.jpg';
-  if (catTitle.includes('inverter')) return '/services/electrical/inverter.jpg';
-  if (catTitle.includes('mcb')) return '/services/electrical/mcb.jpg';
-  if (catTitle.includes('switch') || catTitle.includes('socket')) return '/services/switch-socket.jpg';
-  if (catTitle.includes('tap')) return '/services/tap-repair.jpg';
-  if (catTitle.includes('geyser') || catTitle.includes('water heater')) return '/services/geyser-repair.jpg';
-  if (catTitle.includes('room heater') || catTitle.includes('heater')) return 'https://res.cloudinary.com/shubhamcloudinary/image/upload/v1766829576/appzeto/heater-1766829573375.jpg';
-  if (catTitle.includes('bath')) return '/cleaning-essentials/intense-bathroom.jpg';
-  if (catTitle.includes('sofa')) return '/cleaning-essentials/sofa-cleaning.jpg';
-  if (catTitle.includes('kitchen')) return '/cleaning-essentials/kitchen-cleaning.jpg';
-  if (catTitle.includes('threading')) return '/services/threading.jpg';
-  if (catTitle.includes('wax')) return '/services/spatula-waxing.jpg';
-  if (catTitle.includes('fridge') || catTitle.includes('refrigerator')) return '/appliance/refrigerator-repair.jpg';
-  if (catTitle.includes('plumb')) return '/categories/plumber-toilet.svg';
-  if (catTitle.includes('carpent')) return '/categories/carpenter-door.svg';
-  if (catTitle.includes('furniture')) return '/categories/furniture-assembly.svg';
-  if (catTitle.includes('electric')) return '/categories/electrician-switch.svg';
-
-  // 5. If category has its own uploaded image, use as fallback
-  if (category?.imageUrl && !isGenericSvg(category.imageUrl)) return toAssetUrl(category.imageUrl);
-  if (category?.image && !isGenericSvg(category.image)) return toAssetUrl(category.image);
-  if (category?.iconUrl && !isGenericSvg(category.iconUrl)) return toAssetUrl(category.iconUrl);
-  if (category?.icon && !isGenericSvg(category.icon)) return toAssetUrl(category.icon);
-
-  return '/categories/electrician-switch.svg';
+  return '/categories/all-services.svg';
 };
 
 // =========================================================================
@@ -3036,24 +3438,26 @@ const ServiceCatalogModal = React.memo(({
   const hardcodedConfig = catalogKey && CATALOG_DATA[catalogKey];
 
   const catalogConfig = useMemo(() => {
-    if (hardcodedConfig) return hardcodedConfig;
-    if (!catalogData) return EMPTY_CATALOG;
-    const cat = catalogData.category || {};
+    const base = hardcodedConfig || EMPTY_CATALOG;
+    const cat = catalogData?.category || category || {};
     return {
-      title: cat.title,
-      etaMinutes: cat.etaDefaultMinutes,
-      rating: cat.displayRating,
-      bookings: cat.bookingsLabel,
-      hero: catalogData.hero && catalogData.hero.title ? catalogData.hero : null,
-      coupon: catalogData.bestCoupon || null,
-      subCategories: (catalogData.subCategories || []).map(sc => ({
-        id: sc._id || sc.slug,
-        title: sc.title,
-        icon: sc.icon || sc.homeIconUrl
-      })),
-      sections: []
+      ...base,
+      title: cat.title || base.title,
+      etaMinutes: cat.etaDefaultMinutes || category?.etaMinutes || category?.etaDefaultMinutes || base.etaMinutes,
+      rating: cat.displayRating || category?.displayRating || base.rating,
+      bookings: cat.bookingsLabel || category?.bookingsLabel || base.bookings,
+      hero: (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null) || base.hero,
+      coupon: catalogData?.bestCoupon || base.coupon || null,
+      subCategories: (catalogData?.subCategories && catalogData.subCategories.length > 0)
+        ? catalogData.subCategories.map(sc => ({
+            id: sc._id || sc.slug,
+            title: sc.title,
+            icon: sc.icon || sc.homeIconUrl
+          }))
+        : (base.subCategories || []),
+      sections: base.sections || []
     };
-  }, [hardcodedConfig, catalogData]);
+  }, [hardcodedConfig, catalogData, category]);
 
   const categoryTitle = category?.title || catalogConfig.title;
 
@@ -3070,6 +3474,7 @@ const ServiceCatalogModal = React.memo(({
         groups.set(brandSlug, {
           id: brandSlug,
           title: brandTitle,
+          icon: s.brandIcon || s.iconUrl || s.icon || (Array.isArray(s.images) && s.images[0]) || null,
           items: []
         });
       }
@@ -3281,34 +3686,26 @@ const ServiceCatalogModal = React.memo(({
     if (catalogKey === 'furniture-assembly') return '/categories/furniture-assembly.svg';
     if (catalogKey === 'ac-repair') return '/categories/ac-appliance.svg';
     if (catalogKey === 'cleaning') return '/categories/cleaning.svg';
-    if (catalogKey === 'mens-salon') return '/categories/mens-salon.png';
-    if (catalogKey === 'womens-salon') return '/categories/womens-salon.png';
-    return '/categories/electrician-switch.svg';
+    if (catalogKey === 'mens-salon') return '/services/mens-salon/haircut.jpg';
+    if (catalogKey === 'womens-salon') return '/noteworthy/salon-luxe.jpg';
+    return '/categories/all-services.svg';
   }, [catalogKey]);
 
   // Combined SubCategories (pills at top)
   const combinedSubCategories = useMemo(() => {
+    const isMenCat = (categoryTitle || '').toLowerCase().includes('men') || (category?.slug || '').includes('men') || catalogKey === 'mens-salon';
+    const isWomenCat = (categoryTitle || '').toLowerCase().includes('women') || (category?.slug || '').includes('women') || catalogKey === 'womens-salon';
+
     const livePills = liveSections.map((sec) => {
-      const secTitleLower = (sec.title || '').toLowerCase();
       let icon = sec.icon;
-      if (!icon || icon.includes('electrician.svg') || icon.includes('womens-salon')) {
-        if (secTitleLower.includes('plumb') || secTitleLower.includes('tap') || secTitleLower.includes('pipe') || secTitleLower.includes('drain')) {
-          icon = '/categories/plumber-toilet.svg';
-        } else if (secTitleLower.includes('carpent') || secTitleLower.includes('door') || secTitleLower.includes('lock')) {
-          icon = '/categories/carpenter-door.svg';
-        } else if (secTitleLower.includes('furniture') || secTitleLower.includes('assembly')) {
-          icon = '/categories/furniture-assembly.svg';
-        } else if (secTitleLower.includes('switch') || secTitleLower.includes('socket') || secTitleLower.includes('electric') || secTitleLower.includes('wiring')) {
-          icon = '/categories/electrician-switch.svg';
-        } else if (secTitleLower.includes('fan')) {
-          icon = '/services/fan-repair.jpg';
-        } else if (secTitleLower.includes('bathroom') || secTitleLower.includes('sink')) {
-          icon = '/categories/bathroom-sink.svg';
-        } else if (secTitleLower.includes('sofa') || secTitleLower.includes('carpet')) {
-          icon = '/categories/sofa-cleaning.svg';
-        } else {
-          icon = getCategoryIllustration(sec.title) || resolveServiceImage(sec.items[0], category, sec.title);
-        }
+      // If icon is cross-contaminated or generic, resolve cleanly
+      const isCrossContaminated = !icon || 
+        icon.includes('electrician.svg') ||
+        (isMenCat && (icon.includes('switch-socket') || icon.includes('womens-salon') || icon.includes('electrician'))) ||
+        (isWomenCat && (icon.includes('switch-socket') || icon.includes('mens-salon') || icon.includes('electrician')));
+
+      if (isCrossContaminated) {
+        icon = getCategoryIllustration(sec.title) || resolveServiceImage(sec.items?.[0] || { title: sec.title }, category, sec.title);
       }
       return {
         id: sec.id,
@@ -3323,27 +3720,19 @@ const ServiceCatalogModal = React.memo(({
       .filter(sc => !seenTitles.has((sc.title || '').toLowerCase().trim()))
       .map(sc => {
         let icon = sc.icon;
-        const scTitleLower = (sc.title || '').toLowerCase();
-        if (!icon || icon.includes('electrician.svg') || icon.includes('womens-salon')) {
-          if (scTitleLower.includes('plumb') || scTitleLower.includes('tap') || scTitleLower.includes('pipe') || scTitleLower.includes('drain')) {
-            icon = '/categories/plumber-toilet.svg';
-          } else if (scTitleLower.includes('carpent') || scTitleLower.includes('door') || scTitleLower.includes('lock')) {
-            icon = '/categories/carpenter-door.svg';
-          } else if (scTitleLower.includes('furniture') || scTitleLower.includes('assembly')) {
-            icon = '/categories/furniture-assembly.svg';
-          } else if (scTitleLower.includes('switch') || scTitleLower.includes('socket') || scTitleLower.includes('electric') || scTitleLower.includes('wiring')) {
-            icon = '/categories/electrician-switch.svg';
-          } else if (scTitleLower.includes('fan')) {
-            icon = '/services/fan-repair.jpg';
-          } else {
-            icon = getCategoryIllustration(sc.title) || sc.icon;
-          }
+        const isCrossContaminated = !icon || 
+          icon.includes('electrician.svg') ||
+          (isMenCat && (icon.includes('switch-socket') || icon.includes('womens-salon') || icon.includes('electrician'))) ||
+          (isWomenCat && (icon.includes('switch-socket') || icon.includes('mens-salon') || icon.includes('electrician')));
+
+        if (isCrossContaminated) {
+          icon = getCategoryIllustration(sc.title) || resolveServiceImage({ title: sc.title }, category, sc.title);
         }
         return { ...sc, icon };
       });
 
     return [...livePills, ...catalogPills];
-  }, [liveSections, catalogConfig.subCategories, category, categoryTitle]);
+  }, [liveSections, catalogConfig.subCategories, category, categoryTitle, catalogKey]);
 
   // Set default active tab
   useEffect(() => {
@@ -4080,12 +4469,12 @@ const ServiceCatalogModal = React.memo(({
                               <div className="flex flex-col items-center justify-between shrink-0 w-20 sm:w-24">
                                 <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden mb-2 bg-gray-50 border border-gray-100 shadow-2xs shrink-0 group">
                                   {(() => {
-                                    const itemFallbackImg = resolveServiceImage(item, category, categoryTitle);
+                                    const resolvedImg = resolveServiceImage(item, category, categoryTitle);
                                     return (
                                       <ImageWithFallback
-                                        src={item.image || item.images?.[0] || itemFallbackImg}
+                                        src={resolvedImg}
                                         alt={item.title}
-                                        fallback={itemFallbackImg}
+                                        fallback={resolvedImg}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                       />
                                     );
@@ -4298,9 +4687,14 @@ const ServiceCatalogModal = React.memo(({
           <AnimatePresence>
             {Boolean(selectedItemDetails) && (() => {
               const fallbackDetailImg = resolveServiceImage(selectedItemDetails, category, categoryTitle);
-              const rawDetailImages = Array.isArray(selectedItemDetails.images) && selectedItemDetails.images.length > 0
+              const isMenCat = (categoryTitle || '').toLowerCase().includes('men') || (category?.slug || '').includes('men');
+              const rawDetailImages = (Array.isArray(selectedItemDetails.images) && selectedItemDetails.images.length > 0
                 ? selectedItemDetails.images
-                : (selectedItemDetails.image ? [selectedItemDetails.image] : []);
+                : (selectedItemDetails.image ? [selectedItemDetails.image] : [])).filter(img => {
+                  if (!img || typeof img !== 'string') return false;
+                  if (isMenCat && (img.includes('switch-socket') || img.includes('electrician') || img.includes('womens-salon'))) return false;
+                  return true;
+                });
               const detailImages = rawDetailImages.length > 0
                 ? rawDetailImages
                 : [fallbackDetailImg];
