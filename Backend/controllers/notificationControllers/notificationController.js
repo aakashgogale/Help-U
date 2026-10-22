@@ -448,6 +448,134 @@ const deleteAllNotifications = async (req, res) => {
   }
 };
 
+/**
+ * Broadcast notification from admin to users and/or workers (optionally scoped to a zone)
+ * POST /api/notifications/broadcast
+ */
+const broadcastAdminNotification = async (req, res) => {
+  try {
+    const { title, message, audience = 'all', zoneId = null, skipPush = false } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title and message are required'
+      });
+    }
+
+    const User = require('../../models/User');
+    const Worker = require('../../models/Worker');
+    const Zone = require('../../models/Zone');
+
+    let zone = null;
+    if (zoneId) {
+      zone = await Zone.findById(zoneId).populate('cityId', 'name').lean();
+    }
+
+    const targetUsers = [];
+    const targetWorkers = [];
+
+    // Query Users
+    if (audience === 'users' || audience === 'all') {
+      let userQuery = {};
+      if (zone && zone.cityId) {
+        userQuery = {
+          $or: [
+            { 'addresses.city': new RegExp(zone.cityId.name, 'i') },
+            { 'addresses.city': new RegExp(zone.name, 'i') }
+          ]
+        };
+      }
+      const users = await User.find(userQuery).select('_id').limit(500).lean();
+      if (users.length === 0 && !zone) {
+        const allUsers = await User.find({}).select('_id').limit(500).lean();
+        targetUsers.push(...allUsers.map(u => u._id));
+      } else {
+        targetUsers.push(...users.map(u => u._id));
+      }
+    }
+
+    // Query Workers
+    if (audience === 'workers' || audience === 'all') {
+      let workerQuery = { approvalStatus: 'approved' };
+      if (zone && zone.cityId) {
+        workerQuery.$or = [
+          { 'address.city': new RegExp(zone.cityId.name, 'i') },
+          { 'address.city': new RegExp(zone.name, 'i') }
+        ];
+      }
+      const workers = await Worker.find(workerQuery).select('_id').limit(500).lean();
+      if (workers.length === 0 && !zone) {
+        const allWorkers = await Worker.find({ approvalStatus: 'approved' }).select('_id').limit(500).lean();
+        targetWorkers.push(...allWorkers.map(w => w._id));
+      } else {
+        targetWorkers.push(...workers.map(w => w._id));
+      }
+    }
+
+    const createdNotifications = [];
+
+    for (const uid of targetUsers) {
+      createdNotifications.push({
+        userId: uid,
+        vendorId: null,
+        adminId: null,
+        type: 'general',
+        title,
+        message,
+        zoneId: zone ? zone._id : null
+      });
+      if (!skipPush) {
+        sendNotificationToUser(uid.toString(), {
+          title,
+          body: message,
+          data: { type: 'general', zoneId: zone ? zone._id.toString() : '' }
+        }).catch(() => {});
+      }
+    }
+
+    for (const wid of targetWorkers) {
+      createdNotifications.push({
+        userId: null,
+        vendorId: wid,
+        adminId: null,
+        type: 'general',
+        title,
+        message,
+        zoneId: zone ? zone._id : null
+      });
+      if (!skipPush) {
+        sendNotificationToWorker(wid.toString(), {
+          title,
+          body: message,
+          data: { type: 'general', zoneId: zone ? zone._id.toString() : '' }
+        }).catch(() => {});
+      }
+    }
+
+    if (createdNotifications.length > 0) {
+      await Notification.insertMany(createdNotifications);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Notification broadcast to ${targetUsers.length} users and ${targetWorkers.length} workers successfully.`,
+      recipients: {
+        users: targetUsers.length,
+        workers: targetWorkers.length,
+        total: targetUsers.length + targetWorkers.length
+      },
+      zone: zone ? { id: zone._id, name: zone.name } : null
+    });
+  } catch (error) {
+    console.error('Broadcast admin notification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to broadcast notification. Please try again.'
+    });
+  }
+};
+
 module.exports = {
   createNotification,
   getUserNotifications,
@@ -456,6 +584,7 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  deleteAllNotifications
+  deleteAllNotifications,
+  broadcastAdminNotification
 };
 

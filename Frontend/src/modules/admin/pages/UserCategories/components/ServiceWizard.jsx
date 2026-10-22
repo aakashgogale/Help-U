@@ -40,6 +40,7 @@ import { cityService } from "../../../../admin/services/cityService";
 import { configService } from "../../../../../services/configService";
 import { slugify, toAssetUrl } from "../utils";
 import ToggleSwitch from "./ToggleSwitch";
+import IconUploadWithPreview from "../../../components/IconUploadWithPreview";
 
 // Pricing Types supported by backend
 const PRICING_TYPES = [
@@ -71,6 +72,7 @@ const INITIAL_SERVICE_STATE = {
   // Step 3
   brandId: "",
   brandObj: null,
+  selectedBrandIds: [],
   isSectionSkipped: false,
 
   // Step 4: Details
@@ -115,6 +117,7 @@ export const ServiceWizard = ({
   categories: propCategories = [],
   brands: propBrands = [],
   cities: propCities = [],
+  selectedCity = "",
   onSaved
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -267,6 +270,7 @@ export const ServiceWizard = ({
         subCategoryObj: null,
         brandId: directBrandId || "",
         brandObj: null,
+        selectedBrandIds: directBrandId ? [directBrandId] : [],
         isSectionSkipped: false,
 
         title: service.title || "",
@@ -507,7 +511,7 @@ export const ServiceWizard = ({
         displayRating: newCatDisplayRating,
         bookingsLabel: newCatBookingsLabel,
         etaDefaultMinutes: newCatEtaMinutes ? Number(newCatEtaMinutes) : null,
-        cityIds: newCatCityIds,
+        cityIds: newCatCityIds && newCatCityIds.length > 0 ? newCatCityIds : (selectedCity ? [selectedCity] : []),
         status: newCatStatus,
         hasBrands: Boolean(newCatHasBrands),
         heroBanner: {
@@ -522,6 +526,10 @@ export const ServiceWizard = ({
       if (res?.success && res.category) {
         toast.success(`Category "${newCatTitle}" created!`);
         publicCatalogService.invalidateCache();
+
+        // Notify other components (CategoriesPage, CategoriesListView) about the new category
+        window.dispatchEvent(new CustomEvent('categoryCreated', { detail: res.category }));
+        window.dispatchEvent(new Event('adminUserAppCatalogUpdated'));
 
         // Refresh categories
         const catListRes = await categoryService.getAll({ parentId: null });
@@ -576,6 +584,10 @@ export const ServiceWizard = ({
       if (res?.success && res.category) {
         toast.success(`Sub-category "${newSubTitle}" created!`);
         publicCatalogService.invalidateCache();
+
+        // Notify other components about the new sub-category
+        window.dispatchEvent(new CustomEvent('categoryCreated', { detail: res.category }));
+        window.dispatchEvent(new Event('adminUserAppCatalogUpdated'));
 
         // Refresh sub-categories list
         const subsRes = await categoryService.getChildren(formData.categoryId);
@@ -878,8 +890,8 @@ export const ServiceWizard = ({
     // Step 2: Sub-category (optional, flat is permitted)
 
     // Step 3: Brand or Section
-    if (hasBrands && !formData.brandId) {
-      errors[3].push("Brand is required for appliance categories");
+    if (hasBrands && (!formData.brandId && (!formData.selectedBrandIds || formData.selectedBrandIds.length === 0))) {
+      errors[3].push("Please select at least one brand for this category");
     }
 
     // Step 4: Details
@@ -1062,12 +1074,29 @@ export const ServiceWizard = ({
       if (targetId) {
         res = await serviceService.update(targetId, payload);
       } else {
-        res = await serviceService.create(payload);
+        const brandIdsToCreate = (hasBrands && formData.selectedBrandIds && formData.selectedBrandIds.length > 1)
+          ? formData.selectedBrandIds
+          : [effectiveBrandId];
+
+        if (brandIdsToCreate.length > 1) {
+          const createPromises = brandIdsToCreate.map((bId) =>
+            serviceService.create({ ...payload, brandId: bId })
+          );
+          const results = await Promise.all(createPromises);
+          res = results[0] || { success: true };
+          res.multiCount = brandIdsToCreate.length;
+        } else {
+          res = await serviceService.create(payload);
+        }
       }
 
       if (res?.success) {
         const actionLabel = targetPublishStatus === "draft" ? "saved as draft" : "published";
-        toast.success(`Service ${actionLabel} successfully!`);
+        if (res.multiCount) {
+          toast.success(`Service ${actionLabel} successfully across all ${res.multiCount} selected brands!`);
+        } else {
+          toast.success(`Service ${actionLabel} successfully!`);
+        }
         publicCatalogService.invalidateCache();
         setIsDirty(false);
         onClose();
@@ -1161,6 +1190,18 @@ export const ServiceWizard = ({
           {/* ========================================================================= */}
           {currentStep === 1 && (
             <div className="space-y-5 animate-in fade-in duration-200">
+              {/* Step 1 Admin Guide */}
+              <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 text-[11px] text-blue-950 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-blue-900">
+                  <FiInfo className="w-3.5 h-3.5 text-blue-600" />
+                  Step 1: Category Selection Guide (Admin Help)
+                </div>
+                <p className="text-blue-900/80 leading-relaxed">
+                  <strong>Yeh kis liye hai?</strong> Yeh service kis main category me aati hai (jaise <em>AC Repair</em>, <em>Salon Luxe</em>, <em>Home Deep Cleaning</em>).<br/>
+                  <strong>Brands Mode vs Standard:</strong> Agar category me alag-alag companies hain (jaise <em>LG, Samsung, Whirlpool</em>), toh Category "Brands Mode" me hoti hai. Normal services ke liye "Standard" mode hota hai.
+                </p>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -1297,6 +1338,18 @@ export const ServiceWizard = ({
                 >
                   Change
                 </button>
+              </div>
+
+              {/* Step 2 Admin Guide */}
+              <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 text-[11px] text-blue-950 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-blue-900">
+                  <FiInfo className="w-3.5 h-3.5 text-blue-600" />
+                  Step 2: Sub-category Guide (Admin Help)
+                </div>
+                <p className="text-blue-900/80 leading-relaxed">
+                  <strong>Yeh kis liye hai?</strong> Category ke andar services ko alag tabs/pills me group karne ke liye (jaise <em>Waxing, Facial, Pedicure</em>).<br/>
+                  Agar category simple hai aur sub-categories ki zaroorat nahi hai, toh <strong>"No sub-category"</strong> select karein.
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1438,17 +1491,69 @@ export const ServiceWizard = ({
                     </button>
                   </div>
 
+                  {/* Multi-Brand Selection Controls */}
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-700">
+                        Select Brands:
+                      </span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                        {(formData.selectedBrandIds?.length || (formData.brandId ? 1 : 0))} / {categoryBrands.length} Selected
+                      </span>
+                      {(formData.selectedBrandIds?.length > 1) && (
+                        <span className="text-[11px] text-emerald-600 font-medium hidden sm:inline">
+                          ✓ Service will be created for all selected brands
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allIds = categoryBrands.map(b => b.id || b._id);
+                          updateField("selectedBrandIds", allIds);
+                          if (allIds[0]) updateField("brandId", allIds[0]);
+                          updateField("isSectionSkipped", false);
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer border border-purple-200 bg-purple-50"
+                      >
+                        ✓ Select All Brands
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateField("selectedBrandIds", []);
+                          updateField("brandId", "");
+                        }}
+                        className="px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Brand Cards Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {categoryBrands.map((b) => {
                       const bId = b.id || b._id;
-                      const isSelected = String(formData.brandId) === String(bId);
+                      const selectedList = formData.selectedBrandIds && formData.selectedBrandIds.length > 0
+                        ? formData.selectedBrandIds
+                        : (formData.brandId ? [formData.brandId] : []);
+                      const isSelected = selectedList.map(String).includes(String(bId));
 
                       return (
                         <div
                           key={bId}
                           onClick={() => {
-                            updateField("brandId", bId);
+                            let nextSelected;
+                            if (isSelected) {
+                              nextSelected = selectedList.filter(id => String(id) !== String(bId));
+                            } else {
+                              nextSelected = [...selectedList, bId];
+                            }
+                            updateField("selectedBrandIds", nextSelected);
+                            updateField("brandId", nextSelected[0] || "");
                             updateField("brandObj", b);
                             updateField("isSectionSkipped", false);
                           }}
@@ -1657,10 +1762,10 @@ export const ServiceWizard = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <FiImage className="text-blue-600" /> Service Images Gallery
+                      <FiImage className="text-blue-600" /> Service Images & Banner Gallery
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Upload multiple images. The first image is the Primary Thumbnail.
+                      <strong>Admin Tip:</strong> Pehli image (Primary) customer catalog card par thumbnail banegi. Baaki sabhi images User App ke 'View Details' sheet me <strong>swipeable banner carousel</strong> me show hongi!
                     </p>
                   </div>
 
@@ -1758,9 +1863,39 @@ export const ServiceWizard = ({
 
               {/* Pricing & GST */}
               <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-4 shadow-2xs">
-                <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <FiDollarSign className="text-blue-600" /> Pricing Model & Taxation
-                </h4>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <FiDollarSign className="text-blue-600" /> Pricing Model & Taxation
+                  </h4>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Select how this service will be charged and billed to customers.
+                  </p>
+                </div>
+
+                {/* Pricing Types Explanatory Guide */}
+                <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 text-[11px] text-blue-950 space-y-1.5 leading-relaxed">
+                  <div className="font-bold flex items-center gap-1.5 text-blue-900">
+                    <FiInfo className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    Pricing Types Guide (Admin Help):
+                  </div>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-blue-900/85 pt-1">
+                    <li className="p-2 rounded-lg bg-white/70 border border-blue-100">
+                      <strong className="text-blue-950">Fixed Price:</strong> Ek tay rate (e.g., ₹499 for AC Jet Clean). Customer direct yehi pay karega, no hidden charges.
+                    </li>
+                    <li className="p-2 rounded-lg bg-white/70 border border-blue-100">
+                      <strong className="text-blue-950">Hourly Rate:</strong> Per-hour charges (e.g., ₹200/hr for electrician/plumbing). Final bill calculates based on total hours.
+                    </li>
+                    <li className="p-2 rounded-lg bg-white/70 border border-blue-100">
+                      <strong className="text-blue-950">Starting From:</strong> Minimum base estimate (e.g., Starts at ₹299). Technician inspects scope on-site before finalizing bill.
+                    </li>
+                    <li className="p-2 rounded-lg bg-white/70 border border-blue-100">
+                      <strong className="text-blue-950">Inspection Fee:</strong> Initial visit & diagnostic fee only (e.g., ₹199). Adjusted against final repair bill if work is approved.
+                    </li>
+                    <li className="md:col-span-2 p-2 rounded-lg bg-white/70 border border-blue-100">
+                      <strong className="text-blue-950">Quote Required:</strong> Custom quotation inquiry for large or complex commercial projects (no direct checkout).
+                    </li>
+                  </ul>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   {PRICING_TYPES.map((pt) => {
@@ -1914,18 +2049,35 @@ export const ServiceWizard = ({
                 )}
               </div>
 
+              {/* Inclusions vs Exclusions Dispute Prevention Banner */}
+              <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/90 text-[11px] text-amber-950 space-y-1.5 leading-relaxed shadow-2xs">
+                <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  Why Adding Exclusions Prevents On-Site Customer Disputes:
+                </div>
+                <p className="text-amber-900/85">
+                  <strong>Inclusions</strong> batata hai ki is price me worker kya-kya kaam karega (e.g. deep chemical jet wash, cooling coil clean).<br/>
+                  <strong>Exclusions</strong> batata hai ki kya covered <u>NAHI</u> hai (e.g. spare parts cost, new copper piping, gas charging). Exclusions pehle se clearly likhne se customer ko pehle se pata rehta hai aur technician ke customer ke ghar pahuchne par koi price dispute ya misunderstanding nahi hoti!
+                </p>
+              </div>
+
               {/* Inclusions & Exclusions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Inclusions */}
                 <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-3 shadow-2xs">
-                  <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <FiCheckCircle className="text-emerald-600" /> What's Included
-                  </h4>
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <FiCheckCircle className="text-emerald-600" /> What's Included (Shamil Hai)
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Customer ko batayein ki is booking me worker kya-kya kaam karega (e.g. Foam jet wash, coil cleaning).
+                    </p>
+                  </div>
 
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="e.g. Foam jet spray cleaning"
+                      placeholder="e.g. High-pressure foam jet wash"
                       value={newInclusionText}
                       onChange={(e) => setNewInclusionText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddInclusion())}
@@ -1934,7 +2086,7 @@ export const ServiceWizard = ({
                     <button
                       type="button"
                       onClick={handleAddInclusion}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer"
                     >
                       Add
                     </button>
@@ -1950,7 +2102,7 @@ export const ServiceWizard = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveInclusion(idx)}
-                          className="text-gray-400 hover:text-rose-600 p-0.5"
+                          className="text-gray-400 hover:text-rose-600 p-0.5 cursor-pointer"
                         >
                           <FiTrash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1961,14 +2113,19 @@ export const ServiceWizard = ({
 
                 {/* Exclusions */}
                 <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-3 shadow-2xs">
-                  <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <FiAlertCircle className="text-rose-600" /> What's Excluded
-                  </h4>
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <FiAlertCircle className="text-rose-600" /> What's Excluded (Shamil Nahi Hai)
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Jo kaam is price me nahi aayega wo yahan likhein taaki customer-worker me vivaad na ho (e.g. Spare parts extra charge).
+                    </p>
+                  </div>
 
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="e.g. Spare parts replacement charges"
+                      placeholder="e.g. Spare parts & copper piping cost extra"
                       value={newExclusionText}
                       onChange={(e) => setNewExclusionText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddExclusion())}
@@ -1977,7 +2134,7 @@ export const ServiceWizard = ({
                     <button
                       type="button"
                       onClick={handleAddExclusion}
-                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold"
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold cursor-pointer"
                     >
                       Add
                     </button>
@@ -1993,7 +2150,7 @@ export const ServiceWizard = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveExclusion(idx)}
-                          className="text-gray-400 hover:text-rose-600 p-0.5"
+                          className="text-gray-400 hover:text-rose-600 p-0.5 cursor-pointer"
                         >
                           <FiTrash2 className="w-3.5 h-3.5" />
                         </button>
@@ -2011,7 +2168,9 @@ export const ServiceWizard = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Warranty Details</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Warranty Details (Trust Builder)
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. 30 days Help-U service warranty"
@@ -2022,7 +2181,9 @@ export const ServiceWizard = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Cancellation Policy</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Cancellation Policy
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. Free cancellation up to 2 hours before scheduled visit"
@@ -2056,12 +2217,32 @@ export const ServiceWizard = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-between pt-4">
-                    <span className="text-xs font-semibold text-gray-700">Is Combo / Package</span>
-                    <ToggleSwitch
-                      checked={formData.isPackage}
-                      onChange={(val) => updateField("isPackage", val)}
-                    />
+                  <div className="col-span-full pt-3">
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-purple-950 uppercase tracking-wide flex items-center gap-1.5">
+                            <FiBookmark className="w-3.5 h-3.5 text-purple-600" />
+                            Is Combo / Super Saver Package
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-purple-200 text-purple-800 text-[10px] font-black uppercase">
+                            Package Mode
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-purple-900 font-medium leading-relaxed">
+                          Turn ON when bundling 2+ services together at a special price (e.g., Waxing + Facial Combo). This shows a prominent 'PACKAGE' badge and package customization view on the user app.
+                        </p>
+                        <p className="text-[10px] text-purple-700/80 leading-relaxed">
+                          <strong>User App par kya hoga?</strong> Customer app par rich combo card show hoga jisme top green/purple package banner, inclusions breakdown aur "Edit your package" option aayega.
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <ToggleSwitch
+                          checked={formData.isPackage}
+                          onChange={(val) => updateField("isPackage", val)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2073,28 +2254,46 @@ export const ServiceWizard = ({
           {/* ========================================================================= */}
           {currentStep === 5 && (
             <div className="space-y-5 animate-in fade-in duration-200">
-              {/* Summary Banner */}
-              <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200 flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-purple-900 uppercase tracking-wide">
-                    {formData.variants.length > 0 ? "Variants Active" : "No Variants Configured"}
-                  </h4>
-                  <p className="text-xs text-purple-700 mt-0.5">
-                    {lowestActiveVariantPrice !== null
-                      ? `Catalog will display "Starts at ₹${lowestActiveVariantPrice.toLocaleString("en-IN")}"`
-                      : `Using base price ₹${Number(formData.basePrice || 0).toLocaleString("en-IN")}`}
-                  </p>
+              {/* Summary & Explanatory Banner */}
+              <div className="p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-xl border border-purple-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <FiDollarSign className="text-purple-600" />
+                      Variants Configuration (Tiers, Sizes, Room Types)
+                    </h4>
+                    <p className="text-xs text-purple-700 mt-0.5 font-medium">
+                      {lowestActiveVariantPrice !== null
+                        ? `Customer catalog will display "Starts at ₹${lowestActiveVariantPrice.toLocaleString("en-IN")}"`
+                        : `Currently using single base price: ₹${Number(formData.basePrice || 0).toLocaleString("en-IN")}`}
+                    </p>
+                  </div>
+
+                  <button
+                    id="wizard-add-variant-btn"
+                    type="button"
+                    onClick={handleAddVariant}
+                    className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer shrink-0"
+                  >
+                    <FiPlus className="w-3.5 h-3.5" />
+                    + Add Variant Option
+                  </button>
                 </div>
 
-                <button
-                  id="wizard-add-variant-btn"
-                  type="button"
-                  onClick={handleAddVariant}
-                  className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                >
-                  <FiPlus className="w-3.5 h-3.5" />
-                  + Add Variant
-                </button>
+                <div className="p-3.5 bg-white/95 rounded-xl border border-purple-200 text-[12px] text-gray-700 space-y-2 leading-relaxed shadow-2xs">
+                  <div className="font-bold text-purple-950 flex items-center gap-1.5 text-[12px]">
+                    <FiInfo className="text-purple-600 w-4 h-4 shrink-0" />
+                    <span>Variant Guidance & User App Behavior</span>
+                  </div>
+                  <p className="text-gray-800 font-medium">
+                    Use variants when a service has different sizes, capacities, or tiers (e.g. 1 Ton vs 1.5 Ton AC, or 1 Bathroom vs 2 Bathrooms). User app will display &lsquo;Starts at ₹X&rsquo; and allow customers to pick their variant before adding to cart.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-600 pl-1 text-[11px]">
+                    <li><strong>Customer View:</strong> The service card displays <em>&ldquo;Starts at ₹{lowestActiveVariantPrice !== null ? lowestActiveVariantPrice.toLocaleString("en-IN") : Number(formData.basePrice || 0).toLocaleString("en-IN")}&rdquo;</em> with an interactive <strong>Options</strong> button.</li>
+                    <li><strong>Selection Sheet:</strong> Tapping Options opens a drawer sheet showing each active variant with its duration, inclusions, and price.</li>
+                    <li><strong>Cart Integration:</strong> Adding a variant saves <code>variantId</code> and the variant snapshot into the customer&rsquo;s cart without merging different variants.</li>
+                  </ul>
+                </div>
               </div>
 
               {/* Variants List */}
@@ -2349,7 +2548,11 @@ export const ServiceWizard = ({
                       <FiChevronRight className="w-3 h-3 text-gray-400" />
                       <span>{formData.subCategoryObj?.title || (formData.subCategoryId ? "Sub-category" : "Direct")}</span>
                       <FiChevronRight className="w-3 h-3 text-gray-400" />
-                      <span>{formData.brandObj?.title || (hasBrands ? "Brand" : "General Section")}</span>
+                      <span>
+                        {hasBrands && formData.selectedBrandIds && formData.selectedBrandIds.length > 1
+                          ? `${formData.selectedBrandIds.length} Brands Selected`
+                          : (formData.brandObj?.title || (hasBrands ? "Brand" : "General Section"))}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2567,39 +2770,13 @@ export const ServiceWizard = ({
                   )}
                 </div>
 
-                {/* Cloudinary Icon Upload */}
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Icon Upload</label>
-                  <div className="flex items-center gap-3">
-                    {newCatIconUrl ? (
-                      <img
-                        src={toAssetUrl(newCatIconUrl)}
-                        alt="Cat Icon"
-                        className="w-12 h-12 rounded-lg object-contain border p-1 bg-gray-50"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg border border-dashed flex items-center justify-center text-gray-400">
-                        None
-                      </div>
-                    )}
-                    <label className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold cursor-pointer">
-                      {uploadingCatIcon ? "Uploading..." : "Choose File"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setUploadingCatIcon(true);
-                          const res = await serviceService.uploadImage(file, "categories");
-                          if (res?.success) setNewCatIconUrl(res.imageUrl);
-                          setUploadingCatIcon(false);
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
+                <IconUploadWithPreview
+                  value={newCatIconUrl}
+                  onChange={(url) => setNewCatIconUrl(url)}
+                  folder="categories"
+                  label="Category Icon (1:1 Squircle)"
+                  helperText="Upload transparent PNG/SVG icon. Use checkerboard/dark toggle to verify alpha transparency."
+                />
 
                 {/* Hero Banner Fields */}
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
@@ -2780,38 +2957,13 @@ export const ServiceWizard = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Icon Upload</label>
-                  <div className="flex items-center gap-3">
-                    {newSubIconUrl ? (
-                      <img
-                        src={toAssetUrl(newSubIconUrl)}
-                        alt="Sub Icon"
-                        className="w-10 h-10 rounded-lg object-contain border p-1 bg-gray-50"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg border border-dashed flex items-center justify-center text-gray-400">
-                        None
-                      </div>
-                    )}
-                    <label className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold cursor-pointer">
-                      {uploadingSubIcon ? "Uploading..." : "Choose File"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setUploadingSubIcon(true);
-                          const res = await serviceService.uploadImage(file, "categories");
-                          if (res?.success) setNewSubIconUrl(res.imageUrl);
-                          setUploadingSubIcon(false);
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
+                <IconUploadWithPreview
+                  value={newSubIconUrl}
+                  onChange={(url) => setNewSubIconUrl(url)}
+                  folder="categories"
+                  label="Sub-category Icon (1:1 Squircle)"
+                  helperText="Upload transparent PNG/SVG icon. Use checkerboard/dark toggle to verify alpha transparency."
+                />
 
                 <div className="flex items-center justify-end gap-2 pt-3 border-t">
                   <button

@@ -20,6 +20,7 @@ import { configService } from '../../../../services/configService';
 import { getPlans } from '../../services/planService';
 import { userAuthService } from '../../../../services/authService';
 import { useCart } from '../../../../context/CartContext';
+import { useZone } from '../../../../context/ZoneContext';
 import LiveBookingCard from '../../components/booking/LiveBookingCard';
 
 const toAssetUrl = (url) => {
@@ -36,6 +37,7 @@ const Checkout = () => {
   const category = location.state?.category || null;
   const plan = location.state?.plan || null;
   const { fetchCart: fetchCartGlobal, clearCart: clearCartGlobal, removeCategoryItems: removeCategoryGlobal } = useCart();
+  const { zoneId, isOutOfZone, detectZone } = useZone() || {};
 
   const [cartItems, setCartItems] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -163,6 +165,9 @@ const Checkout = () => {
                 state: defaultAddr.state,
                 pincode: defaultAddr.pincode
               });
+              if (defaultAddr.lat && defaultAddr.lng && detectZone) {
+                detectZone(defaultAddr.lat, defaultAddr.lng);
+              }
             }
           }
         } else {
@@ -186,6 +191,9 @@ const Checkout = () => {
                 state: defaultAddr.state,
                 pincode: defaultAddr.pincode
               });
+              if (defaultAddr.lat && defaultAddr.lng && detectZone) {
+                detectZone(defaultAddr.lat, defaultAddr.lng);
+              }
             }
 
             // Set Cart Items
@@ -455,6 +463,12 @@ const Checkout = () => {
         }
       }
 
+      if (isOutOfZone) {
+        toast.error('We do not currently serve this location. Please choose an address within our service area.');
+        setShowAddressModal(true);
+        return;
+      }
+
       if (cartItems.length === 0 && !bookingRequest) {
         toast.error('Cart is empty');
         return;
@@ -545,6 +559,7 @@ const Checkout = () => {
       const bookingResponse = await bookingService.create({
         bookingType, // 'instant' or 'scheduled'
         serviceId: serviceId,
+        zoneId: zoneId || undefined,
         address: addressObj,
         scheduledDate: finalDate.toISOString(),
         scheduledTime: finalTimeDisplay,
@@ -797,6 +812,12 @@ const Checkout = () => {
     if (locationObj) {
       setAddress(locationObj.address);
       setAddressDetails(locationObj);
+      if (locationObj.lat && locationObj.lng && detectZone) {
+        try {
+          localStorage.setItem('userCoords', JSON.stringify({ lat: locationObj.lat, lng: locationObj.lng }));
+        } catch {}
+        detectZone(locationObj.lat, locationObj.lng);
+      }
     }
     setShowAddressModal(false);
 
@@ -1032,13 +1053,14 @@ const Checkout = () => {
     couponService.getAvailableCoupons({
       orderAmount: itemTotal,
       categoryId: catId,
-      serviceId: srvId
+      serviceId: srvId,
+      zoneId: zoneId || undefined
     }).then(res => {
       if (res?.success && Array.isArray(res.coupons)) {
         setAvailableCoupons(res.coupons);
       }
     }).catch(() => {});
-  }, [itemTotal, cartItems.length, plan]);
+  }, [itemTotal, cartItems.length, plan, zoneId]);
 
   const handleApplyCoupon = async (codeToApply) => {
     const code = (codeToApply || couponInput || '').trim().toUpperCase();
@@ -1055,7 +1077,8 @@ const Checkout = () => {
         code,
         orderAmount: itemTotal,
         categoryId: catId,
-        serviceId: srvId
+        serviceId: srvId,
+        zoneId: zoneId || undefined
       });
       if (res.success && res.valid) {
         setAppliedCoupon({
@@ -1750,6 +1773,23 @@ const Checkout = () => {
                   <FiEdit2 className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
+
+              {/* Out of Zone Alert */}
+              {isOutOfZone && (
+                <div className="mt-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-800">
+                  <div className="flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span className="font-semibold">Selected location is outside our operational service area</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="font-bold underline text-amber-900 ml-2 shrink-0 hover:text-black transition-colors"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
 
               {/* Time Slot (Only for Scheduled) */}
               {bookingType === 'scheduled' && (

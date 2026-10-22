@@ -34,6 +34,7 @@ const Disputes = lazy(() => import('../pages/Disputes'));
 const DisputeDetail = lazy(() => import('../pages/Disputes/DisputeDetail'));
 const RecurringBookings = lazy(() => import('../pages/RecurringBookings'));
 const Coupons = lazy(() => import('../pages/Coupons'));
+const Zones = lazy(() => import('../pages/Zones'));
 
 
 
@@ -87,6 +88,7 @@ const AdminRoutes = () => {
           <Route path="disputes/:id" element={<DisputeDetail />} />
           <Route path="recurring-bookings" element={<RecurringBookings />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="zones" element={<Zones />} />
         </Route>
       </Routes>
     </Suspense>

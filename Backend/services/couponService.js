@@ -22,7 +22,7 @@ const Booking = require('../models/Booking');
  * Returns { valid, reason?, coupon?, discount? } rather than throwing, since
  * an invalid code is an expected outcome, not an error.
  */
-const validateCoupon = async (code, { userId, orderAmount, categoryId, serviceId, cityId } = {}) => {
+const validateCoupon = async (code, { userId, orderAmount, categoryId, serviceId, cityId, zoneId } = {}) => {
   const normalized = String(code || '').trim().toUpperCase();
   if (!normalized) {
     return { valid: false, reason: 'Enter a coupon code' };
@@ -66,6 +66,16 @@ const validateCoupon = async (code, { userId, orderAmount, categoryId, serviceId
     const allowed = coupon.cities.some((c) => String(c) === String(cityId));
     if (!allowed) {
       return { valid: false, reason: 'This coupon is not valid in your city' };
+    }
+  }
+
+  if (coupon.zones && coupon.zones.length > 0) {
+    if (!zoneId) {
+      return { valid: false, reason: 'This coupon is valid only in specific service zones' };
+    }
+    const allowed = coupon.zones.some((z) => String(z._id || z) === String(zoneId));
+    if (!allowed) {
+      return { valid: false, reason: 'This coupon is not valid in your zone' };
     }
   }
 
@@ -162,7 +172,7 @@ const redeemCoupon = async (couponId, { userId, bookingId, discountAmount, order
  * Scope and per-customer rules are applied, so every coupon returned is one
  * the customer can actually use right now.
  */
-const getAvailableCoupons = async ({ userId, orderAmount = 0, categoryId, serviceId, cityId } = {}) => {
+const getAvailableCoupons = async ({ userId, orderAmount = 0, categoryId, serviceId, cityId, zoneId } = {}) => {
   const now = new Date();
 
   const candidates = await Coupon.find({
@@ -181,7 +191,8 @@ const getAvailableCoupons = async ({ userId, orderAmount = 0, categoryId, servic
       orderAmount,
       categoryId,
       serviceId,
-      cityId
+      cityId,
+      zoneId
     });
 
     usable.push({

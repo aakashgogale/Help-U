@@ -65,11 +65,15 @@ const _buildWorkerQuery = (filters = {}) => {
   
   const checkCashLimit = filters.checkCashLimit;
   const serviceCategory = filters.service;
+  const zoneId = filters.zoneId;
+  const zoneCoordinates = filters.zoneCoordinates;
   
   const queryFilters = { ...filters };
   delete queryFilters.checkCashLimit;
   delete queryFilters.service;
   delete queryFilters.city;
+  delete queryFilters.zoneId;
+  delete queryFilters.zoneCoordinates;
 
   const baseQuery = {
     approvalStatus: WORKER_STATUS.APPROVED,
@@ -89,6 +93,34 @@ const _buildWorkerQuery = (filters = {}) => {
       { categories: { $in: [serviceCategory] } },
       { service: { $in: [serviceCategory] } }
     ];
+  }
+
+  if (zoneId || zoneCoordinates) {
+    const zoneClauses = [];
+    if (zoneId) {
+      zoneClauses.push({ zoneId });
+      zoneClauses.push({ zoneIds: zoneId });
+    }
+    if (zoneCoordinates) {
+      zoneClauses.push({
+        geoLocation: {
+          $geoWithin: {
+            $geometry: zoneCoordinates
+          }
+        }
+      });
+    }
+    if (zoneClauses.length > 0) {
+      if (baseQuery.$or) {
+        baseQuery.$and = [
+          { $or: baseQuery.$or },
+          { $or: zoneClauses }
+        ];
+        delete baseQuery.$or;
+      } else {
+        baseQuery.$or = zoneClauses;
+      }
+    }
   }
 
   if (checkCashLimit) {

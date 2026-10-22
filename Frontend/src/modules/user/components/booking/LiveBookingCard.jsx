@@ -7,6 +7,7 @@ import { userTheme } from '../../../../theme';
 import RatingModal from './RatingModal';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../../../context/SocketContext';
+import ChatButton from '../../../../components/booking/ChatButton';
 
 const LiveBookingCard = ({ hasBottomNav }) => {
   const navigate = useNavigate();
@@ -189,22 +190,33 @@ const LiveBookingCard = ({ hasBottomNav }) => {
             </p>
           </div>
 
-          {/* Action Arrow or Pay Button */}
-          {activeBooking.status?.toUpperCase() === 'WORK_DONE' && !activeBooking.cashCollected ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
-              }}
-              className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-xl shadow-lg shadow-teal-100 active:scale-95 transition-all"
-            >
-              PAY NOW
-            </button>
-          ) : (
-            <div className="bg-gray-50 p-2 rounded-full">
-              <FiChevronRight className="text-gray-400 w-5 h-5" />
-            </div>
-          )}
+          {/* Action Chat & Arrow or Pay Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            {Boolean(activeBooking.vendorId || activeBooking.assignedTo) && (
+              <ChatButton
+                role="user"
+                booking={activeBooking}
+                compact={true}
+                className="w-9 h-9"
+              />
+            )}
+
+            {activeBooking.status?.toUpperCase() === 'WORK_DONE' && !activeBooking.cashCollected ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
+                }}
+                className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-xl shadow-lg shadow-teal-100 active:scale-95 transition-all"
+              >
+                PAY NOW
+              </button>
+            ) : (
+              <div className="bg-gray-50 p-2 rounded-full">
+                <FiChevronRight className="text-gray-400 w-5 h-5" />
+              </div>
+            )}
+          </div>
 
         </div>
       </motion.div>

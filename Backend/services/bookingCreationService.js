@@ -237,10 +237,47 @@ const placeBooking = async (userId, payload, options = {}) => {
     );
   }
 
+  // ── Zone Matching ──
+  const Zone = require('../models/Zone');
+  let matchedZone = null;
+  if (bookingLocation && typeof bookingLocation.lat === 'number' && typeof bookingLocation.lng === 'number') {
+    try {
+      matchedZone = await Zone.findZoneByCoordinates(bookingLocation.lng, bookingLocation.lat);
+      if (matchedZone) {
+        console.log(`[CreateBooking] Matched Zone: "${matchedZone.name}" for coords [${bookingLocation.lng}, ${bookingLocation.lat}]`);
+      }
+    } catch (zoneErr) {
+      console.warn('[CreateBooking] Zone resolution error (non-fatal):', zoneErr.message);
+    }
+  }
+
+  if (!matchedZone && data.zoneId) {
+    try {
+      matchedZone = await Zone.findById(data.zoneId);
+      if (matchedZone) {
+        console.log(`[CreateBooking] Matched Zone by provided zoneId: "${matchedZone.name}"`);
+      }
+    } catch (zoneErr) {
+      console.warn('[CreateBooking] Zone ID lookup error:', zoneErr.message);
+    }
+  }
+
+  if (matchedZone) {
+    // Check if category is allowed in this zone
+    if (Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
+      const bookedCatId = String(category?._id || categoryId || service?.categoryId || '');
+      const isCategoryAllowed = matchedZone.allowedCategories.some(cat => String(cat._id || cat) === bookedCatId);
+      if (!isCategoryAllowed) {
+        return fail(400, `The requested service category is not available in ${matchedZone.name}. Please select an operational zone.`);
+      }
+    }
+  }
+
   const workerFilters = {
     ...(category ? { service: category.title } : {}),
     checkCashLimit: paymentMethod === 'cash',
-    city: address.city
+    city: address.city,
+    ...(matchedZone ? { zoneId: matchedZone._id, zoneCoordinates: matchedZone.coordinates } : {})
   };
 
   let nearbyWorkers = await findNearbyWorkers(bookingLocation, searchRadiusKm, workerFilters);
@@ -378,6 +415,18 @@ const placeBooking = async (userId, payload, options = {}) => {
     finalAmount += extrasBase + extrasTax;
   }
 
+  // Zone Surge Pricing
+  if (matchedZone?.surgePricing?.enabled && matchedZone.surgePricing.multiplier > 1) {
+    const surgeMultiplier = matchedZone.surgePricing.multiplier;
+    const preSurge = basePrice;
+    basePrice = roundMoney(basePrice * surgeMultiplier);
+    const surgeDiff = basePrice - preSurge;
+    const surgeTax = roundMoney(surgeDiff * gstPct / 100);
+    tax += surgeTax;
+    finalAmount += (surgeDiff + surgeTax);
+    console.log(`[CreateBooking] Zone surge pricing applied: ${surgeMultiplier}x (+₹${surgeDiff}) in ${matchedZone.name}`);
+  }
+
   // 5. Recurring discount on the service value (not on extras or plan visits).
   const recurringDiscountPct = recurringContext
     ? (recurringContext.discountPercentage || 0)
@@ -428,6 +477,11 @@ const placeBooking = async (userId, payload, options = {}) => {
     userId,
     vendorId: null, // Assigned when a worker accepts
     serviceId,
+    zoneId: matchedZone ? matchedZone._id : null,
+    surgePricing: matchedZone?.surgePricing?.enabled ? {
+      enabled: true,
+      multiplier: matchedZone.surgePricing.multiplier || 1
+    } : { enabled: false, multiplier: 1 },
     categoryId: category?._id || categoryId,
     serviceName: service.title,
     serviceCategory: reqServiceCategory || category?.title || service.category || 'General',

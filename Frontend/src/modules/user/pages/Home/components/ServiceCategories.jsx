@@ -30,16 +30,16 @@ const PRIMARY_SERVICES = [
     sectionId: 'cleaning-section',
     slug: 'cleaning',
     title: 'Cleaning',
-    icon: '/categories/cleaning.svg?v=4',
+    icon: '/categories/cleaning.svg?v=5',
     defaultEta: 88,
-    matchKeywords: ['cleaning', 'clean', 'bathroom', 'kitchen', 'sofa', 'pest']
+    matchKeywords: ['cleaning', 'clean', 'deep clean', 'housekeeping', 'pest control', 'pest']
   },
   {
     id: 'ac-appliance',
     sectionId: 'ac-appliance-repair',
     slug: 'ac',
     title: 'AC & Appliance Repair',
-    icon: '/categories/ac-appliance.svg?v=4',
+    icon: '/categories/ac-appliance.svg?v=5',
     defaultEta: 44,
     matchKeywords: ['ac', 'appliance', 'refriger', 'fridge', 'washing machine', 'geyser', 'tv', 'led']
   },
@@ -48,9 +48,9 @@ const PRIMARY_SERVICES = [
     sectionId: 'electrician-plumber-carpenter',
     slug: 'electrician-services',
     title: 'Electrician, Plumber & Carpenter',
-    icon: '/categories/electrician.svg?v=4',
+    icon: '/categories/electrician.svg?v=5',
     defaultEta: 44,
-    matchKeywords: ['electric', 'plumb', 'carpent', 'handyman', 'repair', 'installation']
+    matchKeywords: ['electric', 'plumb', 'carpent', 'handyman', 'switchboard', 'wiring']
   }
 ];
 
@@ -307,30 +307,50 @@ const EtaBadge = ({ minutes }) => (
   </div>
 );
 
-const TILE_BOX_CLASSES = 'relative w-full aspect-[4/3] rounded-2xl bg-[#F2F3F5] overflow-hidden flex items-center justify-center transition-transform duration-200 active:scale-[0.96] group shadow-[0_1px_2px_rgba(0,0,0,0.02)]';
+const ServiceTile = ({ title, icon, fallbackIcon, etaMinutes, isAvatar = false, onClick, compact = false }) => {
+  const [currentSrc, setCurrentSrc] = useState(icon);
+  const [triedFallback, setTriedFallback] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-const ServiceTile = ({ title, icon, etaMinutes, isAvatar = false, onClick, compact = false }) => {
+  useEffect(() => {
+    setCurrentSrc(icon);
+    setTriedFallback(false);
+    setImgError(false);
+  }, [icon]);
+
+  const handleImageError = () => {
+    if (!triedFallback && fallbackIcon && fallbackIcon !== currentSrc) {
+      setTriedFallback(true);
+      setCurrentSrc(fallbackIcon);
+    } else {
+      setImgError(true);
+    }
+  };
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex flex-col items-center text-center w-full focus:outline-none group cursor-pointer"
     >
-      <div className={TILE_BOX_CLASSES}>
-        {icon ? (
+      <div className="relative w-full aspect-[4/3] rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex items-center justify-center p-2 transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
+        {currentSrc && !imgError ? (
           <img
-            src={icon}
+            src={currentSrc}
             alt={title}
+            onError={handleImageError}
             className={`${
               isAvatar
-                ? 'w-[80%] h-[80%] object-contain group-hover:scale-105'
-                : 'w-[74%] h-[74%] object-contain group-hover:scale-105'
-            } transition-transform duration-300 pointer-events-none select-none`}
+                ? 'w-[90%] h-[90%]'
+                : 'w-[84%] h-[84%]'
+            } object-contain transition-transform duration-300 group-hover:scale-106 pointer-events-none select-none drop-shadow-[0_2px_5px_rgba(0,0,0,0.06)]`}
             loading="lazy"
             decoding="async"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-white/70" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 text-blue-600 font-bold flex items-center justify-center text-sm shadow-xs border border-blue-100/50">
+            {title ? title.charAt(0).toUpperCase() : '★'}
+          </div>
         )}
         {typeof etaMinutes === 'number' && etaMinutes > 0 && <EtaBadge minutes={etaMinutes} />}
       </div>
@@ -351,16 +371,16 @@ const AllServicesTile = ({ onClick }) => (
     onClick={onClick}
     className="flex flex-col items-center text-center w-full focus:outline-none group cursor-pointer"
   >
-    <div className={TILE_BOX_CLASSES}>
+    <div className="relative w-full aspect-[4/3] rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex items-center justify-center p-2 transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
       <img
         src="/categories/all-services.svg?v=4"
         alt="All services"
-        className="w-[36%] h-[36%] object-contain transition-transform duration-300 group-hover:scale-105"
+        className="w-[46%] h-[46%] object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_2px_5px_rgba(0,0,0,0.05)]"
         loading="lazy"
         decoding="async"
       />
     </div>
-    <span className="mt-2 text-[13px] sm:text-[14px] font-medium text-[#1A1D20] leading-[1.25] text-center line-clamp-2 px-0.5">
+    <span className="mt-1.5 text-[12px] sm:text-[13px] font-medium text-[#1A1D20] leading-[1.25] text-center line-clamp-2 px-0.5">
       All services
     </span>
   </button>
@@ -379,19 +399,67 @@ const matchToDatabaseCategory = (item, categories) => {
       c._id === item.id
   );
   if (directMatch) {
-    return { ...directMatch, title: item.title || directMatch.title, slug: item.slug || directMatch.slug, icon: item.icon };
+    const customIcon = directMatch.homeIconUrl || directMatch.icon || directMatch.imageUrl;
+    let resolvedIcon = customIcon ? toAssetUrl(customIcon) : item.icon;
+    // Strict isolation: Electrician must NEVER get an AC unit icon
+    if (item.id === 'electrician' && resolvedIcon && (resolvedIcon.includes('ac.svg') || resolvedIcon.includes('ac-appliance') || resolvedIcon.includes('AC.'))) {
+      resolvedIcon = item.icon;
+    }
+    // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars
+    if (item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) {
+      resolvedIcon = item.icon;
+    }
+    // Dedicated subcategories (plumber, carpenter, furniture, etc.) must NEVER get overridden by generic parent icon
+    if (item.icon && item.id !== 'electrician') {
+      resolvedIcon = item.icon;
+    }
+    return {
+      ...directMatch,
+      title: item.title || directMatch.title,
+      slug: item.slug || directMatch.slug,
+      icon: resolvedIcon
+    };
   }
 
   if (Array.isArray(item.matchKeywords)) {
     for (const kw of item.matchKeywords) {
       const kwLower = kw.toLowerCase();
       const found = categories.find(
-        (c) =>
-          (c.title || '').toLowerCase().includes(kwLower) ||
-          (c.slug || '').toLowerCase().includes(kwLower)
+        (c) => {
+          const catTitle = (c.title || '').toLowerCase();
+          const catSlug = (c.slug || '').toLowerCase();
+          // Never allow electrician to match an AC or appliance category
+          if (item.id === 'electrician' && (catTitle.includes('ac ') || catTitle.includes('appliance') || catSlug === 'ac')) {
+            return false;
+          }
+          // Never allow cleaning to match water tank cleaning or car wash
+          if (item.id === 'cleaning' && (catTitle.includes('tank') || catTitle.includes('car'))) {
+            return false;
+          }
+          return catTitle.includes(kwLower) || catSlug.includes(kwLower);
+        }
       );
       if (found) {
-        return { ...found, title: item.title || found.title, slug: item.slug || found.slug, icon: item.icon };
+        const customIcon = found.homeIconUrl || found.icon || found.imageUrl;
+        let resolvedIcon = customIcon ? toAssetUrl(customIcon) : item.icon;
+        // Strict isolation: Electrician must NEVER get an AC unit icon
+        if (item.id === 'electrician' && resolvedIcon && (resolvedIcon.includes('ac.svg') || resolvedIcon.includes('ac-appliance') || resolvedIcon.includes('AC.'))) {
+          resolvedIcon = item.icon;
+        }
+        // Avatars (starting 2 tiles Women's & Men's Salon) must strictly preserve their 3D avatars
+        if (item.id === 'womens-salon' || item.id === 'mens-salon' || item.isAvatar) {
+          resolvedIcon = item.icon;
+        }
+        // Dedicated subcategories (plumber, carpenter, furniture, etc.) must NEVER get overridden by generic parent icon
+        if (item.icon && item.id !== 'electrician') {
+          resolvedIcon = item.icon;
+        }
+        return {
+          ...found,
+          title: item.title || found.title,
+          slug: item.slug || found.slug,
+          icon: resolvedIcon
+        };
       }
     }
   }
@@ -457,16 +525,18 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
                   <div className="grid grid-cols-3 gap-3.5">
                     {section.items.map((item) => {
                       const resolvedCat = matchToDatabaseCategory(item, categories);
-                      const liveEta = etaMap[resolvedCat?.id] || etaMap[item.id] || item.eta;
+                      const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
+                      const tileIcon = item.isAvatar ? item.icon : (item.icon || resolvedCat?.icon);
                       return (
                         <ServiceTile
                           key={item.id}
                           title={item.title}
-                          icon={item.icon}
+                          icon={tileIcon}
+                          fallbackIcon={item.icon}
                           isAvatar={item.isAvatar}
                           etaMinutes={liveEta}
                           onClick={() => {
-                            onPick(resolvedCat);
+                            onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
                             onClose();
                           }}
                         />
@@ -486,16 +556,18 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
                         <div className={`grid ${sub.gridCols || 'grid-cols-3'} gap-2.5`}>
                           {sub.items.map((item) => {
                             const resolvedCat = matchToDatabaseCategory(item, categories);
-                            const liveEta = etaMap[resolvedCat?.id] || etaMap[item.id] || item.eta;
+                            const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
+                            const tileIcon = item.icon || resolvedCat?.icon;
                             return (
                               <ServiceTile
                                 key={item.id}
                                 title={item.title}
-                                icon={item.icon}
+                                icon={tileIcon}
+                                fallbackIcon={item.icon}
                                 compact={sub.gridCols === 'grid-cols-4'}
                                 etaMinutes={liveEta}
                                 onClick={() => {
-                                  onPick(resolvedCat);
+                                  onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
                                   onClose();
                                 }}
                               />
@@ -542,7 +614,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
     return categories.filter(c => {
       const slug = (c.slug || '').toLowerCase();
       if (!slug || COVERED_SLUGS.has(slug) || c.showOnHome === false) return false;
-      return !!(c.icon || c.homeIconUrl);
+      return !!(c.icon || c.homeIconUrl || c.imageUrl);
     });
   }, [categories]);
 
@@ -610,7 +682,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                     <div className="grid grid-cols-3 gap-3">
                       {extraCategories.map((cat) => {
                         const liveEta = etaMap[cat.id] || etaMap[cat._id];
-                        const icon = toAssetUrl(cat.icon) || null;
+                        const icon = toAssetUrl(cat.homeIconUrl || cat.icon || cat.imageUrl) || null;
                         return (
                           <ServiceTile
                             key={cat.id || cat._id}
@@ -640,16 +712,18 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                       <div className="grid grid-cols-3 gap-3">
                         {section.items.map((item) => {
                           const resolvedCat = matchToDatabaseCategory(item, categories);
-                          const liveEta = etaMap[resolvedCat?.id] || etaMap[item.id] || item.eta;
+                          const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
+                          const tileIcon = item.isAvatar ? item.icon : (item.icon || resolvedCat?.icon);
                           return (
                             <ServiceTile
                               key={item.id}
                               title={item.title}
-                              icon={item.icon}
+                              icon={tileIcon}
+                              fallbackIcon={item.icon}
                               isAvatar={item.isAvatar}
                               etaMinutes={liveEta}
                               onClick={() => {
-                                onPick(resolvedCat);
+                                onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
                                 onClose();
                               }}
                             />
@@ -669,16 +743,18 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                             <div className={`grid ${sub.gridCols || 'grid-cols-3'} gap-2.5`}>
                               {sub.items.map((item) => {
                                 const resolvedCat = matchToDatabaseCategory(item, categories);
-                                const liveEta = etaMap[resolvedCat?.id] || etaMap[item.id] || item.eta;
+                                const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.eta;
+                                const tileIcon = item.icon || resolvedCat?.icon;
                                 return (
                                   <ServiceTile
                                     key={item.id}
                                     title={item.title}
-                                    icon={item.icon}
+                                    icon={tileIcon}
+                                    fallbackIcon={item.icon}
                                     compact={sub.gridCols === 'grid-cols-4'}
                                     etaMinutes={liveEta}
                                     onClick={() => {
-                                      onPick(resolvedCat);
+                                      onPick({ ...resolvedCat, icon: tileIcon, title: item.title, slug: item.slug || resolvedCat?.slug });
                                       onClose();
                                     }}
                                   />
@@ -754,14 +830,15 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
       <div className="grid grid-cols-3 gap-x-3 gap-y-4">
         {PRIMARY_SERVICES.map((item) => {
           const resolvedCat = matchToDatabaseCategory(item, categories);
-          const liveEta = etaMap[resolvedCat?.id] || etaMap[item.id] || item.defaultEta;
+          const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || item.defaultEta;
           const isAvatar = item.id === 'womens-salon' || item.id === 'mens-salon';
 
           return (
             <ServiceTile
               key={item.id}
               title={item.title}
-              icon={item.icon}
+              icon={isAvatar ? item.icon : (resolvedCat?.icon || item.icon)}
+              fallbackIcon={item.icon}
               etaMinutes={liveEta}
               isAvatar={isAvatar}
               onClick={() => handlePrimaryClick(item)}

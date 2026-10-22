@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
+import AdminZoneSelect from '../../components/AdminZoneSelect';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ const EMPTY_FORM = {
   validUntil: '',
   usageLimit: '', usageLimitPerUser: 1,
   firstBookingOnly: false, isAutoApply: false, isActive: true,
-  categories: [], cities: [],
+  categories: [], cities: [], zones: []
 };
 
 // ─── API service ──────────────────────────────────────────────────────────────
@@ -75,6 +76,7 @@ const CouponModal = ({ coupon, categories, cities, onClose, onSave }) => {
     usageLimitPerUser: coupon.usageLimitPerUser ?? 1,
     categories: coupon.categories?.map(c => c._id || c) || [],
     cities: coupon.cities?.map(c => c._id || c) || [],
+    zones: coupon.zones?.map(z => z._id || z) || []
   } : { ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
 
@@ -275,6 +277,18 @@ const CouponModal = ({ coupon, categories, cities, onClose, onSave }) => {
               </div>
             </div>
           )}
+
+          {/* Operating Zone restrictions */}
+          <div>
+            <label className={lbl}>Restrict to Operating Zones <span className="font-normal text-gray-400">(optional - empty = all zones in selected cities)</span></label>
+            <AdminZoneSelect
+              value={form.zones || []}
+              onChange={(val) => set('zones', val)}
+              isMulti={true}
+              cityId={form.cities && form.cities.length === 1 ? form.cities[0] : null}
+              placeholder="Select specific zones (e.g. Indiranagar, Koramangala)..."
+            />
+          </div>
         </form>
 
         {/* Footer */}
@@ -552,11 +566,18 @@ const AdminCoupons = () => {
                           </button>
                         </div>
                         <p className="text-sm text-gray-700 font-medium mt-1">{coupon.title}</p>
-                        {coupon.firstBookingOnly && (
-                          <span className="inline-flex items-center text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded mt-1 font-semibold">
-                            First booking only
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {coupon.firstBookingOnly && (
+                            <span className="inline-flex items-center text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold">
+                              First booking only
+                            </span>
+                          )}
+                          {Array.isArray(coupon.zones) && coupon.zones.length > 0 && (
+                            <span className="inline-flex items-center text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-semibold">
+                              {coupon.zones.length} {coupon.zones.length === 1 ? 'Zone' : 'Zones'}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Discount */}

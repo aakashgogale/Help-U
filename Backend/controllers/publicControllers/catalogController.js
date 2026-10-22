@@ -5,8 +5,44 @@ const Coupon = require('../../models/Coupon');
 const { getDisplayPricing } = require('../../utils/servicePricing');
 const HomeContent = require('../../models/HomeContent');
 const Settings = require('../../models/Settings');
+const Zone = require('../../models/Zone');
 const mongoose = require('mongoose');
 const { getRedis, isRedisConnected } = require('../../services/redisService');
+
+/**
+ * Helper to resolve zone from query (zoneId, lat, lng, cityId)
+ */
+const resolveZone = async ({ zoneId, lat, lng, cityId }) => {
+  if (zoneId && mongoose.Types.ObjectId.isValid(zoneId)) {
+    try {
+      return await Zone.findById(zoneId).lean();
+    } catch (e) {
+      // ignore
+    }
+  }
+  const parsedLat = parseFloat(lat);
+  const parsedLng = parseFloat(lng);
+  if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+    try {
+      return await Zone.findZoneByCoordinates(parsedLng, parsedLat, cityId || null);
+    } catch (e) {
+      // ignore
+    }
+  }
+  return null;
+};
+
+/**
+ * Helper to check if an item with zoneId / zones matches the active zone
+ */
+const matchesZone = (item, activeZoneId) => {
+  if (!activeZoneId) return true;
+  const hasSpecificZone = Boolean(item.zoneId) || (Array.isArray(item.zones) && item.zones.length > 0);
+  if (!hasSpecificZone) return true; // Global item
+  if (item.zoneId && String(item.zoneId._id || item.zoneId) === String(activeZoneId)) return true;
+  if (Array.isArray(item.zones) && item.zones.some(z => String(z._id || z) === String(activeZoneId))) return true;
+  return false;
+};
 
 /**
  * Public Catalog Controllers
@@ -19,12 +55,16 @@ const { getRedis, isRedisConnected } = require('../../services/redisService');
  */
 const getPublicCategories = async (req, res) => {
   try {
-    const { cityId, parentId } = req.query;
+    const { cityId, parentId, zoneId, lat, lng } = req.query;
 
     // Build query
     const query = { status: 'active', publishStatus: { $ne: 'draft' } };
     if (cityId) {
-      query.cityIds = cityId;
+      query.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
     }
 
     // Default: top-level categories only (parentId: null). Sub-categories
@@ -35,6 +75,13 @@ const getPublicCategories = async (req, res) => {
       query.parentId = null;
     } else if (parentId !== 'all') {
       query.parentId = parentId;
+    }
+
+    // Zone category restriction
+    const matchedZone = await resolveZone({ zoneId, lat, lng, cityId });
+    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
+      const allowedCatIds = matchedZone.allowedCategories.map(c => c._id || c);
+      query._id = { $in: allowedCatIds };
     }
 
     const categories = await Category.find(query)
@@ -81,7 +128,13 @@ const getPublicBrands = async (req, res) => {
     // Build query
     const query = { status: 'active', publishStatus: { $ne: 'draft' } };
     if (categoryId) query.categoryIds = categoryId;
-    if (cityId) query.cityIds = cityId;
+    if (cityId) {
+      query.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
+    }
 
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -377,6 +430,15 @@ const getPublicServices = async (req, res) => {
         parentCategoryId: svc.categoryId?.parentId ? svc.categoryId.parentId.toString() : null,
         durationMinutes: svc.durationMinutes,
         variants: svc.variants || [],
+        inclusions: Array.isArray(svc.inclusions) ? svc.inclusions : [],
+        exclusions: Array.isArray(svc.exclusions) ? svc.exclusions : [],
+        faqs: Array.isArray(svc.faqs) ? svc.faqs : [],
+        warranty: svc.warranty || '',
+        cancellationPolicy: svc.cancellationPolicy || '',
+        images: Array.isArray(svc.images) ? svc.images : [],
+        isPackage: Boolean(svc.isPackage),
+        originalPrice: svc.originalPrice !== undefined ? svc.originalPrice : null,
+        discountLabel: svc.discountLabel || '',
         rating: svc.rating,
         reviewsCount: svc.reviewsCount,
         score: svc._score,
@@ -502,7 +564,7 @@ const advancedCatalogSearch = async (req, res) => {
  */
 const getPublicHomeContent = async (req, res) => {
   try {
-    const { cityId } = req.query;
+    const { cityId, zoneId, lat, lng } = req.query;
     const homeContent = await HomeContent.getHomeContent(cityId);
 
     if (!homeContent) {
@@ -519,27 +581,35 @@ const getPublicHomeContent = async (req, res) => {
       });
     }
 
-    const [contentObjDoc, settings] = await Promise.all([
+    const [contentObjDoc, settings, matchedZone] = await Promise.all([
       homeContent,
-      Settings.findOne({ type: 'global' }).lean().catch(() => null)
+      Settings.findOne({ type: 'global' }).lean().catch(() => null),
+      resolveZone({ zoneId, lat, lng, cityId })
     ]);
 
+    const activeZoneId = matchedZone ? String(matchedZone._id) : (zoneId || null);
     const contentObj = contentObjDoc.toObject();
     const isGlobalScrapEnabled = settings ? settings.isScrapEnabled !== false : true;
 
     const formattedContent = {
-      banners: (contentObj.banners || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
-      promos: (contentObj.promos || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
+      banners: (contentObj.banners || [])
+        .filter(item => matchesZone(item, activeZoneId))
+        .map(item => ({
+          ...item,
+          id: item._id ? item._id.toString() : item.id,
+          targetCategoryId: item.targetCategoryId?.toString() || null,
+          targetServiceId: item.targetServiceId?.toString() || null,
+          zoneId: item.zoneId?.toString() || null,
+        })),
+      promos: (contentObj.promos || [])
+        .filter(item => matchesZone(item, activeZoneId))
+        .map(item => ({
+          ...item,
+          id: item._id ? item._id.toString() : item.id,
+          targetCategoryId: item.targetCategoryId?.toString() || null,
+          targetServiceId: item.targetServiceId?.toString() || null,
+          zoneId: item.zoneId?.toString() || null,
+        })),
       curated: (contentObj.curated || []).map(item => ({
         ...item,
         id: item._id ? item._id.toString() : item.id,
@@ -558,12 +628,15 @@ const getPublicHomeContent = async (req, res) => {
         targetCategoryId: item.targetCategoryId?.toString() || null,
         targetServiceId: item.targetServiceId?.toString() || null,
       })),
-      spotlight: (contentObj.spotlight || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
+      spotlight: (contentObj.spotlight || [])
+        .filter(item => matchesZone(item, activeZoneId))
+        .map(item => ({
+          ...item,
+          id: item._id ? item._id.toString() : item.id,
+          targetCategoryId: item.targetCategoryId?.toString() || null,
+          targetServiceId: item.targetServiceId?.toString() || null,
+          zoneId: item.zoneId?.toString() || null,
+        })),
       categorySections: (contentObj.categorySections || []).map(section => ({
         ...section,
         id: section._id ? section._id.toString() : section.id,
@@ -590,7 +663,12 @@ const getPublicHomeContent = async (req, res) => {
     res.status(200).json({
       success: true,
       homeContent: formattedContent,
-      isScrapEnabled: isGlobalScrapEnabled
+      isScrapEnabled: isGlobalScrapEnabled,
+      zone: matchedZone ? {
+        id: matchedZone._id,
+        name: matchedZone.name,
+        surgePricing: matchedZone.surgePricing || { enabled: false, multiplier: 1 }
+      } : null
     });
 
   } catch (error) {
@@ -607,13 +685,25 @@ const getPublicHomeContent = async (req, res) => {
  */
 const getPublicHomeData = async (req, res) => {
   try {
-    const { cityId } = req.query;
+    const { cityId, zoneId, lat, lng } = req.query;
 
-    // Fetch in parallel. Categories filter is top-level only (parentId: null)
-    // so sub-categories can never leak into the Home grid; the Home UI
-    // consumes this payload unchanged.
+    const matchedZone = await resolveZone({ zoneId, lat, lng, cityId });
+    const activeZoneId = matchedZone ? String(matchedZone._id) : (zoneId || null);
+
+    const catQuery = { status: 'active', parentId: null, publishStatus: { $ne: 'draft' } };
+    if (cityId) {
+      catQuery.$or = [
+        { cityIds: cityId },
+        { cityIds: { $size: 0 } },
+        { cityIds: { $exists: false } }
+      ];
+    }
+    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
+      catQuery._id = { $in: matchedZone.allowedCategories.map(c => c._id || c) };
+    }
+
     const [categoriesRes, homeContent, settings] = await Promise.all([
-      Category.find({ status: 'active', parentId: null, publishStatus: { $ne: 'draft' }, cityIds: cityId ? cityId : { $exists: true } })
+      Category.find(catQuery)
         .select('title slug homeIconUrl homeBadge hasSaleBadge')
         .sort({ homeOrder: 1 })
         .lean(),
@@ -636,19 +726,25 @@ const getPublicHomeData = async (req, res) => {
     if (homeContent) {
       const contentObj = homeContent.toObject();
       formattedContent = {
-        banners: (contentObj.banners || []).map(item => ({
-          imageUrl: item.imageUrl,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          slug: item.slug,
-          order: item.order
-        })),
-        promos: (contentObj.promos || []).map(item => ({
-          title: item.title,
-          subtitle: item.subtitle,
-          imageUrl: item.imageUrl,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          order: item.order
-        })),
+        banners: (contentObj.banners || [])
+          .filter(item => matchesZone(item, activeZoneId))
+          .map(item => ({
+            imageUrl: item.imageUrl,
+            targetCategoryId: item.targetCategoryId?.toString() || null,
+            slug: item.slug,
+            order: item.order,
+            zoneId: item.zoneId?.toString() || null
+          })),
+        promos: (contentObj.promos || [])
+          .filter(item => matchesZone(item, activeZoneId))
+          .map(item => ({
+            title: item.title,
+            subtitle: item.subtitle,
+            imageUrl: item.imageUrl,
+            targetCategoryId: item.targetCategoryId?.toString() || null,
+            order: item.order,
+            zoneId: item.zoneId?.toString() || null
+          })),
         curated: (contentObj.curated || []).map(item => ({
           title: item.title,
           gifUrl: item.gifUrl,
@@ -668,22 +764,25 @@ const getPublicHomeData = async (req, res) => {
           targetCategoryId: item.targetCategoryId?.toString() || null,
           order: item.order
         })),
-        spotlight: (contentObj.spotlight || []).map(item => ({
-          id: item._id ? item._id.toString() : item.id,
-          badge: item.badge,
-          title: item.title,
-          subtitle: item.subtitle,
-          startingPrice: item.startingPrice,
-          buttonText: item.buttonText,
-          imageUrl: item.imageUrl,
-          backgroundColor: item.backgroundColor,
-          textColor: item.textColor,
-          badgeColor: item.badgeColor,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          targetServiceId: item.targetServiceId?.toString() || null,
-          slug: item.slug,
-          order: item.order
-        })),
+        spotlight: (contentObj.spotlight || [])
+          .filter(item => matchesZone(item, activeZoneId))
+          .map(item => ({
+            id: item._id ? item._id.toString() : item.id,
+            badge: item.badge,
+            title: item.title,
+            subtitle: item.subtitle,
+            startingPrice: item.startingPrice,
+            buttonText: item.buttonText,
+            imageUrl: item.imageUrl,
+            backgroundColor: item.backgroundColor,
+            textColor: item.textColor,
+            badgeColor: item.badgeColor,
+            targetCategoryId: item.targetCategoryId?.toString() || null,
+            targetServiceId: item.targetServiceId?.toString() || null,
+            slug: item.slug,
+            order: item.order,
+            zoneId: item.zoneId?.toString() || null
+          })),
         categorySections: (contentObj.categorySections || []).map(section => ({
           title: section.title,
           seeAllTargetCategoryId: section.seeAllTargetCategoryId?.toString() || null,
@@ -713,7 +812,12 @@ const getPublicHomeData = async (req, res) => {
       success: true,
       categories: formattedCategories,
       homeContent: formattedContent,
-      isScrapEnabled: isGlobalScrapEnabled
+      isScrapEnabled: isGlobalScrapEnabled,
+      zone: matchedZone ? {
+        id: matchedZone._id,
+        name: matchedZone.name,
+        surgePricing: matchedZone.surgePricing || { enabled: false, multiplier: 1 }
+      } : null
     });
   } catch (error) {
     console.error('Get public home data error:', error);
@@ -852,13 +956,16 @@ const getCategoriesEta = async (req, res) => {
 const getPublicCategoryCatalog = async (req, res) => {
   try {
     const { idOrSlug } = req.params;
-    const { cityId } = req.query;
+    const { cityId, zoneId, lat, lng } = req.query;
 
     if (!idOrSlug) {
       return res.status(400).json({ success: false, message: 'Category ID or slug is required.' });
     }
 
-    const cacheKey = `public:catalog:${idOrSlug}:${cityId || 'all'}`;
+    const matchedZone = await resolveZone({ zoneId, lat, lng, cityId });
+    const activeZoneId = matchedZone ? String(matchedZone._id) : (zoneId || null);
+
+    const cacheKey = `public:catalog:${idOrSlug}:${cityId || 'all'}:${activeZoneId || 'all'}`;
     const redis = getRedis();
 
     // 1. Short Redis cache check
@@ -887,6 +994,30 @@ const getPublicCategoryCatalog = async (req, res) => {
         success: false,
         message: 'Category not found.'
       });
+    }
+
+    // Check if category is allowed in the matched zone
+    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
+      const isAllowed = matchedZone.allowedCategories.some(c => String(c._id || c) === String(category._id));
+      if (!isAllowed) {
+        return res.status(200).json({
+          success: true,
+          isCategoryServiceable: false,
+          isOutOfZoneForCategory: true,
+          message: `This category is currently not available in ${matchedZone.name}.`,
+          category: {
+            _id: category._id,
+            id: category._id.toString(),
+            title: category.title,
+            slug: category.slug,
+            isServiceable: false
+          },
+          hero: { tag: '', title: category.title, startingPrice: '', imageUrl: category.heroBanner?.imageUrl || '' },
+          bestCoupon: null,
+          subCategories: [],
+          sections: []
+        });
+      }
     }
 
     // 3. Category hero
@@ -942,15 +1073,24 @@ const getPublicCategoryCatalog = async (req, res) => {
       ]
     };
     if (cityId) {
-      couponQuery.$and = [
-        {
-          $or: [
-            { cities: cityId },
-            { cities: { $size: 0 } },
-            { cities: { $exists: false } }
-          ]
-        }
-      ];
+      couponQuery.$and = couponQuery.$and || [];
+      couponQuery.$and.push({
+        $or: [
+          { cities: cityId },
+          { cities: { $size: 0 } },
+          { cities: { $exists: false } }
+        ]
+      });
+    }
+    if (activeZoneId) {
+      couponQuery.$and = couponQuery.$and || [];
+      couponQuery.$and.push({
+        $or: [
+          { zones: activeZoneId },
+          { zones: { $size: 0 } },
+          { zones: { $exists: false } }
+        ]
+      });
     }
 
     const rawCoupons = await Coupon.find(couponQuery).lean();

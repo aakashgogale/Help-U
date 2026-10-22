@@ -8,6 +8,7 @@ import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
 import { homeContentService, serviceService, categoryService, publicCatalogService } from "../../../../../services/catalogService";
 import { getSettings, updateSettings } from "../../../services/settingsService";
+import AdminZoneSelect from "../../../components/AdminZoneSelect";
 
 const RedirectionSelector = ({
   targetCategoryId,
@@ -140,11 +141,11 @@ const RedirectionSelector = ({
 
 const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
-  const [bannerForm, setBannerForm] = useState({ imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "" });
+  const [bannerForm, setBannerForm] = useState({ imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "" });
   const [editingBannerId, setEditingBannerId] = useState(null);
 
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
-  const [promoForm, setPromoForm] = useState({ title: "", subtitle: "", buttonText: "Explore", gradientClass: "from-blue-600 to-blue-800", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "" });
+  const [promoForm, setPromoForm] = useState({ title: "", subtitle: "", buttonText: "Explore", gradientClass: "from-blue-600 to-blue-800", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "" });
   const [editingPromoId, setEditingPromoId] = useState(null);
 
   const [isCuratedModalOpen, setIsCuratedModalOpen] = useState(false);
@@ -160,7 +161,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   const [editingBookedId, setEditingBookedId] = useState(null);
 
   const [isSpotlightModalOpen, setIsSpotlightModalOpen] = useState(false);
-  const [spotlightForm, setSpotlightForm] = useState({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "" });
+  const [spotlightForm, setSpotlightForm] = useState({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "", zoneId: "" });
   const [editingSpotlightId, setEditingSpotlightId] = useState(null);
 
   const [isCategorySectionModalOpen, setIsCategorySectionModalOpen] = useState(false);
@@ -440,10 +441,9 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
     return await syncHomeToBackend(next.home);
   };
 
-  // Banner handlers
   const resetBannerForm = () => {
     setEditingBannerId(null);
-    setBannerForm({ imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "" });
+    setBannerForm({ imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "" });
     setIsBannerModalOpen(false);
   };
 
@@ -464,7 +464,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   // Promo handlers
   const resetPromoForm = () => {
     setEditingPromoId(null);
-    setPromoForm({ title: "", subtitle: "", buttonText: "Explore", gradientClass: "from-blue-600 to-blue-800", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "" });
+    setPromoForm({ title: "", subtitle: "", buttonText: "Explore", gradientClass: "from-blue-600 to-blue-800", imageUrl: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "" });
     setIsPromoModalOpen(false);
   };
 
@@ -540,7 +540,7 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
   // Spotlight handlers (In the Spotlight carousel)
   const resetSpotlightForm = () => {
     setEditingSpotlightId(null);
-    setSpotlightForm({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "" });
+    setSpotlightForm({ badge: "", title: "", subtitle: "Starting", startingPrice: "", buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8", textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "", slug: "", targetServiceId: "", zoneId: "" });
     setIsSpotlightModalOpen(false);
   };
 
@@ -572,7 +572,8 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
       badgeColor: item.badgeColor || "#7A2149",
       targetCategoryId: item.targetCategoryId || "",
       slug: item.slug || "",
-      targetServiceId: item.targetServiceId || ""
+      targetServiceId: item.targetServiceId || "",
+      zoneId: item.zoneId || ""
     });
     setIsSpotlightModalOpen(true);
   };
@@ -1683,6 +1684,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               placeholder="Waxing & threading"
             />
           </div>
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Target Operating Zone (optional)</label>
+            <AdminZoneSelect
+              value={bannerForm.zoneId || ""}
+              onChange={(val) => setBannerForm((p) => ({ ...p, zoneId: val }))}
+              isMulti={false}
+              cityId={selectedCity || null}
+              placeholder="All Zones (Global Banner)"
+            />
+          </div>
           <div className="flex gap-3 pt-4">
             <button
               onClick={saveBanner}
@@ -1831,6 +1842,16 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
               onChange={(e) => setPromoForm((p) => ({ ...p, scrollToSection: e.target.value }))}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white"
               placeholder="Waxing & threading"
+            />
+          </div>
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Target Operating Zone (optional)</label>
+            <AdminZoneSelect
+              value={promoForm.zoneId || ""}
+              onChange={(val) => setPromoForm((p) => ({ ...p, zoneId: val }))}
+              isMulti={false}
+              cityId={selectedCity || null}
+              placeholder="All Zones (Global Promo)"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -2430,6 +2451,17 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             onChange={(patch) => setSpotlightForm((p) => ({ ...p, ...patch }))}
             label="Clicking this banner opens..."
           />
+
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-2">Target Operating Zone (optional)</label>
+            <AdminZoneSelect
+              value={spotlightForm.zoneId || ""}
+              onChange={(val) => setSpotlightForm((p) => ({ ...p, zoneId: val }))}
+              isMulti={false}
+              cityId={selectedCity || null}
+              placeholder="All Zones (Global Spotlight)"
+            />
+          </div>
 
           <div className="flex gap-3 pt-4">
             <button

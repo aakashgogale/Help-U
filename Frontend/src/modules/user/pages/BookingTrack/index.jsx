@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
+import ChatButton from '../../../../components/booking/ChatButton';
 import { computeRoute, formatDistance, formatDuration } from '../../../../utils/googleRoutes';
 
 
@@ -956,15 +957,24 @@ const BookingTrack = () => {
               </div>
             </div>
 
-            {/* Call Button */}
-            {provider.phone && (
-              <a
-                href={`tel:${provider.phone}`}
-                className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-sm"
-              >
-                <FiPhone className="w-5 h-5" />
-              </a>
-            )}
+            {/* Action Buttons: Chat & Call */}
+            <div className="flex items-center gap-2 shrink-0">
+              <ChatButton
+                role="user"
+                booking={booking}
+                compact={true}
+                className="w-12 h-12 bg-blue-50 text-blue-600 border border-blue-100 shadow-sm hover:bg-blue-100"
+              />
+              {provider.phone && (
+                <a
+                  href={`tel:${provider.phone}`}
+                  className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-sm hover:bg-green-200"
+                  title="Call Partner"
+                >
+                  <FiPhone className="w-5 h-5" />
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>

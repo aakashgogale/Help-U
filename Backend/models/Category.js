@@ -185,6 +185,8 @@ categorySchema.pre('validate', async function (next) {
 categorySchema.index({ status: 1, homeOrder: 1 });
 categorySchema.index({ isPopular: 1, status: 1 });
 categorySchema.index({ showOnHome: 1, homeOrder: 1 });
+categorySchema.index({ parentId: 1, status: 1, homeOrder: 1 });
+categorySchema.index({ parentId: 1, cityIds: 1 });
 
 module.exports = mongoose.model('Category', categorySchema);
 

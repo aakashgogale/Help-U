@@ -7,6 +7,7 @@ import { SocketProvider } from './context/SocketContext';
 import { ConfigProvider } from './context/ConfigContext';
 import { CartProvider } from './context/CartContext';
 import { CityProvider } from './context/CityContext';
+import { ZoneProvider } from './context/ZoneContext';
 import { initializePushNotifications, setupForegroundNotificationHandler } from './services/pushNotificationService';
 import { LocationPermissionChecker, MaintenanceGate } from './components/common';
 
@@ -44,6 +45,7 @@ function App() {
       <SocketProvider>
         <ConfigProvider>
           <CityProvider>
+            <ZoneProvider>
             <CartProvider>
               <div className="App">
                 <MaintenanceGate>
@@ -77,6 +79,7 @@ function App() {
               />
             </div>
           </CartProvider>
+            </ZoneProvider>
         </CityProvider>
       </ConfigProvider>
     </SocketProvider>

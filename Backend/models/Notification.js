@@ -99,6 +99,13 @@ const notificationSchema = new mongoose.Schema({
     enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal', 'dispute', 'recurring'],
     default: null
   },
+  // Zone scoping (optional - for zone-specific broadcasts/notifications)
+  zoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    default: null,
+    index: true
+  },
   // Notification Status
   isRead: {
     type: Boolean,

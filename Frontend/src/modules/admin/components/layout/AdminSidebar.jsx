@@ -25,6 +25,7 @@ import {
   FiPercent,
   FiTag,
   FiBook,
+  FiMap,
 } from "react-icons/fi";
 import adminMenu from "../../config/adminMenu.json";
 import dashboardService from "../../services/dashboardService";
@@ -56,6 +57,7 @@ const iconMap = {
   Commission: FiPercent,
   "Booking Config": FiSliders,
   "Coupons": FiTag,
+  Zones: FiMap,
 };
 
 // Helper function to convert child name to route path

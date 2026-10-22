@@ -194,6 +194,15 @@
     "children": []
   },
   {
+    "title": "Zones",
+    "route": "/admin/zones",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
     "title": "Settings",
     "route": "/admin/settings",
     "allowedRoles": [

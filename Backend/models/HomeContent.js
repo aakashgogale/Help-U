@@ -44,7 +44,16 @@ const homeContentSchema = new mongoose.Schema({
     order: {
       type: Number,
       default: 0
-    }
+    },
+    zoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Zone',
+      default: null
+    },
+    zones: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Zone'
+    }]
   }],
 
   // Promo Carousel
@@ -91,7 +100,16 @@ const homeContentSchema = new mongoose.Schema({
     order: {
       type: Number,
       default: 0
-    }
+    },
+    zoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Zone',
+      default: null
+    },
+    zones: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Zone'
+    }]
   }],
 
   // Curated Services
@@ -299,7 +317,9 @@ const homeContentSchema = new mongoose.Schema({
     targetCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
     slug: { type: String, default: '' },
     targetServiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', default: null },
-    order: { type: Number, default: 0 }
+    order: { type: Number, default: 0 },
+    zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', default: null },
+    zones: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Zone' }]
   }],
 
   // Status

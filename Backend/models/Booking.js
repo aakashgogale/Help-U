@@ -28,6 +28,16 @@ const bookingSchema = new mongoose.Schema({
     required: false,
     index: true
   },
+  zoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    default: null,
+    index: true
+  },
+  surgePricing: {
+    enabled: { type: Boolean, default: false },
+    multiplier: { type: Number, default: 1 }
+  },
   notifiedVendors: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Worker'

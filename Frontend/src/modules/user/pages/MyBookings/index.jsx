@@ -9,6 +9,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import { motion } from 'framer-motion';
 import { bookingService } from '../../../../services/bookingService';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
+import ChatButton from '../../../../components/booking/ChatButton';
 
 const PAGE_SIZE = 10;
 
@@ -138,9 +139,17 @@ const BookingCard = ({ booking, onOpen }) => {
           <span className="truncate">{getAddressString(booking.address)}</span>
         </div>
         {professional && (
-          <div className="flex items-center gap-2.5 text-[13px] text-gray-600 min-w-0">
-            <FiUser className="w-4 h-4 text-gray-400 shrink-0" />
-            <span className="truncate">{professional}</span>
+          <div className="flex items-center justify-between gap-2.5 text-[13px] text-gray-600 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 truncate">
+              <FiUser className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="truncate">{professional}</span>
+            </div>
+            <ChatButton
+              role="user"
+              booking={booking}
+              compact={true}
+              className="w-8 h-8 shrink-0 bg-blue-50 text-blue-600 hover:bg-blue-100"
+            />
           </div>
         )}
       </div>

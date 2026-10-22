@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiShoppingCart, FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiArrowRight, FiTag } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { useCart } from '../../../../context/CartContext';
+import { useZone } from '../../../../context/ZoneContext';
 import PageHeader from '../../components/layout/PageHeader';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
 
@@ -20,13 +21,18 @@ const CartItemRow = ({ item, busy, onQuantityChange, onDelete }) => {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-ink leading-snug">{item.title}</p>
+          {item.variantSnapshot?.title && (
+            <span className="inline-block mt-1 mr-1.5 text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200/60 rounded-full px-2 py-0.5">
+              {item.variantSnapshot.title}
+            </span>
+          )}
           {(item.pricingType === 'hourly' && item.hours) && (
-            <span className="inline-block mt-1 text-[11px] font-semibold text-blue-700 bg-blue-50 rounded-full px-2 py-0.5">
+            <span className="inline-block mt-1 mr-1.5 text-[11px] font-semibold text-blue-700 bg-blue-50 rounded-full px-2 py-0.5">
               {item.hours} hr{item.hours === 1 ? '' : 's'}
             </span>
           )}
           {item.pricingType === 'inspection_fee' && (
-            <span className="inline-block mt-1 text-[11px] font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
+            <span className="inline-block mt-1 mr-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
               Inspection visit
             </span>
           )}
@@ -100,6 +106,7 @@ const CartSkeleton = () => (
 const Cart = () => {
   const navigate = useNavigate();
   const { cartItems, isLoading: loading, removeItem, removeCategoryItems, updateItem } = useCart();
+  const { currentZone, isOutOfZone } = useZone();
   const [busyIds, setBusyIds] = useState(() => new Set());
 
   // Group items by category
@@ -175,6 +182,23 @@ const Cart = () => {
   };
 
   const handleCategoryCheckout = (category) => {
+    if (isOutOfZone) {
+      toast.error('Services are not available in your area yet.');
+      return;
+    }
+    if (currentZone && Array.isArray(currentZone.allowedCategories) && currentZone.allowedCategories.length > 0) {
+      const items = groupedItems[category] || [];
+      const categoryId = items[0]?.categoryId;
+      if (categoryId) {
+        const allowed = currentZone.allowedCategories.some(
+          c => String(c._id || c.id || c) === String(categoryId)
+        );
+        if (!allowed) {
+          toast.error(`${category} is not available in ${currentZone.name || 'your zone'}. Please select a different service.`);
+          return;
+        }
+      }
+    }
     navigate('/user/checkout', { state: { category } });
   };
 

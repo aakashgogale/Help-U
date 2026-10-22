@@ -201,6 +201,7 @@ app.get('/', (req, res) => {
 // API Routes
 
 app.use('/api/public/cities', require('./routes/public-routes/city.routes.js'));
+app.use('/api/public/zones', require('./routes/public-routes/zone.routes.js'));
 
 
 // User routes
@@ -261,6 +262,7 @@ app.use('/api/admin/admins', require('./routes/admin-routes/adminManagement.rout
 app.use('/api/admin', require('./routes/admin-routes/auditLog.routes'));
 app.use('/api/admin/disputes', require('./routes/admin-routes/dispute.routes'));
 app.use('/api/admin', require('./routes/admin-routes/bookingFeatures.routes'));
+app.use('/api/admin', require('./routes/admin-routes/zone.routes'));
 app.use('/api/image', require('./routes/admin-routes/image.routes'));
 app.use('/api', require('./routes/admin-routes/upload.routes')); // Generic upload access
 

@@ -24,6 +24,7 @@ import {
   brandService,
   serviceService,
 } from "../../../../../services/catalogService";
+import AdminZoneSelect from "../../../components/AdminZoneSelect";
 
 /**
  * Home Sections Manager
@@ -69,12 +70,13 @@ const SECTIONS = [
       { name: "textColor", label: "Text Color", type: "color", default: "#1A1A1A" },
       { name: "badgeColor", label: "Badge Color", type: "color", default: "#7A2149" },
       { name: "redirect", label: "On click, open", type: "redirect" },
+      { name: "zoneId", label: "Operating Zone (optional)", type: "zone" },
     ],
     defaultItem: {
       badge: "", title: "", subtitle: "Starting", startingPrice: "",
       buttonText: "Book now", imageUrl: "", backgroundColor: "#B4C2A8",
       textColor: "#1A1A1A", badgeColor: "#7A2149", targetCategoryId: "",
-      slug: "", targetServiceId: "",
+      slug: "", targetServiceId: "", zoneId: "",
     },
     columns: [
       { label: "Image", render: (i) => i.imageUrl && <img src={i.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" style={{ backgroundColor: i.backgroundColor }} /> },
@@ -172,8 +174,9 @@ const SECTIONS = [
       { name: "imageUrl", label: "Banner Image (3:1 ratio recommended)", type: "image", folder: "banners" },
       { name: "text", label: "Alt text / caption", type: "text" },
       { name: "redirect", label: "On click, open", type: "redirect" },
+      { name: "zoneId", label: "Operating Zone (optional)", type: "zone" },
     ],
-    defaultItem: { imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "" },
+    defaultItem: { imageUrl: "", text: "", targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "" },
     columns: [
       { label: "Image", render: (i) => i.imageUrl && <img src={i.imageUrl} alt="" className="h-10 w-20 rounded object-cover border" /> },
       { label: "Text", get: (i) => i.text },
@@ -194,11 +197,12 @@ const SECTIONS = [
       { name: "buttonText", label: "Button Text", type: "text", default: "Explore" },
       { name: "gradientClass", label: "Gradient (Tailwind class)", type: "text", default: "from-blue-600 to-blue-800" },
       { name: "redirect", label: "On click, open", type: "redirect" },
+      { name: "zoneId", label: "Operating Zone (optional)", type: "zone" },
     ],
     defaultItem: {
       title: "", subtitle: "", buttonText: "Explore",
       gradientClass: "from-blue-600 to-blue-800", imageUrl: "",
-      targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "",
+      targetCategoryId: "", slug: "", targetServiceId: "", scrollToSection: "", zoneId: "",
     },
     columns: [
       { label: "Image", render: (i) => i.imageUrl && <img src={i.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" /> },
@@ -392,6 +396,20 @@ const FieldRow = ({ field, form, setForm, categories, services, uploading, setUp
         <p className="text-[11px] text-gray-500 mt-1">
           Leave both empty if this item isn't clickable. Pick a category to open its booking modal; optionally pick a specific service.
         </p>
+      </div>
+    );
+  }
+
+  if (field.type === "zone") {
+    return (
+      <div>
+        <label className="block text-sm font-semibold text-gray-800 mb-1.5">{field.label}</label>
+        <AdminZoneSelect
+          value={form[field.name] || ""}
+          onChange={(val) => setForm((p) => ({ ...p, [field.name]: val }))}
+          isMulti={false}
+          placeholder="All Zones (Global)"
+        />
       </div>
     );
   }

@@ -31,6 +31,10 @@ const buildPatch = (body = {}, { isCreate = false } = {}) => {
   if (body.categories !== undefined) patch.categories = Array.isArray(body.categories) ? body.categories : [];
   if (body.services !== undefined) patch.services = Array.isArray(body.services) ? body.services : [];
   if (body.cities !== undefined) patch.cities = Array.isArray(body.cities) ? body.cities : [];
+  if (body.zones !== undefined || body.zoneIds !== undefined) {
+    const rawZones = body.zones !== undefined ? body.zones : body.zoneIds;
+    patch.zones = Array.isArray(rawZones) ? rawZones : [];
+  }
   if (body.firstBookingOnly !== undefined) patch.firstBookingOnly = Boolean(body.firstBookingOnly);
   if (body.isAutoApply !== undefined) patch.isAutoApply = Boolean(body.isAutoApply);
   if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
@@ -91,6 +95,9 @@ exports.list = async (req, res) => {
 
     const [coupons, total] = await Promise.all([
       Coupon.find(query)
+        .populate('zones', 'name')
+        .populate('cities', 'name')
+        .populate('categories', 'name title')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)

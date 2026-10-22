@@ -7,6 +7,7 @@ import ModeSelector from "../components/ModeSelector";
 import { ensureIds, saveCatalog, slugify, toAssetUrl } from "../utils";
 
 import { categoryService, serviceService } from "../../../../../services/catalogService";
+import IconUploadWithPreview from "../../../components/IconUploadWithPreview";
 import { z } from "zod";
 
 // Define Zod schema
@@ -41,47 +42,86 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
   const categories = (catalog.categories || []).sort((a, b) => (a.homeOrder || 0) - (b.homeOrder || 0));
   const editing = useMemo(() => categories.find((c) => c.id === editingId) || null, [categories, editingId]);
 
+  const fetchCategories = async () => {
+    try {
+      setFetching(true);
+      // Pass city filters
+      const params = { status: 'active' };
+      if (selectedCity) {
+        params.cityId = selectedCity;
+      }
+
+      const response = await categoryService.getAll(params);
+
+      if (response.success && response.categories) {
+        // Map backend format to frontend format
+        const mappedCategories = response.categories.map(cat => ({
+          id: cat.id,
+          title: cat.title,
+          slug: cat.slug,
+          homeIconUrl: cat.homeIconUrl || "",
+          homeBadge: cat.homeBadge || "",
+          hasSaleBadge: cat.hasSaleBadge || false,
+          showOnHome: cat.showOnHome !== false,
+          isEmergencyAvailable: cat.isEmergencyAvailable || false,
+        }));
+
+        // Update catalog with fetched categories
+        const next = { ...catalog, categories: mappedCategories };
+        setCatalog(next);
+        saveCatalog(next);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      toast.error('Failed to load categories. Using cached data.');
+    } finally {
+      setFetching(false);
+    }
+  };
+
   // Fetch categories from API on mount or city change
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setFetching(true);
-        // Pass city filters
-        const params = { status: 'active' };
-        if (selectedCity) {
-          params.cityId = selectedCity;
-        }
-
-        const response = await categoryService.getAll(params);
-
-        if (response.success && response.categories) {
-          // Map backend format to frontend format
-          const mappedCategories = response.categories.map(cat => ({
-            id: cat.id, // Backend returns id (not _id)
-            title: cat.title,
-            slug: cat.slug,
-            homeIconUrl: cat.homeIconUrl || "",
-            homeBadge: cat.homeBadge || "",
-            hasSaleBadge: cat.hasSaleBadge || false,
-            showOnHome: cat.showOnHome !== false,
-            isEmergencyAvailable: cat.isEmergencyAvailable || false,
-          }));
-
-          // Update catalog with fetched categories
-          const next = { ...catalog, categories: mappedCategories };
-          setCatalog(next);
-          saveCatalog(next); // Also save to localStorage for backward compatibility
-        }
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-        toast.error('Failed to load categories. Using cached data.');
-      } finally {
-        setFetching(false);
-      }
-    };
-
     fetchCategories();
-  }, [selectedCity]); // Re-fetch when city changes
+  }, [selectedCity]);
+
+  // Listen for cross-component category creation events (e.g. from ServiceWizard)
+  useEffect(() => {
+    const handleCategoryCreated = (e) => {
+      const newCat = e?.detail;
+      if (newCat && !newCat.parentId) {
+        // Optimistically add new root category to local state so it's immediately visible
+        // even when a city filter is active and the category may not have that cityId yet
+        const mapped = {
+          id: newCat.id || newCat._id,
+          title: newCat.title,
+          slug: newCat.slug,
+          homeIconUrl: newCat.homeIconUrl || "",
+          homeBadge: newCat.homeBadge || "",
+          hasSaleBadge: newCat.hasSaleBadge || false,
+          showOnHome: newCat.showOnHome !== false,
+          isEmergencyAvailable: newCat.isEmergencyAvailable || false,
+        };
+        setCatalog((prev) => {
+          const exists = (prev.categories || []).some((c) => c.id === mapped.id);
+          if (exists) return prev;
+          const next = { ...prev, categories: [...(prev.categories || []), mapped] };
+          saveCatalog(next);
+          return next;
+        });
+      }
+      // Also do a full refetch to keep data fresh
+      fetchCategories();
+    };
+    const handleCatalogUpdated = () => {
+      fetchCategories();
+    };
+    window.addEventListener('categoryCreated', handleCategoryCreated);
+    window.addEventListener('adminUserAppCatalogUpdated', handleCatalogUpdated);
+    return () => {
+      window.removeEventListener('categoryCreated', handleCategoryCreated);
+      window.removeEventListener('adminUserAppCatalogUpdated', handleCatalogUpdated);
+    };
+  }, [selectedCity]);
 
   useEffect(() => {
     if (!editing) {
@@ -488,11 +528,13 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4 text-sm font-semibold text-gray-600">{idx + 1}</td>
                     <td className="py-4 px-4">
-                      {c.homeIconUrl ? (
-                        <img src={toAssetUrl(c.homeIconUrl)} alt={c.title} className="h-10 w-10 object-contain rounded bg-gray-50 border border-gray-100" />
+                      {c.homeIconUrl || c.icon || c.iconUrl || c.imageUrl ? (
+                        <div className="w-10 h-10 rounded-xl border border-gray-200/80 bg-slate-50 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-2xs">
+                          <img src={toAssetUrl(c.homeIconUrl || c.icon || c.iconUrl || c.imageUrl)} alt={c.title} className="w-full h-full object-contain" />
+                        </div>
                       ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-400">No icon</span>
+                        <div className="w-10 h-10 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center shrink-0">
+                          <span className="text-xs text-gray-400 font-bold">{c.title?.charAt(0) || "—"}</span>
                         </div>
                       )}
                     </td>
@@ -582,48 +624,13 @@ const CategoriesPage = ({ catalog, setCatalog, selectedCity }) => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          <div>
-            <label className="block text-base font-bold text-gray-900 mb-2">Home Icon</label>
-            <div className="space-y-3">
-              <input
-                type="file"
-                accept="image/*"
-                disabled={uploadingIcon}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setUploadingIcon(true);
-                    try {
-                      const categorySlug = form.slug || form.title?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                      const folder = `Homster/${categorySlug}/icons`;
-                      const response = await serviceService.uploadImage(file, folder);
-                      if (response.success && response.imageUrl) {
-                        setForm((p) => ({ ...p, homeIconUrl: response.imageUrl }));
-                        toast.success("Icon uploaded successfully");
-                      } else {
-                        toast.error("Upload failed");
-                      }
-                    } catch (error) {
-                      console.error('Category icon upload error:', error);
-                      toast.error("Failed to upload image");
-                    } finally {
-                      setUploadingIcon(false);
-                    }
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {uploadingIcon && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                  <span className="text-sm font-medium">Uploading...</span>
-                </div>
-              )}
-              {form.homeIconUrl && !uploadingIcon && (
-                <img src={toAssetUrl(form.homeIconUrl)} alt="Icon Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
-              )}
-            </div>
-          </div>
+          <IconUploadWithPreview
+            value={form.homeIconUrl}
+            onChange={(url) => setForm((p) => ({ ...p, homeIconUrl: url }))}
+            folder="categories"
+            label="Home Icon (1:1 Squircle)"
+            helperText="Upload transparent PNG/SVG icon. Use checkerboard/dark toggle to verify alpha transparency."
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

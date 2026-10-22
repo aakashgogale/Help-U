@@ -100,6 +100,10 @@ const updateHomeContent = async (req, res) => {
         if (newItem.seeAllTargetCategoryId === '') newItem.seeAllTargetCategoryId = null;
         if (newItem.targetServiceId === '') newItem.targetServiceId = null;
         if (newItem.seeAllTargetServiceId === '') newItem.seeAllTargetServiceId = null;
+        if (newItem.zoneId === '' || newItem.zoneId === 'all') newItem.zoneId = null;
+        if (Array.isArray(newItem.zones)) {
+          newItem.zones = newItem.zones.filter(z => Boolean(z) && String(z) !== 'all');
+        }
 
         // Handle nested cards in categorySections
         if (Array.isArray(newItem.cards)) {

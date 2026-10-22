@@ -92,6 +92,10 @@ const couponSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'City'
   }],
+  zones: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone'
+  }],
 
   // Restricts the coupon to customers who have never completed a booking.
   firstBookingOnly: {

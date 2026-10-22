@@ -19,6 +19,7 @@ import DependencyModal from "./DependencyModal";
 import Modal from "./Modal";
 import ToggleSwitch from "./ToggleSwitch";
 import { slugify, toAssetUrl } from "../utils";
+import IconUploadWithPreview from "../../../components/IconUploadWithPreview";
 
 const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
   const [categories, setCategories] = useState([]);
@@ -52,7 +53,7 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { parentId: 'all' };
       if (selectedCity) params.cityId = selectedCity;
       const res = await categoryService.getAll(params);
       if (res?.success) {
@@ -70,6 +71,31 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
 
   useEffect(() => {
     fetchCategories();
+  }, [fetchCategories]);
+
+  // Listen for cross-component category creation events (e.g. from ServiceWizard)
+  useEffect(() => {
+    const handleCategoryCreated = (e) => {
+      const newCat = e?.detail;
+      if (newCat) {
+        // Optimistically add new category to local state so it appears immediately
+        setCategories((prev) => {
+          const id = newCat.id || newCat._id;
+          if (prev.some((c) => (c.id || c._id) === id)) return prev;
+          return [...prev, newCat];
+        });
+      }
+      fetchCategories();
+    };
+    const handleCatalogUpdated = () => {
+      fetchCategories();
+    };
+    window.addEventListener('categoryCreated', handleCategoryCreated);
+    window.addEventListener('adminUserAppCatalogUpdated', handleCatalogUpdated);
+    return () => {
+      window.removeEventListener('categoryCreated', handleCategoryCreated);
+      window.removeEventListener('adminUserAppCatalogUpdated', handleCatalogUpdated);
+    };
   }, [fetchCategories]);
 
   // Root categories
@@ -432,14 +458,16 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
                       {/* Title & Icon */}
                       <td className="py-2.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
-                          {category.homeIconUrl || category.iconUrl ? (
-                            <img
-                              src={toAssetUrl(category.homeIconUrl || category.iconUrl)}
-                              alt={category.title}
-                              className="w-8 h-8 rounded-lg object-contain bg-gray-50 border border-gray-200 p-0.5"
-                            />
+                          {category.homeIconUrl || category.icon || category.iconUrl || category.imageUrl ? (
+                            <div className="w-9 h-9 rounded-xl border border-gray-200/80 bg-slate-50 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-2xs">
+                              <img
+                                src={toAssetUrl(category.homeIconUrl || category.icon || category.iconUrl || category.imageUrl)}
+                                alt={category.title}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
                           ) : (
-                            <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs text-gray-400">
+                            <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs text-gray-500 shrink-0">
                               {category.title?.charAt(0) || "—"}
                             </div>
                           )}
@@ -590,18 +618,13 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                Icon URL
-              </label>
-              <input
-                type="text"
-                placeholder="https://res.cloudinary.com/..."
-                value={form.homeIconUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, homeIconUrl: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
+            <IconUploadWithPreview
+              value={form.homeIconUrl}
+              onChange={(url) => setForm((prev) => ({ ...prev, homeIconUrl: url }))}
+              folder="categories"
+              label="Category Icon (1:1 Squircle)"
+              helperText="Upload a transparent PNG or SVG icon. Use the transparency buttons above to test on light, dark and alpha checkerboard backgrounds."
+            />
 
             <div className="pt-2 border-t border-gray-100 space-y-3">
               <label className="flex items-center gap-2 cursor-pointer">

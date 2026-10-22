@@ -7,6 +7,7 @@ import ServiceCategories from './components/ServiceCategories';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { useCart } from '../../../../context/CartContext';
 import { useCity } from '../../../../context/CityContext';
+import { useZone } from '../../../../context/ZoneContext';
 import { useConfig } from '../../../../context/ConfigContext';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
@@ -102,6 +103,7 @@ const Home = () => {
   const { cartCount, addToCart } = useCart();
   const { currentCity, cities, selectCity, loading: cityLoading } = useCity();
   const { isScrapEnabled } = useConfig();
+  const { detectZone, zoneId, isOutOfZone, currentZone } = useZone();
 
   // Clean up legacy storage keys on mount
   useEffect(() => {
@@ -166,6 +168,7 @@ const Home = () => {
       localStorage.setItem('currentAddress', newAddress);
       if (typeof locationObj.lat === 'number' && typeof locationObj.lng === 'number') {
         try { localStorage.setItem('userCoords', JSON.stringify({ lat: locationObj.lat, lng: locationObj.lng })); } catch { /* ignore */ }
+        detectZone(locationObj.lat, locationObj.lng);
       }
 
       // Try to parse city from location object (Google Places)
@@ -224,6 +227,7 @@ const Home = () => {
 
                 // Cache coordinates so category ETA badges can use them
                 try { localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude })); } catch { /* ignore */ }
+                detectZone(latitude, longitude);
 
                 if (data.status === 'OK' && data.results.length > 0) {
                   const result = data.results[0];
@@ -281,7 +285,7 @@ const Home = () => {
   }, []);
 
   // Revisits render instantly from the last known data; fresh data loads in the background
-  const [initialSnapshot] = useState(() => publicCatalogService.peekHomeData(currentCity?._id || currentCity?.id));
+  const [initialSnapshot] = useState(() => publicCatalogService.peekHomeData(currentCity?._id || currentCity?.id, zoneId));
   const [categories, setCategories] = useState(() => mapCategories(initialSnapshot?.categories));
   const [homeContent, setHomeContent] = useState(() => initialSnapshot?.homeContent || null);
   const [loading, setLoading] = useState(() => !initialSnapshot);
@@ -308,7 +312,7 @@ const Home = () => {
       if (!hasDataRef.current) setLoading(true);
       try {
         const cityId = currentCity?._id || currentCity?.id;
-        const response = await publicCatalogService.getHomeData(cityId);
+        const response = await publicCatalogService.getHomeData(cityId, zoneId);
 
         if (response.success) {
           if (response.categories) setCategories(mapCategories(response.categories));
@@ -323,7 +327,7 @@ const Home = () => {
     };
 
     fetchData();
-  }, [currentCity]);
+  }, [currentCity, zoneId]);
   // Open category modal from navigation state (e.g. from Cart 'Add Services')
   useEffect(() => {
     if (!loading && categories.length > 0 && (location.state?.openCategoryId || location.state?.openCategoryName)) {
@@ -442,7 +446,12 @@ const Home = () => {
     if (!service) return;
     const cat = resolveServiceCategory(service);
     if (cat) {
-      handleCategoryClick({ ...cat, title: service.title || cat.title, slug: service.slug || cat.slug });
+      handleCategoryClick({
+        ...cat,
+        title: service.title || cat.title,
+        slug: service.slug || cat.slug,
+        image: service.imageUrl || service.image || cat.image
+      });
       return;
     }
     // Directly open ServiceCatalogModal with the clicked service
@@ -450,7 +459,7 @@ const Home = () => {
       id: service.id || service._id || service.slug,
       title: service.title,
       slug: service.slug || service.title?.toLowerCase().replace(/\s+/g, '-'),
-      image: service.image
+      image: service.imageUrl || service.image
     });
   };
 
@@ -458,7 +467,12 @@ const Home = () => {
     try {
       const linkedCat = findCategoryById(service.targetCategoryId);
       if (linkedCat) {
-        handleCategoryClick(linkedCat);
+        handleCategoryClick({
+          ...linkedCat,
+          title: service.title || linkedCat.title,
+          slug: service.slug || linkedCat.slug,
+          image: service.imageUrl || service.image || linkedCat.image
+        });
         return;
       }
 
@@ -558,6 +572,25 @@ const Home = () => {
         </motion.div>
 
         <main className="flex flex-col gap-7 sm:gap-8 max-w-screen-xl mx-auto w-full pb-20">
+          {/* Out of Zone Notice */}
+          {isOutOfZone && (
+            <div className="mx-4 sm:mx-6 -mb-3 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">📍</span>
+                <div>
+                  <p className="text-xs font-bold text-amber-900">Outside Service Area</p>
+                  <p className="text-[11px] text-amber-700">Some services may be unavailable at your current location.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(true)}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold whitespace-nowrap transition-colors shadow-sm"
+              >
+                Change Location
+              </button>
+            </div>
+          )}
             <>
               {/* Hero Section - Promo Carousel */}
               {homeContent?.isPromosVisible !== false && (homeContent?.promos || []).length > 0 && (
@@ -891,6 +924,7 @@ const Home = () => {
         category={selectedCategory}
         location={address}
         currentCity={currentCity}
+        zoneId={zoneId}
       />
 
       {/* "See all" screen for a home row */}

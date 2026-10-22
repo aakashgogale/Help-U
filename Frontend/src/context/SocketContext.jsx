@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { playNotificationSound, isSoundEnabled, playAlertRing } from '../utils/notificationSound';
 import { registerFCMToken } from '../services/pushNotificationService';
 import { setBookingConfigCache } from '../hooks/useBookingConfig';
+import { FiMessageCircle } from 'react-icons/fi';
 
 const SwipeableNotification = ({ t, data, onClick }) => {
   const x = useMotionValue(0);
@@ -202,9 +203,8 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('notification', (data) => {
       // console.log('🔔 App Notification received:', data);
 
-      // A chat message for the conversation already open on screen needs no toast.
-      if (data?.type === 'chat_message' && window.__activeChatBookingId &&
-        String(window.__activeChatBookingId) === String(data.relatedId)) {
+      // Dedicated chat_message socket event handles chat alerts with higher fidelity
+      if (data?.type === 'chat_message') {
         return;
       }
 
@@ -252,6 +252,71 @@ export const SocketProvider = ({ children }) => {
     // badge can react without holding its own socket listener.
     newSocket.on('chat_message', (data) => {
       window.dispatchEvent(new CustomEvent('bookingChatMessage', { detail: data }));
+
+      // If the chat modal is already open for this booking, do not show a notification toast
+      const isChatActive = window.__activeChatBookingId && String(window.__activeChatBookingId) === String(data?.bookingId);
+      if (isChatActive) return;
+
+      // Only notify if message was sent by the other party (not ourselves)
+      const senderType = data?.message?.senderType;
+      const isFromOther = (userType === 'user' && senderType === 'worker') || (userType === 'worker' && senderType === 'user');
+      if (!isFromOther) return;
+
+      if (isSoundEnabled(userType)) {
+        playNotificationSound();
+      }
+
+      const senderLabel = userType === 'user' ? 'Service Partner' : 'Customer';
+      const previewText = data?.message?.message || (data?.message?.attachments?.length ? '📷 Sent a photo' : 'New message');
+      const bookingId = data?.bookingId;
+
+      toast.custom((t) => (
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: t.visible ? 1 : 0, y: t.visible ? 0 : -20, scale: t.visible ? 1 : 0.95 }}
+          className="max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex items-center p-3.5 border border-blue-100 ring-1 ring-black/5 cursor-pointer dark:bg-gray-800 dark:border-gray-700"
+          onClick={() => {
+            toast.dismiss(t.id);
+            const targetPath = location.pathname.includes(`/booking/${bookingId}/track`)
+              ? `/user/booking/${bookingId}/track?chat=1`
+              : (userType === 'worker' ? `/worker/booking/${bookingId}?chat=1` : `/user/booking/${bookingId}?chat=1`);
+            navigate(targetPath);
+          }}
+        >
+          <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
+            <FiMessageCircle className="w-5 h-5" />
+          </div>
+          <div className="ml-3 flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                Message from {senderLabel}
+              </p>
+              <span className="text-[10px] text-gray-400">Just now</span>
+            </div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate mt-0.5">
+              {previewText}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toast.dismiss(t.id);
+              const targetPath = location.pathname.includes(`/booking/${bookingId}/track`)
+                ? `/user/booking/${bookingId}/track?chat=1`
+                : (userType === 'worker' ? `/worker/booking/${bookingId}?chat=1` : `/user/booking/${bookingId}?chat=1`);
+              navigate(targetPath);
+            }}
+            className="ml-3 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300 rounded-xl text-xs font-bold shrink-0 active:scale-95 transition-transform"
+          >
+            Reply
+          </button>
+        </motion.div>
+      ), {
+        id: `chat-toast-${bookingId}`,
+        duration: 4000,
+        position: 'top-right'
+      });
     });
     newSocket.on('chat_read', (data) => {
       window.dispatchEvent(new CustomEvent('bookingChatRead', { detail: data }));

@@ -16,14 +16,15 @@ const { validateCoupon, getAvailableCoupons } = require('../../services/couponSe
  */
 exports.validate = async (req, res) => {
   try {
-    const { code, orderAmount, categoryId, serviceId, cityId } = req.body || {};
+    const { code, orderAmount, categoryId, serviceId, cityId, zoneId } = req.body || {};
 
     const result = await validateCoupon(code, {
       userId: req.user.id,
       orderAmount,
       categoryId,
       serviceId,
-      cityId
+      cityId,
+      zoneId
     });
 
     if (!result.valid) {
@@ -64,7 +65,8 @@ exports.available = async (req, res) => {
       orderAmount: Number(req.query.orderAmount) || 0,
       categoryId: req.query.categoryId,
       serviceId: req.query.serviceId,
-      cityId: req.query.cityId
+      cityId: req.query.cityId,
+      zoneId: req.query.zoneId
     });
 
     res.status(200).json({ success: true, coupons });

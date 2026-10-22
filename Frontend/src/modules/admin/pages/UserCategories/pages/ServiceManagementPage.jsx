@@ -157,6 +157,27 @@ const ServiceManagementPage = ({ selectedCity: propCity }) => {
     loadHealth();
   }, [loadHealth]);
 
+  // Listen for category updates across components
+  useEffect(() => {
+    const handleCategoryUpdate = async () => {
+      try {
+        const catRes = await categoryService.getAll({ parentId: null });
+        if (catRes?.success) {
+          setCategories(catRes.categories || []);
+        }
+      } catch (err) {
+        console.error("Categories update error:", err);
+      }
+    };
+
+    window.addEventListener("categoryCreated", handleCategoryUpdate);
+    window.addEventListener("adminUserAppCatalogUpdated", handleCategoryUpdate);
+    return () => {
+      window.removeEventListener("categoryCreated", handleCategoryUpdate);
+      window.removeEventListener("adminUserAppCatalogUpdated", handleCategoryUpdate);
+    };
+  }, []);
+
   // Keep propCity synced
   useEffect(() => {
     if (propCity && propCity !== selectedCity) {
@@ -1696,6 +1717,7 @@ const ServiceManagementPage = ({ selectedCity: propCity }) => {
         categories={categories}
         brands={brands}
         cities={cities}
+        selectedCity={selectedCity}
         onSaved={() => {
           fetchServices();
           loadHealth();

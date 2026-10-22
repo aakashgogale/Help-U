@@ -46,6 +46,8 @@ const addToCart = async (req, res) => {
     const userId = req.user.id;
     const {
       serviceId,
+      variantId,
+      variantSnapshot,
       categoryId,
       title,
       description,
@@ -68,7 +70,7 @@ const addToCart = async (req, res) => {
       hours         // hourly only: duration chosen at add-to-cart time
     } = req.body;
 
-    console.log(`[AddToCart] Request details - Title: ${title}, Section: ${sectionTitle}`);
+    console.log(`[AddToCart] Request details - Title: ${title}, Section: ${sectionTitle}, Variant: ${variantId || 'none'}`);
 
     // Verify service exists (only if serviceId is provided)
     let service = null;
@@ -93,17 +95,32 @@ const addToCart = async (req, res) => {
     }
 
     // Two items only merge when they are truly the same purchase: same
-    // service/title and, for hourly services, the same duration. An hourly
-    // service booked for 2 hours and again for 3 hours must stay as separate
-    // lines — matching on title/serviceId alone would silently merge their
-    // quantities and lose the fact that they're different bookings.
+    // service/title, same variantId, and, for hourly services, the same duration.
     const existingItemIndex = cart.items.findIndex(item => {
-      const sameService = item.title === title && (!serviceId || item.serviceId?.toString() === serviceId);
-      if (!sameService) return false;
-      if (pricingType === 'hourly' || item.pricingType === 'hourly') {
-        return item.pricingType === pricingType && Number(item.hours) === Number(hours);
+      // 1. If serviceId is present on both, compare serviceId and variantId
+      if (serviceId && item.serviceId) {
+        if (item.serviceId.toString() !== serviceId.toString()) return false;
+        const itemVarId = String(item.variantId || '');
+        const targetVarId = String(variantId || '');
+        if (itemVarId !== targetVarId) return false;
+        if (pricingType === 'hourly' || item.pricingType === 'hourly') {
+          return item.pricingType === pricingType && Number(item.hours) === Number(hours);
+        }
+        return true;
       }
-      return true;
+
+      // 2. Otherwise compare exact title and variantId
+      if (item.title === title) {
+        const itemVarId = String(item.variantId || '');
+        const targetVarId = String(variantId || '');
+        if (itemVarId !== targetVarId) return false;
+        if (pricingType === 'hourly' || item.pricingType === 'hourly') {
+          return item.pricingType === pricingType && Number(item.hours) === Number(hours);
+        }
+        return true;
+      }
+
+      return false;
     });
 
     if (existingItemIndex !== -1) {
@@ -138,11 +155,13 @@ const addToCart = async (req, res) => {
         hours: hours ?? null
       };
 
-      // Only add serviceId and categoryId if they are provided
+      // Only add serviceId, variantId and categoryId if they are provided
       if (serviceId) newItem.serviceId = serviceId;
+      if (variantId) newItem.variantId = variantId;
+      if (variantSnapshot) newItem.variantSnapshot = variantSnapshot;
       if (categoryId) newItem.categoryId = categoryId;
 
-      console.log(`[AddToCart] Adding new item: ${title}`);
+      console.log(`[AddToCart] Adding new item: ${title}${variantId ? ` (Variant: ${variantId})` : ''}`);
       cart.items.push(newItem);
     }
 

@@ -461,12 +461,16 @@ const lastHomeTimestamps = new Map();
 
 export const publicCatalogService = {
   // Get all active categories (cached for 5 minutes)
-  getCategories: async (cityId) => {
-    const cacheKey = `public:categories:${cityId || 'default'}`;
+  getCategories: async (cityId, zoneId) => {
+    const cacheKey = `public:categories:${cityId || 'default'}:${zoneId || 'all'}`;
     const cached = apiCache.get(cacheKey);
     if (cached) return cached;
 
-    const query = cityId ? `?cityId=${cityId}` : '';
+    const params = new URLSearchParams();
+    if (cityId) params.append('cityId', cityId);
+    if (zoneId) params.append('zoneId', zoneId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
     const response = await api.get(`/public/categories${query}`);
     if (response.data.success) {
       apiCache.set(cacheKey, response.data, 300); // 5 minutes
@@ -481,6 +485,7 @@ export const publicCatalogService = {
     if (params.categorySlug) queryParams.append('categorySlug', params.categorySlug);
     if (params.search) queryParams.append('search', params.search);
     if (params.cityId) queryParams.append('cityId', params.cityId);
+    if (params.zoneId) queryParams.append('zoneId', params.zoneId);
 
     const cacheKey = `public:brands:${queryParams.toString()}`;
     const cached = apiCache.get(cacheKey);
@@ -500,6 +505,7 @@ export const publicCatalogService = {
     if (params.brandId) queryParams.append('brandId', params.brandId);
     if (params.brandSlug) queryParams.append('brandSlug', params.brandSlug);
     if (params.categoryId) queryParams.append('categoryId', params.categoryId);
+    if (params.zoneId) queryParams.append('zoneId', params.zoneId);
 
     const cacheKey = `public:services:${queryParams.toString()}`;
     const cached = apiCache.get(cacheKey);
@@ -512,12 +518,16 @@ export const publicCatalogService = {
     return response.data;
   },
 
-  getCatalog: async (idOrSlug, cityId) => {
-    const cacheKey = `public:catalog:${idOrSlug}:${cityId || 'all'}`;
+  getCatalog: async (idOrSlug, cityId, zoneId) => {
+    const cacheKey = `public:catalog:${idOrSlug}:${cityId || 'all'}:${zoneId || 'all'}`;
     const cached = apiCache.get(cacheKey);
     if (cached) return cached;
 
-    const query = cityId ? `?cityId=${cityId}` : '';
+    const params = new URLSearchParams();
+    if (cityId) params.append('cityId', cityId);
+    if (zoneId) params.append('zoneId', zoneId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
     const response = await api.get(`/public/categories/${idOrSlug}/catalog${query}`);
     if (response.data.success) {
       apiCache.set(cacheKey, response.data, 120);
@@ -540,12 +550,16 @@ export const publicCatalogService = {
   },
 
   // Get home content (cached for 2 minutes)
-  getHomeContent: async (cityId) => {
-    const cacheKey = `public:homeContent:${cityId || 'default'}`;
+  getHomeContent: async (cityId, zoneId) => {
+    const cacheKey = `public:homeContent:${cityId || 'default'}:${zoneId || 'all'}`;
     const cached = apiCache.get(cacheKey);
     if (cached) return cached;
 
-    const query = cityId ? `?cityId=${cityId}` : '';
+    const params = new URLSearchParams();
+    if (cityId) params.append('cityId', cityId);
+    if (zoneId) params.append('zoneId', zoneId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
     const response = await api.get(`/public/home-content${query}`);
     if (response.data.success) {
       apiCache.set(cacheKey, response.data, 120); // 2 minutes
@@ -554,12 +568,16 @@ export const publicCatalogService = {
   },
 
   // Get consolidated home data (cached for 2 minutes)
-  getHomeData: async (cityId) => {
-    const cacheKey = `public:homeData:${cityId || 'default'}`;
+  getHomeData: async (cityId, zoneId) => {
+    const cacheKey = `public:homeData:${cityId || 'default'}:${zoneId || 'all'}`;
     const cached = apiCache.get(cacheKey);
     if (cached) return cached;
 
-    const query = cityId ? `?cityId=${cityId}` : '';
+    const params = new URLSearchParams();
+    if (cityId) params.append('cityId', cityId);
+    if (zoneId) params.append('zoneId', zoneId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
     const response = await api.get(`/public/home-data${query}`);
     if (response.data.success) {
       apiCache.set(cacheKey, response.data, 120); // 2 minutes
@@ -569,11 +587,11 @@ export const publicCatalogService = {
     return response.data;
   },
 
-  // Last successful home data for this city, even if the 2-minute cache expired.
+  // Last successful home data for this city/zone, even if the 2-minute cache expired.
   // Lets Home render instantly on revisit while fresh data loads in the background.
   // Expires after 5 minutes so admin-created content appears without a hard refresh.
-  peekHomeData: (cityId) => {
-    const cacheKey = `public:homeData:${cityId || 'default'}`;
+  peekHomeData: (cityId, zoneId) => {
+    const cacheKey = `public:homeData:${cityId || 'default'}:${zoneId || 'all'}`;
     const fromApi = apiCache.get(cacheKey);
     if (fromApi) return fromApi;
     const ts = lastHomeTimestamps.get(cacheKey);
