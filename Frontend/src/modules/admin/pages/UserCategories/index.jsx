@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { ensureIds, loadCatalog } from "./utils";
 import HomePage from "./pages/HomePage";
 import CategoriesPage from "./pages/CategoriesPage";
-import ServicesPage from "./pages/ServicesPage";
 import BrandsPage from "./pages/BrandsPage";
 import WorkerServicesPage from "./pages/WorkerServicesPage";
 import WorkerPartsPage from "./pages/WorkerPartsPage";
@@ -96,6 +95,7 @@ const UserCategories = () => {
             <Route index element={<Navigate to="service-management" replace />} />
             <Route path="home" element={<HomePage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
             <Route path="service-management" element={<ServiceManagementPage selectedCity={selectedCity} />} />
+            <Route path="services" element={<Navigate to="service-management" replace />} />
             <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
             <Route path="sections" element={<HomeSectionsManagerPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
             <Route path="catalog" element={<ServiceManagementPage selectedCity={selectedCity} />} />
