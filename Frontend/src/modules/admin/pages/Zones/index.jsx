@@ -115,26 +115,113 @@ const ZonesPage = () => {
   const [drawingPoints, setDrawingPoints] = useState([]);
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
 
+  // Quick Add City state
+  const [showAddCityModal, setShowAddCityModal] = useState(false);
+  const [newCityForm, setNewCityForm] = useState({ name: "", state: "Madhya Pradesh" });
+  const [addingCity, setAddingCity] = useState(false);
+
   const mapRef = useRef(null);
   const editablePolygonRef = useRef(null);
   const pathListenersRef = useRef([]);
+
+  // Fetch cities callback
+  const fetchCities = useCallback(async () => {
+    try {
+      const cityRes = await cityService.getAll();
+      if (cityRes?.success) {
+        setCities((cityRes.cities || []).filter((c) => c.isActive !== false));
+      }
+    } catch (err) {
+      console.error("Fetch cities error:", err);
+    }
+  }, []);
 
   // Fetch initial cities & categories
   useEffect(() => {
     const init = async () => {
       try {
-        const [cityRes, catRes] = await Promise.all([
-          cityService.getAll(),
+        const [, catRes] = await Promise.all([
+          fetchCities(),
           categoryService.getAll({ parentId: null }),
         ]);
-        if (cityRes?.success) setCities((cityRes.cities || []).filter((c) => c.isActive !== false));
         if (catRes?.success) setCategories(catRes.categories || []);
       } catch (err) {
         console.error("Init error:", err);
       }
     };
     init();
-  }, []);
+  }, [fetchCities]);
+
+  // Handle Quick Add City
+  const handleQuickAddCity = async (e) => {
+    e?.preventDefault();
+    const trimmedName = (newCityForm.name || "").trim();
+    const trimmedState = (newCityForm.state || "").trim() || "Madhya Pradesh";
+    if (!trimmedName) {
+      toast.error("Please enter a city name");
+      return;
+    }
+
+    // 1. Check if city already exists in loaded cities
+    const existing = (cities || []).find(
+      (c) => c.name?.toLowerCase().trim() === trimmedName.toLowerCase()
+    );
+    if (existing) {
+      const existingId = existing.id || existing._id;
+      toast.success(`City "${existing.name}" is already available and selected!`);
+      handleFormCityChange(existingId);
+      setSelectedCityId(existingId);
+      setShowAddCityModal(false);
+      setNewCityForm({ name: "", state: "Madhya Pradesh" });
+      return;
+    }
+
+    try {
+      setAddingCity(true);
+      const res = await cityService.create({
+        name: trimmedName,
+        state: trimmedState,
+        country: "India",
+        isActive: true,
+      });
+      if (res?.success) {
+        const cityName = res.city?.name || trimmedName;
+        toast.success(
+          res.alreadyExisted
+            ? `City "${cityName}" is already available and selected!`
+            : `City "${cityName}" added successfully!`
+        );
+        await fetchCities();
+        const targetId = res.city?._id || res.city?.id;
+        if (targetId) {
+          handleFormCityChange(targetId);
+          setSelectedCityId(targetId);
+        }
+        setShowAddCityModal(false);
+        setNewCityForm({ name: "", state: "Madhya Pradesh" });
+      } else {
+        toast.error(res?.message || "Failed to add city");
+      }
+    } catch (err) {
+      console.error("Quick add city error:", err);
+      // Check if city exists now in list or error message indicates it
+      const matchedCity = (cities || []).find(
+        (c) => c.name?.toLowerCase().trim() === trimmedName.toLowerCase()
+      );
+      if (matchedCity) {
+        const matchedId = matchedCity.id || matchedCity._id;
+        toast.success(`City "${matchedCity.name}" is already available and selected!`);
+        handleFormCityChange(matchedId);
+        setSelectedCityId(matchedId);
+        setShowAddCityModal(false);
+        setNewCityForm({ name: "", state: "Madhya Pradesh" });
+      } else {
+        toast.error(err.response?.data?.message || err.message || "Failed to add city");
+      }
+    } finally {
+      setAddingCity(false);
+    }
+  };
 
   const fetchZones = useCallback(async () => {
     try {
@@ -547,21 +634,32 @@ const ZonesPage = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* City Filter */}
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">
-            <FiFilter className="w-3.5 h-3.5 text-gray-500" />
-            <select
-              value={selectedCityId}
-              onChange={(e) => setSelectedCityId(e.target.value)}
-              className="text-xs bg-transparent border-none focus:outline-none font-medium text-gray-700 cursor-pointer"
+          {/* City Filter & Add City */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">
+              <FiFilter className="w-3.5 h-3.5 text-gray-500" />
+              <select
+                value={selectedCityId}
+                onChange={(e) => setSelectedCityId(e.target.value)}
+                className="text-xs bg-transparent border-none focus:outline-none font-medium text-gray-700 cursor-pointer"
+              >
+                <option value="">All Operating Cities</option>
+                {(cities || []).map((city) => (
+                  <option key={city.id || city._id} value={city.id || city._id}>
+                    {city.name} ({city.state || "India"})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddCityModal(true)}
+              title="Add New Operating City"
+              className="px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors flex items-center gap-1 shadow-sm"
             >
-              <option value="">All Operating Cities</option>
-              {(cities || []).map((city) => (
-                <option key={city.id || city._id} value={city.id || city._id}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
+              <FiPlus className="w-3.5 h-3.5" />
+              <span>City</span>
+            </button>
           </div>
 
           <button
@@ -1013,9 +1111,19 @@ const ZonesPage = () => {
 
               {/* City Selection */}
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Operating City <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                    Operating City <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCityModal(true)}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+                    title="Add a new city if not listed"
+                  >
+                    <FiPlus className="w-3 h-3" /> Add City
+                  </button>
+                </div>
                 <select
                   value={form.cityId}
                   onChange={(e) => handleFormCityChange(e.target.value)}
@@ -1028,6 +1136,9 @@ const ZonesPage = () => {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[10.5px] text-gray-500 leading-normal">
+                  💡 A Zone is an operational area/boundary inside this city (e.g. Vijay Nagar in Indore). Selecting a city automatically centers Google Maps on it.
+                </p>
               </div>
 
               {/* Zone Boundary Tool */}
@@ -1269,6 +1380,84 @@ const ZonesPage = () => {
                 {saving ? "Saving..." : editingZone ? "Update Zone" : "Create Zone"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add City Modal */}
+      {showAddCityModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden p-5">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <FiMap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">Add Operating City</h3>
+                  <p className="text-[11px] text-gray-500">e.g. Indore, Ratlam, Ujjain, Bhopal</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCityModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddCity} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  City Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Indore, Ratlam, Ujjain"
+                  value={newCityForm.name}
+                  onChange={(e) => setNewCityForm((p) => ({ ...p, name: e.target.value }))}
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  State
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Madhya Pradesh"
+                  value={newCityForm.state}
+                  onChange={(e) => setNewCityForm((p) => ({ ...p, state: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-900 leading-relaxed">
+                📍 <strong>Tip:</strong> After adding a city, it will be automatically selected and Google Maps will center on it so you can draw your zone.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCityModal(false)}
+                  disabled={addingCity}
+                  className="px-3.5 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingCity || !newCityForm.name.trim()}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  {addingCity ? "Adding..." : "Add City"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

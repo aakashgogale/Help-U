@@ -7,18 +7,82 @@ const Service = require('../models/Service');
 // Create Plan
 exports.createPlan = async (req, res) => {
   try {
-    console.log('DEBUG: Create Plan Body:', JSON.stringify(req.body, null, 2));
-    const { name, price, highlights, validityDays, freeCategories, freeBrands, freeServices, bonusServices } = req.body;
+    const {
+      name,
+      tagline,
+      description,
+      price,
+      validityMonths,
+      validityDays,
+      duration,
+      highlights,
+      freeCategories,
+      freeServices,
+      bonusServices,
+      isActive,
+      isPopular,
+      sortOrder
+    } = req.body;
 
-    // Check if plan exists
-    const existingPlan = await Plan.findOne({ name });
-    if (existingPlan) {
-      return res.status(400).json({ success: false, message: 'Plan with this name already exists' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Plan name is required' });
     }
 
-    const plan = new Plan({ name, price, highlights, validityDays, freeCategories, freeBrands, freeServices, bonusServices });
+    if (price === undefined || price === null || isNaN(price)) {
+      return res.status(400).json({ success: false, message: 'Valid plan price is required' });
+    }
+
+    // Check if plan exists with same name
+    const existingPlan = await Plan.findOne({ name: name.trim() });
+    if (existingPlan) {
+      return res.status(400).json({
+        success: false,
+        message: `Plan with name "${name.trim()}" already exists. Please choose a different name or edit the existing plan.`
+      });
+    }
+
+    const months = Number(validityMonths) > 0 ? Number(validityMonths) : 1;
+    const days = Number(validityDays) > 0 ? Number(validityDays) : (months * 30);
+    const durationLabel = duration && duration.trim()
+      ? duration.trim()
+      : `${months} ${months === 1 ? 'Month' : 'Months'}`;
+
+    const plan = new Plan({
+      name: name.trim(),
+      tagline: tagline ? tagline.trim() : '',
+      description: description ? description.trim() : '',
+      price: Number(price),
+      validityMonths: months,
+      validityDays: days,
+      duration: durationLabel,
+      highlights: Array.isArray(highlights) ? highlights.filter(h => h && String(h).trim()) : [],
+      freeCategories: freeCategories || [],
+      freeServices: freeServices || [],
+      bonusServices: bonusServices || [],
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+      isPopular: Boolean(isPopular),
+      sortOrder: Number(sortOrder) || 0
+    });
+
     await plan.save();
-    res.status(201).json({ success: true, data: plan });
+
+    // Populate references before returning
+    const populatedPlan = await Plan.findById(plan._id)
+      .populate('freeCategories', 'title')
+      .populate({
+        path: 'freeServices',
+        select: 'title categoryId basePrice price',
+        populate: { path: 'categoryId', select: 'title' }
+      })
+      .populate({
+        path: 'bonusServices',
+        populate: [
+          { path: 'categoryId', select: 'title' },
+          { path: 'serviceId', select: 'title basePrice price iconUrl description categoryId brandId status' }
+        ]
+      });
+
+    res.status(201).json({ success: true, data: populatedPlan || plan });
   } catch (error) {
     console.error('Create Plan Error:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal Server Error' });
@@ -28,7 +92,6 @@ exports.createPlan = async (req, res) => {
 // Get All Plans (Public/User/Admin)
 exports.getAllPlans = async (req, res) => {
   try {
-    // Admin might want to see inactive ones too, but for now let's show all or filter by query
     const filter = {};
     if (req.query.activeOnly === 'true') {
       filter.isActive = true;
@@ -38,17 +101,18 @@ exports.getAllPlans = async (req, res) => {
       .populate('freeCategories', 'title')
       .populate({
         path: 'freeServices',
-        select: 'title categoryId',
+        select: 'title categoryId basePrice price',
         populate: { path: 'categoryId', select: 'title' }
       })
       .populate({
         path: 'bonusServices',
         populate: [
           { path: 'categoryId', select: 'title' },
-          { path: 'serviceId', select: 'title basePrice iconUrl description categoryId brandId status' }
+          { path: 'serviceId', select: 'title basePrice price iconUrl description categoryId brandId status' }
         ]
       })
-      .sort({ price: 1 });
+      .sort({ sortOrder: 1, price: 1 });
+
     res.status(200).json({ success: true, data: plans });
   } catch (error) {
     console.error('Get All Plans Error:', error);
@@ -63,16 +127,17 @@ exports.getPlanById = async (req, res) => {
       .populate('freeCategories', 'title')
       .populate({
         path: 'freeServices',
-        select: 'title categoryId',
+        select: 'title categoryId basePrice price',
         populate: { path: 'categoryId', select: 'title' }
       })
       .populate({
         path: 'bonusServices',
         populate: [
           { path: 'categoryId', select: 'title' },
-          { path: 'serviceId', select: 'title basePrice iconUrl description categoryId brandId status' }
+          { path: 'serviceId', select: 'title basePrice price iconUrl description categoryId brandId status' }
         ]
       });
+
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
     res.status(200).json({ success: true, data: plan });
   } catch (error) {
@@ -83,23 +148,57 @@ exports.getPlanById = async (req, res) => {
 // Update Plan
 exports.updatePlan = async (req, res) => {
   try {
-    console.log('DEBUG: Update Plan ID:', req.params.id);
-    console.log('DEBUG: Update Plan Body:', JSON.stringify(req.body, null, 2));
-    const plan = await Plan.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Format fields if present
+    if (updateData.name) {
+      updateData.name = updateData.name.trim();
+    }
+
+    if (updateData.price !== undefined) {
+      updateData.price = Number(updateData.price);
+    }
+
+    if (updateData.validityMonths !== undefined) {
+      const months = Number(updateData.validityMonths) > 0 ? Number(updateData.validityMonths) : 1;
+      updateData.validityMonths = months;
+      if (!updateData.validityDays) {
+        updateData.validityDays = months * 30;
+      }
+      if (!updateData.duration) {
+        updateData.duration = `${months} ${months === 1 ? 'Month' : 'Months'}`;
+      }
+    }
+
+    if (updateData.highlights && Array.isArray(updateData.highlights)) {
+      updateData.highlights = updateData.highlights.filter(h => h && String(h).trim());
+    }
+
+    const plan = await Plan.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
+      .populate('freeCategories', 'title')
+      .populate({
+        path: 'freeServices',
+        select: 'title categoryId basePrice price',
+        populate: { path: 'categoryId', select: 'title' }
+      })
+      .populate({
+        path: 'bonusServices',
+        populate: [
+          { path: 'categoryId', select: 'title' },
+          { path: 'serviceId', select: 'title basePrice price iconUrl description categoryId brandId status' }
+        ]
+      });
+
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
     res.status(200).json({ success: true, data: plan });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Update Plan Error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal Server Error' });
   }
 };
 
-// Delete Plan (Soft delete preferred usually, but user might want hard delete for simple management. 
-// Given 'isActive' field, I'll toggle it or delete. 
-// Let's support hard delete for management panel if requested, but let's do soft delete by setting isActive=false usually.
-// However, the user request asks to 'add cards', 'manage'. Usually 'delete' means remove.
-// I will implement actual delete for now, or toggle active.
-// Let's implement DELETE as delete, and PUT to toggle active.
-
+// Delete Plan
 exports.deletePlan = async (req, res) => {
   try {
     const plan = await Plan.findByIdAndDelete(req.params.id);
@@ -109,3 +208,4 @@ exports.deletePlan = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

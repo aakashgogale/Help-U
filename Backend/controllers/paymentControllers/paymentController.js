@@ -879,7 +879,8 @@ const calculateUpgradeAmount = (currentPlan, newPlanPrice) => {
 
   if (expiry <= now) return { amount: newPlanPrice, credit: 0 };
 
-  const totalDuration = 30 * 24 * 60 * 60 * 1000;
+  const planMonths = currentPlan.validityMonths || (currentPlan.duration ? parseInt(currentPlan.duration) : 1) || 1;
+  const totalDuration = Math.max(30, planMonths * 30) * 24 * 60 * 60 * 1000;
   const remainingTime = expiry.getTime() - now.getTime();
 
   let remainingRatio = remainingTime / totalDuration;
@@ -920,11 +921,6 @@ const getUpgradeDetails = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-
-
-
-
 
 const createPlanOrder = async (req, res) => {
   try {
@@ -968,24 +964,31 @@ const verifyPlanPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId } = req.body;
 
-    // Import verifyPayment if needed, but it's destructured at top
     const isValid = verifyPayment(razorpay_order_id, razorpay_payment_id, razorpay_signature);
     if (!isValid) return res.status(400).json({ success: false, message: 'Invalid signature' });
 
     const plan = await Plan.findById(planId);
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+
     const user = await User.findById(req.user.id);
 
-    const validityDays = plan.validityDays || 30;
+    const validityMonths = plan.validityMonths || (plan.duration ? parseInt(plan.duration) : 1) || 1;
+    const validityDays = plan.validityDays || (validityMonths * 30);
+    const expiry = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
+
     user.plans = {
       isActive: true,
+      planId: plan._id,
       name: plan.name,
-      expiry: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
+      duration: plan.duration || `${validityMonths} ${validityMonths === 1 ? 'Month' : 'Months'}`,
+      validityMonths: validityMonths,
+      expiry: expiry,
       price: plan.price
     };
 
     await user.save();
 
-    res.status(200).json({ success: true, message: 'Plan activated' });
+    res.status(200).json({ success: true, message: 'Plan activated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

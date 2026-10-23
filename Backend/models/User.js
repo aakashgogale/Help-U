@@ -105,9 +105,22 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Plan',
+      default: null
+    },
     name: {
       type: String,
       default: null
+    },
+    duration: {
+      type: String,
+      default: ''
+    },
+    validityMonths: {
+      type: Number,
+      default: 1
     },
     expiry: {
       type: Date,

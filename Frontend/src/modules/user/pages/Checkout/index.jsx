@@ -945,14 +945,16 @@ const Checkout = () => {
 
         if (plansRes.success && userRes.success && userRes.user?.plans?.isActive) {
           const userPlanName = userRes.user.plans.name;
-          const activePlan = plansRes.data.find(p => p.name === userPlanName);
+          const userPlanId = userRes.user.plans.planId;
+          const activePlan = plansRes.data.find(p => (userPlanId && p._id === userPlanId) || p.name === userPlanName);
 
           if (activePlan) {
             setPlanBenefits({
               name: activePlan.name,
               freeCategories: activePlan.freeCategories || [],
               freeBrands: activePlan.freeBrands || [],
-              freeServices: activePlan.freeServices || []
+              freeServices: activePlan.freeServices || [],
+              bonusServices: activePlan.bonusServices || []
             });
 
           }
@@ -968,7 +970,7 @@ const Checkout = () => {
     }
   }, [plan]);
 
-  const [planBenefits, setPlanBenefits] = useState({ name: '', freeCategories: [], freeBrands: [], freeServices: [] });
+  const [planBenefits, setPlanBenefits] = useState({ name: '', freeCategories: [], freeBrands: [], freeServices: [], bonusServices: [] });
 
   // Helper to normalize MongoDB IDs (handles strings, objects with _id, and $oid)
   const normalizeId = (id) => {
@@ -1000,7 +1002,12 @@ const Checkout = () => {
       return normalizeId(svc) === itemServiceId;
     });
 
-    if (isFreeCategory || isFreeBrand || isFreeService) {
+    const isBonusService = itemServiceId && (planBenefits.bonusServices || []).some(bs => {
+      const bsServiceId = normalizeId(bs.serviceId?._id || bs.serviceId);
+      return bsServiceId === itemServiceId;
+    });
+
+    if (isFreeCategory || isFreeBrand || isFreeService || isBonusService) {
       return 0;
     }
     return item.price || 0;

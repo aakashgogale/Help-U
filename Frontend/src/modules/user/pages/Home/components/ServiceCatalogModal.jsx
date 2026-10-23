@@ -2758,6 +2758,49 @@ const CATALOG_DATA = {
       }
     ]
   },
+
+  'microwave': {
+    title: 'Microwave',
+    etaMinutes: 45,
+    rating: '4.83',
+    bookings: '360K bookings',
+    hero: {
+      tag: 'Certified Pros',
+      title: 'Expert Microwave Repair',
+      startingPrice: '199',
+      image: '/appliance/microwave-repair.jpg'
+    },
+    coupon: {
+      title: 'Flat ₹100 off on ₹399+',
+      subtitle: 'Applicable on microwave repair bookings',
+      code: 'MICRO100'
+    },
+    subCategories: [
+      { id: 'micro-checkup', title: 'Inspection & Repair', icon: '/ServiceIcon/microwave.svg' }
+    ],
+    sections: [
+      {
+        id: 'micro-checkup',
+        title: 'Microwave Inspection & Repair',
+        items: [
+          {
+            id: 'micro-check',
+            title: 'Microwave Checkup & Diagnosis',
+            rating: '4.83',
+            reviews: '120K reviews',
+            price: 199,
+            originalPrice: 299,
+            duration: '30 mins',
+            image: '/appliance/microwave-repair.jpg',
+            bullets: [
+              'Complete heating test, turntable motor, magnetron and PCB diagnosis',
+              'Safety radiation leak check with calibrated equipment'
+            ]
+          }
+        ]
+      }
+    ]
+  },
   'painting': {
     title: 'Painting & Waterproofing',
     etaMinutes: 120,
@@ -3166,6 +3209,7 @@ const resolveCategoryKey = (categoryOrService) => {
   if (text.includes('wax') || text.includes('spatula')) return 'waxing';
 
   // Specific Appliances
+  if (text.includes('microwave') || text.includes('micro wave') || text.includes('micro-wave')) return 'microwave';
   if (text.includes('fridge') || text.includes('refrigerator')) return 'refrigerator';
   if (text.includes('purifier') || text.includes('ro prufier') || text.includes('ro purifier')) return 'water-purifier';
   if (text.includes('washing machine') || text.includes('wash machine')) return 'washing-machine';
@@ -3356,7 +3400,7 @@ const resolveServiceImage = (item, category, categoryTitle) => {
     if (itemTitle.includes('geyser') || itemTitle.includes('water heater') || catTitle.includes('geyser')) return '/services/geyser-repair.jpg';
     if (itemTitle.includes('chimney') || catTitle.includes('chimney')) return '/ServiceIcon/chimney.svg';
     if (itemTitle.includes('cooler') || catTitle.includes('cooler')) return '/services/cooler-repair.jpg';
-    if (itemTitle.includes('microwave') || catTitle.includes('microwave')) return '/ServiceIcon/microwave.svg';
+    if (itemTitle.includes('microwave') || catTitle.includes('microwave')) return '/appliance/microwave-repair.jpg';
     if (itemTitle.includes('dish') || catTitle.includes('dish')) return '/ServiceIcon/dishwasher.svg';
     if (itemTitle.includes('led') || itemTitle.includes('tv') || catTitle.includes('led')) return '/ServiceIcon/led-tv.svg';
     return '/appliance/ac-repair.jpg';
@@ -3446,8 +3490,15 @@ const ServiceCatalogModal = React.memo(({
       etaMinutes: cat.etaDefaultMinutes || category?.etaMinutes || category?.etaDefaultMinutes || base.etaMinutes,
       rating: cat.displayRating || category?.displayRating || base.rating,
       bookings: cat.bookingsLabel || category?.bookingsLabel || base.bookings,
-      hero: (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null) || base.hero,
-      coupon: catalogData?.bestCoupon || base.coupon || null,
+      hero: (() => {
+        const rawHero = (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null) || base.hero;
+        if (!rawHero) return null;
+        return {
+          ...rawHero,
+          image: rawHero.image || rawHero.imageUrl || (catalogKey === 'microwave' ? '/appliance/microwave-repair.jpg' : '')
+        };
+      })(),
+      coupon: (catalogData?.bestCoupon?.code ? catalogData.bestCoupon : null) || base.coupon || null,
       subCategories: (catalogData?.subCategories && catalogData.subCategories.length > 0)
         ? catalogData.subCategories.map(sc => ({
             id: sc._id || sc.slug,
@@ -3677,6 +3728,7 @@ const ServiceCatalogModal = React.memo(({
     if (catalogKey === 'kitchen-cleaning') return '/cleaning-essentials/kitchen-cleaning.svg';
     if (catalogKey === 'threading') return '/services/threading.jpg';
     if (catalogKey === 'waxing') return '/services/spatula-waxing.jpg';
+    if (catalogKey === 'microwave') return '/ServiceIcon/microwave.svg';
     if (catalogKey === 'refrigerator') return '/ServiceIcon/refrigerator.svg';
     if (catalogKey === 'washing-machine') return '/ServiceIcon/washing-machine.svg';
     if (catalogKey === 'water-purifier') return '/ServiceIcon/ro-purifier.svg';

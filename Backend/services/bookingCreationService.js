@@ -322,18 +322,21 @@ const placeBooking = async (userId, payload, options = {}) => {
 
   if (usePlanBenefits) {
     const Plan = require('../models/Plan');
-    const userPlan = await Plan.findOne({ name: user.plans.name });
+    const userPlan = (user.plans.planId ? await Plan.findById(user.plans.planId) : null)
+      || await Plan.findOne({ name: user.plans.name });
 
     if (!userPlan) {
       usePlanBenefits = false;
       paymentMethod = 'pay_at_home';
     } else {
       const isCategoryCovered = categoryId && userPlan.freeCategories &&
-        userPlan.freeCategories.some((cat) => String(cat) === String(categoryId));
+        userPlan.freeCategories.some((cat) => String(cat?._id || cat) === String(categoryId));
       const isServiceCovered = serviceId && userPlan.freeServices &&
-        userPlan.freeServices.some((svc) => String(svc) === String(serviceId));
+        userPlan.freeServices.some((svc) => String(svc?._id || svc) === String(serviceId));
+      const isBonusCovered = serviceId && userPlan.bonusServices &&
+        userPlan.bonusServices.some((bs) => String(bs.serviceId?._id || bs.serviceId) === String(serviceId));
 
-      if (isCategoryCovered || isServiceCovered) {
+      if (isCategoryCovered || isServiceCovered || isBonusCovered) {
         basePrice = totalServiceValue > 0 ? totalServiceValue : (service.basePrice || 500);
         discount = basePrice; // Full discount
         tax = 0;

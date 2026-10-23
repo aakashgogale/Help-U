@@ -47,9 +47,21 @@ const PlanDetails = () => {
   if (!plan) return null;
 
   const currentPlan = user?.plans;
-  const isCurrent = currentPlan?.isActive && currentPlan?.name === plan.name;
+  const isCurrent = currentPlan?.isActive && (currentPlan?.planId === plan._id || currentPlan?.name === plan.name);
   const isUpgrade = currentPlan?.isActive && plan.price > (currentPlan?.price || 0);
   const isDowngradeOrSame = currentPlan?.isActive && plan.price <= (currentPlan?.price || 0) && !isCurrent;
+
+  const formatDuration = (p) => {
+    if (p.duration && String(p.duration).trim()) {
+      const d = String(p.duration).trim();
+      if (/months?|years?|days?/i.test(d)) return d;
+      return `${d} ${Number(d) === 1 ? 'Month' : 'Months'}`;
+    }
+    if (p.validityMonths) {
+      return `${p.validityMonths} ${p.validityMonths === 1 ? 'Month' : 'Months'}`;
+    }
+    return '1 Month';
+  };
 
   // Formatting date
   const formatDate = (dateString) => {
@@ -99,6 +111,11 @@ const PlanDetails = () => {
           <div className="flex items-center gap-2 mb-2">
             <FiStar className="w-5 h-5 fill-yellow-400 text-yellow-400" />
             <span className="text-xs font-bold uppercase tracking-[0.2em] opacity-80">Subscription Plan</span>
+            {plan.isPopular && (
+              <span className="bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">
+                Popular
+              </span>
+            )}
           </div>
           <h1 className="text-4xl font-black">{plan.name}</h1>
           {plan.tagline && (
@@ -126,7 +143,7 @@ const PlanDetails = () => {
               <p className="text-gray-500 text-sm font-medium mb-1">Total Pricing</p>
               <div className="flex items-baseline">
                 <span className={`text-4xl font-black ${theme.color}`}>₹{plan.price}</span>
-                <span className="text-gray-400 text-sm ml-1">/ {plan.duration || '1'} Months</span>
+                <span className="text-gray-400 text-sm ml-1">/ {formatDuration(plan)}</span>
               </div>
             </div>
             {isCurrent && (
@@ -136,6 +153,20 @@ const PlanDetails = () => {
               </span>
             )}
           </div>
+
+          {plan.highlights && plan.highlights.length > 0 && (
+            <div className="pt-4 border-t border-gray-100 mb-6">
+              <p className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Key Highlights</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {plan.highlights.map((hl, hIdx) => (
+                  <div key={hIdx} className="flex items-center gap-2.5 text-sm font-bold text-slate-700">
+                    <FiCheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{hl}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-6">
             <h3 className="font-bold text-gray-900 border-b border-gray-50 pb-3">Plan Benefits</h3>
@@ -399,7 +430,7 @@ const PlanDetails = () => {
                       id: plan._id,
                       name: plan.name,
                       price: plan.price,
-                      description: plan.description || `${plan.duration || 'Monthly'} Plan`
+                      description: plan.description || `${formatDuration(plan)} Plan`
                     },
                     isUpgrade
                   }

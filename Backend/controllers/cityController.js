@@ -64,15 +64,59 @@ exports.getCity = catchAsync(async (req, res) => {
  * @access  Private (Super Admin)
  */
 exports.createCity = catchAsync(async (req, res) => {
-  req.body.createdBy = req.user.id;
+  const name = (req.body.name || '').trim();
+  const slug = req.body.slug || name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/(^-|-$)/g, '');
 
-  const city = await City.create(req.body);
-
-  res.status(201).json({
-    success: true,
-    message: 'City created successfully',
-    city
+  // Check if city with this slug or case-insensitive name already exists
+  let existingCity = await City.findOne({
+    $or: [
+      { slug },
+      { name: new RegExp(`^${name}$`, 'i') }
+    ]
   });
+
+  if (existingCity) {
+    if (!existingCity.isActive) {
+      existingCity.isActive = true;
+      await existingCity.save();
+    }
+    return res.status(200).json({
+      success: true,
+      message: `City "${existingCity.name}" is already registered and ready to use`,
+      city: existingCity,
+      alreadyExisted: true
+    });
+  }
+
+  req.body.createdBy = req.user?.id || null;
+  req.body.name = name;
+  req.body.slug = slug;
+
+  try {
+    const city = await City.create(req.body);
+    res.status(201).json({
+      success: true,
+      message: 'City created successfully',
+      city
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      const cityAgain = await City.findOne({ slug });
+      if (cityAgain) {
+        return res.status(200).json({
+          success: true,
+          message: `City "${cityAgain.name}" is already registered and ready to use`,
+          city: cityAgain,
+          alreadyExisted: true
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `City "${name}" already exists`
+      });
+    }
+    throw err;
+  }
 });
 
 /**
