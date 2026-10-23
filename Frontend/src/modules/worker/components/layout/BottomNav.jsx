@@ -71,23 +71,11 @@ const BottomNav = memo(() => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-white"
+      className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
       style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
         zIndex: 40,
         willChange: 'transform',
         transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
-        borderTop: '2px solid rgba(0, 0, 0, 0.35)',
-        borderTopLeftRadius: '20px',
-        borderTopRightRadius: '20px',
-        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.15), 0 -4px 12px rgba(0, 0, 0, 0.1), 0 -2px 6px rgba(0, 0, 0, 0.08)',
-        background: 'linear-gradient(to top, #FFFFFF 0%, #FAFAFA 100%)',
       }}
     >
       <div className="flex items-center justify-around px-2 py-2">
@@ -100,61 +88,30 @@ const BottomNav = memo(() => {
             <button
               key={item.path}
               onClick={() => handleNavClick(item.path)}
-              className="flex flex-col items-center justify-center relative w-16 h-14 rounded-xl transition-all duration-200 group hover:scale-105"
+              className="flex flex-col items-center justify-center relative w-16 h-13 rounded-xl transition-all duration-200"
             >
-              {/* Active Indicator Bar - Gradient Accent */}
+              {/* Active Indicator Bar */}
               {isActive && (
                 <div
-                  className="absolute -top-2 w-10 h-1 rounded-b-full"
-                  style={{
-                    background: themeColors.gradient,
-                    boxShadow: `0 2px 8px ${themeColors.brand.teal}4D`,
-                  }}
-                />
-              )}
-
-              {/* Active Background - Very Subtle Teal Tint */}
-              {isActive && (
-                <div
-                  className="absolute inset-0 rounded-xl scale-90"
-                  style={{ backgroundColor: `${themeColors.brand.teal}0A` }}
+                  className="absolute -top-2 w-8 h-1 rounded-full bg-[#163B66]"
                 />
               )}
 
               <div className="relative z-10 flex flex-col items-center justify-center">
                 <div className="relative mb-0.5">
                   <IconComponent
-                    className={`w-6 h-6 transition-all duration-300 ${isActive ? 'scale-110' : 'text-gray-400 group-hover:text-gray-600'}`}
-                    style={{
-                      color: isActive ? themeColors.button : '#9CA3AF',
-                      filter: isActive ? `drop-shadow(0 2px 4px ${themeColors.brand.teal}1A)` : 'none'
-                    }}
+                    className={`w-5 h-5 transition-all duration-200 ${isActive ? 'text-[#163B66] scale-105' : 'text-slate-400 group-hover:text-slate-600'}`}
                   />
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
-                      className="absolute bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center"
-                      style={{
-                        top: '-6px',
-                        right: '-8px',
-                        minWidth: '18px',
-                        height: '18px',
-                        padding: '0 4px',
-                        fontSize: '10px',
-                        lineHeight: '18px',
-                        border: '2px solid white',
-                        boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
-                        zIndex: 50,
-                      }}
+                      className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white shadow-xs z-50"
                     >
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
                 </div>
                 <span
-                  className={`text-[10px] transition-colors duration-300 ${isActive ? 'font-bold' : 'font-medium text-gray-500'}`}
-                  style={{
-                    color: isActive ? themeColors.button : '#6B7280',
-                  }}
+                  className={`text-[10px] transition-colors duration-200 ${isActive ? 'font-bold text-[#163B66]' : 'font-medium text-slate-500'}`}
                 >
                   {item.label}
                 </span>
