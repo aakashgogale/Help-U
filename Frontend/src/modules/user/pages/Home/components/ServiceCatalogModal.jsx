@@ -3144,7 +3144,7 @@ const CATALOG_DATA = {
 // Category Matcher Helper
 // =========================================================================
 const resolveCategoryKey = (categoryOrService) => {
-  if (!categoryOrService) return 'womens-salon';
+  if (!categoryOrService) return null;
   const slug = (categoryOrService.slug || '').toLowerCase().trim();
   const title = (categoryOrService.title || categoryOrService.name || '').toLowerCase().trim();
   const text = `${slug} ${title} ${categoryOrService.id || ''}`.replace(/[^a-z0-9]+/g, ' ');
@@ -3166,7 +3166,7 @@ const resolveCategoryKey = (categoryOrService) => {
   }
 
   // Car Wash
-  if (text.includes('car wash') || text.includes('car-wash') || text.includes('car clean') || text.includes('car')) {
+  if (text.includes('car wash') || text.includes('car-wash') || text.includes('car clean') || (/\bcar\b/.test(text) && !text.includes('carpet') && !text.includes('carpent'))) {
     return 'car-wash-at-home';
   }
 
@@ -3265,7 +3265,7 @@ const resolveCategoryKey = (categoryOrService) => {
     return 'cleaning';
   }
 
-  return 'electrician-services';
+  return null;
 };
 
 const EMPTY_CATALOG = { sections: [], subCategories: [] };
@@ -3482,33 +3482,47 @@ const ServiceCatalogModal = React.memo(({
   const hardcodedConfig = catalogKey && CATALOG_DATA[catalogKey];
 
   const catalogConfig = useMemo(() => {
-    const base = hardcodedConfig || EMPTY_CATALOG;
+    const isLive = backendServices && backendServices.length > 0;
+    const base = (!isLive && hardcodedConfig) ? hardcodedConfig : EMPTY_CATALOG;
     const cat = catalogData?.category || category || {};
     return {
       ...base,
-      title: cat.title || base.title,
-      etaMinutes: cat.etaDefaultMinutes || category?.etaMinutes || category?.etaDefaultMinutes || base.etaMinutes,
-      rating: cat.displayRating || category?.displayRating || base.rating,
-      bookings: cat.bookingsLabel || category?.bookingsLabel || base.bookings,
+      title: cat.title || (hardcodedConfig ? base.title : (category?.title || '')),
+      etaMinutes: cat.etaDefaultMinutes || category?.etaMinutes || category?.etaDefaultMinutes || base.etaMinutes || 30,
+      rating: cat.displayRating || category?.displayRating || base.rating || '4.8',
+      bookings: cat.bookingsLabel || category?.bookingsLabel || base.bookings || '1k+ bookings',
       hero: (() => {
-        const rawHero = (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null) || base.hero;
+        const rawHero = (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null) || (!isLive && hardcodedConfig ? base.hero : null);
         if (!rawHero) return null;
         return {
           ...rawHero,
           image: rawHero.image || rawHero.imageUrl || (catalogKey === 'microwave' ? '/appliance/microwave-repair.jpg' : '')
         };
       })(),
-      coupon: (catalogData?.bestCoupon?.code ? catalogData.bestCoupon : null) || base.coupon || null,
+      coupon: (() => {
+        if (catalogData?.bestCoupon?.code) {
+          const c = catalogData.bestCoupon;
+          return {
+            title: c.title || c.code || (c.discount ? `Save ${c.discount}` : 'Special Offer'),
+            subtitle: c.subtitle || c.description || (c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`),
+            code: c.code
+          };
+        }
+        if (!isLive && hardcodedConfig?.coupon) {
+          return hardcodedConfig.coupon;
+        }
+        return null;
+      })(),
       subCategories: (catalogData?.subCategories && catalogData.subCategories.length > 0)
         ? catalogData.subCategories.map(sc => ({
             id: sc._id || sc.slug,
             title: sc.title,
             icon: sc.icon || sc.homeIconUrl
           }))
-        : (base.subCategories || []),
-      sections: base.sections || []
+        : (!isLive && hardcodedConfig ? (base.subCategories || []) : []),
+      sections: (!isLive && hardcodedConfig) ? (base.sections || []) : []
     };
-  }, [hardcodedConfig, catalogData, category]);
+  }, [hardcodedConfig, catalogData, category, catalogKey, backendServices]);
 
   const categoryTitle = category?.title || catalogConfig.title;
 
@@ -3715,6 +3729,8 @@ const ServiceCatalogModal = React.memo(({
   }, [backendServices, catalogKey]);
 
   const defaultCategoryIcon = useMemo(() => {
+    if (category?.icon) return category.icon;
+    if (category?.iconUrl) return category.iconUrl;
     if (catalogKey === 'fan-repair') return '/services/fan-repair.jpg';
     if (catalogKey === 'home-wiring') return '/services/electrical/home-wiring.jpg';
     if (catalogKey === 'inverter') return '/services/electrical/inverter.jpg';
@@ -3741,7 +3757,7 @@ const ServiceCatalogModal = React.memo(({
     if (catalogKey === 'mens-salon') return '/services/mens-salon/haircut.jpg';
     if (catalogKey === 'womens-salon') return '/noteworthy/salon-luxe.jpg';
     return '/categories/all-services.svg';
-  }, [catalogKey]);
+  }, [category, catalogKey]);
 
   // Combined SubCategories (pills at top)
   const combinedSubCategories = useMemo(() => {
@@ -3767,6 +3783,25 @@ const ServiceCatalogModal = React.memo(({
       };
     });
 
+    const isLive = liveSections.length > 0 || (catalogData?.subCategories && catalogData.subCategories.length > 0);
+
+    if (isLive) {
+      const seenTitles = new Set(livePills.map(p => (p.title || '').toLowerCase().trim()));
+      const backendSubCats = (catalogData?.subCategories || [])
+        .filter(sc => !seenTitles.has((sc.title || '').toLowerCase().trim()))
+        .map(sc => ({
+          id: sc._id || sc.slug,
+          title: sc.title,
+          icon: sc.icon || sc.homeIconUrl || getCategoryIllustration(sc.title) || resolveServiceImage({ title: sc.title }, category, sc.title)
+        }));
+
+      return [...livePills, ...backendSubCats];
+    }
+
+    if (!hardcodedConfig) {
+      return [];
+    }
+
     const seenTitles = new Set(livePills.map(p => (p.title || '').toLowerCase().trim()));
     const catalogPills = (catalogConfig.subCategories || [])
       .filter(sc => !seenTitles.has((sc.title || '').toLowerCase().trim()))
@@ -3784,7 +3819,7 @@ const ServiceCatalogModal = React.memo(({
       });
 
     return [...livePills, ...catalogPills];
-  }, [liveSections, catalogConfig.subCategories, category, categoryTitle, catalogKey]);
+  }, [liveSections, catalogConfig.subCategories, catalogData?.subCategories, category, categoryTitle, catalogKey, hardcodedConfig]);
 
   // Set default active tab
   useEffect(() => {
@@ -3849,22 +3884,39 @@ const ServiceCatalogModal = React.memo(({
     fetchLiveData();
   }, [isOpen, category?.id, category?._id, category?.slug, currentCity, zoneId]);
 
-  // Combine curated sections with live backend services (LIVE AT TOP, deduplicated by section title)
+  // Combine curated sections with live backend services (LIVE EXCLUSIVE, deduplicated by section title)
   const combinedSections = useMemo(() => {
-    const seenSectionTitles = new Set();
-    const uniqueLiveSections = liveSections.filter(sec => {
-      const key = (sec.title || '').toLowerCase().trim();
-      if (seenSectionTitles.has(key)) return false;
-      seenSectionTitles.add(key);
-      return true;
-    });
+    // If live backend services are present, display ONLY live sections!
+    if (liveSections.length > 0) {
+      const seenSectionTitles = new Set();
+      let sections = liveSections.filter(sec => {
+        const key = (sec.title || '').toLowerCase().trim();
+        if (seenSectionTitles.has(key)) return false;
+        seenSectionTitles.add(key);
+        return true;
+      });
 
-    const uniqueCatalogSections = (catalogConfig.sections || []).filter(sec => {
-      const key = (sec.title || '').toLowerCase().trim();
-      return !seenSectionTitles.has(key);
-    });
+      // Filter by search query if any
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        sections = sections.map(sec => ({
+          ...sec,
+          items: (sec.items || []).filter(item =>
+            item.title.toLowerCase().includes(q) ||
+            (item.bullets || []).some(b => b.toLowerCase().includes(q))
+          )
+        })).filter(sec => (sec.items || []).length > 0);
+      }
 
-    let sections = [...uniqueLiveSections, ...uniqueCatalogSections];
+      return sections;
+    }
+
+    // Fallback: only when there are no live sections AND hardcodedConfig exists (legacy demo mode)
+    if (!hardcodedConfig) {
+      return [];
+    }
+
+    let sections = catalogConfig.sections || [];
 
     // Filter by search query if any
     if (searchQuery.trim()) {
@@ -3879,7 +3931,7 @@ const ServiceCatalogModal = React.memo(({
     }
 
     return sections;
-  }, [liveSections, catalogConfig.sections, searchQuery]);
+  }, [liveSections, catalogConfig.sections, hardcodedConfig, searchQuery]);
 
   // Cart calculations
   const cartItemMap = useMemo(() => {
@@ -4318,7 +4370,16 @@ const ServiceCatalogModal = React.memo(({
             {/* SECTIONS & DETAILED SERVICE CARDS */}
             {/* ========================================================================= */}
             <div className="px-4 py-4 space-y-6">
-              {combinedSections.map((section) => (
+              {combinedSections.length === 0 ? (
+                <div className="py-16 px-4 text-center">
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">
+                    <FiInfo className="w-8 h-8" />
+                  </div>
+                  <p className="text-base font-bold text-gray-700">No services available</p>
+                  <p className="text-xs text-gray-400 mt-1">Services for this category will appear here soon.</p>
+                </div>
+              ) : (
+                combinedSections.map((section) => (
                 <div
                   key={section.id}
                   ref={(el) => (sectionRefs.current[section.id] = el)}
@@ -4607,27 +4668,29 @@ const ServiceCatalogModal = React.memo(({
                     })}
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
 
           {/* ========================================================================= */}
           {/* FLOATING "☰ MENU" BUTTON (Positioned gracefully) */}
           {/* ========================================================================= */}
-          <div
-            className={`absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto transition-all duration-300 ${
-              totalCartCount > 0 ? 'bottom-23' : 'bottom-5'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(true)}
-              className="bg-[#1A1D20] text-white px-4 py-2 rounded-full font-bold text-[13px] flex items-center gap-1.5 shadow-2xl hover:bg-black active:scale-95 transition-all cursor-pointer border border-white/20"
+          {combinedSections.length > 0 && (
+            <div
+              className={`absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto transition-all duration-300 ${
+                totalCartCount > 0 ? 'bottom-23' : 'bottom-5'
+              }`}
             >
-              <FiMenu className="w-4 h-4" />
-              <span>Menu</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(true)}
+                className="bg-[#1A1D20] text-white px-4 py-2 rounded-full font-bold text-[13px] flex items-center gap-1.5 shadow-2xl hover:bg-black active:scale-95 transition-all cursor-pointer border border-white/20"
+              >
+                <FiMenu className="w-4 h-4" />
+                <span>Menu</span>
+              </button>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* BOTTOM STICKY CART BAR (ONLY VISIBLE WHEN ITEMS ARE ADDED TO CART) */}
