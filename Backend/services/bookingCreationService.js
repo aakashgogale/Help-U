@@ -169,13 +169,13 @@ const placeBooking = async (userId, payload, options = {}) => {
 
   const categoryId = service.categoryId || service.categoryIds?.[0];
   let category = categoryId
-    ? await Category.findOne({ _id: categoryId, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable').lean()
+    ? await Category.findOne({ _id: categoryId, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable parentId').lean()
     : null;
   if (!category && service.category) {
     // Title-fallback is scoped to top-level active, non-draft categories so a sub-category
     // sharing the same display title can never shadow the real parent used
     // for emergency / city / display routing on a new booking.
-    category = await Category.findOne({ title: service.category, parentId: null, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable').lean();
+    category = await Category.findOne({ title: service.category, parentId: null, status: 'active', publishStatus: { $ne: 'draft' } }).select('title icon image slug isEmergencyAvailable parentId').lean();
   }
 
   // Pricing model: hourly/inspection-fee services resolve their own amount;
@@ -273,8 +273,22 @@ const placeBooking = async (userId, payload, options = {}) => {
     }
   }
 
+  let parentCategoryTitle = null;
+  if (category?.parentId) {
+    try {
+      const pCat = await Category.findById(category.parentId).select('title').lean();
+      if (pCat?.title) parentCategoryTitle = pCat.title;
+    } catch (_) {}
+  }
+
+  const matchServiceNames = [
+    service?.title,
+    category?.title,
+    parentCategoryTitle
+  ].filter(Boolean);
+
   const workerFilters = {
-    ...(category ? { service: category.title } : {}),
+    service: matchServiceNames.length > 0 ? matchServiceNames : undefined,
     checkCashLimit: paymentMethod === 'cash',
     city: address.city,
     ...(matchedZone ? { zoneId: matchedZone._id, zoneCoordinates: matchedZone.coordinates } : {})

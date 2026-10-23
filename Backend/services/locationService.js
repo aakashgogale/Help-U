@@ -89,9 +89,17 @@ const _buildWorkerQuery = (filters = {}) => {
   }
 
   if (serviceCategory) {
+    const serviceList = Array.isArray(serviceCategory)
+      ? serviceCategory.filter(Boolean)
+      : [serviceCategory];
+
+    const regexList = serviceList.map(s =>
+      new RegExp(`^${String(s).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+    );
+
     baseQuery.$or = [
-      { categories: { $in: [serviceCategory] } },
-      { service: { $in: [serviceCategory] } }
+      { categories: { $in: regexList } },
+      { service: { $in: regexList } }
     ];
   }
 

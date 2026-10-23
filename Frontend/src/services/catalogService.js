@@ -461,19 +461,27 @@ export const homeContentService = {
  * Now with caching for faster data retrieval
  */
 export const publicCatalogService = {
-  // Get all active categories (cached for 5 minutes)
-  getCategories: async (cityId, zoneId) => {
-    const cacheKey = `public:categories:${cityId || 'default'}:${zoneId || 'all'}`;
-    const cached = apiCache.get(cacheKey);
-    if (cached) return cached;
+  // Get all active categories (cached for 5 minutes, can bypass or specify parentId)
+  getCategories: async (cityIdOrOptions, zoneId) => {
+    let cityId = typeof cityIdOrOptions === 'string' ? cityIdOrOptions : cityIdOrOptions?.cityId;
+    let zId = typeof cityIdOrOptions === 'object' ? cityIdOrOptions?.zoneId : zoneId;
+    let parentId = typeof cityIdOrOptions === 'object' ? cityIdOrOptions?.parentId : undefined;
+    let bypassCache = typeof cityIdOrOptions === 'object' ? Boolean(cityIdOrOptions?.bypassCache) : false;
+
+    const cacheKey = `public:categories:${cityId || 'default'}:${zId || 'all'}:${parentId !== undefined ? parentId : 'default'}`;
+    if (!bypassCache) {
+      const cached = apiCache.get(cacheKey);
+      if (cached) return cached;
+    }
 
     const params = new URLSearchParams();
     if (cityId) params.append('cityId', cityId);
-    if (zoneId) params.append('zoneId', zoneId);
+    if (zId) params.append('zoneId', zId);
+    if (parentId !== undefined) params.append('parentId', parentId);
     const query = params.toString() ? `?${params.toString()}` : '';
 
     const response = await api.get(`/public/categories${query}`);
-    if (response.data.success) {
+    if (response.data.success && !bypassCache) {
       apiCache.set(cacheKey, response.data, 300); // 5 minutes
     }
     return response.data;
@@ -489,11 +497,13 @@ export const publicCatalogService = {
     if (params.zoneId) queryParams.append('zoneId', params.zoneId);
 
     const cacheKey = `public:brands:${queryParams.toString()}`;
-    const cached = apiCache.get(cacheKey);
-    if (cached) return cached;
+    if (!params.bypassCache) {
+      const cached = apiCache.get(cacheKey);
+      if (cached) return cached;
+    }
 
     const response = await api.get(`/public/brands${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
-    if (response.data.success) {
+    if (response.data.success && !params.bypassCache) {
       apiCache.set(cacheKey, response.data, 120); // 2 minutes
     }
     return response.data;
@@ -509,11 +519,13 @@ export const publicCatalogService = {
     if (params.zoneId) queryParams.append('zoneId', params.zoneId);
 
     const cacheKey = `public:services:${queryParams.toString()}`;
-    const cached = apiCache.get(cacheKey);
-    if (cached) return cached;
+    if (!params.bypassCache) {
+      const cached = apiCache.get(cacheKey);
+      if (cached) return cached;
+    }
 
     const response = await api.get(`/public/services${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
-    if (response.data.success) {
+    if (response.data.success && !params.bypassCache) {
       apiCache.set(cacheKey, response.data, 120);
     }
     return response.data;

@@ -95,10 +95,50 @@ const EditProfile = () => {
   useEffect(() => {
     const loadServiceCategories = async () => {
       try {
-        const catRes = await publicCatalogService.getCategories();
-        if (catRes.success) {
-          setCategories(catRes.categories || []);
+        if (publicCatalogService.invalidateCache) {
+          publicCatalogService.invalidateCache();
         }
+        const [catRes, svcRes] = await Promise.allSettled([
+          publicCatalogService.getCategories({ parentId: 'all', bypassCache: true }),
+          publicCatalogService.getServices({ bypassCache: true })
+        ]);
+
+        const rawCategories = catRes.status === 'fulfilled' && catRes.value?.success
+          ? (catRes.value.categories || [])
+          : [];
+
+        const rawServices = svcRes.status === 'fulfilled' && svcRes.value?.success
+          ? (svcRes.value.services || [])
+          : [];
+
+        const catMap = new Map();
+        rawCategories.forEach(cat => catMap.set(String(cat._id || cat.id), cat));
+
+        const items = [];
+        rawCategories.forEach(cat => {
+          if (!cat.title || /\s\d{4}$/.test(cat.title)) return;
+          const isSub = Boolean(cat.parentId);
+          const parentCat = cat.parentId ? catMap.get(String(cat.parentId)) : null;
+          items.push({
+            _id: `cat-${cat._id || cat.id}`,
+            title: cat.title.trim(),
+            typeLabel: isSub ? 'Sub-category' : 'Category',
+            categoryName: parentCat ? parentCat.title : null
+          });
+        });
+
+        rawServices.forEach(svc => {
+          if (!svc.title) return;
+          items.push({
+            _id: `svc-${svc._id || svc.id}`,
+            title: svc.title.trim(),
+            typeLabel: 'Service',
+            categoryName: svc.categoryName || null,
+            price: svc.basePrice
+          });
+        });
+
+        setCategories(items);
       } catch (error) {
         console.error('Error loading service categories:', error);
       }
@@ -614,9 +654,25 @@ const EditProfile = () => {
                             }}
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 font-medium text-gray-700 border-b border-gray-50 last:border-0 flex items-center justify-between"
                           >
-                            {cat.title}
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
-                              {isSelected && <span className="text-white text-xs">✓</span>}
+                            <div>
+                              <p className="leading-tight">{cat.title}</p>
+                              {cat.categoryName && (
+                                <p className="text-[11px] text-gray-400 mt-0.5">under {cat.categoryName}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {cat.typeLabel && (
+                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                                  cat.typeLabel === 'Service'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}>
+                                  {cat.typeLabel}
+                                </span>
+                              )}
+                              <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                                {isSelected && <span className="text-white text-xs">✓</span>}
+                              </div>
                             </div>
                           </button>
                         );
