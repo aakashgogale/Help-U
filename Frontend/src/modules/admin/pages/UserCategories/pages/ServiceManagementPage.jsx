@@ -213,20 +213,22 @@ const ServiceManagementPage = ({ selectedCity: propCity }) => {
   // Check if current category hasBrands === true
   const activeCategoryObj = useMemo(() => {
     if (!selectedCategory || selectedCategory === "all") return null;
-    return categories.find((c) => String(c.id || c._id) === String(selectedCategory)) || null;
+    return (categories || []).find((c) => c && String(c.id || c._id) === String(selectedCategory)) || null;
   }, [categories, selectedCategory]);
 
   const isApplianceCategory = activeCategoryObj?.hasBrands === true;
 
   // Filtered brands for the active category
   const categoryBrands = useMemo(() => {
-    if (!selectedCategory || selectedCategory === "all") return brands;
+    if (!selectedCategory || selectedCategory === "all") return brands || [];
     const catIdStr = String(selectedCategory);
-    return brands.filter((b) => {
+    return (brands || []).filter((b) => {
+      if (!b) return false;
       const directId = String(typeof b.categoryId === "object" ? b.categoryId?._id || b.categoryId?.id : b.categoryId);
       if (directId === catIdStr) return true;
       if (Array.isArray(b.categoryIds)) {
         return b.categoryIds.some((cid) => {
+          if (!cid) return false;
           const id = String(typeof cid === "object" ? cid?._id || cid?.id : cid);
           return id === catIdStr;
         });
@@ -586,10 +588,11 @@ const ServiceManagementPage = ({ selectedCity: propCity }) => {
 
   // ─── RENDER BREADCRUMB ────────────────────────────────────────────────
   const renderBreadcrumb = () => {
-    const selectedCatObj = categories.find((c) => String(c.id || c._id) === String(selectedCategory));
-    const selectedSubObj = subCategories.find((c) => String(c.id || c._id) === String(selectedSubCategory));
-    const selectedBrandObj = brands.find(
+    const selectedCatObj = (categories || []).find((c) => c && String(c.id || c._id) === String(selectedCategory));
+    const selectedSubObj = (subCategories || []).find((c) => c && String(c.id || c._id) === String(selectedSubCategory));
+    const selectedBrandObj = (brands || []).find(
       (b) =>
+        b &&
         String(b.id || b._id) ===
         String(isApplianceCategory ? activeApplianceBrandId : selectedBrand)
     );

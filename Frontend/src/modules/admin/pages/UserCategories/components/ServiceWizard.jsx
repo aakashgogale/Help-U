@@ -27,7 +27,9 @@ import {
   FiChevronRight,
   FiChevronLeft,
   FiMove,
-  FiEye
+  FiEye,
+  FiInfo,
+  FiBookmark
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import {

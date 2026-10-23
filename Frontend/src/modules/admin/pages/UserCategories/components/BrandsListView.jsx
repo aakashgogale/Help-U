@@ -75,14 +75,16 @@ const BrandsListView = ({ selectedCity, onRefreshHealth }) => {
 
   // Filtered brands
   const filteredBrands = useMemo(() => {
-    let list = [...brands];
+    let list = Array.isArray(brands) ? brands.filter(Boolean) : [];
 
     if (selectedCategoryFilter !== "all") {
       list = list.filter((b) => {
+        if (!b) return false;
         const directId = typeof b.categoryId === "object" ? b.categoryId?._id || b.categoryId?.id : b.categoryId;
         if (String(directId) === String(selectedCategoryFilter)) return true;
         if (Array.isArray(b.categoryIds)) {
           return b.categoryIds.some((cid) => {
+            if (!cid) return false;
             const id = typeof cid === "object" ? cid?._id || cid?.id : cid;
             return String(id) === String(selectedCategoryFilter);
           });
@@ -95,8 +97,10 @@ const BrandsListView = ({ selectedCity, onRefreshHealth }) => {
       const q = search.toLowerCase();
       list = list.filter(
         (b) =>
-          (b.title || "").toLowerCase().includes(q) ||
-          (b.slug || "").toLowerCase().includes(q)
+          b && (
+            (b.title || "").toLowerCase().includes(q) ||
+            (b.slug || "").toLowerCase().includes(q)
+          )
       );
     }
 

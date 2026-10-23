@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from '../components/layout/AdminLayout';
+import AdminErrorBoundary from '../components/common/AdminErrorBoundary';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import PublicRoute from '../../../components/auth/PublicRoute';
 import useAppNotifications from '../../../hooks/useAppNotifications.jsx';
@@ -59,7 +60,9 @@ const AdminRoutes = () => {
         {/* Protected routes - inside layout */}
         <Route path="/" element={
           <ProtectedRoute userType="admin">
-            <AdminLayout />
+            <AdminErrorBoundary>
+              <AdminLayout />
+            </AdminErrorBoundary>
           </ProtectedRoute>
         }>
           <Route index element={<Navigate to="dashboard" replace />} />

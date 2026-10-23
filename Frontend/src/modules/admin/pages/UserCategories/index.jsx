@@ -12,6 +12,7 @@ import ServiceManagementPage from "./pages/ServiceManagementPage";
 import HomeSectionsManagerPage from "./pages/HomeSectionsManagerPage";
 
 import { cityService } from "../../services/cityService";
+import AdminErrorBoundary from "../../components/common/AdminErrorBoundary";
 
 const UserCategories = () => {
   const [catalog, setCatalog] = useState(() => ensureIds(loadCatalog()));
@@ -90,20 +91,22 @@ const UserCategories = () => {
       )}
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-        <Routes>
-          <Route index element={<Navigate to="service-management" replace />} />
-          <Route path="home" element={<HomePage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="service-management" element={<ServiceManagementPage selectedCity={selectedCity} />} />
-          <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="sections" element={<HomeSectionsManagerPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="catalog" element={<ServiceManagementPage selectedCity={selectedCity} />} />
-          <Route path="brands" element={<BrandsPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
-          <Route path="worker-services" element={<WorkerServicesPage />} />
-          <Route path="vendor-services" element={<Navigate to="../worker-services" replace />} />
-          <Route path="worker-parts" element={<WorkerPartsPage />} />
-          <Route path="vendor-parts" element={<Navigate to="../worker-parts" replace />} />
-          <Route path="*" element={<Navigate to="home" replace />} />
-        </Routes>
+        <AdminErrorBoundary>
+          <Routes>
+            <Route index element={<Navigate to="service-management" replace />} />
+            <Route path="home" element={<HomePage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+            <Route path="service-management" element={<ServiceManagementPage selectedCity={selectedCity} />} />
+            <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+            <Route path="sections" element={<HomeSectionsManagerPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+            <Route path="catalog" element={<ServiceManagementPage selectedCity={selectedCity} />} />
+            <Route path="brands" element={<BrandsPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+            <Route path="worker-services" element={<WorkerServicesPage />} />
+            <Route path="vendor-services" element={<Navigate to="../worker-services" replace />} />
+            <Route path="worker-parts" element={<WorkerPartsPage />} />
+            <Route path="vendor-parts" element={<Navigate to="../worker-parts" replace />} />
+            <Route path="*" element={<Navigate to="home" replace />} />
+          </Routes>
+        </AdminErrorBoundary>
       </motion.div>
     </div>
   );

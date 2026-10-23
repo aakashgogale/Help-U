@@ -2,9 +2,13 @@ export const LS_KEY = "adminUserAppCatalog";
 
 export const toAssetUrl = (url) => {
   if (!url) return '';
-  // For Cloudinary URLs, return as-is
+  if (typeof url !== 'string') {
+    if (typeof url === 'object' && url.url) return toAssetUrl(url.url);
+    if (typeof url === 'object' && url.secure_url) return toAssetUrl(url.secure_url);
+    return '';
+  }
+  // For Cloudinary or absolute URLs, return as-is
   if (url.startsWith('http')) return url;
-  // For any other URLs, return as-is (they should already be full URLs from Cloudinary)
   return url;
 };
 

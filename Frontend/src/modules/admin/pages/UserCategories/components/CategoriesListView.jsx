@@ -107,17 +107,18 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
 
   // Root categories
   const rootCategories = useMemo(() => {
-    return categories.filter((c) => !c.parentId);
+    return (categories || []).filter((c) => c && !c.parentId);
   }, [categories]);
 
   // Filtered categories
   const filteredCategories = useMemo(() => {
-    let list = [...categories];
+    let list = Array.isArray(categories) ? categories.filter(Boolean) : [];
 
     if (filterParent === "root") {
-      list = list.filter((c) => !c.parentId);
+      list = list.filter((c) => c && !c.parentId);
     } else if (filterParent !== "all") {
       list = list.filter((c) => {
+        if (!c) return false;
         const pId = typeof c.parentId === "object" ? c.parentId?._id || c.parentId?.id : c.parentId;
         return String(pId) === String(filterParent);
       });
@@ -127,12 +128,14 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
       const q = search.toLowerCase();
       list = list.filter(
         (c) =>
-          (c.title || "").toLowerCase().includes(q) ||
-          (c.slug || "").toLowerCase().includes(q)
+          c && (
+            (c.title || "").toLowerCase().includes(q) ||
+            (c.slug || "").toLowerCase().includes(q)
+          )
       );
     }
 
-    return list.sort((a, b) => (a.homeOrder || 0) - (b.homeOrder || 0));
+    return list.sort((a, b) => (a?.homeOrder || 0) - (b?.homeOrder || 0));
   }, [categories, filterParent, search]);
 
   // Status toggle
@@ -458,6 +461,7 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
                 {filteredCategories.map((category, idx) => {
                   const id = category.id || category._id;
                   const parent = categories.find((c) => {
+                    if (!c) return false;
                     const cId = c.id || c._id;
                     const pId = typeof category.parentId === "object" ? category.parentId?._id || category.parentId?.id : category.parentId;
                     return String(cId) === String(pId);
