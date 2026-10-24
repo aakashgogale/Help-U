@@ -89,6 +89,18 @@ export default defineConfig({
       'react-dom',
       'react-dom/client',
       'react-router-dom',
+      // Heavy libraries used across the app: pre-bundling them up front avoids Vite
+      // discovering them mid-session and re-optimising (which reloads the page).
+      'axios',
+      'framer-motion',
+      'react-hot-toast',
+      'socket.io-client',
+      'react-icons/fi',
+      'react-icons/fa',
+      'react-icons/md',
+      'react-icons/hi',
+      'react-icons/ai',
+      'gsap',
     ],
   },
 });

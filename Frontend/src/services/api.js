@@ -10,7 +10,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // For cookies
+  withCredentials: true, // For cookies
+  // Never hang on a stalled connection (e.g. while the server restarts): fail so pages can show an error
+  timeout: 30000
 });
 
 // Helper to get token keys based on role/path

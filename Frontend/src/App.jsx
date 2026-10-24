@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'; // Updated index to .jsx
 import { BrowserRouter } from 'react-router-dom';
+import ScrollManager from './components/common/ScrollManager';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import ToastLimiter from './components/common/ToastLimiter';
@@ -43,6 +44,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollManager />
       <SocketProvider>
         <ConfigProvider>
           <CityProvider>

@@ -205,7 +205,9 @@ html {
   overflow-x: clip !important;
   position: relative;
   touch-action: pan-y pinch-zoom;
-  scroll-behavior: smooth;
+  /* Programmatic scrolls (back-navigation restore, scrollTo) must be instant; components that want
+     animation ask for it with { behavior: 'smooth' } */
+  scroll-behavior: auto;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -238,7 +240,7 @@ body {
   overflow-x: clip !important;
   position: relative;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100svh; /* stable while the mobile address bar collapses (dvh resized the page mid-scroll) */
 }
 
 /* Hide scrollbar and contain horizontal gestures inside scroll containers */
@@ -370,4 +372,22 @@ body {
 
 .focus\:ring-primary-500:focus {
   --tw-ring-color: #2874F0;
+}
+/* Bottom navigation is hidden while a modal is open (see hooks/useModalLock) */
+html.has-modal [data-bottom-nav] {
+  display: none !important;
+}
+
+/* Pages are `min-h-screen`, and the layout also pads the bottom for the fixed nav. Together that is
+   taller than the screen, so even a one-item page scrolled. Inside a nav layout a "full-height" page
+   means the visible area above the nav; the padding then brings the total to exactly one screen.
+   :where() keeps this at the same specificity as the utility class so it simply wins by order. */
+.with-user-nav :where(.min-h-screen) {
+  /* svh = the stable "small" viewport: unlike dvh it does not change while the mobile browser's
+     address bar slides away during scrolling (that resize looked like the page vibrating).
+     The extra 2px keeps rounding from ever making a short page 1px taller than the screen. */
+  min-height: calc(100svh - var(--bottom-nav-height, 96px) - 1rem - 2px);
+}
+.with-worker-nav :where(.min-h-screen) {
+  min-height: calc(100svh - 6rem - env(safe-area-inset-bottom) - 2px);
 }

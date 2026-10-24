@@ -120,6 +120,24 @@ export const playSingleBeep = () => {
 // Play urgent ring for booking alerts
 let currentAudio = null; // Global variable to track current playing audio
 
+const armRingRetry = (audio) => {
+  const events = ['pointerdown', 'touchstart', 'keydown', 'click'];
+  const cleanup = () => {
+    events.forEach((ev) => document.removeEventListener(ev, retry, true));
+    document.removeEventListener('visibilitychange', onVisible);
+  };
+  function retry() {
+    // Only retry if this ring is still the active one (not stopped meanwhile)
+    if (currentAudio === audio) audio.play().catch(() => {});
+    cleanup();
+  }
+  function onVisible() {
+    if (document.visibilityState === 'visible') retry();
+  }
+  events.forEach((ev) => document.addEventListener(ev, retry, true));
+  document.addEventListener('visibilitychange', onVisible);
+};
+
 export const playAlertRing = (loop = false) => {
   try {
     // If audio is already playing, do nothing if we want to sustain it, or restart ??
@@ -133,7 +151,12 @@ export const playAlertRing = (loop = false) => {
     if (loop) audio.loop = true;
     currentAudio = audio; // Track the new audio instance
 
-    audio.play().catch(e => console.error('Error playing alert file:', e));
+    audio.play().catch((e) => {
+      console.error('Error playing alert file:', e);
+      // Browsers block audio until the page has had a user gesture. Keep the ring pending
+      // and start it on the first tap/key press or when the tab is shown again.
+      if (e?.name === 'NotAllowedError') armRingRetry(audio);
+    });
 
     // Cleanup when audio finishes (if not looping)
     audio.onended = () => {
