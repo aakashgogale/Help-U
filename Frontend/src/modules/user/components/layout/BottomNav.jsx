@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiHome, FiShoppingCart, FiUser, FiTrash2, FiCalendar } from 'react-icons/fi';
 import { HiHome, HiShoppingCart, HiUser, HiTrash, HiCalendar } from 'react-icons/hi';
@@ -11,6 +11,23 @@ const BottomNav = React.memo(() => {
   const location = useLocation();
   const { cartCount } = useCart();
   const { isScrapEnabled } = useConfig();
+  const navRef = useRef(null);
+
+  // Publish the nav's real height so floating UI (e.g. the live booking card) can sit
+  // exactly above it instead of relying on a hard-coded offset.
+  useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--bottom-nav-height', `${el.getBoundingClientRect().height}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--bottom-nav-height');
+    };
+  }, []);
 
   const navItems = useMemo(() => {
     const items = [
@@ -40,6 +57,7 @@ const BottomNav = React.memo(() => {
 
   return (
     <nav
+      ref={navRef}
       className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pointer-events-none"
       style={{
         WebkitBackfaceVisibility: 'hidden',

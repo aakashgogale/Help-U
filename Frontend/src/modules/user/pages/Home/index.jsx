@@ -542,16 +542,16 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen relative bg-canvas w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen relative bg-canvas w-full max-w-full overflow-x-clip">
       <motion.div
-        className="relative z-10 w-full max-w-full overflow-x-hidden"
+        className="relative z-10 w-full max-w-full overflow-x-clip"
         initial={initialSnapshot ? false : 'hidden'}
         animate="visible"
         variants={containerVariants}
       >
         <motion.div
           variants={itemVariants}
-          className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl w-full max-w-full overflow-x-hidden"
+          className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl w-full max-w-full overflow-x-clip"
         >
           <div className="max-w-screen-xl mx-auto w-full">
             <Header
@@ -565,7 +565,7 @@ const Home = () => {
           </div>
         </motion.div>
 
-        <main className="flex flex-col gap-4 sm:gap-5 max-w-screen-xl mx-auto w-full pb-6 overflow-x-hidden min-w-0">
+        <main className="flex flex-col gap-4 sm:gap-5 max-w-screen-xl mx-auto w-full pb-6 overflow-x-clip min-w-0">
           {/* Out of Zone Notice */}
           {isOutOfZone && (
             <div className="mx-4 sm:mx-5 px-3.5 py-2.5 bg-gradient-to-r from-amber-50/95 to-orange-50/80 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(245,158,11,0.06)]">

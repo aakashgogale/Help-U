@@ -47,7 +47,7 @@ function App() {
           <CityProvider>
             <ZoneProvider>
             <CartProvider>
-              <div className="App w-full max-w-full overflow-x-hidden min-h-screen relative">
+              <div className="App w-full max-w-full overflow-x-clip min-h-screen relative">
                 <MaintenanceGate>
                   <AppRoutes />
                   <LocationPermissionChecker />

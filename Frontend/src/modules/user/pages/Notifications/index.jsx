@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiBell, FiCheck, FiArrowLeft, FiTrash2, FiX } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
-import BottomNav from '../../components/layout/BottomNav';
 import {
   getNotifications,
   markAsRead,
@@ -326,8 +325,6 @@ const Notifications = () => {
           </div>
         )}
       </main>
-
-      <BottomNav />
 
       {/* Confirmation Modal */}
       {showClearConfirm && (

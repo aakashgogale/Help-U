@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import NativeSmartLocks from './components/NativeSmartLocks';
 import NativeROPurifiers from './components/NativeROPurifiers';
 import BestInClassFeatures from './components/BestInClassFeatures';
@@ -78,7 +77,6 @@ const Native = () => {
         <BrandPhilosophy />
       </main>
 
-      <BottomNav />
     </div>
   );
 };

@@ -131,7 +131,8 @@ const UserRoutes = () => {
   // useAppNotifications('user');
 
   // Pages where BottomNav should be shown
-  const bottomNavPages = ['/user', '/user/', '/user/my-bookings', '/user/scrap', '/user/cart', '/user/account'];
+  // Every page listed here gets the shared BottomNav (pages must not render their own)
+  const bottomNavPages = ['/user', '/user/', '/user/my-bookings', '/user/scrap', '/user/cart', '/user/account', '/user/notifications', '/user/native'];
   const shouldShowBottomNav = bottomNavPages.includes(location.pathname);
 
   // Check if we hide the live booking card (e.g. if we are on the specific booking details or track page)
@@ -145,7 +146,7 @@ const UserRoutes = () => {
   return (
     <ErrorBoundary>
       {/* Main content area - leaves space for bottom nav when needed */}
-      <div className={`w-full max-w-full overflow-x-hidden min-w-0 ${shouldShowBottomNav ? "pb-24" : ""}`}>
+      <div className={`w-full max-w-full overflow-x-clip min-w-0 ${shouldShowBottomNav ? "pb-24" : ""}`}>
         <Suspense fallback={<LoadingFallback />}>
           <PageTransition>
             <Routes>

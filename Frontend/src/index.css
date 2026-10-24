@@ -200,8 +200,9 @@ html {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: clip !important;
+  /* hidden is the fallback for browsers without clip; clip (unlike hidden) keeps position: sticky working */
   overflow-x: hidden !important;
+  overflow-x: clip !important;
   position: relative;
   touch-action: pan-y pinch-zoom;
   scroll-behavior: smooth;
@@ -213,8 +214,9 @@ body {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: clip !important;
+  /* hidden is the fallback for browsers without clip; clip (unlike hidden) keeps position: sticky working */
   overflow-x: hidden !important;
+  overflow-x: clip !important;
   position: relative;
   touch-action: pan-y pinch-zoom;
   background-color: #ffffff !important;
@@ -231,8 +233,9 @@ body {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: clip !important;
+  /* hidden is the fallback for browsers without clip; clip (unlike hidden) keeps position: sticky working */
   overflow-x: hidden !important;
+  overflow-x: clip !important;
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
