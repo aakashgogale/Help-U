@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'; // Updated index to .jsx
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
+import ToastLimiter from './components/common/ToastLimiter';
 import AppRoutes from './routes';
 import { SocketProvider } from './context/SocketContext';
 import { ConfigProvider } from './context/ConfigContext';
@@ -52,6 +53,7 @@ function App() {
                   <AppRoutes />
                   <LocationPermissionChecker />
                 </MaintenanceGate>
+              <ToastLimiter limit={1} />
               <Toaster
                 position="top-center"
                 reverseOrder={false}

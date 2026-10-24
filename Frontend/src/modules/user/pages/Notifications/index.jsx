@@ -157,7 +157,7 @@ const Notifications = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: themeColors.backgroundGradient || '#f9fafb' }}>
+    <div className="min-h-screen pb-2" style={{ background: themeColors.backgroundGradient || '#f9fafb' }}>
       {/* Header */}
       <div className="bg-white sticky top-0 z-50 border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -173,9 +173,9 @@ const Notifications = () => {
         </div>
       </div>
 
-      <main className="px-4 py-6">
+      <main className="px-4 py-3">
         {/* Filter Buttons */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1.5 scrollbar-hide">
           {[
             { id: 'all', label: 'All' },
             { id: 'jobs', label: 'Bookings' },
@@ -184,7 +184,7 @@ const Notifications = () => {
             <button
               key={filterOption.id}
               onClick={() => setFilter(filterOption.id)}
-              className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-all ${filter === filterOption.id
+              className={`px-3.5 py-1.5 rounded-full font-semibold text-[13px] whitespace-nowrap transition-all ${filter === filterOption.id
                 ? 'text-white'
                 : 'bg-white text-gray-700'
                 }`}
@@ -206,7 +206,7 @@ const Notifications = () => {
 
         {/* Action Buttons */}
         {notifications.length > 0 && (
-          <div className="flex justify-end gap-4 mb-4">
+          <div className="flex justify-end gap-4 mb-2">
             <button
               onClick={handleMarkAllRead}
               className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors"
@@ -256,68 +256,61 @@ const Notifications = () => {
             <p className="text-sm text-gray-500">You're all caught up!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredNotifications.map((notif) => (
               <div
                 key={notif.id}
-                className={`bg-white rounded-xl p-4 shadow-md transition-all relative group ${!notif.read ? 'border-l-4' : ''
+                className={`bg-white rounded-xl px-3 py-2.5 shadow-md transition-all relative group ${!notif.read ? 'border-l-4' : ''
                   }`}
                 style={{
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.07)',
                   borderLeftColor: !notif.read ? getNotificationColor(notif.type) : 'transparent',
                 }}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2.5">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
                     style={{ backgroundColor: `${getNotificationColor(notif.type)}15` }}
                   >
                     {getNotificationIcon(notif.type)}
                   </div>
-                  <div className="flex-1 pr-6"> {/* Added pr-6 to avoid overlap with delete btn */}
-                    <div className="flex items-start justify-between mb-1">
-                      <div>
-                        <p className={`font-semibold text-gray-800 ${!notif.read ? 'font-bold' : ''}`}>{notif.title}</p>
-                        <p className="text-sm text-gray-600 mt-1 leading-snug">{notif.message}</p>
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    {/* Only the title row reserves room for the action buttons; the message uses the full width */}
+                    <p className={`text-[14px] leading-tight font-semibold text-gray-800 ${notif.read ? 'pr-6' : 'pr-14'} ${!notif.read ? 'font-bold' : ''}`}>{notif.title}</p>
+                    <p className="text-[13px] text-gray-600 mt-0.5 leading-snug">{notif.message}</p>
+                    <div className="flex items-center justify-between gap-3 mt-1">
+                      <p className="text-[11px] text-gray-400 font-medium">{notif.time}</p>
+                      {notif.relatedType === 'booking' && notif.relatedId && (
+                        <button
+                          onClick={() => navigate(`/user/booking/${notif.relatedId}`)}
+                          className="text-[12px] font-bold flex items-center gap-0.5 shrink-0"
+                          style={{ color: themeColors.button }}
+                        >
+                          View booking
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">{notif.time}</p>
-                    {notif.action && (
-                      <button
-                        onClick={() => {
-                          if (notif.action === 'view_booking') {
-                            navigate(`/user/booking/${notif.bookingId}`);
-                          } else if (notif.action === 'view_wallet') {
-                            navigate('/user/wallet');
-                          }
-                        }}
-                        className="mt-3 text-sm font-bold flex items-center gap-1"
-                        style={{ color: themeColors.button }}
-                      >
-                        View Details
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {/* Actions: Mark Read & Delete */}
-                <div className="absolute top-3 right-3 flex gap-2">
+                <div className="absolute top-2 right-2 flex gap-1.5">
                   {!notif.read && (
                     <button
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="p-1.5 rounded-full bg-gray-50 hover:bg-gray-100 text-green-600 transition-colors shadow-sm"
+                      className="p-1 rounded-full bg-gray-50 hover:bg-gray-100 text-green-600 transition-colors shadow-sm"
                       title="Mark as read"
                     >
-                      <FiCheck className="w-3.5 h-3.5" />
+                      <FiCheck className="w-3 h-3" />
                     </button>
                   )}
                   <button
                     onClick={(e) => handleDelete(e, notif.id)}
-                    className="p-1.5 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors shadow-sm"
+                    className="p-1 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors shadow-sm"
                     title="Delete"
                   >
-                    <FiX className="w-3.5 h-3.5" />
+                    <FiX className="w-3 h-3" />
                   </button>
                 </div>
               </div>

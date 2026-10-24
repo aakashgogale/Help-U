@@ -182,7 +182,7 @@ const Cart = () => {
 
   const handleCategoryCheckout = (category) => {
     if (isOutOfZone) {
-      toast.error('Services are not available in your area yet.');
+      toast.error('Services are not available in your area yet.', { id: 'out-of-zone' });
       return;
     }
     if (currentZone && Array.isArray(currentZone.allowedCategories) && currentZone.allowedCategories.length > 0) {
