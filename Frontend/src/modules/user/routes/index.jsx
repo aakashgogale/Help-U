@@ -146,7 +146,7 @@ const UserRoutes = () => {
   return (
     <ErrorBoundary>
       {/* Main content area - leaves space for bottom nav when needed */}
-      <div className={`w-full max-w-full overflow-x-clip min-w-0 ${shouldShowBottomNav ? "pb-24" : ""}`}>
+      <div className={`w-full max-w-full overflow-x-clip min-w-0 ${shouldShowBottomNav ? "pb-[calc(var(--bottom-nav-height,96px)+1rem)]" : ""}`}>
         <Suspense fallback={<LoadingFallback />}>
           <PageTransition>
             <Routes>

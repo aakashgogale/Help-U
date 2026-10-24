@@ -58,21 +58,20 @@ const BottomNav = React.memo(() => {
   return (
     <nav
       ref={navRef}
-      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pt-2 bg-white/60 border-t border-gray-200/60"
       style={{
+        // The whole band is a frosted, tappable-blocking layer: content scrolling underneath
+        // is blurred and cannot be hit through the gaps around the floating dock.
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackfaceVisibility: 'hidden',
         paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
       }}
     >
-      {/* Soft gradient backdrop to prevent underlying scrolled content from bleeding below bottom dock */}
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none -z-10" />
-
       <div
-        className="max-w-md mx-auto rounded-[28px] px-2 py-2 bg-white/95 border border-gray-100 pointer-events-auto"
+        className="max-w-md mx-auto rounded-[28px] px-2 py-2 bg-white/95 border border-gray-100"
         style={{
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 10px 34px -10px rgba(15, 27, 45, 0.22)',
+          boxShadow: '0 6px 22px -8px rgba(15, 27, 45, 0.2)',
         }}
       >
         <div className="flex items-center justify-around">
