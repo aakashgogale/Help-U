@@ -67,7 +67,7 @@ const SearchBar = ({ onInputClick }) => {
 
         {/* Simulated Input Pill */}
         <div
-          className="w-full max-w-full min-w-0 pl-11 sm:pl-13 pr-4 sm:pr-5 rounded-full bg-white border border-gray-200/90 flex items-center h-12 sm:h-13 shadow-[0_2px_12px_rgba(15,27,45,0.06)] transition-all duration-300 group-hover:shadow-[0_6px_20px_rgba(15,27,45,0.1)] group-hover:border-gray-300/90 overflow-hidden"
+          className="w-full max-w-full min-w-0 pl-11 sm:pl-13 pr-4 sm:pr-5 rounded-full bg-white border border-gray-200/90 flex items-center h-11 sm:h-13 shadow-[0_2px_12px_rgba(15,27,45,0.06)] transition-all duration-300 group-hover:shadow-[0_6px_20px_rgba(15,27,45,0.1)] group-hover:border-gray-300/90 overflow-hidden"
         >
           {/* Placeholder text with typing animation */}
           <span className="block w-full min-w-0 text-[13.5px] sm:text-[14.5px] text-gray-400 truncate select-none leading-none">

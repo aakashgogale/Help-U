@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { FiTerminal, FiX, FiAlertCircle, FiClipboard, FiTrash2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Opt-in: only active when the URL carries ?debug=true (in any build mode)
+const isDebugEnabled = () => new URLSearchParams(window.location.search).get('debug') === 'true';
+
 const DebugConsole = () => {
+  const enabled = isDebugEnabled();
   const [isOpen, setIsOpen] = useState(false);
   const [logs, setLogs] = useState([]);
   const [errors, setErrors] = useState([]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     // Intercept console.error
     const originalError = console.error;
     console.error = (...args) => {
@@ -33,11 +38,9 @@ const DebugConsole = () => {
       console.error = originalError;
       window.removeEventListener('error', handleGlobalError);
     };
-  }, []);
+  }, [enabled]);
 
-  if (import.meta.env.MODE === 'production' && !window.location.search.includes('debug=true')) {
-    return null;
-  }
+  if (!enabled) return null;
 
   return (
     <>

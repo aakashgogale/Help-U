@@ -67,7 +67,7 @@ const Header = ({ location, onLocationClick, showNotifications = false }) => {
             >
               <Logo
                 ref={logoRef}
-                className={showNotifications ? 'h-[52px] sm:h-14 w-auto' : 'h-10 sm:h-12 w-auto'}
+                className={showNotifications ? 'h-14 sm:h-16 w-auto' : 'h-12 sm:h-14 w-auto'}
               />
             </Link>
 

@@ -559,7 +559,7 @@ const Home = () => {
               onLocationClick={handleLocationClick}
               showNotifications
             />
-            <div className="px-4 sm:px-5 pb-2.5 pt-0.5 max-w-2xl mx-auto w-full min-w-0 max-w-full">
+            <div className="px-4 sm:px-5 pb-2 pt-0 max-w-2xl mx-auto w-full min-w-0 max-w-full">
               <SearchBar onInputClick={() => setIsSearchOpen(true)} />
             </div>
           </div>
