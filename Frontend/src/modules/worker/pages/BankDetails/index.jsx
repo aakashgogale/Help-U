@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FiCreditCard, FiHash, FiUpload } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 
@@ -307,7 +306,6 @@ const BankDetails = () => {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

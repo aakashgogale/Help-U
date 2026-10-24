@@ -167,6 +167,8 @@ export default function GlobalBookingAlert() {
           window.dispatchEvent(new Event('workerJobsUpdated'));
           window.dispatchEvent(new Event('workerStatsUpdated'));
           toast.success('Job claimed successfully! Assigned to you.');
+          // Take the worker straight to the job they just accepted
+          navigate(`/worker/booking/${id}`);
         } catch (e) {
           toast.error('Failed to claim job');
         }

@@ -11,7 +11,7 @@ import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import api from '../../../../services/api';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
-import LogoLoader from '../../../../components/common/LogoLoader';
+import DashboardSkeleton from '../../components/common/DashboardSkeleton';
 import StatsCards from './components/StatsCards';
 import PendingBookings from './components/PendingBookings';
 
@@ -423,7 +423,11 @@ const Dashboard = memo(() => {
 
   // Show loading state
   if (loading) {
-    return <LogoLoader />;
+    return (
+      <div className="h-[calc(100dvh-6rem)] overflow-hidden">
+        <DashboardSkeleton />
+      </div>
+    );
   }
 
   // Show error state
@@ -466,7 +470,7 @@ const Dashboard = memo(() => {
 
   return (
     <div className="min-h-screen pb-20" style={{ background: themeColors.backgroundGradient }}>
-      <Header title="Dashboard" showBack={false} notificationCount={stats.pendingAlerts} />
+      <Header title="Dashboard" showBack={false} showLocation notificationCount={stats.pendingAlerts} />
 
       <main className="pt-0">
         {/* Profile Card Section */}

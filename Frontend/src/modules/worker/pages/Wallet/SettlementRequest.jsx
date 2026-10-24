@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiAlertCircle, FiCheckCircle, FiCreditCard } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import { workerTheme as themeColors } from '../../../../theme';
 import workerWalletService from '../../../../services/workerWalletService';
 
@@ -231,7 +230,6 @@ const SettlementRequest = () => {
         </button>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

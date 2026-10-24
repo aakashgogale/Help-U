@@ -9,6 +9,7 @@ import workerWalletService from '../../../../services/workerWalletService';
 import { getBookingById, requestAdvancePayment } from '../../services/bookingService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { OtpVerificationModal, ScanAndPayModal } from '../../components/common';
+import LogoLoader from '../../../../components/common/LogoLoader';
 
 const BillingPage = () => {
   const { id } = useParams();
@@ -367,8 +368,14 @@ const BillingPage = () => {
 
     // Original booking base (service)
     const isPlanBooking = booking.paymentMethod === 'plan_benefit';
-    const originalBase = isPlanBooking ? 0 : (booking.basePrice || 0);
-    const originalServiceGST = isPlanBooking ? 0 : parseFloat(((originalBase * serviceGstPct) / 100).toFixed(2));
+    // Mirrors the server bill: the booking's own discount and recorded GST are kept, so the
+    // "original booking" line equals what the customer agreed to. On a plan booking only the
+    // extras (add-ons, emergency) are billable.
+    const bookingExtras = (Number(booking.addOnsTotal) || 0) + (Number(booking.emergencyCharge) || 0);
+    const originalBase = isPlanBooking
+      ? bookingExtras
+      : Math.max(0, parseFloat(((Number(booking.basePrice) || 0) - (Number(booking.discount) || 0)).toFixed(2)));
+    const originalServiceGST = parseFloat((Number(booking.tax) || 0).toFixed(2));
 
     // Customer-added repair services (priced from the catalog when the customer added them)
     let customerServiceBase = 0;
@@ -544,7 +551,7 @@ const BillingPage = () => {
         setShowOtpModal(true);
         setPaymentMode('cash');
         setOnlinePaymentData(null); // Clear QR data when switching to cash
-        toast.success('OTP sent to customer!');
+        toast.success('Bill sent to the customer. Ask them for the 4-digit code.');
       } else {
         toast.error(res.message || 'Failed to send OTP');
       }
@@ -641,7 +648,21 @@ const BillingPage = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="sticky top-0 z-50 bg-white px-4 py-4 shadow-sm border-b border-gray-100 flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
+            <FiArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-bold text-gray-800">Generate Bill</h1>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <LogoLoader inline size="w-16 h-16" />
+        </div>
+      </div>
+    );
+  }
   if (!booking) return null;
 
   // --- RENDER LOGIC ---
@@ -723,7 +744,7 @@ const BillingPage = () => {
             );
           })}
         </div>
-        <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
           <button onClick={() => setViewMode('timeline')} className="flex-1 py-3.5 bg-white text-gray-700 font-bold rounded-xl border border-gray-200">
             Save & Exit
           </button>
@@ -781,7 +802,7 @@ const BillingPage = () => {
             );
           })}
         </div>
-        <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
           <button onClick={() => setViewMode('timeline')} className="flex-1 py-3.5 bg-white text-gray-700 font-bold rounded-xl border border-gray-200">
             Save & Exit
           </button>
@@ -1348,7 +1369,7 @@ const BillingPage = () => {
       </div>
 
       {/* Fixed Bottom Navigation for Timeline View */}
-      <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
         {currentStep === 1 && (
           <button onClick={() => setCurrentStep(2)} className="w-full py-3.5 bg-gray-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg">
             Next: Services <FiArrowRight />
@@ -1421,7 +1442,7 @@ const BillingPage = () => {
                   className="py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-50 text-[10px]"
                 >
                   <FiDollarSign className="w-4 h-4" />
-                  <span>Pay in Cash</span>
+                  <span>{otpLoading ? 'Sending bill...' : 'Collect Cash'}</span>
                 </button>
               )}
 

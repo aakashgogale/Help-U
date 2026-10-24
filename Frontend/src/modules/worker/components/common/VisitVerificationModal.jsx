@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -16,6 +18,7 @@ import LocationAccessModal from '../../../../components/common/LocationAccessMod
  * @param {function} onSuccess - Callback on successful verification
  */
 const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
+  useModalLock(isOpen);
   const [otpInput, setOtpInput] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -152,7 +155,7 @@ const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
@@ -248,7 +251,7 @@ const VisitVerificationModal = ({ isOpen, onClose, bookingId, onSuccess }) => {
         </div>
       )}
     </AnimatePresence>
-  );
+  , document.body);
 };
 
 export default VisitVerificationModal;

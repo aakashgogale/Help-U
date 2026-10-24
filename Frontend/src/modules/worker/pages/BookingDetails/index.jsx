@@ -4,7 +4,8 @@ import { FiMapPin, FiClock, FiDollarSign, FiUser, FiPhone, FiNavigation, FiArrow
 import { motion, AnimatePresence } from 'framer-motion';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
+import { isOnlinePaid } from '../../utils/paymentStatus';
+import LogoLoader from '../../../../components/common/LogoLoader';
 import {
   getBookingById,
   updateBookingStatus,
@@ -33,6 +34,7 @@ export default function BookingDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
@@ -74,6 +76,8 @@ export default function BookingDetails() {
     };
   }, []);
 
+  const retryLoad = () => { setLoadError(false); loadBooking(); };
+
   const loadBooking = async () => {
     try {
       setLoading(true);
@@ -106,6 +110,7 @@ export default function BookingDetails() {
             if (typeof a === 'string') return a;
             return `${a.addressLine2 ? a.addressLine2 + ', ' : ''}${a.addressLine1 || ''}, ${a.city || ''}`;
           })(),
+          landmark: typeof apiData.address === 'object' ? (apiData.address?.landmark || '') : '',
           lat: apiData.address?.lat || 0,
           lng: apiData.address?.lng || 0,
           distance: apiData.distance ? `${apiData.distance.toFixed(1)} km` : 'N/A'
@@ -145,8 +150,9 @@ export default function BookingDetails() {
       };
 
       setBooking(mappedBooking);
+      setLoadError(false);
     } catch (error) {
-      // Error loading booking
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -196,8 +202,7 @@ export default function BookingDetails() {
 
           // Check if this update is a payment success, if so, trigger reload for fresh state
           const isPaymentSuccess =
-            data.paymentStatus === 'SUCCESS' ||
-            data.paymentStatus === 'paid' ||
+            isOnlinePaid(data) ||
             data.type === 'payment_success';
 
           if (isPaymentSuccess) {
@@ -438,7 +443,7 @@ export default function BookingDetails() {
       return true;
     }
 
-    if (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') {
+    if (isOnlinePaid(booking)) {
       return false;
     }
 
@@ -454,8 +459,19 @@ export default function BookingDetails() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: themeColors.backgroundGradient }}>
-        <p className="text-gray-600">Loading...</p>
+      <div className="h-[calc(100dvh-6rem)] overflow-hidden flex flex-col" style={{ background: themeColors.backgroundGradient }}>
+        <Header title="Booking Details" />
+        <div className="flex-1 flex items-center justify-center">
+          {loadError ? (
+            <div className="text-center px-8">
+              <p className="text-gray-800 font-semibold mb-1">Couldn't load this booking</p>
+              <p className="text-sm text-gray-500 mb-4">Check your connection and try again.</p>
+              <button onClick={retryLoad} className="px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm active:scale-95">Retry</button>
+            </div>
+          ) : (
+            <LogoLoader inline size="w-16 h-16" />
+          )}
+        </div>
       </div>
     );
   }
@@ -547,11 +563,18 @@ export default function BookingDetails() {
   });
 
   // Tax Logic
-  const originalGST = bill ? (bill.originalGST || 0) : (originalBase * 0.18);
+  const originalGST = bill ? (bill.originalGST || 0) : (parseFloat(booking?.tax) || 0);
   const totalGST = originalGST + extraServiceGST + partsGST;
 
   // Final Total from bill or booking
   const finalTotal = bill?.grandTotal || (booking?.finalAmount || 0);
+
+  // Show the rate actually applied (from the saved bill) instead of a fixed 18%
+  const serviceGstPctShown = bill?.payoutConfig?.serviceGstPercentage;
+  const partsGstPctShown = bill?.payoutConfig?.partsGstPercentage;
+  const effectiveServiceGstPct = originalBase > 0 ? Math.round(((originalGST + extraServiceGST) / (originalBase + extraServiceBase || 1)) * 100) : 0;
+  const serviceGstLabel = ` (${serviceGstPctShown ?? effectiveServiceGstPct}%)`;
+  const partsGstLabel = partsGstPctShown !== undefined ? ` (${partsGstPctShown}%)` : '';
   const hasBill = !!bill;
 
   return (
@@ -634,6 +657,9 @@ export default function BookingDetails() {
             <div className="flex-1">
               <p className="text-sm text-gray-600 mb-1">Address</p>
               <p className="font-semibold text-gray-800">{booking.location.address}</p>
+              {booking.location.landmark && (
+                <p className="text-sm text-gray-600 mt-1"><span className="font-semibold">Landmark:</span> {booking.location.landmark}</p>
+              )}
               <p className="text-sm text-gray-500 mt-1">{booking.location.distance} away</p>
             </div>
           </div>
@@ -862,7 +888,7 @@ export default function BookingDetails() {
 
                 {/* Service GST */}
                 <div className="flex justify-between text-xs text-gray-500 border-t border-dashed border-gray-100 pt-1 mt-1">
-                  <span>Service GST (18%)</span>
+                  <span>Service GST{serviceGstLabel}</span>
                   <span className="font-mono">₹{(originalGST + extraServiceGST).toFixed(2)}</span>
                 </div>
 
@@ -900,7 +926,7 @@ export default function BookingDetails() {
 
                   {/* Parts GST */}
                   <div className="flex justify-between text-xs text-gray-500 border-t border-dashed border-gray-100 pt-1 mt-1">
-                    <span>Parts GST (18%)</span>
+                    <span>Parts GST{partsGstLabel}</span>
                     <span className="font-mono">₹{partsGST.toFixed(2)}</span>
                   </div>
 
@@ -959,7 +985,7 @@ export default function BookingDetails() {
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-emerald-200/50">
                 <span className="text-emerald-800 font-bold text-xs uppercase tracking-wider">
-                  {(booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid' || booking?.cashCollected)
+                  {(isOnlinePaid(booking) || booking?.cashCollected)
                     ? 'Total Net Earnings'
                     : 'Estimated Net Earnings'}
                 </span>
@@ -1168,7 +1194,7 @@ export default function BookingDetails() {
         )}
 
         {/* Online Payment Done State */}
-        {(booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') && booking?.status !== 'completed' && (
+        {(isOnlinePaid(booking)) && booking?.status !== 'completed' && (
           <div className="bg-white rounded-2xl mb-4 overflow-hidden shadow-lg border-none relative group"
             style={{ boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.2)' }}
           >
@@ -1452,7 +1478,6 @@ export default function BookingDetails() {
 
 
 
-      <BottomNav />
     </div>
   );
 }

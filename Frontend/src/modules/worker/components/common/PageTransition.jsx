@@ -19,8 +19,7 @@ const PageTransition = ({ children }) => {
       const timeout = setTimeout(() => {
         setDisplayLocation(location);
         setIsTransitioning(false);
-        window.scrollTo(0, 0);
-      }, 100); // Very quick transition (100ms)
+      }, 0); // swap immediately; the fade below is purely cosmetic
 
       return () => clearTimeout(timeout);
     }

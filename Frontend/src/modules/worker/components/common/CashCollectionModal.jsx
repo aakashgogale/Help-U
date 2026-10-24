@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState, useEffect } from 'react';
 import { FiX, FiPlus, FiTrash2, FiCreditCard, FiClock, FiCheck, FiDollarSign, FiPlusCircle } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -14,6 +16,7 @@ const CashCollectionModal = ({
   onInitiateOTP,
   loading
 }) => {
+  useModalLock(isOpen);
   const [extraItems, setExtraItems] = useState([]);
   const [step, setStep] = useState('summary'); // 'summary' or 'otp'
   const [otp, setOtp] = useState(['', '', '', '']);
@@ -171,7 +174,7 @@ const CashCollectionModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
       {/* Modal Container */}
       <div className={`
@@ -391,7 +394,7 @@ const CashCollectionModal = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 // Internal icon for button

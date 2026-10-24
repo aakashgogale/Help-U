@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FiCheck, FiClock, FiUser, FiMapPin, FiTool, FiDollarSign, FiFileText, FiCheckCircle, FiX } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
+import { isOnlinePaid } from '../../utils/paymentStatus';
+import LogoLoader from '../../../../components/common/LogoLoader';
 import { getBookingById, updateBookingStatus, startSelfJob, verifySelfVisit, completeSelfJob, collectSelfCash } from '../../services/bookingService';
 import { CashCollectionModal, ConfirmDialog } from '../../components/common';
 import { WorkCompletionModal } from '../../components/common';
@@ -14,6 +15,9 @@ const BookingTimeline = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retryLoad = () => { setLoadError(false); setReloadKey((k) => k + 1); };
   const [currentStage, setCurrentStage] = useState(1);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
   const [isWorkDoneModalOpen, setIsWorkDoneModalOpen] = useState(false);
@@ -74,6 +78,7 @@ const BookingTimeline = () => {
           ]
         };
         setBooking(mappedBooking);
+        setLoadError(false);
 
         // Determine current stage based on status
         // Determine current stage based on status
@@ -101,6 +106,7 @@ const BookingTimeline = () => {
         setCurrentStage(stage);
       } catch (error) {
         console.error('Error loading booking:', error);
+        setLoadError(true);
       }
     };
 
@@ -112,11 +118,11 @@ const BookingTimeline = () => {
 
     window.addEventListener('workerJobsUpdated', handleUpdate);
     return () => window.removeEventListener('workerJobsUpdated', handleUpdate);
-  }, [id, isWorkApproved]);
+  }, [id, isWorkApproved, reloadKey]);
 
   // Handle modal closing if payment is detected
   useEffect(() => {
-    if (booking?.paymentStatus === 'SUCCESS') {
+    if (isOnlinePaid(booking)) {
       // payment was successful
     }
   }, [booking?.paymentStatus]);
@@ -266,7 +272,7 @@ const BookingTimeline = () => {
       title: 'Collect Payment',
       icon: FiCheckCircle,
       action: (() => {
-        if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') return null;
+        if (booking?.status === 'completed' || booking?.status === 'COMPLETED' || isOnlinePaid(booking)) return null;
 
         if (booking?.isSelfJob && currentStage === 7) {
           return () => navigate(`/worker/booking/${id}/billing`);
@@ -343,8 +349,19 @@ const BookingTimeline = () => {
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: themeColors.backgroundGradient }}>
-        <p className="text-gray-600">Loading...</p>
+      <div className="h-[calc(100dvh-6rem)] overflow-hidden flex flex-col" style={{ background: themeColors.backgroundGradient }}>
+        <Header title="Booking Timeline" />
+        <div className="flex-1 flex items-center justify-center">
+          {loadError ? (
+            <div className="text-center px-8">
+              <p className="text-gray-800 font-semibold mb-1">Couldn't load this booking</p>
+              <p className="text-sm text-gray-500 mb-4">Check your connection and try again.</p>
+              <button onClick={retryLoad} className="px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm active:scale-95">Retry</button>
+            </div>
+          ) : (
+            <LogoLoader inline size="w-16 h-16" />
+          )}
+        </div>
       </div>
     );
   }
@@ -434,7 +451,7 @@ const BookingTimeline = () => {
                               stage.id === 5 ? 'Mark Arrived' :
                                 stage.id === 6 ? 'Mark workdone' :
                                   stage.id === 7 ? (
-                                    (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid')
+                                    (isOnlinePaid(booking))
                                       ? 'Online Payment Done'
                                       : 'Collect Cash'
                                   ) :
@@ -443,7 +460,7 @@ const BookingTimeline = () => {
                       )}
 
                       {/* Online Payment Status Badge for Stage 7 */}
-                      {stage.id === 7 && (booking?.paymentStatus === 'SUCCESS' || booking?.paymentStatus === 'paid') && !isCompleted && (
+                      {stage.id === 7 && (isOnlinePaid(booking)) && !isCompleted && (
                         <div className="mt-2 flex items-center gap-1.5 text-green-600 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
                           <FiCheckCircle className="w-4 h-4" />
                           ONLINE PAYMENT RECEIVED
@@ -464,8 +481,6 @@ const BookingTimeline = () => {
           </div>
         </div>
       </main>
-
-      <BottomNav />
 
       {/* Visit OTP Modal */}
       {isVisitModalOpen && (

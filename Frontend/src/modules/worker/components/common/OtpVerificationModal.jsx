@@ -1,8 +1,11 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState, useEffect, useRef } from 'react';
 import { FiX, FiShield, FiSmartphone, FiMinimize2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const OtpVerificationModal = ({ isOpen, onClose, onVerify, loading }) => {
+  useModalLock(isOpen);
   const [otp, setOtp] = useState('');
   const inputRef = useRef(null);
 
@@ -36,7 +39,7 @@ const OtpVerificationModal = ({ isOpen, onClose, onVerify, loading }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <motion.div
@@ -101,7 +104,7 @@ const OtpVerificationModal = ({ isOpen, onClose, onVerify, loading }) => {
         </motion.div>
       </div>
     </AnimatePresence>
-  );
+  , document.body);
 };
 
 export default OtpVerificationModal;

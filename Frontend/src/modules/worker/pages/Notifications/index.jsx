@@ -4,7 +4,6 @@ import { FiBell, FiCheck, FiX, FiFilter, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import {
   getNotifications,
   markAsRead,
@@ -298,8 +297,6 @@ const Notifications = () => {
           </div>
         )}
       </main>
-
-      <BottomNav />
 
       {/* Confirmation Modal */}
       {showClearConfirm && (

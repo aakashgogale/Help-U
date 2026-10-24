@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiDollarSign, FiTrendingUp, FiCalendar, FiArrowRight } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 
 
 const Earnings = () => {
@@ -243,7 +242,6 @@ const Earnings = () => {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

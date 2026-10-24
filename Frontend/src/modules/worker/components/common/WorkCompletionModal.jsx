@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState } from 'react';
 import { FiX, FiTrash, FiCamera, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -5,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import flutterBridge from '../../../../utils/flutterBridge';
 
 const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
+  useModalLock(isOpen);
   const [workPhotos, setWorkPhotos] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const cameraInputRef = React.useRef(null);
@@ -77,7 +80,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
     onComplete(workPhotos);
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -127,12 +130,13 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
                   {workPhotos.map((photo, index) => (
                     <div key={index} className="aspect-square rounded-2xl bg-gray-100 border border-gray-100 relative overflow-hidden group">
                       <img src={photo} className="w-full h-full object-cover" alt="work" />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <button
+                        type="button"
                         onClick={() => handleRemovePhoto(index)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform opacity-0 group-hover:opacity-100"
+                        aria-label="Remove photo"
+                        className="absolute top-1 right-1 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform"
                       >
-                        <FiTrash className="w-3 h-3" />
+                        <FiX className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -221,7 +225,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
         </div>
       )}
     </AnimatePresence>
-  );
+  , document.body);
 };
 
 export default WorkCompletionModal;

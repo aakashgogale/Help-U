@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { workerTheme as themeColors } from '../../../../theme';
 import { playAlertRing, stopAlertRing } from '../../../../utils/notificationSound';
 import RequestExtras from './RequestExtras';
+import useModalLock from '../../../../hooks/useModalLock';
 
 const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }) => {
   // Calculate initial time synchronously instead of relying solely on useEffect
@@ -255,6 +256,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
 
 const BookingAlertModal = ({ isOpen, booking, bookings, onAccept, onReject, onMinimize, maxSearchTimeMins = 1 }) => {
   const alertsArray = bookings || (booking ? [booking] : []);
+  useModalLock(Boolean(isOpen) && alertsArray.length > 0);
 
   return (
     <AnimatePresence>

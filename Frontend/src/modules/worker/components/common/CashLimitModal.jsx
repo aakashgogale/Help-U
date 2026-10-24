@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiAlertTriangle, FiX } from 'react-icons/fi';
@@ -7,6 +9,7 @@ const CashLimitModal = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [show, setShow] = useState(false);
+  useModalLock(show);
   const [walletData, setWalletData] = useState(null);
 
   const checkLimit = async () => {
@@ -48,7 +51,7 @@ const CashLimitModal = () => {
 
   if (!show) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center animate-bounce-in relative">
         <button
@@ -90,7 +93,7 @@ const CashLimitModal = () => {
         </button>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default CashLimitModal;

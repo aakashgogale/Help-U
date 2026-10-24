@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React from 'react';
 import { FiAlertCircle, FiX, FiCheck, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +15,7 @@ const ConfirmDialog = ({
   cancelLabel = 'Cancel',
   type = 'warning', // warning, danger, info, success
 }) => {
+  useModalLock(isOpen);
   const typeConfig = {
     warning: {
       icon: <FiAlertCircle className="w-8 h-8" />,
@@ -43,7 +46,7 @@ const ConfirmDialog = ({
     onClose();
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -119,7 +122,7 @@ const ConfirmDialog = ({
         </div>
       )}
     </AnimatePresence>
-  );
+  , document.body);
 };
 
 export default ConfirmDialog;

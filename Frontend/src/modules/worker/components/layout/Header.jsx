@@ -1,10 +1,21 @@
 import React, { memo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiBell, FiSearch } from 'react-icons/fi';
+import { FiArrowLeft, FiBell, FiSearch, FiMapPin, FiChevronDown } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { workerTheme as themeColors } from '../../../../theme';
 import Logo from '../../../../components/common/Logo';
 import api from '../../../../services/api';
+import workerService from '../../../../services/workerService';
+
+const LOCATION_CACHE_KEY = 'workerLocationLabel';
+
+// Short label for the pill: the worker's saved address, trimmed to something that fits
+const toLocationLabel = (addr) => {
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  const text = addr.fullAddress || addr.address || [addr.addressLine1, addr.city].filter(Boolean).join(', ') || [addr.city, addr.state].filter(Boolean).join(', ');
+  return text || '';
+};
 
 const Header = memo(({
   title,
@@ -12,10 +23,29 @@ const Header = memo(({
   showBack = true,
   showSearch = false,
   showNotifications = true,
+  showLocation = false,
   notificationCount = 0
 }) => {
   const navigate = useNavigate();
   const [count, setCount] = useState(notificationCount);
+  const [locationLabel, setLocationLabel] = useState(() => {
+    try { return localStorage.getItem(LOCATION_CACHE_KEY) || ''; } catch { return ''; }
+  });
+
+  // Worker's saved service address (cached so the pill is there instantly on the next visit)
+  useEffect(() => {
+    if (!showLocation) return undefined;
+    let active = true;
+    workerService.getProfile()
+      .then((res) => {
+        const label = toLocationLabel(res?.worker?.address);
+        if (!active) return;
+        setLocationLabel(label);
+        try { label ? localStorage.setItem(LOCATION_CACHE_KEY, label) : localStorage.removeItem(LOCATION_CACHE_KEY); } catch { /* ignore */ }
+      })
+      .catch(() => { /* keep cached label */ });
+    return () => { active = false; };
+  }, [showLocation]);
 
   // Sync prop changes
   useEffect(() => {
@@ -90,6 +120,21 @@ const Header = memo(({
           )}
           {showBack && <h1 className="text-base font-bold text-slate-800">{title || 'Service Partner'}</h1>}
         </div>
+
+        {/* Centre: location */}
+        {showLocation && (
+          <button
+            type="button"
+            onClick={() => navigate('/worker/address-management')}
+            className="flex-1 min-w-0 mx-3 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 active:scale-[0.97] transition-all"
+          >
+            <FiMapPin className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span className="text-[12.5px] font-bold text-slate-800 truncate">
+              {locationLabel || 'Set your location'}
+            </span>
+            <FiChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+          </button>
+        )}
 
         {/* Right: Search and Notifications */}
         <div className="flex items-center gap-2">

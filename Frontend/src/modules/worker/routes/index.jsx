@@ -1,12 +1,14 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PageTransition from '../components/common/PageTransition';
 import BottomNav from '../components/layout/BottomNav';
+import Header from '../components/layout/Header';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import PublicRoute from '../../../components/auth/PublicRoute';
 import CashLimitModal from '../components/common/CashLimitModal'; // Import
 import GlobalBookingAlert from '../components/common/GlobalBookingAlert';
+import { prefetchWhenIdle } from '../../../utils/prefetchRoutes';
 // import useAppNotifications from '../../../hooks/useAppNotifications.jsx'; // Handled globally
 
 // Lazy load wrapper with error handling (same as user app)
@@ -70,13 +72,66 @@ const WorkerDisputeDetail = lazyLoad(() => import('../pages/Disputes/DisputeDeta
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
+import DashboardSkeleton from '../components/common/DashboardSkeleton';
 
-const LoadingFallback = () => (
-  <LogoLoader />
-);
+// Fills exactly the visible area (the page wrapper adds 6rem of bottom padding when the nav shows),
+// so the logo is dead-centre and the page can't scroll while loading.
+// Pages that open with the shared header: show that header (with its real title) right away,
+// so it doesn't pop in only after the page's code has downloaded.
+const HEADER_TITLES = {
+  '/worker/jobs': 'Active Jobs',
+  '/worker/earnings': 'Earnings',
+  '/worker/wallet': 'Wallet & Ledger',
+  '/worker/profile': 'Profile',
+  '/worker/settings': 'Settings',
+  '/worker/notifications': 'Notifications',
+  '/worker/bank-details': 'Bank Details',
+  '/worker/my-ratings': 'My Ratings',
+  '/worker/wallet/withdraw': 'Request Withdrawal',
+  '/worker/profile/details': 'Profile Details',
+  '/worker/profile/edit': 'Edit Profile'
+};
+
+const headerTitleFor = (pathname = '') => {
+  const clean = pathname.replace(/\/$/, '');
+  if (HEADER_TITLES[clean]) return HEADER_TITLES[clean];
+  if (/^\/worker\/booking\/[^/]+$/.test(clean)) return 'Booking Details';
+  if (/^\/worker\/booking\/[^/]+\/timeline$/.test(clean)) return 'Booking Timeline';
+  return null;
+};
+
+const LoadingFallback = ({ withNav, isDashboard, pathname }) => {
+  const headerTitle = headerTitleFor(pathname);
+  const height = withNav ? 'h-[calc(100dvh-6rem)]' : 'h-dvh';
+
+  if (isDashboard) {
+    return <div className={`overflow-hidden ${height}`}><DashboardSkeleton /></div>;
+  }
+  return (
+    <div className={`overflow-hidden flex flex-col ${height}`}>
+      {headerTitle && <Header title={headerTitle} />}
+      <div className="flex-1 flex items-center justify-center">
+        <LogoLoader inline size="w-20 h-20" />
+      </div>
+    </div>
+  );
+};
 
 const WorkerRoutes = () => {
   const location = useLocation();
+
+  // Pre-load the pages reachable from the bottom nav and the job flow
+  useEffect(() => {
+    prefetchWhenIdle([
+      () => import('../pages/Dashboard'),
+      () => import('../pages/ActiveJobs'),
+      () => import('../pages/Wallet'),
+      () => import('../pages/Profile'),
+      () => import('../pages/BookingDetails'),
+      () => import('../pages/BillingPage'),
+      () => import('../pages/Notifications')
+    ]);
+  }, []);
 
   // Check if current route should hide bottom nav (auth routes or map)
   // Check if current route should hide bottom nav (auth routes or map or booking alert)
@@ -85,6 +140,7 @@ const WorkerRoutes = () => {
     location.pathname === '/worker/login' ||
     location.pathname === '/worker/signup' ||
     location.pathname.endsWith('/map') ||
+    location.pathname.endsWith('/billing') ||
     location.pathname.includes('/booking-alert/');
 
   const shouldShowBottomNav = !shouldHideBottomNav;
@@ -92,8 +148,8 @@ const WorkerRoutes = () => {
   return (
     <ErrorBoundary>
       {/* Main content area - leaves space for bottom nav when needed */}
-      <div className={shouldShowBottomNav ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}>
-        <Suspense fallback={<LoadingFallback />}>
+      <div className={shouldShowBottomNav ? "with-worker-nav pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}>
+        <Suspense fallback={<LoadingFallback withNav={shouldShowBottomNav} isDashboard={location.pathname.endsWith('/dashboard')} pathname={location.pathname} />}>
           <PageTransition>
             <Routes>
               {/* Public routes */}

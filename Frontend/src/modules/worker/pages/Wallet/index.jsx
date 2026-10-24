@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiDollarSign, FiArrowUp, FiArrowDown, FiArrowRight, FiClock, FiCheckCircle, FiAlertCircle, FiSend } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import workerWalletService from '../../../../services/workerWalletService';
 import { toast } from 'react-hot-toast';
@@ -372,7 +371,6 @@ const Wallet = () => {
         </button>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiClock, FiCheck, FiX, FiDollarSign, FiChevronRight } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import workerWalletService from '../../../../services/workerWalletService';
 import { toast } from 'react-hot-toast';
 
@@ -196,7 +195,6 @@ const SettlementHistory = () => {
         )}
       </main>
 
-      <BottomNav />
     </div>
   );
 };

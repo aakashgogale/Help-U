@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiSave, FiUser, FiBriefcase, FiPhone, FiMail, FiMapPin, FiChevronDown, FiCamera, FiUpload } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { workerAuthService } from '../../../../services/authService';
 import api from '../../../../services/api';
@@ -811,7 +810,6 @@ const EditProfile = () => {
         onSave={handleAddressSave}
       />
 
-      <BottomNav />
     </div>
   );
 };

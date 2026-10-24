@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState } from 'react';
 import { FiCheckCircle, FiPlus } from 'react-icons/fi';
 import { MdQrCode } from 'react-icons/md';
@@ -10,11 +12,12 @@ const ScanAndPayModal = ({
   onCheckStatus,
   onSwitchToOtp
 }) => {
+  useModalLock(isOpen);
   const [isZoomed, setIsZoomed] = useState(false);
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
@@ -101,7 +104,7 @@ const ScanAndPayModal = ({
         </div>
       )}
     </>
-  );
+  , document.body);
 };
 
 export default ScanAndPayModal;

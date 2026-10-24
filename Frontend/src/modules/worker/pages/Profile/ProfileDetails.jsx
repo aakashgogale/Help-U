@@ -4,7 +4,6 @@ import { FiUser, FiEdit2, FiMapPin, FiPhone, FiMail, FiBriefcase } from 'react-i
 import { workerAuthService } from '../../../../services/authService';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 
 const ProfileDetails = () => {
   const navigate = useNavigate();
@@ -259,7 +258,6 @@ const ProfileDetails = () => {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

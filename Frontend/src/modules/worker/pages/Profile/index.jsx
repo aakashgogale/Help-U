@@ -6,7 +6,6 @@ import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import LogoLoader from '../../../../components/common/LogoLoader';
 
 const Profile = () => {
@@ -438,7 +437,6 @@ const Profile = () => {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 };

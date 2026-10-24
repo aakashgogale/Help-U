@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FiDollarSign, FiArrowRight, FiCreditCard, FiAlertCircle, FiCheckCircle, FiEdit2, FiClock, FiActivity } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
-import BottomNav from '../../components/layout/BottomNav';
 import { requestWithdrawal, getWalletBalance, getWithdrawalHistory } from '../../services/walletService';
 import { toast } from 'react-hot-toast';
 import LogoLoader from '../../../../components/common/LogoLoader';
@@ -388,7 +387,6 @@ const WithdrawalRequest = () => {
         </p>
       </main>
 
-      <BottomNav />
     </div>
   );
 };
