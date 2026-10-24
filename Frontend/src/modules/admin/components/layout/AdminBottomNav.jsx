@@ -43,6 +43,7 @@ const AdminBottomNav = () => {
 
   const navContent = (
     <nav 
+      data-bottom-nav
       className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',

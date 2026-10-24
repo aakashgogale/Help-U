@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 import { FiMenu, FiBell, FiLogOut, FiSearch } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
 import AdminGlobalSearch from './AdminGlobalSearch';
+import Modal from '../Modal';
 import { adminAuthService } from '../../../../services/authService';
 import api from '../../../../services/api';
 
@@ -13,21 +16,25 @@ const AdminHeader = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await adminAuthService.logout();
-      toast.success('Logged out successfully');
-      navigate('/admin/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Even if API call fails, clear local storage and redirect
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('adminData');
-      toast.success('Logged out successfully');
-      navigate('/admin/login');
-    }
+  // The page behind a dialog / search overlay must not scroll (also hides the mobile bottom nav)
+  useModalLock(showLogoutConfirm || showMobileSearch);
+
+  // Esc dismisses the logout confirmation
+  useEffect(() => {
+    if (!showLogoutConfirm) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape' && !loggingOut) setShowLogoutConfirm(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showLogoutConfirm, loggingOut]);
+
+  const handleLogout = () => {
+    setLoggingOut(true);
+    adminAuthService.logout();
+    toast.success('Logged out successfully');
+    navigate('/admin/login', { replace: true });
   };
 
   const toggleNotifications = () => {
@@ -215,7 +222,7 @@ const AdminHeader = ({ onMenuClick }) => {
 
           {/* Logout Button */}
           <Button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             variant="ghost"
             icon={FiLogOut}
             size="sm"
@@ -226,8 +233,42 @@ const AdminHeader = ({ onMenuClick }) => {
         </div>
       </div>
 
+      {/* Logout confirmation (rendered on <body>, outside the header, so it never disturbs the header) */}
+      {createPortal(
+      <Modal
+        isOpen={showLogoutConfirm}
+        onClose={() => { if (!loggingOut) setShowLogoutConfirm(false); }}
+        title="Log out?"
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          You will be signed out of the admin panel and will need to log in again to continue.
+        </p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            autoFocus
+            disabled={loggingOut}
+            onClick={() => setShowLogoutConfirm(false)}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Stay logged in
+          </button>
+          <button
+            type="button"
+            disabled={loggingOut}
+            onClick={handleLogout}
+            className="px-4 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+          >
+            {loggingOut ? 'Logging out…' : 'Log out'}
+          </button>
+        </div>
+      </Modal>,
+      document.body
+      )}
+
       {/* Mobile search overlay */}
-      {showMobileSearch && (
+      {showMobileSearch && createPortal(
         <div
           className="lg:hidden fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowMobileSearch(false); }}
@@ -235,7 +276,8 @@ const AdminHeader = ({ onMenuClick }) => {
           <div className="max-w-xl mx-auto mt-2">
             <AdminGlobalSearch variant="overlay" onClose={() => setShowMobileSearch(false)} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   );

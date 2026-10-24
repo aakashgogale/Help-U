@@ -1,3 +1,4 @@
+import axios from 'axios';
 import api from './api';
 import { registerFCMToken, removeFCMToken } from './pushNotificationService';
 
@@ -224,17 +225,21 @@ export const adminAuthService = {
     return response.data;
   },
 
-  // Logout
-  logout: async () => {
-    try {
-      await api.post('/admin/auth/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
+  // Logout: sign out locally first (instant, no waiting on the network), then tell the server in the
+  // background. The server call uses a plain axios request so a 401 can't trigger the shared
+  // interceptor's hard redirect (a full page reload, which looks like the screen blinking).
+  logout: () => {
+    const token = localStorage.getItem('adminAccessToken') || sessionStorage.getItem('adminAccessToken');
+
+    ['adminAccessToken', 'adminRefreshToken', 'adminData'].forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+
+    if (token) {
+      axios
+        .post(`${api.defaults.baseURL}/admin/auth/logout`, {}, { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 })
+        .catch(() => { /* already signed out locally */ });
     }
-    localStorage.removeItem('adminAccessToken');
-    localStorage.removeItem('adminRefreshToken');
-    localStorage.removeItem('adminData');
   }
 };
-
-

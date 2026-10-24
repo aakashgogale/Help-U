@@ -15,8 +15,11 @@ const useModalLock = (active) => {
     if (openModals === 0) {
       html.dataset.prevOverflow = html.style.overflow;
       body.dataset.prevOverflow = body.style.overflow;
+      html.dataset.prevGutter = html.style.scrollbarGutter;
       html.style.overflow = 'hidden';
       body.style.overflow = 'hidden';
+      // Keep the scrollbar's space reserved so hiding it does not shift the page sideways
+      html.style.scrollbarGutter = 'stable';
       html.classList.add('has-modal');
     }
     openModals += 1;
@@ -26,6 +29,8 @@ const useModalLock = (active) => {
       if (openModals === 0) {
         html.style.overflow = html.dataset.prevOverflow || '';
         body.style.overflow = body.dataset.prevOverflow || '';
+        html.style.scrollbarGutter = html.dataset.prevGutter || '';
+        delete html.dataset.prevGutter;
         delete html.dataset.prevOverflow;
         delete body.dataset.prevOverflow;
         html.classList.remove('has-modal');
