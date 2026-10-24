@@ -46,7 +46,10 @@ const getWorkerBookings = async (req, res) => {
           vendorId: null,
           status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
           serviceCategory: { $in: workerCategories },
-          'potentialVendors.vendorId': vId // Only show jobs where THIS worker is within range
+          // Only jobs that have actually been SENT to this worker. (potentialVendors lists everyone
+          // in range, including workers whose alert wave has not started; listing by that
+          // let any worker see and sync a job before its wave, which defeated the waves.)
+          notifiedVendors: vId
         }
       ]
     };
@@ -261,7 +264,10 @@ const acceptBooking = async (req, res) => {
         status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
         vendorId: null, // Crucial: Ensures another request didn't just take it
         // A worker who rejected or dropped this booking cannot take it back.
-        excludedVendors: { $ne: vendorId }
+        excludedVendors: { $ne: vendorId },
+        // ...and only a worker the booking was sent to can take it (an older booking with no
+        // recorded notifications stays acceptable, so nothing already in flight breaks)
+        $or: [{ notifiedVendors: vendorId }, { notifiedVendors: { $size: 0 } }, { notifiedVendors: { $exists: false } }]
       },
       {
         $set: {

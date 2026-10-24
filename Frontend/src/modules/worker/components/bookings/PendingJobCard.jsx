@@ -82,6 +82,14 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
             {booking.bookingType === 'instant' && <span className="text-sm">⚡</span>}
             {booking.bookingType === 'instant' ? 'INSTANT' : 'NEW REQUEST'}
           </span>
+          {booking.bookingType === 'scheduled' && !booking.isEmergency ? (
+            <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+              📅 {booking.scheduledDate
+                ? new Date(booking.scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+                : 'Scheduled'}
+              {(booking.timeSlot?.time || booking.scheduledTime) ? ` · ${booking.timeSlot?.time || booking.scheduledTime}` : ''}
+            </span>
+          ) : (
           <CountdownTimer
             durationSeconds={maxSearchTimeMins * 60}
             createdAt={booking.createdAt}
@@ -91,6 +99,7 @@ const PendingJobCard = ({ booking, onAccept, onReject, onClick, loadingAction, s
               window.dispatchEvent(new CustomEvent('removeWorkerBooking', { detail: { id: bookingId } }));
             }}
           />
+          )}
         </div>
       )}
 

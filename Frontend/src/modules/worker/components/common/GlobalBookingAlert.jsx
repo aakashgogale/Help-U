@@ -134,22 +134,29 @@ export default function GlobalBookingAlert() {
     };
   }, []);
 
-  // Effect to manage sound based on pending bookings
+  // A scheduled (future) booking is offered for hours and goes to workers who may be on a job or
+  // offline, so it must not take over the screen or ring until answered: it waits in the pending
+  // list instead. Only urgent bookings (instant, emergency) use the full-screen alert.
+  const urgentAlertBookings = activeAlertBookings.filter(
+    (b) => b.bookingType !== 'scheduled' || b.isEmergency
+  );
+
+  // Effect to manage sound based on urgent pending bookings
   useEffect(() => {
-    if (activeAlertBookings.length > 0) {
+    if (urgentAlertBookings.length > 0) {
       playAlertRing(true); // Always loop for worker until actioned
     } else {
       stopAlertRing();
     }
     return () => stopAlertRing();
-  }, [activeAlertBookings.length]);
+  }, [urgentAlertBookings.length]);
 
-  if (activeAlertBookings.length === 0) return null;
+  if (urgentAlertBookings.length === 0) return null;
 
   return (
     <BookingAlertModal
-      isOpen={activeAlertBookings.length > 0}
-      bookings={activeAlertBookings}
+      isOpen={urgentAlertBookings.length > 0}
+      bookings={urgentAlertBookings}
       maxSearchTimeMins={maxSearchTime}
       onAccept={async (id) => {
         try {
