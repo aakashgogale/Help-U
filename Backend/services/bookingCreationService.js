@@ -251,9 +251,9 @@ const placeBooking = async (userId, payload, options = {}) => {
     }
   }
 
-  if (!matchedZone && data.zoneId) {
+  if (!matchedZone && payload.zoneId) {
     try {
-      matchedZone = await Zone.findById(data.zoneId);
+      matchedZone = await Zone.findById(payload.zoneId);
       if (matchedZone) {
         console.log(`[CreateBooking] Matched Zone by provided zoneId: "${matchedZone.name}"`);
       }

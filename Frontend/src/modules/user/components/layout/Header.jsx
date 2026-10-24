@@ -39,7 +39,7 @@ const Header = ({ location, onLocationClick, showNotifications = false }) => {
       <div className="relative z-10">
         <div className="w-full">
           {/* Top Row: Logo (Left) and Location (Right) */}
-          <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
+          <div className={`px-4 pt-3 ${showNotifications ? 'pb-0' : 'pb-2'} flex items-center justify-between gap-3`}>
             {/* Left: Logo */}
             <Link
               to="/user"

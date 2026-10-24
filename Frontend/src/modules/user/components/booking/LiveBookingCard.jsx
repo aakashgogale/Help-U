@@ -147,7 +147,7 @@ const LiveBookingCard = ({ hasBottomNav }) => {
             navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
           }
         }}
-        className={`fixed ${hasBottomNav ? 'bottom-[calc(var(--bottom-nav-height,88px)+0.5rem)]' : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'} left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-50`}
+        className={`fixed ${hasBottomNav ? 'bottom-[calc(var(--bottom-nav-height,80px)-0.25rem)]' : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'} left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-50`}
       >
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_10px_35px_-5px_rgba(15,27,45,0.18)] border border-gray-100 py-2.5 px-3.5 flex items-center gap-3 relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform group">
 

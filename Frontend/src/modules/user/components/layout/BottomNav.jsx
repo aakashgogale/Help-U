@@ -58,18 +58,18 @@ const BottomNav = React.memo(() => {
   return (
     <nav
       ref={navRef}
-      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pt-2 bg-white/60 border-t border-gray-200/60"
+      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pt-1.5 bg-white/60 border-t border-gray-200/60"
       style={{
         // The whole band is a frosted, tappable-blocking layer: content scrolling underneath
         // is blurred and cannot be hit through the gaps around the floating dock.
         backdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackfaceVisibility: 'hidden',
-        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
       }}
     >
       <div
-        className="max-w-md mx-auto rounded-[28px] px-2 py-2 bg-white/95 border border-gray-100"
+        className="max-w-md mx-auto rounded-[26px] px-2 py-1.5 bg-white/95 border border-gray-100"
         style={{
           boxShadow: '0 6px 22px -8px rgba(15, 27, 45, 0.2)',
         }}
@@ -87,19 +87,19 @@ const BottomNav = React.memo(() => {
                 whileTap={{ scale: 0.92 }}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
-                className="relative flex flex-col items-center justify-center flex-1 max-w-[88px] h-[60px] rounded-[18px]"
+                className="relative flex flex-col items-center justify-center flex-1 max-w-[88px] h-[52px] rounded-[16px]"
               >
                 {/* Active pill */}
                 {isActive && (
                   <motion.div
                     layoutId="user-bottom-nav-pill"
-                    className="absolute inset-0 rounded-[18px] bg-accent-soft"
+                    className="absolute inset-0 rounded-[16px] bg-accent-soft"
                     transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   />
                 )}
 
                 <div className="relative z-10 flex flex-col items-center justify-center">
-                  <div className="relative mb-1">
+                  <div className="relative mb-0.5">
                     <IconComponent
                       className={`w-6 h-6 transition-colors duration-200 ${isActive ? 'text-accent' : 'text-gray-500'}`}
                     />
