@@ -200,7 +200,10 @@ const findZoneByPoint = async (req, res) => {
 
     const zone = await Zone.findZoneByCoordinates(lng, lat, cityId);
     if (!zone) {
-      return res.status(200).json({ success: true, zone: null, message: 'No active zone found for these coordinates' });
+      // Tell the client whether zone gating applies at all: with no active zones defined,
+      // "no zone" just means zones are not set up, not that the user is out of area.
+      const zonesConfigured = Boolean(await Zone.exists({ status: 'active' }));
+      return res.status(200).json({ success: true, zone: null, zonesConfigured, message: 'No active zone found for these coordinates' });
     }
 
     res.status(200).json({ success: true, zone: toZoneResponse(zone) });

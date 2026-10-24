@@ -34,7 +34,8 @@ export const ZoneProvider = ({ children }) => {
           try { localStorage.setItem('detectedZoneId', res.data.zone.id || res.data.zone._id); } catch {}
         } else {
           setCurrentZone(null);
-          setIsOutOfZone(true);
+          // Only out of area when zones actually exist; no zones configured = no gating
+          setIsOutOfZone(res.data.zonesConfigured !== false);
           try { localStorage.removeItem('detectedZoneId'); } catch {}
         }
       }
