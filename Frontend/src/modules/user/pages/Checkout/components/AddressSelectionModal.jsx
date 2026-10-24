@@ -82,7 +82,7 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
       />
       <div className="fixed bottom-0 left-0 right-0 z-50">
         <div
-          className={`bg-white rounded-t-[32px] shadow-2xl ${isClosing ? 'animate-slide-down' : 'animate-slide-up'}`}
+          className={`bg-white rounded-t-[32px] shadow-2xl safe-area-bottom ${isClosing ? 'animate-slide-down' : 'animate-slide-up'}`}
           style={{
             height: '85vh',
             maxHeight: '90vh',

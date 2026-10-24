@@ -516,7 +516,7 @@ const CategorySpecificSheet = ({ section, categories, etaMap, onPick, onClose })
             </div>
 
             {/* White Sheet Box */}
-            <div className="bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col w-full max-w-lg mx-auto overflow-hidden">
+            <div className="safe-area-bottom bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col w-full max-w-lg mx-auto overflow-hidden">
               {/* Modal Title */}
               <div className="px-5 pt-5 pb-1">
                 <h3 className="text-[20px] sm:text-[22px] font-bold text-[#111827] tracking-tight">
@@ -646,7 +646,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 340, damping: 32 }}
           >
-            <div className="bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
+            <div className="safe-area-bottom bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl w-full max-w-lg mx-auto overflow-hidden">
               {/* Top Sheet Drag Pill */}
               <div className="pt-2.5 pb-1 flex justify-center">
                 <div className="w-10 h-1 rounded-full bg-gray-300" />

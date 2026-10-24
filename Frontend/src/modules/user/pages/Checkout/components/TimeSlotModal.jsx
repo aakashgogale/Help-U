@@ -60,7 +60,7 @@ const TimeSlotModal = ({
       <div className="fixed bottom-0 left-0 right-0 z-50">
         {/* Modal */}
         <div
-          className={`bg-white rounded-t-3xl ${isClosing ? 'animate-slide-down' : 'animate-slide-up'
+          className={`bg-white rounded-t-3xl safe-area-bottom ${isClosing ? 'animate-slide-down' : 'animate-slide-up'
             }`}
           style={{
             maxHeight: '90vh',

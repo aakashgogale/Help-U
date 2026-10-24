@@ -74,6 +74,7 @@ const BottomNav = memo(() => {
       className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
       style={{
         zIndex: 40,
+        paddingBottom: 'env(safe-area-inset-bottom)',
         willChange: 'transform',
         transform: 'translateZ(0)',
       }}

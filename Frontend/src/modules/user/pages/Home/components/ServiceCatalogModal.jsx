@@ -4676,19 +4676,17 @@ const ServiceCatalogModal = React.memo(({
           {/* FLOATING "☰ MENU" BUTTON (Positioned gracefully) */}
           {/* ========================================================================= */}
           {combinedSections.length > 0 && (
-            <div
-              className={`absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto transition-all duration-300 ${
-                totalCartCount > 0 ? 'bottom-23' : 'bottom-5'
-              }`}
-            >
+            <div className="relative h-0 z-40 shrink-0">
+              <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
               <button
                 type="button"
                 onClick={() => setIsMenuOpen(true)}
-                className="bg-[#1A1D20] text-white px-4 py-2 rounded-full font-bold text-[13px] flex items-center gap-1.5 shadow-2xl hover:bg-black active:scale-95 transition-all cursor-pointer border border-white/20"
+                className="pointer-events-auto bg-[#1A1D20] text-white px-4 py-2 rounded-full font-bold text-[13px] flex items-center gap-1.5 shadow-2xl hover:bg-black active:scale-95 transition-all cursor-pointer border border-white/20"
               >
                 <FiMenu className="w-4 h-4" />
                 <span>Menu</span>
               </button>
+              </div>
             </div>
           )}
 
@@ -4716,7 +4714,7 @@ const ServiceCatalogModal = React.memo(({
                 </div>
 
                 {/* Cart summary and View Cart Button */}
-                <div className="px-4 py-3 flex items-center justify-between gap-3 bg-white">
+                <div className="px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 bg-white">
                   <div className="min-w-0">
                     <p className="text-[14px] font-extrabold text-gray-900 leading-tight">
                       {totalCartCount} item{totalCartCount > 1 ? 's' : ''} added
@@ -4759,7 +4757,7 @@ const ServiceCatalogModal = React.memo(({
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl p-5 max-w-lg mx-auto shadow-2xl max-h-[70vh] flex flex-col"
+                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] max-w-lg mx-auto shadow-2xl max-h-[70vh] flex flex-col"
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h3 className="text-[18px] font-bold text-gray-900">
@@ -4841,7 +4839,7 @@ const ServiceCatalogModal = React.memo(({
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
                     transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                    className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl max-w-lg mx-auto shadow-2xl max-h-[85vh] flex flex-col overflow-hidden"
+                    className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl max-w-lg mx-auto shadow-2xl max-h-[85vh] flex flex-col overflow-hidden safe-area-bottom"
                   >
                     {/* Top Hero Banner Gallery (16:9 / 4:3 Aspect Ratio with Swipeable Carousel & Rounded Top) */}
                     {detailImages.length > 0 ? (
@@ -5198,7 +5196,7 @@ const ServiceCatalogModal = React.memo(({
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl max-w-lg mx-auto shadow-2xl max-h-[85vh] flex flex-col overflow-hidden"
+                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl max-w-lg mx-auto shadow-2xl max-h-[85vh] flex flex-col overflow-hidden safe-area-bottom"
                 >
                   {/* Header */}
                   <div className="p-4 border-b border-gray-100 flex items-center justify-between">

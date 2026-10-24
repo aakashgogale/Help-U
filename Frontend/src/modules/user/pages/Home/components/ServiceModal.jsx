@@ -58,7 +58,7 @@ const ServiceModal = ({ isOpen, onClose, service, location, cartCount }) => {
 
         {/* Modal */}
         <div
-          className={`bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto ${
+          className={`bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto safe-area-bottom ${
             isClosing ? 'animate-slide-down' : 'animate-slide-up'
           }`}
           onClick={(e) => e.stopPropagation()}

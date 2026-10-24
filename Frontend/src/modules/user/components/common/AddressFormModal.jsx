@@ -124,7 +124,7 @@ const AddressFormModal = ({ isOpen, onClose, address, onSave }) => {
         {/* Modal - Slide up from bottom */}
         <div
           ref={modalRef}
-          className="bg-white rounded-t-3xl w-full max-w-md shadow-2xl pointer-events-auto flex flex-col mx-auto"
+          className="bg-white rounded-t-3xl w-full max-w-md shadow-2xl pointer-events-auto flex flex-col mx-auto safe-area-bottom"
           style={{ 
             maxHeight: '90vh',
             transform: 'translateY(100%)',

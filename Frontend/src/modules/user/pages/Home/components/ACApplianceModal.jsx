@@ -105,7 +105,7 @@ const ACApplianceModal = React.memo(({ isOpen, onClose, location, cartCount }) =
 
         {/* Modal */}
         <div
-          className={`bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto ${isClosing ? 'animate-slide-down' : 'animate-slide-up'
+          className={`bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto safe-area-bottom ${isClosing ? 'animate-slide-down' : 'animate-slide-up'
             }`}
           onClick={(e) => e.stopPropagation()}
         >
