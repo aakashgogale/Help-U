@@ -329,6 +329,13 @@ const BookingTrack = () => {
     }
   }, [socket, id]);
 
+  // The worker withdrew the bill (went back to edit it): close the payment sheet
+  useEffect(() => {
+    if (booking && booking.status === 'work_done' && !booking.customerConfirmationOTP && !booking.qrPaymentInitiated) {
+      setShowPaymentModal(false);
+    }
+  }, [booking]);
+
   useEffect(() => {
     if (booking?.advancePayment?.status === 'paid') {
       setShowPaymentModal(false);
@@ -886,7 +893,7 @@ const BookingTrack = () => {
                     {booking?.paymentStatus === 'success' ? 'Payment Received' : 'Final Payment'}
                   </p>
                   <p className="text-white text-xs font-medium">
-                    {booking?.paymentStatus === 'success' ? 'Verified Successfully' : `Service amount: ₹${(booking?.finalAmount || 0).toLocaleString()}`}
+                    {booking?.paymentStatus === 'success' ? 'Verified Successfully' : `Amount due: ₹${Number(booking?.userPayableAmount ?? booking?.finalAmount ?? 0).toLocaleString()}`}
                   </p>
                 </div>
               </div>

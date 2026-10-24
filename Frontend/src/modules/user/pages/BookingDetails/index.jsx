@@ -175,6 +175,13 @@ const BookingDetails = () => {
     }
   }, [booking]);
 
+  // The worker withdrew the bill (went back to edit it): close the payment sheet
+  useEffect(() => {
+    if (booking && booking.status === 'work_done' && !booking.customerConfirmationOTP && !booking.qrPaymentInitiated) {
+      setShowPaymentModal(false);
+    }
+  }, [booking]);
+
   // Socket Listener for Real-time Updates
   useEffect(() => {
     if (socket && id) {
@@ -1065,7 +1072,7 @@ const BookingDetails = () => {
                             ? <p className="font-medium">Covered by your Membership Plan</p>
                             : <p className="font-medium">Booking completed successfully. Thank you for choosing us!</p>
                         )
-                        : <p className="font-medium">Total Amount: <span className="text-lg font-black ml-1">₹{(booking.finalAmount || booking.totalAmount || 0).toLocaleString('en-IN')}</span></p>
+                        : <p className="font-medium">Amount due: <span className="text-lg font-black ml-1">₹{Number(booking.userPayableAmount ?? booking.finalAmount ?? booking.totalAmount ?? 0).toLocaleString('en-IN')}</span></p>
                       }
                       {booking.paymentStatus !== 'success' && <p className="text-[10px] text-orange-100 mt-0.5 opacity-80">Pay online above or prepare cash for the professional.</p>}
                     </div>

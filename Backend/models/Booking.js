@@ -459,6 +459,18 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Set when the worker sends the finished bill to the customer (Collect Cash / Online QR) and
+  // cleared when they go back to edit it. The customer only sees the amount, the pay buttons and the
+  // verification code while this is set.
+  billFinalizedAt: {
+    type: Date,
+    default: null
+  },
+  // When the customer last opened an online checkout for the final bill (see utils/billLock.js)
+  paymentOrderCreatedAt: {
+    type: Date,
+    default: null
+  },
   customerConfirmed: {
     type: Boolean,
     default: false

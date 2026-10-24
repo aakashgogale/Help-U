@@ -1173,22 +1173,8 @@ const completeSelfJob = async (req, res) => {
       }
     });
 
-    // 2. Notify user with Final Bill and OTP (The missing piece)
-    await createNotification({
-      userId: booking.userId,
-      type: 'work_done',
-      title: 'Billing Ready',
-      message: `Bill Generated: ₹${grandTotal}. Your verification OTP is ${payOtp}. Please share this with the professional to complete.`,
-      relatedId: booking._id,
-      relatedType: 'booking',
-      priority: 'high',
-      pushData: {
-        type: 'work_done',
-        bookingId: booking._id.toString(),
-        paymentOtp: payOtp,
-        link: `/user/booking/${booking._id}`
-      }
-    });
+    // The bill, amount and verification code reach the customer only when the worker sends the
+    // finished bill (cashCollectionController sets billFinalizedAt and notifies them then).
 
     const io = req.app.get('io');
     if (io) {

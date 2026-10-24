@@ -76,6 +76,14 @@ const createPaymentOrder = async (req, res) => {
       });
     }
 
+    // After the work is done the customer can only pay once the worker has sent the finished bill
+    if (paymentType === 'final' && booking.status === BOOKING_STATUS.WORK_DONE && !booking.billFinalizedAt) {
+      return res.status(409).json({
+        success: false,
+        message: 'The professional is still preparing your bill. Please wait until it is sent to you.'
+      });
+    }
+
     const payableAmount = paymentType === 'advance'
       ? getAdvancePaymentAmount(booking)
       : getFinalPaymentAmount(booking);
@@ -117,6 +125,7 @@ const createPaymentOrder = async (req, res) => {
       booking.advancePayment.razorpayOrderId = orderResult.orderId;
     } else {
       booking.razorpayOrderId = orderResult.orderId;
+      booking.paymentOrderCreatedAt = new Date();
     }
     await booking.save();
 
@@ -485,6 +494,14 @@ const processWalletPayment = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Payment already completed for this booking'
+      });
+    }
+
+    // After the work is done the customer can only pay once the worker has sent the finished bill
+    if (paymentType === 'final' && booking.status === BOOKING_STATUS.WORK_DONE && !booking.billFinalizedAt) {
+      return res.status(409).json({
+        success: false,
+        message: 'The professional is still preparing your bill. Please wait until it is sent to you.'
       });
     }
 

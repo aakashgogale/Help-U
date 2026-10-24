@@ -305,8 +305,27 @@ const getQRCodePayments = async (id) => {
   }
 };
 
+/**
+ * Closes a QR (or cancels a payment link) so it can no longer be paid. Best effort: a QR that was
+ * already paid or closed just reports failure.
+ */
+const closeQRCode = async (id) => {
+  try {
+    if (!razorpay || !id) return { success: false };
+    if (id.startsWith('plink_')) {
+      await razorpay.paymentLink.cancel(id);
+    } else {
+      await razorpay.qrCode.close(id);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.description || error.message };
+  }
+};
+
 module.exports = {
   createOrder,
+  closeQRCode,
   verifyPayment,
   getPaymentDetails,
   refundPayment,

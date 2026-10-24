@@ -398,7 +398,7 @@ export default function BookingDetails() {
   // Handle cash collection button click
   const handleCollectCashClick = () => {
     // If OTP already sent, open modal. Otherwise navigate to full billing page.
-    if (booking?.customerConfirmationOTP || booking?.paymentOtp) {
+    if (booking?.billFinalizedAt && (booking?.customerConfirmationOTP || booking?.paymentOtp)) {
       setIsCashModalOpen(true);
     } else {
       // Navigate to the full page billing flow
@@ -1204,7 +1204,7 @@ export default function BookingDetails() {
                   {booking.paymentMethod === 'plan_benefit' ? 'Prepare/Edit Final Bill' : 'Prepare Bill & Collect Cash'}
                 </button>
 
-                {(booking?.customerConfirmationOTP || booking?.paymentOtp) && (
+                {booking?.billFinalizedAt && (booking?.customerConfirmationOTP || booking?.paymentOtp) && (
                   <button
                     onClick={() => setIsOtpModalOpen(true)}
                     disabled={loading}

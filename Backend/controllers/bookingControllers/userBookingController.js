@@ -41,6 +41,19 @@ const createBooking = async (req, res) => {
 };
 
 /**
+ * The customer must not see the amount to pay, the pay buttons or the verification code until the
+ * worker has sent the finished bill (Collect Cash / Online QR). Until then those fields are blanked.
+ */
+const hideUnsentBill = (booking) => {
+  if (booking && booking.status === BOOKING_STATUS.WORK_DONE && !booking.billFinalizedAt) {
+    booking.customerConfirmationOTP = null;
+    booking.paymentOtp = undefined;
+    booking.qrPaymentInitiated = false;
+  }
+  return booking;
+};
+
+/**
  * Get user bookings with filters
  */
 const getUserBookings = async (req, res) => {
@@ -84,7 +97,7 @@ const getUserBookings = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: bookings,
+      data: bookings.map(hideUnsentBill),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -137,6 +150,7 @@ const getBookingById = async (req, res) => {
     // Ensure OTP consistency for user display
     bookingData.customerConfirmationOTP = booking.customerConfirmationOTP || booking.paymentOtp;
     bookingData.paymentOtp = bookingData.customerConfirmationOTP;
+    hideUnsentBill(bookingData);
 
     res.status(200).json({
       success: true,

@@ -3,7 +3,8 @@ const Worker = require('../../models/Worker');
 const Transaction = require('../../models/Transaction');
 const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
-const { createQRCode, getQRCodePayments } = require('../../services/razorpayService');
+const { createQRCode, getQRCodePayments, closeQRCode } = require('../../services/razorpayService');
+const { billLockReason } = require('../../utils/billLock');
 const { getBookingConfig } = require('../../utils/bookingConfig');
 
 const getRemainingPayableAmount = (booking) => {
@@ -16,6 +17,62 @@ const getRemainingPayableAmount = (booking) => {
 const getDefaultWorkerShare = async () => {
   const config = await getBookingConfig();
   return (config.servicePayoutPercentage ?? 80) / 100;
+};
+
+/**
+ * Withdraw a bill that was sent to the customer (worker pressed Back on the review step).
+ * The customer's pay buttons, amount and code disappear until the worker sends it again.
+ * Refused once the payment is done, so it can never undo a completed payment.
+ */
+exports.retractBill = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    if (String(booking.vendorId) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+    if (booking.status !== BOOKING_STATUS.WORK_DONE) {
+      return res.status(400).json({ success: false, message: 'Booking is not awaiting payment' });
+    }
+
+    const lockReason = billLockReason(booking);
+    if (lockReason) {
+      return res.status(409).json({ success: false, message: lockReason });
+    }
+
+    // An open QR would let the customer pay the old amount: make sure nothing was paid on it, then close it
+    if (booking.razorpayQrId) {
+      const qrRes = await getQRCodePayments(booking.razorpayQrId);
+      if (qrRes.success && (qrRes.payments || []).some((p) => p.status === 'captured')) {
+        return res.status(409).json({ success: false, message: 'The customer has already paid by QR. Verify the payment instead.' });
+      }
+      await closeQRCode(booking.razorpayQrId);
+      booking.razorpayQrId = undefined;
+    }
+
+    booking.billFinalizedAt = null;
+    booking.qrPaymentInitiated = false;
+    await booking.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${booking.userId}`).emit('booking_updated', {
+        bookingId: booking._id,
+        billRetracted: true,
+        customerConfirmationOTP: null,
+        paymentOtp: null,
+        qrPaymentInitiated: false
+      });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Retract bill error:', error);
+    res.status(500).json({ success: false, message: 'Failed to withdraw the bill' });
+  }
 };
 
 /**
@@ -90,6 +147,7 @@ exports.initiateOnlineCollection = async (req, res) => {
     // Store QR ID to track later
     booking.razorpayQrId = qrResult.qrCodeId;
     booking.paymentMethod = 'online'; // Mark as online as soon as QR is shown
+    booking.billFinalizedAt = new Date();
     await booking.save();
 
     // Emit socket event to user with full bill details & OTP
@@ -210,6 +268,7 @@ exports.initiateCashCollection = async (req, res) => {
     const otp = booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
     booking.customerConfirmationOTP = otp;
     booking.paymentOtp = otp;
+    booking.billFinalizedAt = new Date();
     await booking.save();
 
     // Emit socket event to user with full bill details and OTP

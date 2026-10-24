@@ -113,9 +113,10 @@ const BillingPage = () => {
       const bookingData = bookingRes.data || bookingRes;
       setBooking(bookingData);
 
-      // Check if OTP was already sent
-      if (bookingData?.customerConfirmationOTP || bookingData?.paymentOtp) {
-        setIsOtpSent(true);
+      // Whether the customer can currently see the bill (sent when the Review step opens)
+      if (bookingData?.billFinalizedAt) {
+        billSentRef.current = true;
+        setBillSent(true);
       }
 
       const [servicesRes, partsRes, catRes, walletRes] = await Promise.all([
@@ -474,6 +475,93 @@ const BillingPage = () => {
   }, [walletInfo, calculations]);
 
 
+  // The customer sees the bill only after the worker taps "Send bill to customer" on the Review
+  // step (saved on the server first, so both sides show the same amount). Leaving Review, by any
+  // route, takes it away again until it is re-sent.
+  const billSentRef = React.useRef(false);
+  const sendingRef = React.useRef(false);
+  const currentStepRef = React.useRef(currentStep);
+  const [billSent, setBillSent] = useState(false);
+  const [sentBill, setSentBill] = useState(null);
+  const [sendingBill, setSendingBill] = useState(false);
+
+  // Once the bill is saved on the server its total is the one the customer pays, so show that
+  const billTotal = sentBill?.grandTotal ?? calculations?.finalBillAmount ?? 0;
+  const payableNow = sentBill
+    ? Math.max(0, parseFloat((sentBill.grandTotal - (calculations?.advancePaidAmount || 0)).toFixed(2)))
+    : (calculations?.remainingPayableAmount ?? 0);
+
+  useEffect(() => { currentStepRef.current = currentStep; }, [currentStep]);
+  useEffect(() => {
+    billSentRef.current = billSent || isOtpSent || !!onlinePaymentData;
+  }, [billSent, isOtpSent, onlinePaymentData]);
+
+  // Returns false when the server refuses (e.g. the customer is paying right now): stay on the page
+  const withdrawBill = async () => {
+    if (!billSentRef.current) return true;
+    try {
+      await workerWalletService.retractBill(id);
+    } catch (error) {
+      if (error.response?.status === 409) {
+        toast.error(error.response.data?.message || 'The customer is paying, so the bill cannot be withdrawn right now.');
+        return false;
+      }
+      /* any other failure: the bill is already closed or paid, nothing to withdraw */
+    }
+    billSentRef.current = false;
+    setBillSent(false);
+    setSentBill(null);
+    setIsOtpSent(false);
+    setOnlinePaymentData(null);
+    setShowOtpModal(false);
+    setShowQrModal(false);
+    return true;
+  };
+
+  const sendBill = async () => {
+    if (billSentRef.current || sendingRef.current) return;
+    sendingRef.current = true;
+    setSendingBill(true);
+    try {
+      const res = await workerBillService.createOrUpdateBill(id, {
+        services: selectedServices,
+        parts: selectedParts,
+        customItems,
+        transportCharges,
+        applyPartsGST,
+        send: true
+      });
+      if (res.success) {
+        billSentRef.current = true;
+        setBillSent(true);
+        setSentBill(res.bill);
+        toast.success('Bill sent to the customer');
+        // Worker already moved off Review while this was in flight
+        if (currentStepRef.current !== 6) await withdrawBill();
+      } else {
+        toast.error(res.message || 'Could not send the bill to the customer');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not send the bill to the customer');
+    } finally {
+      sendingRef.current = false;
+      setSendingBill(false);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || currentStep === 6) return;
+    withdrawBill();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, loading]);
+
+  // Leaving the page by any route (browser back, hardware back) withdraws an unpaid bill too
+  useEffect(() => () => {
+    if (billSentRef.current) {
+      workerWalletService.retractBill(id).catch(() => {});
+    }
+  }, [id]);
+
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
@@ -541,7 +629,8 @@ const BillingPage = () => {
         parts: selectedParts,
         customItems,
         transportCharges,
-        applyPartsGST
+        applyPartsGST,
+        send: true
       });
 
       const res = await workerWalletService.initiateCashCollection(
@@ -606,7 +695,8 @@ const BillingPage = () => {
         parts: selectedParts,
         customItems,
         transportCharges,
-        applyPartsGST
+        applyPartsGST,
+        send: true
       });
 
       const res = await workerWalletService.initiateOnlineCollection(id, calculations.remainingPayableAmount, [...selectedParts, ...customItems]);
@@ -656,7 +746,7 @@ const BillingPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <div className="sticky top-0 z-50 bg-white px-4 py-4 shadow-sm border-b border-gray-100 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button onClick={async () => { if (await withdrawBill()) navigate(-1); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
             <FiArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-bold text-gray-800">Generate Bill</h1>
@@ -822,12 +912,12 @@ const BillingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-0 flex flex-col">
+    <div className="min-h-[100svh] bg-gray-50 pb-0 flex flex-col">
       {/* Unified Sticky Header */}
       <div className="sticky top-0 z-50 bg-white">
         {/* Title Bar */}
         <div className="px-4 py-4 shadow-sm border-b border-gray-100 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
+          <button onClick={async () => { if (await withdrawBill()) navigate(-1); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
             <FiArrowLeft className="w-5 h-5" />
           </button>
           <div>
@@ -866,7 +956,8 @@ const BillingPage = () => {
         </div>
       </div>
 
-      <div className="p-4 space-y-6 pb-48">
+      {/* Bottom padding only clears the fixed action bar, so short steps (e.g. Review) fit without scrolling */}
+      <div className="p-4 space-y-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
         {(booking.customerAddedServices || []).length > 0 && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
             <p className="text-sm font-bold text-emerald-900">Customer added after inspection</p>
@@ -1148,7 +1239,7 @@ const BillingPage = () => {
             <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 mb-6">
               <div className="bg-gray-900 px-6 py-6 text-white text-center">
                 <p className="text-gray-400 text-xs font-medium uppercase tracking-widest mb-1">TOTAL INVOICE AMOUNT</p>
-                <h2 className="text-4xl font-black">₹{calculations.finalBillAmount.toFixed(2)}</h2>
+                <h2 className="text-4xl font-black">₹{billTotal.toFixed(2)}</h2>
                 {calculations.advancePaidAmount > 0 && (
                   <div className="mt-4 grid grid-cols-2 gap-3 text-left">
                     <div className="rounded-2xl bg-white/10 px-4 py-3">
@@ -1157,7 +1248,7 @@ const BillingPage = () => {
                     </div>
                     <div className="rounded-2xl bg-white/10 px-4 py-3">
                       <p className="text-[10px] uppercase tracking-widest text-gray-300 mb-1">Remaining Due</p>
-                      <p className="text-lg font-black text-yellow-300">₹{calculations.remainingPayableAmount.toFixed(2)}</p>
+                      <p className="text-lg font-black text-yellow-300">₹{payableNow.toFixed(2)}</p>
                     </div>
                   </div>
                 )}
@@ -1188,7 +1279,7 @@ const BillingPage = () => {
                       )}
                       <div className="flex justify-between font-bold text-gray-800 pt-1">
                         <span>Remaining In Bill</span>
-                        <span>₹{calculations.remainingPayableAmount.toFixed(2)}</span>
+                        <span>₹{payableNow.toFixed(2)}</span>
                       </div>
                       {booking.advancePayment?.reason && (
                         <div className="text-xs text-gray-500 pt-1">
@@ -1433,14 +1524,25 @@ const BillingPage = () => {
         {currentStep === 6 && (
           <>
             <button
-              onClick={() => setCurrentStep(5)}
-              disabled={submitting || otpLoading}
+              onClick={async () => { if (await withdrawBill()) setCurrentStep(5); }}
+              disabled={submitting || otpLoading || sendingBill}
               className="flex-1 py-3 text-gray-600 font-bold bg-white border border-gray-200 rounded-xl disabled:opacity-50"
             >
               Back
             </button>
 
-            {/* Payment Options Grid for Final Review */}
+            {/* The customer sees nothing until the worker sends the bill */}
+            {!(billSent || isOtpSent || onlinePaymentData) ? (
+              <button
+                onClick={sendBill}
+                disabled={sendingBill}
+                className="flex-[2] py-3.5 bg-gray-900 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <FiArrowRight className="w-4 h-4" />
+                {sendingBill ? 'Sending…' : 'Send bill to customer'}
+              </button>
+            ) : (
+            /* Payment Options Grid for Final Review */
             <div className="flex-[2] grid grid-cols-2 gap-2">
               {/* Cash/OTP Option - Show if either cash mode or QR generated OTP */}
               {(isOtpSent && paymentMode === 'cash') ? (
@@ -1473,6 +1575,7 @@ const BillingPage = () => {
                 <span>{qrLoading ? '...' : 'Online (QR)'}</span>
               </button>
             </div>
+            )}
           </>
         )}
       </div>
@@ -1488,7 +1591,7 @@ const BillingPage = () => {
         isOpen={showQrModal}
         onClose={() => setShowQrModal(false)}
         qrImageUrl={onlinePaymentData?.qrImageUrl}
-        amount={calculations.remainingPayableAmount}
+        amount={payableNow}
         onCheckStatus={checkPaymentStatus}
         onSwitchToOtp={() => {
           setShowQrModal(false);

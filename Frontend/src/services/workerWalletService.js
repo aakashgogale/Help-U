@@ -41,6 +41,14 @@ const workerWalletService = {
   },
 
   /**
+   * Withdraw a bill that was sent to the customer, so their pay options disappear
+   */
+  retractBill: async (bookingId) => {
+    const response = await api.post(`/bookings/cash/${bookingId}/retract-bill`);
+    return response.data;
+  },
+
+  /**
    * Initiate online collection (QR)
    */
   initiateOnlineCollection: async (bookingId, totalAmount, extraItems = []) => {

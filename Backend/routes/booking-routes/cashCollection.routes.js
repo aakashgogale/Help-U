@@ -5,6 +5,7 @@ const { requireFlag } = require('../../middleware/featureGuard');
 const {
   initiateCashCollection,
   initiateOnlineCollection,
+  retractBill,
   verifyOnlinePayment,
   confirmManualOnlinePayment,
   confirmCashCollection,
@@ -20,6 +21,7 @@ router.use(authenticate);
 // deliberately not guarded: they finish a payment that is already under way.
 router.post('/:id/initiate', requireFlag('isCashEnabled', 'Cash collection is currently unavailable.'), initiateCashCollection);
 router.post('/:id/initiate-online', requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), initiateOnlineCollection);
+router.post('/:id/retract-bill', retractBill);
 router.post('/:id/confirm', confirmCashCollection);
 
 // Explicit verification route

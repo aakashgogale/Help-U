@@ -3,7 +3,8 @@ const Booking = require('../../models/Booking');
 const WorkerServiceCatalog = require('../../models/WorkerServiceCatalog');
 const WorkerPartsCatalog = require('../../models/WorkerPartsCatalog');
 const Settings = require('../../models/Settings');
-const { BILL_STATUS } = require('../../utils/constants');
+const { BILL_STATUS, BOOKING_STATUS } = require('../../utils/constants');
+const { billLockReason } = require('../../utils/billLock');
 const { resolveCommission, computeWorkerEarnings, toPayoutConfig } = require('../../services/commissionService');
 
 /**
@@ -22,7 +23,7 @@ const { resolveCommission, computeWorkerEarnings, toPayoutConfig } = require('..
 const createOrUpdateBill = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { services, parts, customItems, transportCharges, applyPartsGST = true } = req.body;
+    const { services, parts, customItems, transportCharges, applyPartsGST = true, send = false } = req.body;
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -36,6 +37,12 @@ const createOrUpdateBill = async (req, res) => {
 
     if (!isWorkerAuth) {
       return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+
+    // Never change a bill the customer is paying or has paid
+    const lockReason = billLockReason(booking);
+    if (lockReason) {
+      return res.status(409).json({ success: false, message: lockReason });
     }
 
     // Always use the booking's vendorId for the bill
@@ -305,7 +312,52 @@ const createOrUpdateBill = async (req, res) => {
     booking.finalAmount = grandTotal;
     booking.userPayableAmount = Math.max(0, parseFloat((grandTotal - advancePaidAmount).toFixed(2)));
     booking.vendorBillId = bill._id;
+    // The customer sees the bill only when the worker sends it (opens the Review step); any other
+    // save withdraws it until it is sent again.
+    const wasSent = !!booking.billFinalizedAt;
+    const sendNow = send === true && booking.status === BOOKING_STATUS.WORK_DONE;
+    booking.billFinalizedAt = sendNow ? (booking.billFinalizedAt || new Date()) : null;
+
+    if (sendNow) {
+      const payOtp = booking.customerConfirmationOTP || booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
+      booking.paymentOtp = payOtp;
+      booking.customerConfirmationOTP = payOtp;
+    }
     await booking.save();
+
+    if (sendNow && !wasSent) {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user_${booking.userId}`).emit('booking_updated', {
+          bookingId: booking._id,
+          status: booking.status,
+          finalAmount: booking.finalAmount,
+          userPayableAmount: booking.userPayableAmount,
+          billFinalizedAt: booking.billFinalizedAt,
+          customerConfirmationOTP: booking.customerConfirmationOTP,
+          paymentOtp: booking.paymentOtp
+        });
+      }
+      try {
+        const { createNotification } = require('../notificationControllers/notificationController');
+        await createNotification({
+          userId: booking.userId,
+          type: 'work_done',
+          title: 'Your bill is ready',
+          message: `Bill: ₹${booking.userPayableAmount}. Review it and pay online, or share your verification code with the professional.`,
+          relatedId: booking._id,
+          relatedType: 'booking',
+          priority: 'high',
+          pushData: {
+            type: 'work_done',
+            bookingId: booking._id.toString(),
+            link: `/user/booking/${booking._id}`
+          }
+        });
+      } catch (notifyError) {
+        console.error('Bill ready notification failed:', notifyError.message);
+      }
+    }
 
     res.status(200).json({
       success: true,
