@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { userAuthService } from '../../../../services/authService';
+import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { useConfig } from '../../../../context/ConfigContext';
 import { motion } from 'framer-motion';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
@@ -141,8 +142,9 @@ const Account = () => {
     return 'VC';
   };
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   const handleLogout = async () => {
-    if (!window.confirm('Log out of Help U?')) return;
     try {
       await userAuthService.logout();
     } catch {
@@ -151,7 +153,7 @@ const Account = () => {
       localStorage.removeItem('userData');
     }
     toast.success('Logged out successfully');
-    navigate('/user/login');
+    navigate('/user/login', { replace: true });
   };
 
   const plan = userProfile.plans?.isActive ? userProfile.plans : null;
@@ -297,12 +299,13 @@ const Account = () => {
           <motion.div variants={itemVariants}>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full h-12 rounded-full border border-red-200 bg-white text-red-600 text-[15px] font-semibold hover:bg-red-50 active:scale-[0.99] transition-all inline-flex items-center justify-center gap-2"
             >
               <FiLogOut className="w-[18px] h-[18px]" />
               Log out
             </button>
+            <LogoutConfirm isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} onConfirm={handleLogout} />
             <p className="text-center text-[12px] text-gray-400 mt-4 pb-6">Version 7.6.27 R547</p>
           </motion.div>
         </motion.main>

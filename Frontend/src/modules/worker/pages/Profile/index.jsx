@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase, FiStar, FiArrowRight, FiSettings, FiChevronRight, FiCreditCard, FiLogOut, FiGift, FiAlertOctagon, FiHelpCircle, FiFileText, FiShield } from 'react-icons/fi';
 import { FaWallet } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
+import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 import Header from '../../components/layout/Header';
@@ -33,6 +34,7 @@ const Profile = () => {
     { id: 13, label: 'Privacy Policy', icon: FiShield, path: '/worker/privacy-policy' },
   ];
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -402,20 +404,10 @@ const Profile = () => {
         <div className="px-4 mb-3">
           <button
             type="button"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              try {
-                await workerAuthService.logout();
-                toast.success('Logged out successfully');
-                navigate('/worker/login');
-              } catch (error) {
-                localStorage.removeItem('workerAccessToken');
-                localStorage.removeItem('workerRefreshToken');
-                localStorage.removeItem('workerData');
-                toast.success('Logged out successfully');
-                navigate('/worker/login');
-              }
+              setShowLogoutConfirm(true);
             }}
             className="w-full font-semibold py-3 rounded-xl active:scale-98 transition-all text-white flex items-center justify-center gap-2"
             style={{
@@ -434,6 +426,21 @@ const Profile = () => {
             <FiLogOut className="w-5 h-5" />
             Logout
           </button>
+          <LogoutConfirm
+            isOpen={showLogoutConfirm}
+            onClose={() => setShowLogoutConfirm(false)}
+            onConfirm={async () => {
+              try {
+                await workerAuthService.logout();
+              } catch (error) {
+                localStorage.removeItem('workerAccessToken');
+                localStorage.removeItem('workerRefreshToken');
+                localStorage.removeItem('workerData');
+              }
+              toast.success('Logged out successfully');
+              navigate('/worker/login', { replace: true });
+            }}
+          />
         </div>
       </main>
 

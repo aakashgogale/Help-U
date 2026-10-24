@@ -4,6 +4,7 @@ import { FiBell, FiVolume2, FiGlobe, FiInfo, FiLogOut, FiTrash2, FiMapPin, FiAle
 import api from '../../../../services/api';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
 import { toast } from 'react-hot-toast';
+import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 import { registerFCMToken, removeFCMToken } from '../../../../services/pushNotificationService';
@@ -112,19 +113,19 @@ const Settings = () => {
     localStorage.setItem('workerSettings', JSON.stringify(updated));
   };
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   const handleLogout = async () => {
     try {
       await workerAuthService.logout();
-      toast.success('Logged out successfully');
-      navigate('/worker/login');
     } catch (error) {
       // Even if API call fails, clear local storage
       localStorage.removeItem('workerAccessToken');
       localStorage.removeItem('workerRefreshToken');
       localStorage.removeItem('workerData');
-      toast.success('Logged out successfully');
-      navigate('/worker/login');
     }
+    toast.success('Logged out successfully');
+    navigate('/worker/login', { replace: true });
   };
 
   const handleDeleteAccount = () => {
@@ -306,7 +307,7 @@ const Settings = () => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            handleLogout();
+            setShowLogoutConfirm(true);
           }}
           className="w-full py-4 rounded-xl font-semibold text-white mb-4 flex items-center justify-center gap-2 transition-all active:scale-95"
           style={{
@@ -318,6 +319,7 @@ const Settings = () => {
           <FiLogOut className="w-5 h-5" />
           Logout
         </button>
+        <LogoutConfirm isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} onConfirm={handleLogout} />
 
         {/* Delete Account */}
         <button

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiBell, FiMail, FiPhone, FiMessageCircle, FiShield, FiChevronRight, FiLogOut, FiTrash2 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
+import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { themeColors } from '../../../../theme';
 import { userAuthService } from '../../../../services/authService';
 import { registerFCMToken, removeFCMToken } from '../../../../services/pushNotificationService';
@@ -10,6 +11,7 @@ import BottomNav from '../../components/layout/BottomNav';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // State for notification toggles
   const [notifications, setNotifications] = useState({
@@ -164,14 +166,7 @@ const Settings = () => {
           <h2 className="text-base font-bold text-black mb-4">Account</h2>
           <div className="space-y-3">
             <button
-              onClick={async () => {
-                const confirmed = window.confirm('Are you sure you want to log out?');
-                if (confirmed) {
-                  await userAuthService.logout();
-                  navigate('/user/login');
-                  toast.success('Logged out successfully');
-                }
-              }}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 hover:bg-gray-50 active:scale-[0.98] transition-all"
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-50">
@@ -179,6 +174,15 @@ const Settings = () => {
               </div>
               <span className="text-sm font-medium text-red-600">Log Out</span>
             </button>
+            <LogoutConfirm
+              isOpen={showLogoutConfirm}
+              onClose={() => setShowLogoutConfirm(false)}
+              onConfirm={async () => {
+                try { await userAuthService.logout(); } catch { /* tokens are cleared below */ }
+                navigate('/user/login', { replace: true });
+                toast.success('Logged out successfully');
+              }}
+            />
 
             <button
               onClick={() => {
