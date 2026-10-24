@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiStar, FiX, FiCheck, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
 import { themeColors } from '../../../../theme';
+import useModalLock from '../../../../hooks/useModalLock';
 
 const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, providerName }) => {
+  useModalLock(isOpen);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState('');
@@ -24,7 +26,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, providerName }) =
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -40,7 +42,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, providerName }) =
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
         >
           {/* Top Bar (Mobile Drag Handle) */}
           <div className="flex justify-center py-3 sm:hidden">

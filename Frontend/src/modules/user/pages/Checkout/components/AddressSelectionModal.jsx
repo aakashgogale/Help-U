@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FiArrowLeft, FiX, FiSearch, FiMapPin, FiHome } from 'react-icons/fi';
 import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 import { themeColors } from '../../../../../theme';
 import LocationPicker from './LocationPicker';
+import useModalLock from '../../../../../hooks/useModalLock';
 
 const libraries = ['places', 'geometry'];
 
@@ -10,6 +11,7 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
   const [isClosing, setIsClosing] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [mapAddress, setMapAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState(null);
 
@@ -19,23 +21,45 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
     libraries
   });
 
+  // Locks the page behind the sheet (no jump to top like position:fixed caused) and hides the nav
+  useModalLock(isOpen);
+
+  // The map takes whatever height is left once the header, the three fields and the button are
+  // accounted for (about 430px incl. the dimmed strip above the sheet), so it is as big as the
+  // screen allows while the sheet still never scrolls. Clamped for very short / very tall screens.
+  const [mapHeight, setMapHeight] = useState(190);
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      setIsClosing(false);
-    }
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    };
+    if (!isOpen) return undefined;
+    const update = () => setMapHeight(Math.max(180, Math.min(360, window.innerHeight - 430)));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) setIsClosing(false);
+  }, [isOpen]);
+
+  // Suggest streets, colonies and areas (not airports/hotels/shops), nudged towards where the
+  // pin currently is so "indore" resolves to nearby places first. strictBounds stays off so the
+  // customer can still search elsewhere.
+  const autocompleteOptions = useMemo(() => {
+    const options = {
+      componentRestrictions: { country: 'in' },
+      types: ['geocode'],
+      fields: ['formatted_address', 'geometry', 'name', 'address_components']
+    };
+    const maps = typeof window !== 'undefined' ? window.google?.maps : null;
+    if (maps && selectedLocation?.lat && selectedLocation?.lng) {
+      const d = 0.15; // roughly 15 km each way
+      options.bounds = new maps.LatLngBounds(
+        { lat: selectedLocation.lat - d, lng: selectedLocation.lng - d },
+        { lat: selectedLocation.lat + d, lng: selectedLocation.lng + d }
+      );
+      options.strictBounds = false;
+    }
+    return options;
+  }, [selectedLocation?.lat, selectedLocation?.lng, isLoaded]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -78,14 +102,15 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
     <>
       <div
         className={`fixed inset-0 bg-black/50 z-50 transition-opacity ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+        style={{ touchAction: 'none' }}
         onClick={handleClose}
       />
       <div className="fixed bottom-0 left-0 right-0 z-50">
         <div
           className={`bg-white rounded-t-[32px] shadow-2xl safe-area-bottom ${isClosing ? 'animate-slide-down' : 'animate-slide-up'}`}
           style={{
-            height: '85vh',
-            maxHeight: '90vh',
+            maxHeight: '94dvh',
+            overscrollBehavior: 'contain',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -94,7 +119,7 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10 shrink-0 flex items-center justify-between">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10 shrink-0 flex items-center justify-between" style={{ touchAction: 'none' }}>
             <div className="flex items-center gap-3">
               <button onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
                 <FiArrowLeft className="w-5 h-5 text-black" />
@@ -106,52 +131,32 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
             </button>
           </div>
 
-          {/* Info Card - Styled with Brand Colors */}
-          <div className="px-4 pt-4 shrink-0">
-            <div className="rounded-xl p-3 mb-2 border" style={{ backgroundColor: `${themeColors.brand.teal}0D`, borderColor: `${themeColors.brand.teal}1A` }}>
-              <div className="flex items-start gap-3">
-                <FiMapPin className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: themeColors.button }} />
-                <div>
-                  <h3 className="font-semibold mb-1 text-sm" style={{ color: themeColors.button }}>Set Delivery Location</h3>
-                  <p className="text-xs" style={{ color: `${themeColors.brand.teal}CC` }}>
-                    Place the pin accurately on the map to help the professional find you easily.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Map Section */}
-          <div className="px-4 pb-2 shrink-0">
+          <div className="px-4 pt-3 pb-2 shrink-0">
             <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100">
               <LocationPicker
                 onLocationSelect={handleLocationSelect}
                 initialPosition={selectedLocation}
+                height={mapHeight}
               />
             </div>
           </div>
 
-          {/* Address Details - Scrollable */}
+          {/* Address details (fits on screen; the sheet never scrolls) */}
           <div
-            className="px-4 py-2 pb-8 overflow-y-auto flex-1"
-            style={{
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain'
-            }}
+            className="px-4 pt-1 pb-3 shrink-0"
+            style={{ touchAction: 'manipulation', overscrollBehavior: 'contain' }}
           >
             {/* Address Search */}
-            <div className="mb-4">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+            <div className="mb-2.5">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
                 Pinpoint your Address
               </label>
               {isLoaded ? (
                 <Autocomplete
                   onLoad={onAutocompleteLoad}
                   onPlaceChanged={onPlaceChanged}
-                  options={{
-                    componentRestrictions: { country: 'in' },
-                    fields: ['formatted_address', 'geometry', 'name', 'address_components']
-                  }}
+                  options={autocompleteOptions}
                 >
                   <div className="relative">
                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
@@ -160,7 +165,7 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
                       placeholder="Search for area, street name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-10 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
+                      className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
                     />
                     {searchQuery && (
                       <button
@@ -184,28 +189,48 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
               )}
             </div>
 
-            {/* House/Flat Number - NEW */}
-            <div className="mb-6">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                House / Flat / Office No. (Optional)
+            {/* House / Flat number */}
+            <div className="mb-2.5">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                House No. / Flat No.
               </label>
               <div className="relative">
                 <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                 <input
                   type="text"
-                  placeholder="e.g. Flat 101, Appzeto Tower"
+                  placeholder="e.g. H No 12 or Flat 101"
                   value={houseNumber}
                   onChange={(e) => onHouseNumberChange(e.target.value)}
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Landmark */}
+            <div className="mb-3">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                Landmark (Optional)
+              </label>
+              <div className="relative">
+                <FiMapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                <input
+                  type="text"
+                  placeholder="e.g. Near City Mall, opposite SBI Bank"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
                 />
               </div>
             </div>
 
             {/* Save Button */}
             <button
-              onClick={() => onSave(houseNumber, selectedLocation)}
-              disabled={!mapAddress}
-              className="w-full py-4 rounded-xl font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl mb-12 uppercase tracking-wider text-xs"
+              onClick={() => onSave(houseNumber.trim(), {
+                ...selectedLocation,
+                landmark: landmark.trim()
+              })}
+              disabled={!mapAddress || !houseNumber.trim()}
+              className="w-full py-3.5 rounded-xl font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl uppercase tracking-wider text-xs"
               style={{
                 backgroundColor: themeColors.button,
                 boxShadow: `0 8px 16px ${themeColors.button}30`

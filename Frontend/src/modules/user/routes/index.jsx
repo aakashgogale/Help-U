@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
+import { prefetchWhenIdle } from '../../../utils/prefetchRoutes';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import PageTransition from '../components/common/PageTransition';
 import BottomNav from '../components/layout/BottomNav';
@@ -90,10 +91,37 @@ const RecurringBookings = lazyLoad(() => import('../pages/RecurringBookings'));
 
 // Loading fallback component
 import LogoLoader from '../../../components/common/LogoLoader';
+import HomeSkeleton from '../pages/Home/components/HomeSkeleton';
+import PageHeader from '../components/layout/PageHeader';
 
-const LoadingFallback = () => (
-  <LogoLoader />
-);
+// Fills exactly the visible area (the page wrapper pads the nav height when the nav shows),
+// so the logo is dead-centre and the page can't scroll while loading.
+// Pages that open with the shared page header: show that header (with its real title) right away,
+// so it doesn't pop in only after the page's code has downloaded.
+const HEADER_TITLES = {
+  '/user/my-bookings': 'My Bookings',
+  '/user/cart': 'Your Cart',
+  '/user/account': 'Account',
+  '/user/scrap': 'Sell Scrap',
+  '/user/services': 'All services'
+};
+
+const LoadingFallback = ({ withNav, isHome, pathname }) => {
+  const headerTitle = HEADER_TITLES[pathname?.replace(/\/$/, '')];
+  const height = withNav ? 'h-[calc(100dvh-var(--bottom-nav-height,96px)-1rem)]' : 'h-dvh';
+
+  if (isHome) {
+    return <div className={`overflow-hidden ${height}`}><HomeSkeleton /></div>;
+  }
+  return (
+    <div className={`overflow-hidden flex flex-col ${height}`}>
+      {headerTitle && <PageHeader title={headerTitle} />}
+      <div className="flex-1 flex items-center justify-center">
+        <LogoLoader inline size="w-20 h-20" />
+      </div>
+    </div>
+  );
+};
 
 // Import Live Booking Card
 import LiveBookingCard from '../components/booking/LiveBookingCard';
@@ -123,6 +151,20 @@ const preloadPages = () => {
 const UserRoutes = () => {
   const location = useLocation();
 
+  // Pre-load the pages reachable from the bottom nav and the booking flow
+  useEffect(() => {
+    prefetchWhenIdle([
+      () => import('../pages/Home'),
+      () => import('../pages/MyBookings'),
+      () => import('../pages/Cart'),
+      () => import('../pages/Account'),
+      () => import('../pages/Category'),
+      () => import('../pages/Services'),
+      () => import('../pages/Checkout'),
+      () => import('../pages/BookingDetails')
+    ]);
+  }, []);
+
   useEffect(() => {
     preloadPages();
   }, []);
@@ -147,8 +189,8 @@ const UserRoutes = () => {
   return (
     <ErrorBoundary>
       {/* Main content area - leaves space for bottom nav when needed */}
-      <div className={`w-full max-w-full overflow-x-clip min-w-0 ${shouldShowBottomNav ? "pb-[calc(var(--bottom-nav-height,96px)+1rem)]" : ""}`}>
-        <Suspense fallback={<LoadingFallback />}>
+      <div className={`w-full max-w-full overflow-x-clip min-w-0 ${shouldShowBottomNav ? "with-user-nav pb-[calc(var(--bottom-nav-height,96px)+1rem)]" : ""}`}>
+        <Suspense fallback={<LoadingFallback withNav={shouldShowBottomNav} isHome={location.pathname === '/user' || location.pathname === '/user/'} pathname={location.pathname} />}>
           <PageTransition>
             <Routes>
               {/* Public routes */}

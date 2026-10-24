@@ -76,11 +76,18 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
   });
 
   // Tax Logic
-  const originalGST = bill ? (bill.originalGST || 0) : (originalBase * 0.18);
+  const originalGST = bill ? (bill.originalGST || 0) : (parseFloat(booking.tax) || 0);
   const totalGST = originalGST + extraServiceGST + partsGST;
 
   // Final Total
   const finalTotal = bill?.grandTotal || (booking.finalAmount || 0);
+
+  // Rates as actually applied (saved with the bill), never a fixed 18%
+  const effectiveServiceGstPct = (originalBase + extraServiceBase) > 0
+    ? Math.round(((originalGST + extraServiceGST) / (originalBase + extraServiceBase)) * 100)
+    : 0;
+  const serviceGstLabel = ` (${bill?.payoutConfig?.serviceGstPercentage ?? effectiveServiceGstPct}%)`;
+  const partsGstLabel = bill?.payoutConfig?.partsGstPercentage !== undefined ? ` (${bill.payoutConfig.partsGstPercentage}%)` : '';
   const remainingTotal = Number(booking.userPayableAmount ?? finalTotal);
   const amountDue = isAdvancePending ? Number(advancePayment.requestedAmount || 0) : remainingTotal;
 
@@ -202,7 +209,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
                     </div>
                   ))}
                   <div className="flex justify-between text-xs text-slate-500 border-t border-dashed border-slate-100 pt-1 mt-1">
-                    <span>GST (18%)</span>
+                    <span>GST{serviceGstLabel}</span>
                     <span className="font-mono">₹{(originalGST + extraServiceGST).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold text-slate-800 pt-1">
@@ -233,7 +240,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
                       </div>
                     ))}
                     <div className="flex justify-between text-xs text-slate-500 border-t border-dashed border-slate-100 pt-1 mt-1">
-                      <span>GST (18%)</span>
+                      <span>GST{partsGstLabel}</span>
                       <span className="font-mono">₹{partsGST.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-xs font-bold text-slate-800 pt-1">

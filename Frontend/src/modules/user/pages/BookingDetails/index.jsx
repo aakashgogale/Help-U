@@ -56,6 +56,7 @@ const BookingDetails = () => {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -109,13 +110,14 @@ const BookingDetails = () => {
           if (!data.visitingCharges && !data.visitationFee) data.visitingCharges = 49;
         }
         setBooking(data);
+        setLoadError(false);
       } else {
         toast.error(response.message || 'Booking not found');
         navigate('/user/my-bookings');
       }
     } catch (error) {
-      // Failed to load booking details
-      // toast.error('Failed to load booking details'); 
+      // Network/server failure (not "booking not found"): show a retry instead of a dead end
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -317,9 +319,11 @@ const BookingDetails = () => {
     const paymentType = booking.advancePayment?.status === 'requested' ? 'advance' : 'final';
 
     // If a Razorpay order already exists for this booking and hasn't been used, skip creating a new one
+    // Only an advance request can reuse its order. A final payment always gets a fresh
+    // order so the amount matches the current bill (a reused order keeps its old amount).
     const existingOrderId = paymentType === 'advance'
       ? booking.advancePayment?.razorpayOrderId
-      : booking.razorpayOrderId;
+      : null;
 
     if (existingOrderId) {
       // Open Razorpay with existing order. No fresh backend call here, so there's
@@ -339,7 +343,9 @@ const BookingDetails = () => {
           const verifyResponse = await paymentService.verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
+            razorpay_signature: response.razorpay_signature,
+            bookingId: booking._id || booking.id,
+            paymentType
           });
           toast.dismiss();
 
@@ -389,7 +395,9 @@ const BookingDetails = () => {
           const verifyResponse = await paymentService.verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
+            razorpay_signature: response.razorpay_signature,
+            bookingId: booking._id || booking.id,
+            paymentType
           });
           toast.dismiss();
 
@@ -516,7 +524,15 @@ const BookingDetails = () => {
           <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6">
             <FiSearch className="w-10 h-10 text-gray-300" />
           </div>
-          <p className="text-gray-500 font-bold">Booking not found</p>
+          <p className="text-gray-500 font-bold">{loadError ? "Couldn't load this booking" : 'Booking not found'}</p>
+          {loadError && (
+            <button
+              onClick={() => { setLoadError(false); setLoading(true); loadBooking(); }}
+              className="mt-4 px-8 py-3 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all"
+            >
+              Retry
+            </button>
+          )}
           <button
             onClick={() => navigate('/user/my-bookings')}
             className="mt-6 px-8 py-3 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all"

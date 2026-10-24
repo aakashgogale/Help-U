@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PageHeader from '../../components/layout/PageHeader';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { FiArrowLeft, FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiPhone, FiHome, FiClock, FiEdit2, FiCheckCircle, FiInfo, FiTag, FiPercent, FiX, FiChevronDown, FiChevronUp } from 'react-icons/fi';
@@ -700,7 +701,8 @@ const Checkout = () => {
             const verifyResponse = await paymentService.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
+              razorpay_signature: response.razorpay_signature,
+            bookingId: orderResponse.data.bookingId
             });
 
             toast.dismiss();
@@ -830,6 +832,7 @@ const Checkout = () => {
           type: 'home',
           addressLine1: locationObj.address,
           addressLine2: savedHouseNumber,
+          landmark: locationObj.landmark || '',
           city: getComp('locality') || getComp('administrative_area_level_2') || 'City',
           state: getComp('administrative_area_level_1') || 'State',
           pincode: getComp('postal_code') || '000000',
@@ -1205,20 +1208,7 @@ const Checkout = () => {
   if (cartItems.length === 0 && currentStep === 'details' && !searchingWorkers && !showWorkerModal) {
     return (
       <div className="min-h-screen bg-white pb-32">
-        <header className="bg-white">
-          <div className="px-4 pt-4 pb-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleBack}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <FiArrowLeft className="w-6 h-6 text-black" />
-              </button>
-              <h1 className="text-xl font-bold text-black">Your cart</h1>
-            </div>
-          </div>
-          <div className="border-b border-gray-200"></div>
-        </header>
+        <PageHeader title="Your cart" onBack={handleBack} />
         <main className="px-4 py-4">
           <div className="flex flex-col items-center justify-center py-20">
             <FiShoppingCart className="w-16 h-16 text-gray-300 mb-4" />
@@ -1233,22 +1223,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-white pb-80">
       {/* Header */}
-      <header className="bg-white">
-        <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBack}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <FiArrowLeft className="w-6 h-6 text-black" />
-            </button>
-            <h1 className="text-xl font-bold text-black">
-              {category ? `${category} Checkout` : 'Your cart'}
-            </h1>
-          </div>
-        </div>
-        <div className="border-b border-gray-200"></div>
-      </header>
+      <PageHeader title={category ? `${category} Checkout` : 'Your cart'} onBack={handleBack} />
 
       <main className="px-4 py-4">
         {/* Savings Banner */}

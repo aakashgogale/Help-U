@@ -16,7 +16,7 @@ const defaultCenter = {
   lng: 77.2090
 };
 
-const LocationPicker = ({ onLocationSelect, initialPosition = null }) => {
+const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256 }) => {
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(initialPosition || defaultCenter);
   const [autocomplete, setAutocomplete] = useState(null);
@@ -153,22 +153,22 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null }) => {
   };
 
   if (loadError) {
-    return <div className="h-64 bg-gray-200 flex items-center justify-center">
+    return <div className="bg-gray-200 flex items-center justify-center" style={{ height }}>
       <p className="text-red-600">Error loading Google Maps</p>
     </div>;
   }
 
   if (!isLoaded) {
-    return <div className="h-64 bg-gray-200 flex items-center justify-center">
+    return <div className="bg-gray-200 flex items-center justify-center" style={{ height }}>
       <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
     </div>;
   }
 
   return (
     <div className="w-full">
-      <div className="relative h-64 bg-gray-200">
+      <div className="relative bg-gray-200" style={{ height }}>
         <GoogleMap
-          mapContainerStyle={mapContainerStyle}
+          mapContainerStyle={{ ...mapContainerStyle, height: `${height}px` }}
           center={marker}
           zoom={15}
           onClick={onMapClick}
@@ -195,7 +195,7 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null }) => {
         {/* Locate Me Button - Now on right */}
         <button
           onClick={handleCurrentLocation}
-          className="absolute bottom-16 right-4 p-3 bg-white rounded-xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all z-10"
+          className="absolute bottom-4 right-4 p-3 bg-white rounded-xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all z-10"
         >
           <FiCrosshair className="w-6 h-6 text-gray-700" />
         </button>

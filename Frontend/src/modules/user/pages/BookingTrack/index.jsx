@@ -72,9 +72,11 @@ const BookingTrack = () => {
     const paymentType = booking.advancePayment?.status === 'requested' ? 'advance' : 'final';
 
     // If a Razorpay order already exists for this booking, reuse it
+    // Only an advance request can reuse its order. A final payment always gets a fresh
+    // order so the amount matches the current bill (a reused order keeps its old amount).
     const existingOrderId = paymentType === 'advance'
       ? booking.advancePayment?.razorpayOrderId
-      : booking.razorpayOrderId;
+      : null;
 
     if (existingOrderId) {
       // No fresh backend call here, so there's no response to read `key` from —
@@ -94,7 +96,9 @@ const BookingTrack = () => {
           const verifyResponse = await paymentService.verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
+            razorpay_signature: response.razorpay_signature,
+            bookingId: booking._id || booking.id,
+            paymentType
           });
           toast.dismiss();
           if (verifyResponse.success) {
@@ -143,7 +147,9 @@ const BookingTrack = () => {
           const verifyResponse = await paymentService.verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
+            razorpay_signature: response.razorpay_signature,
+            bookingId: booking._id || booking.id,
+            paymentType
           });
           toast.dismiss();
 

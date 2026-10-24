@@ -27,7 +27,7 @@ const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
 const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
 import SearchOverlay from './components/SearchOverlay';
-import LogoLoader from '../../../../components/common/LogoLoader';
+import HomeSkeleton from './components/HomeSkeleton';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
 import ScrapPromotionCard from './components/ScrapPromotionCard';
 import DebugConsole from '../../components/common/DebugConsole';
@@ -540,7 +540,11 @@ const Home = () => {
   };
 
   if (loading) {
-    return <LogoLoader />;
+    return (
+      <div className="h-[calc(100dvh-var(--bottom-nav-height,96px)-1rem)] overflow-hidden">
+        <HomeSkeleton />
+      </div>
+    );
   }
 
   return (
