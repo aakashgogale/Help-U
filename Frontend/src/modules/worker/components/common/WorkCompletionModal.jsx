@@ -2,7 +2,6 @@ import { createPortal } from 'react-dom';
 import useModalLock from '../../../../hooks/useModalLock';
 import React, { useState } from 'react';
 import { FiX, FiTrash, FiCamera, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
-import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import flutterBridge from '../../../../utils/flutterBridge';
 
@@ -10,6 +9,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
   useModalLock(isOpen);
   const [workPhotos, setWorkPhotos] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const cameraInputRef = React.useRef(null);
 
   const handleNativeCamera = async () => {
@@ -71,9 +71,12 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
     return ((job?.basePrice || 0) + (job?.tax || 0) - (job?.discount || 0));
   };
 
+  const showPhotoError = photoError && workPhotos.length === 0;
+
   const handleSubmit = () => {
     if (workPhotos.length === 0) {
-      toast.error('At least one photo from camera is mandatory');
+      // Shown inside the modal: a toast would render behind it
+      setPhotoError(true);
       flutterBridge.hapticFeedback('error');
       return;
     }
@@ -121,7 +124,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Work Photos <span className="text-red-500 font-bold">(Mandatory)</span></p>
-                  <span className="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded-md font-bold">
+                  <span className="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">
                     {workPhotos.length}/5 (Min 1)
                   </span>
                 </div>
@@ -151,7 +154,7 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
                           cameraInputRef.current?.click();
                         }
                       }}
-                      className="aspect-square rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50/30 flex flex-col items-center justify-center text-gray-400 hover:text-green-500 cursor-pointer active:scale-95 transition-all"
+                      className={`aspect-square rounded-2xl bg-gray-50 border-2 border-dashed ${showPhotoError ? 'border-red-400 bg-red-50/40' : 'border-gray-200'} hover:border-green-400 hover:bg-green-50/30 flex flex-col items-center justify-center text-gray-400 hover:text-green-500 cursor-pointer active:scale-95 transition-all`}
                     >
                       <FiCamera className="w-7 h-7 mb-1" />
                       <span className="text-[10px] font-bold uppercase">Camera Only</span>
@@ -168,6 +171,11 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
                   className="hidden"
                 />
 
+                {showPhotoError && (
+                  <p role="alert" className="text-red-500 text-xs font-semibold mt-2 ml-1">
+                    Take at least one photo of the finished work to continue.
+                  </p>
+                )}
                 {isUploading && <p className="text-blue-500 text-[10px] font-bold mt-2 ml-1 animate-pulse">Uploading photos...</p>}
               </div>
 

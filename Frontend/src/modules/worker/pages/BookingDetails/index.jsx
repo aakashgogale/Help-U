@@ -117,19 +117,16 @@ export default function BookingDetails() {
         },
         // Price Breakdown
         basePrice: parseFloat(apiData.basePrice || 0),
-        tax: parseFloat(apiData.tax || (apiData.paymentMethod === 'plan_benefit' ? (apiData.basePrice || 0) * 0.18 : 0)),
+        tax: parseFloat(apiData.tax || 0),
         penalty: parseFloat(apiData.penalty || 0),
-        visitingCharges: parseFloat(apiData.visitingCharges || apiData.visitationFee || (apiData.paymentMethod === 'plan_benefit' ? 49 : 0)),
+        visitingCharges: parseFloat(apiData.visitingCharges || apiData.visitationFee || 0),
         discount: parseFloat(apiData.discount || 0),
         platformCommission: parseFloat(apiData.adminCommission || apiData.platformFee || apiData.commission || 0),
         finalAmount: parseFloat(apiData.finalAmount || 0),
         vendorEarnings: parseFloat(
           billData?.vendorTotalEarning ||
           apiData.vendorEarnings ||
-          (apiData.paymentMethod === 'plan_benefit'
-            ? (Number(apiData.basePrice || 0) * 0.7) // Fallback: 70% share from base
-            : (apiData.finalAmount ? apiData.finalAmount - (apiData.commission || 0) : 0)
-          )
+          (apiData.finalAmount ? apiData.finalAmount - (apiData.commission || 0) : 0)
         ),
 
         // Display Price (Worker Earnings by default as requested)
@@ -578,6 +575,21 @@ export default function BookingDetails() {
   const partsGstLabel = partsGstPctShown !== undefined ? ` (${partsGstPctShown}%)` : '';
   const hasBill = !!bill;
 
+  // Earnings labels come from the commission snapshot saved on the bill (admin's commission rules)
+  const payout = bill?.payoutConfig;
+  const serviceEarningLabel = !payout
+    ? ''
+    : payout.commissionType === 'fixed'
+      ? ` (after ₹${payout.commissionValue ?? 0} fee)`
+      : ` (${payout.serviceSplitPercentage}%)`;
+  const partsEarningLabel = payout?.partsSplitPercentage !== undefined ? ` (${payout.partsSplitPercentage}%)` : '';
+
+  // What the platform keeps from the service and parts amounts (GST is tax, not commission)
+  const platformShare = Math.max(
+    0,
+    ((bill?.totalServiceBase || 0) + (bill?.totalPartsBase || 0)) - (bill?.vendorTotalEarning || 0)
+  ) || booking.adminCommission || booking.platformCommission || 0;
+
   return (
     <div className="min-h-screen pb-20" style={{ background: themeColors.backgroundGradient }}>
       <Header title="Booking Details" />
@@ -988,12 +1000,12 @@ export default function BookingDetails() {
             <div className="bg-emerald-50 px-6 py-4 border-t border-emerald-100">
               <div className="space-y-2 mb-3 text-sm">
                 <div className="flex justify-between items-center text-emerald-700">
-                  <span>Service Earnings ({bill?.payoutConfig?.serviceSplitPercentage || 70}%)</span>
+                  <span>Service Earnings{serviceEarningLabel}</span>
                   <span className="font-bold">₹{(bill?.vendorServiceEarning || (booking.vendorEarnings || 0)).toFixed(2)}</span>
                 </div>
                 {(parts.length > 0 || customItems.length > 0 || bill?.vendorPartsEarning > 0) && (
                   <div className="flex justify-between items-center text-emerald-700">
-                    <span>Parts Earnings ({bill?.payoutConfig?.partsSplitPercentage || 10}%)</span>
+                    <span>Parts Earnings{partsEarningLabel}</span>
                     <span className="font-bold">₹{(bill?.vendorPartsEarning || 0).toFixed(2)}</span>
                   </div>
                 )}
@@ -1011,7 +1023,7 @@ export default function BookingDetails() {
 
               <div className="flex justify-between text-emerald-600/70 text-[10px] mt-2">
                 <span>Platform Commission</span>
-                <span>-₹{(booking.adminCommission || booking.platformCommission || 0).toFixed(2)}</span>
+                <span>-₹{platformShare.toFixed(2)}</span>
               </div>
             </div>
           ) : (

@@ -4,6 +4,7 @@ import { FiCheck, FiTool, FiPackage, FiFileText, FiPlus, FiTrash2, FiArrowLeft, 
 import { MdQrCode } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
+import api from '../../../../services/api';
 import workerBillService from '../../../../services/workerBillService';
 import workerWalletService from '../../../../services/workerWalletService';
 import { getBookingById, requestAdvancePayment } from '../../services/bookingService';
@@ -284,7 +285,7 @@ const BillingPage = () => {
       if (exists) {
         return prev.filter(p => p.catalogId !== item._id);
       }
-      const gstPercentage = item.gstPercentage || 18;
+      const gstPercentage = item.gstPercentage ?? payoutSettings.partsGstPct;
       const gstAmount = (item.price * gstPercentage) / 100;
       return [...prev, {
         catalogId: item._id,
@@ -324,7 +325,7 @@ const BillingPage = () => {
       hsnCode: '',
       price: 0,
       gstApplicable: true,
-      gstPercentage: 18,
+      gstPercentage: payoutSettings.partsGstPct,
       quantity: 1,
       gstAmount: 0,
       total: 0

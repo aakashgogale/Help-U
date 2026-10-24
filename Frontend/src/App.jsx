@@ -59,6 +59,7 @@ function App() {
               <Toaster
                 position="top-center"
                 reverseOrder={false}
+                containerStyle={{ zIndex: 100000 }} // above modals (z-[9999]/[1000]) so messages are never hidden behind them
                 toastOptions={{
                   duration: 2000, // Global default (reduced from 3000)
                   style: {
