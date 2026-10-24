@@ -1,12 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-
-// Dev only: images may be cached by the browser for an hour (code stays no-store),
-// so pages don't re-download every icon and photo on each navigation.
 // Dev only: images may be cached by the browser for an hour (code stays no-store),
 // so pages don't re-download every icon and photo on each navigation.
 // Image URLs that change are versioned (?v=) or content-hashed in builds.
@@ -97,4 +91,4 @@ export default defineConfig({
       'react-router-dom',
     ],
   },
-});																																																										
+});
