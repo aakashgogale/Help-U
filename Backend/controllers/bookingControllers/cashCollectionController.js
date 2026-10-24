@@ -32,11 +32,11 @@ exports.initiateOnlineCollection = async (req, res) => {
 
     // Optional: Update final total and extra items if provided during initiation
     const { totalAmount, extraItems } = req.body;
-    if (totalAmount !== undefined && !isNaN(parseFloat(totalAmount))) {
+    // Once a bill exists the server's amount is final; a client-computed total must
+    // not overwrite it (that was a source of worker/user amount mismatches).
+    if (!booking.vendorBillId && totalAmount !== undefined && !isNaN(parseFloat(totalAmount))) {
       booking.userPayableAmount = parseFloat(totalAmount);
-      if (!booking.vendorBillId) {
-        booking.finalAmount = parseFloat(totalAmount);
-      }
+      booking.finalAmount = parseFloat(totalAmount);
     }
 
     const payableAmount = getRemainingPayableAmount(booking);
@@ -165,11 +165,9 @@ exports.initiateCashCollection = async (req, res) => {
 
     // Optional: Update final total and extra items if provided during initiation
     const { totalAmount, extraItems } = req.body;
-    if (totalAmount !== undefined) {
+    if (!booking.vendorBillId && totalAmount !== undefined) {
       booking.userPayableAmount = Number(totalAmount);
-      if (!booking.vendorBillId) {
-        booking.finalAmount = Number(totalAmount);
-      }
+      booking.finalAmount = Number(totalAmount);
     }
 
     // Store extra items for proper commission calculation
@@ -299,7 +297,7 @@ exports.confirmCashCollection = async (req, res) => {
       });
     }
 
-    const collectionAmount = amount !== undefined ? Number(amount) : getRemainingPayableAmount(booking);
+    const collectionAmount = (!booking.vendorBillId && amount !== undefined) ? Number(amount) : getRemainingPayableAmount(booking);
 
     // Store extra items in workDoneDetails (for display)
     if (extraItems && Array.isArray(extraItems) && extraItems.length > 0) {

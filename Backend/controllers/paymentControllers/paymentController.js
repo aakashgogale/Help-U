@@ -150,7 +150,9 @@ const verifyPaymentWebhook = async (req, res) => {
     const {
       razorpay_order_id,
       razorpay_payment_id,
-      razorpay_signature
+      razorpay_signature,
+      bookingId: reqBookingId,
+      paymentType: reqPaymentType
     } = req.body;
 
     // Verify signature
@@ -164,12 +166,23 @@ const verifyPaymentWebhook = async (req, res) => {
     }
 
     // Find booking by Razorpay order ID
-    const booking = await Booking.findOne({
+    let booking = await Booking.findOne({
       $or: [
         { razorpayOrderId: razorpay_order_id },
         { 'advancePayment.razorpayOrderId': razorpay_order_id }
       ]
     });
+
+    // A newer order can overwrite the booking's stored order id while an earlier one is
+    // still being paid. The signature already proves this payment is genuine, so fall
+    // back to the booking the (authenticated) user says it belongs to.
+    if (!booking && reqBookingId && mongoose.Types.ObjectId.isValid(reqBookingId)) {
+      booking = await Booking.findOne({ _id: reqBookingId, userId: req.user.id });
+      if (booking) {
+        if (reqPaymentType === 'advance') booking.advancePayment.razorpayOrderId = razorpay_order_id;
+        else booking.razorpayOrderId = razorpay_order_id;
+      }
+    }
 
     if (!booking) {
       return res.status(404).json({
@@ -350,6 +363,26 @@ const verifyPaymentWebhook = async (req, res) => {
       totalGST: Number(bill ? bill.totalGST : 0) || 0,
       totalTDS: 0 // Tracked in withdrawals
     }).catch(err => console.error('[Payment] Daily tracker failed:', err));
+
+    // Live update for both apps: the worker's Booking Details page listens for
+    // `booking_updated` / `payment_success` and refreshes itself on these.
+    const io = req.app.get('io');
+    if (io) {
+      const livePayload = {
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        paymentMethod: booking.paymentMethod,
+        finalAmount: booking.finalAmount,
+        userPayableAmount: booking.userPayableAmount,
+        type: 'payment_success'
+      };
+      io.to(`user_${booking.userId}`).emit('booking_updated', livePayload);
+      if (booking.vendorId) {
+        io.to(`vendor_${booking.vendorId}`).emit('booking_updated', livePayload);
+        io.to(`vendor_${booking.vendorId}`).emit('payment_success', livePayload);
+      }
+    }
 
     // Send notification to user
     await createNotification({

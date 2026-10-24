@@ -9,12 +9,25 @@ const getUserCart = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    let cart = await Cart.findOne({ userId }).populate('items.serviceId', 'title iconUrl slug').populate('items.categoryId', 'title slug');
+    let cart = await Cart.findOne({ userId });
 
     if (!cart) {
       // Create empty cart if doesn't exist
       cart = await Cart.create({ userId, items: [] });
     }
+
+    // Items without a service can never be booked (checkout needs the service); drop any
+    // that were saved before add-to-cart started rejecting them.
+    const bookable = cart.items.filter((item) => item.serviceId);
+    if (bookable.length !== cart.items.length) {
+      cart.items = bookable;
+      await cart.save();
+    }
+
+    await cart.populate([
+      { path: 'items.serviceId', select: 'title iconUrl slug' },
+      { path: 'items.categoryId', select: 'title slug' }
+    ]);
 
     res.status(200).json({
       success: true,
@@ -72,16 +85,19 @@ const addToCart = async (req, res) => {
 
     console.log(`[AddToCart] Request details - Title: ${title}, Section: ${sectionTitle}, Variant: ${variantId || 'none'}`);
 
-    // Verify service exists (only if serviceId is provided)
-    let service = null;
-    if (serviceId) {
-      service = await Service.findById(serviceId);
-      if (!service) {
-        return res.status(404).json({
-          success: false,
-          message: 'Service not found'
-        });
-      }
+    // Every cart item must be a real, bookable service
+    if (!serviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'This service is not available for booking right now.'
+      });
+    }
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
     }
 
     // Get or create cart

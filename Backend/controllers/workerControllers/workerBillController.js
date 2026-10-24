@@ -56,9 +56,19 @@ const createOrUpdateBill = async (req, res) => {
     // covers the service itself, so on plan bookings only those extras are billed.
     const isPlanBooking = booking.paymentMethod === 'plan_benefit';
     const bookingExtras = (Number(booking.addOnsTotal) || 0) + (Number(booking.emergencyCharge) || 0);
-    const originalServiceBaseForBill = isPlanBooking ? bookingExtras : (booking.basePrice || 0);
+    // The bill must start from exactly what the customer agreed to at booking time:
+    // the discount they got is kept, and the GST recorded on the booking is reused
+    // (not recomputed from today's settings), so the "original booking" line always
+    // matches the booking total the user saw. Worker earnings still use the gross base.
+    const bookingDiscount = Math.max(0, Number(booking.discount) || 0);
+    const originalServiceBaseForBill = isPlanBooking
+      ? bookingExtras
+      : Math.max(0, parseFloat(((booking.basePrice || 0) - bookingDiscount).toFixed(2)));
     const originalServiceBaseForEarnings = booking.basePrice || 0;
-    const originalGST = parseFloat(((originalServiceBaseForBill * serviceGstPct) / 100).toFixed(2));
+    const originalGST = parseFloat((Number(booking.tax) || 0).toFixed(2));
+    const originalGstPct = originalServiceBaseForBill > 0
+      ? parseFloat(((originalGST / originalServiceBaseForBill) * 100).toFixed(2))
+      : 0;
     const visitingCharges = Number(booking.visitingCharges) || 0;
 
     // ═══════════════════════════════════════
@@ -231,7 +241,7 @@ const createOrUpdateBill = async (req, res) => {
       {
         name: booking.serviceName || 'Original Service',
         price: originalServiceBaseForBill,
-        gstPercentage: serviceGstPct,
+        gstPercentage: originalGstPct,
         quantity: 1,
         gstAmount: originalGST,
         total: parseFloat((originalServiceBaseForBill + originalGST).toFixed(2)),

@@ -18,7 +18,9 @@ const getPublicLegalPage = async (req, res) => {
       .lean();
 
     if (!page) {
-      return res.status(404).json({ success: false, message: 'This page has not been published yet' });
+      // Not an error: the admin just hasn't published this page yet. Answering 200 keeps the
+      // browser console free of red 404s; clients treat `page: null` as "not available yet".
+      return res.status(200).json({ success: true, page: null, message: 'This page has not been published yet' });
     }
 
     res.status(200).json({ success: true, page });
