@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/authMiddleware');
+const { requireFlag } = require('../../middleware/featureGuard');
 const {
   initiateCashCollection,
   initiateOnlineCollection,
@@ -15,8 +16,10 @@ const {
 router.use(authenticate);
 
 // Worker routes
-router.post('/:id/initiate', initiateCashCollection);
-router.post('/:id/initiate-online', initiateOnlineCollection);
+// Starting a collection honours the admin's cash / online switches. Confirming and verifying are
+// deliberately not guarded: they finish a payment that is already under way.
+router.post('/:id/initiate', requireFlag('isCashEnabled', 'Cash collection is currently unavailable.'), initiateCashCollection);
+router.post('/:id/initiate-online', requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), initiateOnlineCollection);
 router.post('/:id/confirm', confirmCashCollection);
 
 // Explicit verification route

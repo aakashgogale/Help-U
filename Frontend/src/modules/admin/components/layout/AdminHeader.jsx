@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { FiMenu, FiBell, FiLogOut } from 'react-icons/fi';
+import { FiMenu, FiBell, FiLogOut, FiSearch } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
+import AdminGlobalSearch from './AdminGlobalSearch';
 import { adminAuthService } from '../../../../services/authService';
 import api from '../../../../services/api';
 
@@ -11,6 +12,7 @@ const AdminHeader = ({ onMenuClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -157,21 +159,34 @@ const AdminHeader = ({ onMenuClick }) => {
     >
       <div className="flex items-center justify-between px-4 lg:px-6 py-6">
         {/* Left: Menu Button & Page Title */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0 lg:shrink-0">
           <Button
             onClick={onMenuClick}
             variant="icon"
             className="lg:hidden text-gray-700"
             icon={FiMenu}
           />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-1">{title}</h1>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{description}</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-800 mb-1 truncate">{title}</h1>
+            <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{description}</p>
           </div>
+        </div>
+
+        {/* Centre: global search (desktop) */}
+        <div className="hidden lg:block flex-1 max-w-xl mx-8">
+          <AdminGlobalSearch variant="inline" />
         </div>
 
         {/* Right: Notifications & Logout */}
         <div className="flex items-center gap-4">
+          {/* Search (mobile) */}
+          <Button
+            onClick={() => setShowMobileSearch(true)}
+            variant="icon"
+            className="lg:hidden text-gray-700"
+            icon={FiSearch}
+          />
+
           {/* Notifications */}
           <div className="relative">
             <Button
@@ -210,6 +225,18 @@ const AdminHeader = ({ onMenuClick }) => {
           </Button>
         </div>
       </div>
+
+      {/* Mobile search overlay */}
+      {showMobileSearch && (
+        <div
+          className="lg:hidden fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowMobileSearch(false); }}
+        >
+          <div className="max-w-xl mx-auto mt-2">
+            <AdminGlobalSearch variant="overlay" onClose={() => setShowMobileSearch(false)} />
+          </div>
+        </div>
+      )}
     </header>
   );
 };

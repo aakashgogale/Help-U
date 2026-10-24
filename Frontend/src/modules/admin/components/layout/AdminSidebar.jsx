@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,9 +26,16 @@ import {
   FiTag,
   FiBook,
   FiMap,
+  FiSearch,
 } from "react-icons/fi";
-import adminMenu from "../../config/adminMenu.json";
 import dashboardService from "../../services/dashboardService";
+import {
+  getChildRoute,
+  getVisibleMenu,
+  groupMenu,
+  matches,
+  readAdminUser,
+} from "../../utils/adminNav";
 
 // Icon mapping for menu items
 const iconMap = {
@@ -56,165 +63,76 @@ const iconMap = {
   "Add-ons": FiPlusCircle,
   Commission: FiPercent,
   "Booking Config": FiSliders,
-  "Coupons": FiTag,
+  Coupons: FiTag,
   Zones: FiMap,
 };
 
-// Helper function to convert child name to route path
-const getChildRoute = (parentRoute, childName) => {
-  const routeMap = {
-    "/admin/users": {
-      "All Users": "/admin/users/all",
-      "User Bookings": "/admin/users/bookings",
-      "Transactions": "/admin/users/transactions",
-      "User Analytics": "/admin/users/analytics",
-      "Customer Referrals": "/admin/users/referrals",
-    },
-    "/admin/workers": {
-      "All Workers": "/admin/workers/all",
-      "Worker Bookings": "/admin/workers/bookings",
-      "Worker Referrals": "/admin/workers/referrals",
-      "Worker Analytics": "/admin/workers/analytics",
-      "Worker Payments": "/admin/workers/payments",
-    },
-    "/admin/bookings": {
-      "All Bookings": "/admin/bookings",
-      "Booking Tracking": "/admin/bookings/tracking",
-      "Booking Notifications": "/admin/bookings/notifications",
-    },
-    "/admin/user-categories": {
-      "Home": "/admin/user-categories/home",
-      "Service Management": "/admin/user-categories/service-management",
-      "Home Sections": "/admin/user-categories/sections",
-      "Manage Categories": "/admin/user-categories/categories",
-      "Manage Brands": "/admin/user-categories/brands",
-    },
-    "/admin/payments": {
-      "Payment Overview": "/admin/payments/overview",
-      "User Payments": "/admin/payments/users",
-      "Worker Payments": "/admin/payments/workers",
-      "Admin Revenue": "/admin/payments/revenue",
-      "Payment Reports": "/admin/payments/reports",
-    },
-    "/admin/reports": {
-      "Revenue Report": "/admin/reports/revenue",
-      "Booking Report": "/admin/reports/bookings",
-      "Worker Report": "/admin/reports/workers",
-      "Payment Report": "/admin/payments/reports",
-    },
-    "/admin/notifications": {
-      "Push Notifications": "/admin/notifications/push",
-      "Custom Messages": "/admin/notifications/messages",
-      "Notification Settings": "/admin/notifications/settings",
-    },
-    "/admin/settings": {
-      "General Settings": "/admin/settings/general",
-      "Service Configuration": "/admin/settings/service-config",
-      "System Settings": "/admin/settings/system",
-    },
-    "/admin/settlements": {
-      "Pending": "/admin/settlements/pending",
-      "Withdrawals": "/admin/settlements/withdrawals",
-      "Workers with Due": "/admin/settlements/workers",
-      "History": "/admin/settlements/history",
-    },
-  };
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  return routeMap[parentRoute]?.[childName] || parentRoute;
+// Wraps the part of `text` that matches the search in <mark>
+const Highlight = ({ text, query }) => {
+  const q = query.trim();
+  if (!q) return text;
+  const parts = String(text).split(new RegExp(`(${escapeRegExp(q)})`, "ig"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === q.toLowerCase() ? (
+      <mark key={i} className="bg-amber-300/90 text-slate-900 rounded-sm px-0.5">
+        {part}
+      </mark>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
 };
 
-const ROUTE_PERMISSION_MAP = {
-  '/admin/dashboard': 'dashboard',
-  '/admin/users': 'users',
-  '/admin/workers': 'workers',
-  '/admin/bookings': 'bookings',
-  '/admin/disputes': 'disputes',
-  '/admin/recurring-bookings': 'recurring-bookings',
-  '/admin/scrap': 'scrap',
-  '/admin/payments': 'payments',
-  '/admin/settlements': 'settlements',
-  '/admin/commission': 'commission',
-  '/admin/user-categories': 'user-categories',
-  '/admin/user-categories/worker-services': 'worker-services',
-  '/admin/user-categories/worker-parts': 'worker-parts',
-  '/admin/addons': 'addons',
-  '/admin/reports': 'reports',
-  '/admin/reviews': 'reviews',
-  '/admin/plans': 'plans',
-  '/admin/coupons': 'coupons',
-  '/admin/settings': 'settings',
-  '/admin/customization': 'customization',
-  '/admin/booking-config': 'booking-config'
+const CountBadge = ({ count, tone = "red" }) => {
+  if (!count || count <= 0) return null;
+  const color = tone === "orange" ? "bg-orange-500" : "bg-red-500";
+  return (
+    <span className={`${color} text-white text-[10px] font-bold h-[18px] min-w-[18px] px-1.5 flex items-center justify-center rounded-full`}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
 };
 
 const AdminSidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const searchRef = useRef(null);
   const [expandedItems, setExpandedItems] = useState({});
-  const [isMobile, setIsMobile] = useState(false);
-  const [adminUser, setAdminUser] = useState({ name: 'Admin', email: '', role: 'admin', permissions: [] });
+  const [query, setQuery] = useState("");
+  const [adminUser] = useState(readAdminUser);
   const [counts, setCounts] = useState({
     bookings: 0,
     workers: 0,
     withdrawals: 0,
     pendingSettlements: 0,
-    scraps: 0
+    scraps: 0,
   });
 
-  // Load admin user from storage
-  useEffect(() => {
-    try {
-      const storedData = sessionStorage.getItem('adminData') || localStorage.getItem('adminData');
-      const stored = JSON.parse(storedData || '{}');
-      if (stored.name || stored.email) {
-        setAdminUser({
-          name: stored.name || 'Admin',
-          email: stored.email || '',
-          role: stored.role || 'admin',
-          permissions: Array.isArray(stored.permissions) ? stored.permissions : []
-        });
-      }
-    } catch (e) {
-      console.error('Failed to parse admin data:', e);
-    }
-  }, []);
+  const searching = query.trim().length > 0;
 
-  // Filter menu items by role or granular sub-admin permissions
-  const filteredMenu = useMemo(() => adminMenu.filter(item => {
-    // Super admin has full access
-    if (adminUser.role === 'super_admin') return true;
+  // The menu this admin may see
+  const visibleMenu = useMemo(() => getVisibleMenu(adminUser), [adminUser]);
 
-    const permKey = ROUTE_PERMISSION_MAP[item.route];
+  // While searching: keep items whose title matches, or that have a matching sub-page (showing
+  // only the matching sub-pages unless the parent itself matched)
+  const displayMenu = useMemo(() => {
+    if (!searching) return visibleMenu;
+    return visibleMenu
+      .map((item) => {
+        const parentMatch = matches(item.title, query);
+        const children = (item.children || []).filter((c) => matches(c, query));
+        if (parentMatch) return item;
+        if (children.length > 0) return { ...item, children };
+        return null;
+      })
+      .filter(Boolean);
+  }, [visibleMenu, query, searching]);
 
-    // Check custom permissions first if assigned
-    if (adminUser.permissions && adminUser.permissions.length > 0) {
-      if (adminUser.permissions.includes('*')) return true;
-      if (permKey) {
-        const alt1 = permKey.replace(/-/g, '_');
-        const alt2 = permKey.replace(/_/g, '-');
-        if (
-          adminUser.permissions.includes(permKey) ||
-          adminUser.permissions.includes(alt1) ||
-          adminUser.permissions.includes(alt2)
-        ) {
-          return true;
-        }
-      }
-      // Fallbacks for legacy/alias permissions
-      if (item.route.startsWith('/admin/user-categories') && (adminUser.permissions.includes('services') || adminUser.permissions.includes('user-categories'))) return true;
-      if (item.route === '/admin/customization' && (adminUser.permissions.includes('content') || adminUser.permissions.includes('customization'))) return true;
-      if (item.route === '/admin/settlements' && (adminUser.permissions.includes('payments') || adminUser.permissions.includes('settlements'))) return true;
-      if (item.route === '/admin/recurring-bookings' && (adminUser.permissions.includes('bookings') || adminUser.permissions.includes('recurring-bookings'))) return true;
+  const groups = useMemo(() => groupMenu(displayMenu), [displayMenu]);
 
-      // Sub-admin is denied if not explicitly permitted
-      if (adminUser.role === 'sub_admin') return false;
-    }
-
-    if (!item.allowedRoles) return true;
-    return item.allowedRoles.includes(adminUser.role);
-  }), [adminUser.role, adminUser.permissions]);
-
-  // Fetch pending counts for badges
+  // Pending counts for the badges
   useEffect(() => {
     const fetchCounts = async () => {
       try {
@@ -226,7 +144,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             workers: stats.pendingWorkers || 0,
             withdrawals: stats.pendingWithdrawals || 0,
             pendingSettlements: stats.pendingSettlements || 0,
-            scraps: stats.pendingScraps || 0
+            scraps: stats.pendingScraps || 0,
           });
         }
       } catch (error) {
@@ -235,215 +153,135 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     };
 
     fetchCounts();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Check if mobile on mount and resize
+  // Auto-close the mobile drawer when the route changes
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Auto-close sidebar on mobile when route changes
-  // Auto-close sidebar on mobile when route changes
-  useEffect(() => {
-    // Only close if screen is small (mobile)
-    if (window.innerWidth < 1024) {
-      onClose();
-    }
+    if (window.innerWidth < 1024) onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]); // Remove onClose to prevent re-triggering when parent re-renders
+  }, [location.pathname]);
 
   const isWorkerCatalogSubroute = (pathname) =>
     pathname.startsWith("/admin/user-categories/worker-services") ||
-    pathname.startsWith("/admin/user-categories/worker-services") ||
-    pathname.startsWith("/admin/user-categories/worker-parts") ||
     pathname.startsWith("/admin/user-categories/worker-parts");
 
-  // Auto-expand menu items when their route is active
+  // Open the group that contains the current page
   useEffect(() => {
-    const activeItem = filteredMenu.find((item) => {
-      if (item.route === "/admin/dashboard") {
-        return location.pathname === "/admin/dashboard";
-      }
-      if (item.route === "/admin/user-categories" && isWorkerCatalogSubroute(location.pathname)) {
-        return false;
-      }
-      const isChildRoute =
-        location.pathname.startsWith(item.route) &&
-        location.pathname !== item.route;
-      return isChildRoute;
+    const activeItem = visibleMenu.find((item) => {
+      if (item.route === "/admin/dashboard") return false;
+      if (item.route === "/admin/user-categories" && isWorkerCatalogSubroute(location.pathname)) return false;
+      return location.pathname.startsWith(item.route) && location.pathname !== item.route;
     });
     if (activeItem && activeItem.children && activeItem.children.length > 0) {
-      setExpandedItems((prev) => {
-        if (prev[activeItem.title]) {
-          return prev;
-        }
-        return {
-          [activeItem.title]: true,
-        };
-      });
+      setExpandedItems((prev) => (prev[activeItem.title] ? prev : { [activeItem.title]: true }));
     }
-  }, [location.pathname, filteredMenu]);
+  }, [location.pathname, visibleMenu]);
 
-  // Check if a menu item is active
   const isActive = (route) => {
-    if (route === "/admin/dashboard") {
-      return location.pathname === "/admin/dashboard";
-    }
-
-    // Special case for User Catalog to avoid overlap with Worker/Worker Services/Parts
-    if (route === "/admin/user-categories") {
-      if (isWorkerCatalogSubroute(location.pathname)) {
-        return false;
-      }
-    }
-
-    // Strict prefix check: either exact match OR followed by a slash
-    return location.pathname === route || location.pathname.startsWith(route + '/');
+    if (route === "/admin/dashboard") return location.pathname === "/admin/dashboard";
+    if (route === "/admin/user-categories" && isWorkerCatalogSubroute(location.pathname)) return false;
+    return location.pathname === route || location.pathname.startsWith(route + "/");
   };
 
-  // Toggle expanded state for menu items with children
-  const toggleExpand = (title, closeOthers = true) => {
-    setExpandedItems((prev) => {
-      if (closeOthers) {
-        return {
-          [title]: !prev[title],
-        };
-      } else {
-        return {
-          ...prev,
-          [title]: !prev[title],
-        };
-      }
-    });
+  const toggleExpand = (title) => {
+    setExpandedItems((prev) => ({ [title]: !prev[title] }));
   };
 
-  // Handle menu item click
-  const handleMenuItemClick = (route, parentTitle = null) => {
-    if (parentTitle) {
-      setExpandedItems((prev) => {
-        return {
-          [parentTitle]: true,
-        };
-      });
-    }
+  const go = (route, parentTitle = null) => {
+    if (parentTitle) setExpandedItems({ [parentTitle]: true });
     navigate(route);
-    if (window.innerWidth < 1024) {
-      onClose();
+    if (window.innerWidth < 1024) onClose();
+  };
+
+  // Enter in the search box opens the first result
+  const openFirstResult = () => {
+    const first = displayMenu[0];
+    if (!first) return;
+    const hasChildren = first.children && first.children.length > 0;
+    const parentMatched = matches(first.title, query);
+    if (hasChildren && !parentMatched) {
+      go(getChildRoute(first.route, first.children[0]), first.title);
+    } else {
+      go(first.route);
+    }
+    setQuery("");
+  };
+
+  const onSearchKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setQuery("");
+      e.currentTarget.blur();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      openFirstResult();
     }
   };
 
-  // Render menu item
+  const badgeFor = (title) => {
+    if (title === "Bookings") return counts.bookings;
+    if (title === "Workers") return counts.workers;
+    if (title === "Settlements") return counts.withdrawals + counts.pendingSettlements;
+    if (title === "Scrap Items") return counts.scraps;
+    return 0;
+  };
+
   const renderMenuItem = (item) => {
     const Icon = iconMap[item.title] || FiHome;
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedItems[item.title];
+    const isExpanded = searching ? hasChildren : expandedItems[item.title];
     const active = isActive(item.route);
 
     return (
-      <div key={item.route} className="mb-1">
-        {/* Main Menu Item */}
-        <div
-          className={`
-            flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 cursor-pointer
-            ${active
-              ? "bg-primary-600 text-white shadow-sm"
-              : "text-gray-300 hover:bg-slate-700"
-            }
-          `}
-          onClick={() => {
-            if (hasChildren) {
-              toggleExpand(item.title, true);
-            } else {
-              handleMenuItemClick(item.route);
-            }
-          }}>
-          <Icon
-            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-gray-400"
-              }`}
-          />
-          <span className="font-semibold flex-1 text-base">{item.title}</span>
-
-          {/* Badge Display */}
-          {item.title === "Bookings" && counts.bookings > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse mr-2">
-              {counts.bookings > 99 ? '99+' : counts.bookings}
-            </span>
-          )}
-          {item.title === "Workers" && counts.workers > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse mr-2">
-              {counts.workers > 99 ? '99+' : counts.workers}
-            </span>
-          )}
-          {item.title === "Settlements" && (counts.withdrawals + counts.pendingSettlements) > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse mr-2">
-              {(counts.withdrawals + counts.pendingSettlements) > 99 ? '99+' : (counts.withdrawals + counts.pendingSettlements)}
-            </span>
-          )}
-          {item.title === "Scrap Items" && counts.scraps > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse mr-2">
-              {counts.scraps > 99 ? '99+' : counts.scraps}
-            </span>
-          )}
-
+      <div key={item.route} className="mb-0.5">
+        <button
+          type="button"
+          onClick={() => (hasChildren ? toggleExpand(item.title) : go(item.route))}
+          aria-expanded={hasChildren ? !!isExpanded : undefined}
+          className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors duration-150
+            ${active ? "bg-primary-600 text-white shadow-sm" : "text-slate-300 hover:bg-slate-700/70 hover:text-white"}`}
+        >
+          <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`} />
+          <span className="flex-1 text-[14px] font-medium truncate">
+            <Highlight text={item.title} query={query} />
+          </span>
+          <CountBadge count={badgeFor(item.title)} />
           {hasChildren && (
-            <motion.div
-              animate={{ rotate: isExpanded ? 180 : 0 }}
-              transition={{ duration: 0.2 }}>
-              <FiChevronDown className="text-gray-400 text-sm" />
-            </motion.div>
+            <motion.span animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
+              <FiChevronDown className={`w-4 h-4 ${active ? "text-white/80" : "text-slate-500"}`} />
+            </motion.span>
           )}
-        </div>
+        </button>
 
-        {/* Children Items */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {hasChildren && isExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden">
-              <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
-                {item.children.map((child, index) => {
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-[22px] mt-0.5 mb-1 pl-3 border-l border-slate-600/70 space-y-0.5">
+                {item.children.map((child) => {
                   const childRoute = getChildRoute(item.route, child);
                   const isChildActive =
                     location.pathname === childRoute ||
-                    (childRoute !== item.route &&
-                      location.pathname.startsWith(childRoute));
+                    (childRoute !== item.route && location.pathname.startsWith(childRoute + "/"));
 
                   return (
-                    <div
-                      key={index}
-                      onClick={() =>
-                        handleMenuItemClick(childRoute, item.title)
-                      }
-                      className={`
-                        px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer flex justify-between items-center
-                        ${isChildActive
-                          ? "bg-primary-50 text-white font-medium"
-                          : "text-gray-400 hover:bg-slate-700"
-                        }
-                      `}>
-                      <span>{child}</span>
-                      {item.title === "Settlements" && child === "Pending" && counts.pendingSettlements > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full">
-                          {counts.pendingSettlements}
-                        </span>
-                      )}
-                      {item.title === "Settlements" && child === "Withdrawals" && counts.withdrawals > 0 && (
-                        <span className="bg-orange-500 text-white text-[10px] h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full">
-                          {counts.withdrawals}
-                        </span>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      key={child}
+                      onClick={() => go(childRoute, item.title)}
+                      className={`w-full px-3 py-1.5 text-[13px] rounded-md text-left flex justify-between items-center transition-colors
+                        ${isChildActive ? "bg-slate-700 text-white font-medium" : "text-slate-400 hover:bg-slate-700/60 hover:text-slate-100"}`}
+                    >
+                      <span className="truncate"><Highlight text={child} query={query} /></span>
+                      {item.title === "Settlements" && child === "Pending" && <CountBadge count={counts.pendingSettlements} />}
+                      {item.title === "Settlements" && child === "Withdrawals" && <CountBadge count={counts.withdrawals} tone="orange" />}
+                    </button>
                   );
                 })}
               </div>
@@ -454,51 +292,90 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     );
   };
 
-  // Sidebar content
+  const roleLabel =
+    adminUser.role === "super_admin" ? "Super Admin" : adminUser.role === "sub_admin" ? "Sub Admin" : "Admin";
+
   const sidebarContent = (
     <div className="h-full w-full flex flex-col bg-slate-800">
-      {/* Header Section */}
-      <div className="px-4 py-6 border-b border-slate-700 bg-slate-900">
+      {/* Profile */}
+      <div className="px-4 py-4 border-b border-slate-700 bg-slate-900">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #2874F0 0%, #4787F7 100%)',
-              }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0"
+              style={{ background: "linear-gradient(135deg, #2874F0 0%, #4787F7 100%)" }}
             >
-              <FiUser className="text-white text-xl" />
+              <FiUser className="text-white text-lg" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-white text-base truncate">
-                {adminUser.name}
-              </h2>
-              <p className="text-xs text-gray-400 truncate">
-                {adminUser.role === 'super_admin' ? '⭐ Super Admin' : adminUser.role === 'sub_admin' ? '🛡️ Sub Admin' : 'Admin'}
-              </p>
+              <h2 className="font-semibold text-white text-[15px] leading-tight truncate">{adminUser.name}</h2>
+              <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-300/10 rounded px-1.5 py-0.5">
+                {roleLabel}
+              </span>
             </div>
           </div>
 
-          {/* Close Button - Mobile Only */}
+          {/* Close button, mobile only */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
-            aria-label="Close sidebar">
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors shrink-0 lg:hidden"
+            aria-label="Close sidebar"
+          >
             <FiX className="text-xl text-gray-300" />
           </button>
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 overflow-y-auto p-3 scrollbar-admin lg:pb-3">
-        {filteredMenu.map((item) => renderMenuItem(item))}
+      {/* Menu search */}
+      <div className="px-3 pt-3 pb-2 bg-slate-800">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            ref={searchRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder="Search menu…"
+            aria-label="Search the menu"
+            className="w-full h-9 pl-9 pr-8 rounded-lg bg-slate-700/60 text-[13px] text-slate-100 placeholder:text-slate-400 border border-transparent focus:border-primary-500 focus:bg-slate-700 outline-none transition-colors"
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => { setQuery(""); searchRef.current?.focus(); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-white hover:bg-white/10"
+              aria-label="Clear search"
+            >
+              <FiX className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3 scrollbar-admin">
+        {groups.length === 0 && (
+          <div className="px-3 py-10 text-center text-[13px] text-slate-400">
+            No menu items match “{query.trim()}”.
+          </div>
+        )}
+
+        {groups.map((group, gi) => (
+          <div key={group.label} className={gi === 0 ? "" : "mt-3"}>
+            <p className="px-3 pt-1 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+              {group.label}
+            </p>
+            {group.items.map((item) => renderMenuItem(item))}
+          </div>
+        ))}
       </nav>
     </div>
   );
 
   return (
     <>
-      {/* Mobile: Overlay Backdrop */}
+      {/* Mobile: backdrop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -511,7 +388,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Mobile Drawer */}
+      {/* Mobile drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -526,11 +403,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Desktop Fixed */}
-      <div
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30"
-        style={{ width: '278px' }}
-      >
+      {/* Desktop: fixed */}
+      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30" style={{ width: "278px" }}>
         {sidebarContent}
       </div>
     </>
@@ -538,4 +412,3 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 };
 
 export default AdminSidebar;
-

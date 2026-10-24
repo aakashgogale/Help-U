@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUser, FiPhone, FiMail, FiMapPin, FiCheckCircle, FiSlash, FiCheck, FiTrash2, FiCreditCard, FiPlus, FiMinus, FiX, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -24,7 +25,14 @@ const formatSavedAddress = (addresses = []) => {
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('search') || '');
+  // The header search opens this list with ?search=…; follow it when it changes
+  const [urlParams] = useSearchParams();
+  useEffect(() => {
+    const fromUrl = urlParams.get('search');
+    if (fromUrl !== null) setSearch(fromUrl);
+  }, [urlParams]);
+
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);

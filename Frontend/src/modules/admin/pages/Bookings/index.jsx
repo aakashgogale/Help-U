@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiSearch, FiCalendar, FiDownload, FiMoreVertical,
@@ -26,7 +27,14 @@ const Bookings = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('search') || '');
+  // The header search opens this list with ?search=…; follow it when it changes
+  const [urlParams] = useSearchParams();
+  useEffect(() => {
+    const fromUrl = urlParams.get('search');
+    if (fromUrl !== null) setSearch(fromUrl);
+  }, [urlParams]);
+
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');

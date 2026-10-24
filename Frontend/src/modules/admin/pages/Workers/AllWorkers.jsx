@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiCheck, FiX, FiEye, FiSearch, FiFilter, FiDownload, FiLoader, FiPower, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -10,7 +11,14 @@ const AllWorkers = () => {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'pending', 'approved', 'rejected'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get('search') || '');
+  // The header search opens this list with ?search=…; follow it when it changes
+  const [urlParams] = useSearchParams();
+  useEffect(() => {
+    const fromUrl = urlParams.get('search');
+    if (fromUrl !== null) setSearchQuery(fromUrl);
+  }, [urlParams]);
+
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 

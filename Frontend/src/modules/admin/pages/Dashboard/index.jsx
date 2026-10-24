@@ -138,7 +138,10 @@ const AdminDashboard = () => {
   };
 
   const onViewBooking = (booking) => {
-    if (booking?._id || booking?.id) navigate(`/admin/bookings/${booking._id || booking.id}`);
+    // There is no per-booking page; open the bookings list filtered to this booking
+    // (the dashboard's recent bookings carry the booking number as `id`)
+    const ref = booking?.bookingNumber || booking?.id;
+    navigate(ref ? `/admin/bookings?search=${encodeURIComponent(ref)}` : '/admin/bookings');
   };
 
   const rawStatsCards = [
