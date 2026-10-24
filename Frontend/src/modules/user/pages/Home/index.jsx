@@ -60,6 +60,8 @@ const mapCategories = (list) => (list || []).map(cat => {
     _id: cat._id || cat.id,
     title: cat.title,
     slug: cat.slug,
+    parentId: cat.parentId || null,
+    homeIconUrl: cat.homeIconUrl || null,
     icon: (dbIcon ? toAssetUrl(dbIcon) : null) || getCategoryIllustration(cat.title),
     hasSaleBadge: Boolean(cat.hasSaleBadge),
     badge: cat.badge || cat.homeBadge || '',
