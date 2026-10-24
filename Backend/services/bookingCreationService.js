@@ -28,6 +28,7 @@ const { createNotification } = require('../controllers/notificationControllers/n
 const { validateCoupon, redeemCoupon } = require('./couponService');
 const { rankWorkers } = require('./workerScoringService');
 const { findNearbyWorkers, geocodeAddress } = require('./locationService');
+const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs } = require('./workerAvailabilityService');
 const { nextOccurrenceDate } = require('../utils/recurrence');
 const { resolveCheckoutAmount } = require('../utils/servicePricing');
 
@@ -223,6 +224,12 @@ const placeBooking = async (userId, payload, options = {}) => {
   // Search limits; emergency bookings search wider and expire sooner.
   const searchRadiusKm = isEmergency ? config.emergencySearchRadius : config.searchRadius;
   const maxSearchTimeMins = isEmergency ? config.emergencyMaxSearchTime : config.maxSearchTime;
+  // Scheduled (future) bookings are offered to every eligible worker at once: there is no
+  // rush, and they stay open until a cut-off before the slot instead of a few minutes.
+  const isScheduledBooking = (bookingType || 'scheduled') === 'scheduled' && !isEmergency;
+  const scheduledSlotStart = isScheduledBooking
+    ? slotStartMs({ scheduledDate, timeSlot })
+    : null;
   const firstWaveSize = isEmergency ? config.emergencyFirstWaveSize : config.wave1Size;
 
   const pendingPenalty = user.wallet?.penalty || 0;
@@ -291,6 +298,7 @@ const placeBooking = async (userId, payload, options = {}) => {
     service: matchServiceNames.length > 0 ? matchServiceNames : undefined,
     checkCashLimit: paymentMethod === 'cash',
     city: address.city,
+    includeOffline: isScheduledBooking,
     ...(matchedZone ? { zoneId: matchedZone._id, zoneCoordinates: matchedZone.coordinates } : {})
   };
 
@@ -304,6 +312,24 @@ const placeBooking = async (userId, payload, options = {}) => {
     uniqueWorkerIds.add(idStr);
     return true;
   });
+
+  // Availability rules:
+  //  - instant: only workers who are not at work right now
+  //  - scheduled: workers on a job right now still qualify (the job is later), but anyone whose
+  //    jobs overlap the slot (job length + travel buffer) is skipped
+  if (isScheduledBooking) {
+    if (Number.isFinite(scheduledSlotStart)) {
+      const conflicts = await getConflictingWorkerIds(nearbyWorkers, { slotStart: scheduledSlotStart, config });
+      nearbyWorkers = nearbyWorkers.filter((w) => !conflicts.has(String(w._id)));
+    }
+    if (!config.allowBusyWorkersForScheduled) {
+      const busy = await getBusyWorkerIds(nearbyWorkers);
+      nearbyWorkers = nearbyWorkers.filter((w) => !busy.has(String(w._id)));
+    }
+  } else if (config.excludeBusyWorkersForInstant) {
+    const busy = await getBusyWorkerIds(nearbyWorkers);
+    nearbyWorkers = nearbyWorkers.filter((w) => !busy.has(String(w._id)));
+  }
 
   const rankedWorkers = await rankWorkers(nearbyWorkers, config, {
     radiusKm: searchRadiusKm,
@@ -489,6 +515,16 @@ const placeBooking = async (userId, payload, options = {}) => {
     brandIcon = formattedBookedItems[0].brandIcon || null;
   }
 
+  // Search deadline; the scheduler cancels the booking if no one accepts by then. Instant bookings
+  // use the normal search time. Scheduled ones stay open until `scheduledBookingCutoffHours`
+  // before the slot, but never for less than the normal search time.
+  const normalDeadline = Date.now() + maxSearchTimeMins * 60 * 1000;
+  const searchDeadline = new Date(
+    isScheduledBooking && Number.isFinite(scheduledSlotStart)
+      ? Math.max(normalDeadline, scheduledSlotStart - (config.scheduledBookingCutoffHours || 0) * 60 * 60 * 1000)
+      : normalDeadline
+  );
+
   const booking = new Booking({
     bookingNumber,
     userId,
@@ -555,7 +591,7 @@ const placeBooking = async (userId, payload, options = {}) => {
     status: bookingStatus,
     paymentStatus: bookingPaymentStatus,
     // Search deadline; the scheduler cancels the booking if no one accepts by then
-    expiresAt: new Date(Date.now() + maxSearchTimeMins * 60 * 1000)
+    expiresAt: searchDeadline
   });
   booking.$locals.actor = recurringContext ? 'system' : 'user';
   await booking.save();
@@ -625,7 +661,7 @@ const placeBooking = async (userId, payload, options = {}) => {
     }
   }
 
-  const wave1Workers = rankedWorkers.slice(0, firstWaveSize);
+  const wave1Workers = rankedWorkers.slice(0, isScheduledBooking ? rankedWorkers.length : firstWaveSize);
 
   const body = {
     success: true,
@@ -855,6 +891,8 @@ const dispatchNewBooking = async ({
  */
 const buildWorkerAlertPayload = (booking, user, service) => ({
   bookingId: booking._id,
+  bookingType: booking.bookingType,
+  expiresAt: booking.expiresAt,
   bookingNumber: booking.bookingNumber,
   serviceName: service?.title || booking.serviceName,
   customerName: user?.name || 'Customer',

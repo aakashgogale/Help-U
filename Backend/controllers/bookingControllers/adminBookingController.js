@@ -48,6 +48,7 @@ const getAllBookings = async (req, res) => {
 
     // Get bookings
     const bookings = await Booking.find(query)
+      .select('-workPhotos') // list views never show them; they can be megabytes
       .populate('userId', 'name phone email')
       .populate('vendorId', 'name businessName phone')
       .populate('serviceId', 'title iconUrl')

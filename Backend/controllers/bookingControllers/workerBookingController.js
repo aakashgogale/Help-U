@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
-const { normalizeWorkPhotos } = require('../../utils/workPhotos');
+const { normalizeWorkPhotos, persistWorkPhotos } = require('../../utils/workPhotos');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToWorker } = require('../../services/firebaseAdmin');
 const { resolveCommission, computeWorkerEarnings, toPayoutConfig, describeCommission } = require('../../services/commissionService');
@@ -222,6 +222,37 @@ const acceptBooking = async (req, res) => {
     const vendorId = req.user.id;
     const { id } = req.params;
 
+    // Availability rules, enforced again at the moment of acceptance (the alert may be old):
+    //  - a scheduled job must not overlap another of this worker's jobs
+    //  - an instant job cannot be taken while he is at work on another one
+    const target = await Booking.findById(id).select('bookingType scheduledDate timeSlot vendorId status isEmergency').lean();
+    if (target && !target.vendorId && [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING].includes(target.status)) {
+      const { getBookingConfig } = require('../../utils/bookingConfig');
+      const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs } = require('../../services/workerAvailabilityService');
+      const availabilityConfig = await getBookingConfig();
+
+      if (target.bookingType === 'scheduled' && !target.isEmergency) {
+        const slotStart = slotStartMs(target);
+        if (Number.isFinite(slotStart)) {
+          const conflicts = await getConflictingWorkerIds([vendorId], { slotStart, config: availabilityConfig });
+          if (conflicts.size > 0) {
+            return res.status(409).json({
+              success: false,
+              message: 'You already have a job around this time. Pick a booking that does not overlap.'
+            });
+          }
+        }
+      } else if (availabilityConfig.excludeBusyWorkersForInstant) {
+        const busy = await getBusyWorkerIds([vendorId]);
+        if (busy.size > 0) {
+          return res.status(409).json({
+            success: false,
+            message: 'Finish your current job before accepting a new instant booking.'
+          });
+        }
+      }
+    }
+
     // ATOMIC UPDATE: Check status and vendorId in query to prevent race conditions
     // Only accept if status is REQUESTED/SEARCHING and NO worker is assigned yet
     const updatedBooking = await Booking.findOneAndUpdate(
@@ -270,7 +301,10 @@ const acceptBooking = async (req, res) => {
 
     // Update worker availability to ON_JOB
     const Worker = require('../../models/Worker');
-    await Worker.findByIdAndUpdate(vendorId, { availability: 'ON_JOB' });
+    // A scheduled job is for later; only an instant one puts the worker "on a job" now.
+    if (updatedBooking.bookingType !== 'scheduled') {
+      await Worker.findByIdAndUpdate(vendorId, { availability: 'ON_JOB' });
+    }
 
     // Update BookingRequest statuses
     const BookingRequest = require('../../models/BookingRequest');
@@ -1092,7 +1126,14 @@ const completeSelfJob = async (req, res) => {
     booking.customerConfirmationOTP = payOtp;
 
     // Accepts either the new { url, type } objects or legacy URL strings.
-    if (workPhotos) booking.workPhotos = normalizeWorkPhotos(workPhotos);
+    if (workPhotos) {
+      try {
+        booking.workPhotos = await persistWorkPhotos(workPhotos);
+      } catch (uploadError) {
+        console.error('Work photo upload failed:', uploadError.message);
+        return res.status(502).json({ success: false, message: 'Could not upload the work photos. Please try again.' });
+      }
+    }
 
     // Store bill summary in workDoneDetails for frontend display
     booking.workDoneDetails = {

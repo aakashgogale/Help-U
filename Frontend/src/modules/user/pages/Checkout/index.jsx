@@ -637,6 +637,13 @@ const Checkout = () => {
           bookingService.cancel(bookingId, 'Initial search found no available workers')
             .catch(err => console.error('Auto-cancel failed:', err));
         }
+      } else if (bookingType === 'scheduled' && !isEmergency) {
+        // A future booking stays open for workers for hours, so don't hold the customer on a
+        // countdown: confirm it and take them to the booking, where they'll see it get accepted.
+        setSearchingWorkers(false);
+        setShowWorkerModal(false);
+        toast.success("Booking placed! We'll notify you as soon as a professional accepts.", { duration: 4000 });
+        navigate(`/user/booking/${booking?._id || booking?.id}`, { replace: true });
       } else {
         // Move to waiting state - alerts sent to nearby workers
         setCurrentStep('waiting');

@@ -56,4 +56,28 @@ const splitWorkPhotos = (photos) => {
   };
 };
 
-module.exports = { normalizeWorkPhotos, splitWorkPhotos, VALID_TYPES };
+/**
+ * normalizeWorkPhotos + guarantees nothing heavy is stored on the booking.
+ *
+ * The worker app captures photos as data URLs (base64 text). Saved as-is, one booking became
+ * a 7.6 MB document that every query loading it had to transfer. Any data URL is uploaded to
+ * Cloudinary here and replaced by its URL. If an upload fails this throws, so the caller can
+ * ask the worker to retry instead of silently losing the proof photo or storing base64.
+ */
+const persistWorkPhotos = async (photos) => {
+  const { uploadFile } = require('../services/cloudinaryService');
+  const normalized = normalizeWorkPhotos(photos);
+
+  return Promise.all(
+    normalized.map(async (photo) => {
+      if (!photo.url.startsWith('data:')) return photo;
+      const result = await uploadFile(photo.url, { folder: 'helpu/work-photos', resource_type: 'image' });
+      if (!result?.success || !result.url) {
+        throw new Error('Work photo upload failed');
+      }
+      return { ...photo, url: result.url };
+    })
+  );
+};
+
+module.exports = { normalizeWorkPhotos, persistWorkPhotos, splitWorkPhotos, VALID_TYPES };

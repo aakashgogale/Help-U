@@ -8,22 +8,30 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Firebase configuration - Production values
+// Firebase configuration: passed in by the app when it registers this worker (see
+// src/services/pushNotificationService.js), so it always matches the project the app's push
+// tokens belong to. A worker on a different project never receives the app's pushes.
+const params = new URL(self.location.href).searchParams;
 const firebaseConfig = {
-  apiKey: 'AIzaSyB0p9BwQh6P4U6RpNI783Mf2yLV96ZFemo',
-  authDomain: 'homster-notifications.firebaseapp.com',
-  projectId: 'homster-notifications',
-  storageBucket: 'homster-notifications.firebasestorage.app',
-  messagingSenderId: '330091938710',
-  appId: '1:330091938710:web:b58aa8c0830445b1fa53b7',
-  measurementId: 'G-E493PBZLED'
+  apiKey: params.get('apiKey'),
+  authDomain: params.get('authDomain'),
+  projectId: params.get('projectId'),
+  storageBucket: params.get('storageBucket'),
+  messagingSenderId: params.get('messagingSenderId'),
+  appId: params.get('appId')
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+const hasConfig = Boolean(firebaseConfig.messagingSenderId && firebaseConfig.appId);
+if (hasConfig) {
+  firebase.initializeApp(firebaseConfig);
+} else {
+  // Registered without config (e.g. an old cached registration): stay inert rather than guess a
+  // project; the app re-registers this worker with the right config on its next load.
+  console.warn('[SW] Firebase config missing; push disabled until the app re-registers this worker');
+}
 
-// Get messaging instance
-const messaging = firebase.messaging();
+// Get messaging instance (a no-op stand-in when there is no config, so the script still loads)
+const messaging = hasConfig ? firebase.messaging() : { onBackgroundMessage() {} };
 
 // Notification sounds based on type
 const NOTIFICATION_SOUNDS = {

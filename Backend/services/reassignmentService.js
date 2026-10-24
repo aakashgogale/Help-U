@@ -99,7 +99,16 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
     booking.currentWave = 0;
     // An old timestamp makes the scheduler start wave 1 on its next tick.
     booking.waveStartedAt = new Date(0);
-    booking.expiresAt = new Date(Date.now() + maxSearchMins * 60 * 1000);
+    // A scheduled booking keeps its long window (open until the cut-off before its slot);
+    // anything else gets the normal search time again.
+    const { slotStartMs } = require('./workerAvailabilityService');
+    const normalDeadline = Date.now() + maxSearchMins * 60 * 1000;
+    const slotStart = booking.bookingType === 'scheduled' && !booking.isEmergency ? slotStartMs(booking) : null;
+    booking.expiresAt = new Date(
+      Number.isFinite(slotStart)
+        ? Math.max(normalDeadline, slotStart - (config.scheduledBookingCutoffHours || 0) * 60 * 60 * 1000)
+        : normalDeadline
+    );
     booking.statusHistory.push({
       status: BOOKING_STATUS.SEARCHING,
       event: 'reassigned',

@@ -20,6 +20,7 @@ const AdminDashboard = () => {
     start: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
+  const [loading, setLoading] = useState(true);
   const [revenueData, setRevenueData] = useState([]);
   const [recentBookingsList, setRecentBookingsList] = useState([]);
   const [stats, setStats] = useState({
@@ -36,6 +37,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         // 1. Calculate Period Dates
         let apiPeriod = 'monthly';
@@ -64,12 +66,13 @@ const AdminDashboard = () => {
 
         const startIso = startDate.toISOString();
 
-        // 2. Fetch Stats & Recent Bookings (Filtered)
-        const statsRes = await getDashboardStats({
-          startDate: startIso,
-          endDate
-        });
-        
+        // 2. Stats + recent bookings and revenue analytics are independent: fetch them together
+        //    (they used to run one after the other, so the waits added up)
+        const [statsRes, revRes] = await Promise.all([
+          getDashboardStats({ startDate: startIso, endDate }),
+          getRevenueAnalytics({ period: apiPeriod, startDate: startIso, endDate })
+        ]);
+
         if (statsRes.success) {
           const s = statsRes.data.stats;
           setStats({
@@ -86,13 +89,6 @@ const AdminDashboard = () => {
           setRecentBookingsList(statsRes.data.recentBookings || []);
         }
 
-        // 3. Fetch Revenue Analytics based on Period
-        const revRes = await getRevenueAnalytics({
-          period: apiPeriod,
-          startDate: startIso,
-          endDate
-        });
-
         if (revRes.success) {
           const mapped = revRes.data.revenueData.map(item => ({
             date: item._id,
@@ -104,6 +100,8 @@ const AdminDashboard = () => {
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -143,7 +141,7 @@ const AdminDashboard = () => {
     if (booking?._id || booking?.id) navigate(`/admin/bookings/${booking._id || booking.id}`);
   };
 
-  const statsCards = [
+  const rawStatsCards = [
     {
       title: period === 'month' ? 'Monthly Revenue' : period === 'year' ? 'Yearly Revenue' : period === 'today' ? 'Today\'s Revenue' : period === 'week' ? 'Weekly Revenue' : 'Revenue',
       value: formatCurrency(stats.totalRevenue || 0),
@@ -233,6 +231,9 @@ const AdminDashboard = () => {
       link: '/admin/workers/analytics'
     },
   ];
+
+  // Show a placeholder, not ₹0, until the numbers arrive
+  const statsCards = loading ? rawStatsCards.map((c) => ({ ...c, value: '…' })) : rawStatsCards;
 
   return (
     <motion.div

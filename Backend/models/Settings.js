@@ -390,6 +390,18 @@ const settingsSchema = new mongoose.Schema({
   slotMinLeadMinutes: { type: Number, default: 60, min: 0, max: 1440 },
 
   // ==========================================
+  // SCHEDULED BOOKINGS & WORKER AVAILABILITY
+  // A scheduled (future) booking is offered to every eligible worker at once, including
+  // workers who are on a job right now, and stays open until `scheduledBookingCutoffHours`
+  // before its slot. Overlap checks use the job length + travel buffer below.
+  // ==========================================
+  scheduledBookingCutoffHours: { type: Number, default: 2, min: 0, max: 72 },
+  scheduledJobDurationMinutes: { type: Number, default: 90, min: 15, max: 600 },
+  scheduledTravelBufferMinutes: { type: Number, default: 30, min: 0, max: 240 },
+  allowBusyWorkersForScheduled: { type: Boolean, default: true },
+  excludeBusyWorkersForInstant: { type: Boolean, default: true },
+
+  // ==========================================
   // COMMISSION (global default)
   // Category, worker and worker+category overrides live in CommissionRule.
   // 'percentage' uses servicePayoutPercentage above; 'fixed' keeps

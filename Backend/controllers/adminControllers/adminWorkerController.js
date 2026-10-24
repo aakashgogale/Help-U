@@ -286,6 +286,7 @@ const getWorkerBookings = async (req, res) => {
 
     // Get bookings
     const bookings = await Booking.find(query)
+      .select('-workPhotos') // list views never show them; they can be megabytes
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')
       .sort({ createdAt: -1 })
@@ -395,6 +396,7 @@ const getAllWorkerBookings = async (req, res) => {
     }
 
     const bookings = await Booking.find(query)
+      .select('-workPhotos') // list views never show them; they can be megabytes
       .populate('vendorId', 'name businessName phone profileImage')
       .populate('userId', 'name phone')
       .populate('serviceId', 'title iconUrl')

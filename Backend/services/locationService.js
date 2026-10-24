@@ -68,7 +68,9 @@ const _buildWorkerQuery = (filters = {}) => {
   const zoneId = filters.zoneId;
   const zoneCoordinates = filters.zoneCoordinates;
   
+  const includeOffline = filters.includeOffline === true;
   const queryFilters = { ...filters };
+  delete queryFilters.includeOffline;
   delete queryFilters.checkCashLimit;
   delete queryFilters.service;
   delete queryFilters.city;
@@ -78,7 +80,9 @@ const _buildWorkerQuery = (filters = {}) => {
   const baseQuery = {
     approvalStatus: WORKER_STATUS.APPROVED,
     isActive: true,
-    isOnline: true,
+    // Scheduled bookings also go to workers who are offline right now (they see the alert
+    // when they next open the app); instant ones need someone online.
+    ...(includeOffline ? {} : { isOnline: true }),
     ...queryFilters
   };
 
@@ -171,7 +175,7 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
 
 
     // OPTION 1: Try Redis geo cache first (fastest - <5ms)
-    if (isRedisConnected()) {
+    if (isRedisConnected() && !geoFilters.includeOffline) {
       const cachedWorkers = await getNearbyWorkersFromCache(centerLocation.lat, centerLocation.lng, radiusKm);
 
       if (cachedWorkers && cachedWorkers.length > 0) {

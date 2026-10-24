@@ -118,6 +118,7 @@ const getDashboardStats = async (req, res) => {
       Settlement.countDocuments({ status: 'pending', ...dateFilter }),
       Scrap.countDocuments({ status: 'pending', ...dateFilter }),
       Booking.find(dateFilter)
+        .select('-workPhotos') // list views never show them; they can be megabytes
         .populate('userId', 'name phone')
         .populate('vendorId', 'name businessName')
         .populate('serviceId', 'title')

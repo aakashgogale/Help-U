@@ -85,7 +85,15 @@ const CONFIG_SCHEMA = {
   slotEndHour: [20, 'number', 1, 24],
   slotDurationMinutes: [60, 'number', 15, 240],
   slotMaxDaysAhead: [7, 'number', 1, 30],
-  slotMinLeadMinutes: [60, 'number', 0, 1440]
+  slotMinLeadMinutes: [60, 'number', 0, 1440],
+
+  // Scheduled bookings stay open until this many hours before the slot (never less than the
+  // normal search time); the job length + travel buffer decide whether two bookings overlap.
+  scheduledBookingCutoffHours: [2, 'number', 0, 72],
+  scheduledJobDurationMinutes: [90, 'number', 15, 600],
+  scheduledTravelBufferMinutes: [30, 'number', 0, 240],
+  allowBusyWorkersForScheduled: [true, 'boolean'],
+  excludeBusyWorkersForInstant: [true, 'boolean']
 };
 
 // Existing settings the booking flow also needs; read here so callers have one

@@ -44,6 +44,7 @@ const getAllTransactions = async (req, res) => {
       // Note: Pagination here applies to bookings, not rows, which might result in variable row counts per page
       // This is an acceptable trade-off for virtualizing the data
       const bookings = await Booking.find(bookingQuery)
+        .select('-workPhotos') // list views never show them; they can be megabytes
         .populate('userId', 'name email phone')
         .populate('vendorId', 'name email phone')
         .sort({ createdAt: -1 })

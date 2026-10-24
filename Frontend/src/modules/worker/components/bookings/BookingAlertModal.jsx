@@ -110,6 +110,11 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
     return () => clearInterval(timer);
   }, [booking, onReject, booking.expiresAt, booking.createdAt, maxSearchTimeMins]);
 
+  // A scheduled booking stays open for hours, so a minutes countdown means nothing: show the slot.
+  const isScheduled = booking?.bookingType === 'scheduled' && !booking?.isEmergency;
+  const slotDate = booking?.scheduledDate ? new Date(booking.scheduledDate) : null;
+  const slotLabel = booking?.timeSlot?.time || booking?.scheduledTime || '';
+
   const radius = 24;
   const circumference = 2 * Math.PI * radius;
   // Progress relative to the total max search time to ensure the circle shrinks correctly
@@ -145,6 +150,19 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
 
       {/* Body Section */}
       <div className="px-5 py-4">
+        {isScheduled ? (
+          <div className="flex justify-center -mt-9 mb-3 relative z-20">
+            <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 px-4 py-2 text-center min-w-[150px]">
+              <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest block">Scheduled job</span>
+              <span className="text-[15px] font-black text-gray-900 block leading-tight mt-0.5">
+                {slotDate && !Number.isNaN(slotDate.getTime())
+                  ? slotDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+                  : 'Upcoming'}
+              </span>
+              {slotLabel && <span className="text-[12px] font-bold text-gray-600 block">{slotLabel}</span>}
+            </div>
+          </div>
+        ) : (
         <div className="flex justify-center -mt-9 mb-3 relative z-20">
           <div className="relative w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-xl p-0.5">
             <svg className="absolute inset-0 w-full h-full -rotate-90 transform" viewBox="0 0 60 60">
@@ -164,6 +182,7 @@ const BookingAlertCard = ({ booking, onAccept, onReject, maxSearchTimeMins = 1 }
             </div>
           </div>
         </div>
+        )}
 
         <div className="flex items-center justify-center mb-4 bg-emerald-50 py-2 rounded-xl border border-emerald-100">
           <div className="text-center">

@@ -29,6 +29,7 @@ const mongoose = require('mongoose');
 const { BOOKING_STATUS } = require('../utils/constants');
 const { createNotification } = require('../controllers/notificationControllers/notificationController');
 const { getBookingConfig } = require('../utils/bookingConfig');
+const { getBusyWorkerIds } = require('./workerAvailabilityService');
 
 const ACTIVE_INTERVAL_MS = 5000;  // Poll every 5s when bookings exist
 const IDLE_INTERVAL_MS = 30000;   // Poll every 30s when no active bookings (circuit breaker)
@@ -99,7 +100,7 @@ class BookingScheduler {
           waveStartedAt: { $ne: null },
           potentialVendors: { $exists: true, $not: { $size: 0 } }
         },
-        '_id currentWave waveStartedAt potentialVendors notifiedVendors excludedVendors bookingNumber createdAt userId expiresAt isEmergency'
+        '_id currentWave waveStartedAt potentialVendors notifiedVendors excludedVendors bookingNumber createdAt userId expiresAt isEmergency bookingType'
       ).lean();
 
       if (activeBookings.length === 0) {
@@ -180,12 +181,21 @@ class BookingScheduler {
 
             // Filter to only online+available workers (single batch find for this booking)
             const workerIds = workersToNotify.map((v) => v.vendorId);
+            // Instant: needs an online worker who is not at work right now (worked out from his
+            // real bookings, not the old availability flag). Scheduled: offline or busy-now
+            // workers still qualify; overlaps were already filtered when the booking was created.
+            const isScheduled = booking.bookingType === 'scheduled' && !booking.isEmergency;
             const onlineWorkers = await Worker.find(
-              { _id: { $in: workerIds }, isOnline: true, availability: { $in: ['AVAILABLE', 'BUSY'] } },
+              { _id: { $in: workerIds }, ...(isScheduled ? {} : { isOnline: true }) },
               '_id'
             ).lean();
+            const busy = (!isScheduled && config.excludeBusyWorkersForInstant)
+              ? await getBusyWorkerIds(workerIds)
+              : new Set();
 
-            const onlineSet = new Set(onlineWorkers.map((v) => v._id.toString()));
+            const onlineSet = new Set(
+              onlineWorkers.map((v) => v._id.toString()).filter((id) => !busy.has(id))
+            );
             const offlineIds = workersToNotify
               .filter((v) => !onlineSet.has(v.vendorId.toString()))
               .map((v) => v.vendorId);

@@ -101,6 +101,16 @@ export default defineConfig({
       'react-icons/hi',
       'react-icons/ai',
       'gsap',
+      'gsap/ScrollTrigger',
+      // Heavy libraries discovered late: pre-bundling them up front avoids Vite
+      // re-optimising mid-session and reloading the page.
+      'recharts',
+      '@react-google-maps/api',
+      'date-fns',
+      'zod',
+      'firebase/app',
+      'firebase/database',
+      'firebase/messaging',
     ],
   },
 });

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FiSliders, FiLoader, FiFileText, FiImage, FiPlusCircle, FiAlertTriangle, FiMessageCircle,
-  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus
+  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus, FiCalendar
 } from 'react-icons/fi';
 import bookingFeaturesAdminService from '../../services/bookingFeaturesAdminService';
 import { PageHeader, Card, Toggle, Field, Button } from '../../components/adminUi';
@@ -344,6 +344,23 @@ const BookingConfig = () => {
             <Field label="Minimum withdrawal" hint="Smallest amount a worker can request.">
               <NumberInput value={config.minWithdrawalAmount} onChange={set('minWithdrawalAmount')} min={0} suffix="₹" />
             </Field>
+          </div>
+        </Card>
+
+        {/* Scheduled bookings */}
+        <Card title="Scheduled Bookings & Worker Availability" icon={FiCalendar}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Keep searching until" hint="A future booking stays open until this long before its slot, then is cancelled if nobody accepted. Never shorter than the normal search time.">
+              <NumberInput value={config.scheduledBookingCutoffHours} onChange={set('scheduledBookingCutoffHours')} min={0} max={72} suffix="hours before the slot" />
+            </Field>
+            <Field label="Expected job length" hint="Used to tell whether two bookings of one worker overlap.">
+              <NumberInput value={config.scheduledJobDurationMinutes} onChange={set('scheduledJobDurationMinutes')} min={15} max={600} suffix="min" />
+            </Field>
+            <Field label="Travel buffer" hint="Extra time kept free around each job for travel.">
+              <NumberInput value={config.scheduledTravelBufferMinutes} onChange={set('scheduledTravelBufferMinutes')} min={0} max={240} suffix="min" />
+            </Field>
+            <ToggleRow label="Scheduled bookings reach busy workers" description="Workers who are on a job right now still get alerts for future bookings (overlapping slots are always skipped)." checked={config.allowBusyWorkersForScheduled} onChange={set('allowBusyWorkersForScheduled')} />
+            <ToggleRow label="Instant bookings skip busy workers" description="A worker who is at work right now does not get instant booking alerts." checked={config.excludeBusyWorkersForInstant} onChange={set('excludeBusyWorkersForInstant')} />
           </div>
         </Card>
 
