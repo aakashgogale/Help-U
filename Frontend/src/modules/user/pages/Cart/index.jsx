@@ -176,9 +176,8 @@ const Cart = () => {
   };
 
   const handleAddServices = (category) => {
-    // Back to home with instructions to open the category modal
     const categoryId = groupedItems[category]?.[0]?.categoryId;
-    navigate('/user', { state: { openCategoryId: categoryId, openCategoryName: category } });
+    navigate(`/user/category/${categoryId || encodeURIComponent(category)}`);
   };
 
   const handleCategoryCheckout = (category) => {

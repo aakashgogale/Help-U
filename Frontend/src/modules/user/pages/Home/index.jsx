@@ -26,7 +26,6 @@ const ApplianceRepairSection = lazy(() => import('./components/ApplianceRepairSe
 const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
 const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
-import ServiceCatalogModal from './components/ServiceCatalogModal';
 import SearchOverlay from './components/SearchOverlay';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
@@ -311,11 +310,9 @@ const Home = () => {
     }
   }, [location.state?.scrollToTop, location.pathname]);
 
-  const [selectedCategory, setSelectedCategory] = useState(null);
   // Row opened in the "See all" screen: { title, subtitle, services, variant, category }
   const [seeAllSection, setSeeAllSection] = useState(null);
   const closeSeeAll = useCallback(() => setSeeAllSection(null), []);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Fetch categories and home content on mount (and when city changes)
   useEffect(() => {
@@ -342,32 +339,15 @@ const Home = () => {
 
     fetchData();
   }, [currentCity, zoneId]);
-  // Open category modal from navigation state (e.g. from Cart 'Add Services')
-  useEffect(() => {
-    if (!loading && categories.length > 0 && (location.state?.openCategoryId || location.state?.openCategoryName)) {
-      const targetId = location.state.openCategoryId;
-      const targetName = location.state.openCategoryName;
-
-      const cat = categories.find(c =>
-        (targetId && (c.id === targetId || c._id === targetId)) ||
-        (targetName && c.title === targetName)
-      );
-
-      if (cat) {
-        handleCategoryClick(cat);
-        // Clear state to prevent reopening on subsequent renders/refreshes
-        window.history.replaceState({}, '', location.pathname);
-      }
-    }
-  }, [loading, categories, location.state]);
-
   const handleSearch = (query) => {
     // Navigate to search results page
   };
 
   const handleCategoryClick = (category) => {
-    setSelectedCategory(category);
-    setIsCategoryModalOpen(true);
+    const target = category?.slug || category?.id || category?._id;
+    if (!target) return;
+    // history state must be structured-cloneable, so pass plain data only
+    navigate(`/user/category/${encodeURIComponent(target)}`, { state: { category: JSON.parse(JSON.stringify(category)) } });
   };
 
   const handlePromoClick = (promo) => {
@@ -929,19 +909,6 @@ const Home = () => {
       </motion.div>
 
       {/* Removed local BottomNav, rendered by routes */}
-
-      {/* Dynamic Urban Company Service Catalog Modal */}
-      <ServiceCatalogModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => {
-          setIsCategoryModalOpen(false);
-          setSelectedCategory(null);
-        }}
-        category={selectedCategory}
-        location={address}
-        currentCity={currentCity}
-        zoneId={zoneId}
-      />
 
       {/* "See all" screen for a home row */}
       <AnimatePresence>

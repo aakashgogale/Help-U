@@ -3443,6 +3443,7 @@ const resolveServiceImage = (item, category, categoryTitle) => {
 const ServiceCatalogModal = React.memo(({
   isOpen,
   onClose,
+  asPage = false,
   category,
   currentCity,
   location: userAddress,
@@ -4727,7 +4728,7 @@ const ServiceCatalogModal = React.memo(({
                   <button
                     type="button"
                     onClick={() => {
-                      onClose();
+                      if (!asPage) onClose();
                       navigate('/user/cart');
                     }}
                     className="px-6 py-2.5 rounded-xl font-bold text-[14px] bg-[#6B38FB] hover:bg-[#5b2ee0] text-white active:scale-95 cursor-pointer shadow-md transition-all flex items-center justify-center shrink-0"
@@ -5341,7 +5342,7 @@ const ServiceCatalogModal = React.memo(({
                         type="button"
                         onClick={() => {
                           setSelectedItemForVariants(null);
-                          onClose();
+                          if (!asPage) onClose();
                           navigate('/user/cart');
                         }}
                         className="px-5 py-2.5 rounded-xl font-bold text-[13px] bg-[#6B38FB] hover:bg-[#5b2ee0] text-white active:scale-95 cursor-pointer shadow-md transition-all shrink-0"
