@@ -20,7 +20,10 @@ const CuratedServices = React.memo(({ services, onServiceClick }) => {
         </p>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
+      <div
+        className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide overscroll-x-contain lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
+      >
         {serviceList.map((service, index) => (
           <ServiceCard
             key={service.id || index}

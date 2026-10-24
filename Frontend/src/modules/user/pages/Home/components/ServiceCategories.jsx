@@ -298,10 +298,10 @@ const readStoredCoords = () => {
   return null;
 };
 
-// Bottom-centered white pill badge matching screenshot exactly
+// Bottom-centered white pill badge matching screenshot cleanly without overlapping artwork
 const EtaBadge = ({ minutes }) => (
-  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-white px-2 py-0.5 rounded-[6px] shadow-sm border border-gray-100/90 pointer-events-none z-10">
-    <span className="text-[11px] sm:text-[12px] font-semibold text-[#0B7D5C] whitespace-nowrap leading-tight tracking-tight">
+  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-white px-1.5 py-0.5 rounded-[6px] shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-emerald-100/90 pointer-events-none z-10 flex items-center justify-center">
+    <span className="text-[10px] sm:text-[10.5px] font-bold text-[#0B7D5C] whitespace-nowrap leading-none tracking-tight">
       {minutes} mins
     </span>
   </div>
@@ -327,40 +327,46 @@ const ServiceTile = ({ title, icon, fallbackIcon, etaMinutes, isAvatar = false, 
     }
   };
 
+  const hasEta = typeof etaMinutes === 'number' && etaMinutes > 0;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex flex-col items-center text-center w-full focus:outline-none group cursor-pointer"
     >
-      <div className="relative w-full aspect-[4/3] rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex items-center justify-center p-2 transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
-        {currentSrc && !imgError ? (
-          <img
-            src={currentSrc}
-            alt={title}
-            onError={handleImageError}
-            className={`${
-              isAvatar
-                ? 'w-[90%] h-[90%]'
-                : 'w-[84%] h-[84%]'
-            } object-contain transition-transform duration-300 group-hover:scale-106 pointer-events-none select-none drop-shadow-[0_2px_5px_rgba(0,0,0,0.06)]`}
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 text-blue-600 font-bold flex items-center justify-center text-sm shadow-xs border border-blue-100/50">
-            {title ? title.charAt(0).toUpperCase() : '★'}
-          </div>
-        )}
-        {typeof etaMinutes === 'number' && etaMinutes > 0 && <EtaBadge minutes={etaMinutes} />}
+      <div className="relative w-full aspect-[1/0.92] sm:aspect-square rounded-[18px] sm:rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex flex-col items-center justify-center transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
+        <div className={`w-full flex-1 flex items-center justify-center overflow-hidden ${hasEta ? 'pt-1.5 pb-4 px-1.5' : 'p-2'}`}>
+          {currentSrc && !imgError ? (
+            <img
+              src={currentSrc}
+              alt={title}
+              onError={handleImageError}
+              className={`${
+                isAvatar
+                  ? 'max-h-[82%] max-w-[82%]'
+                  : 'max-h-[78%] max-w-[78%]'
+              } object-contain transition-transform duration-300 group-hover:scale-106 pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.06)]`}
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 text-blue-600 font-bold flex items-center justify-center text-sm shadow-xs border border-blue-100/50">
+              {title ? title.charAt(0).toUpperCase() : '★'}
+            </div>
+          )}
+        </div>
+        {hasEta && <EtaBadge minutes={etaMinutes} />}
       </div>
-      <span
-        className={`mt-1.5 font-medium text-[#1A1D20] leading-[1.25] text-center line-clamp-2 px-0.5 ${
-          compact ? 'text-[11px] sm:text-[12px]' : 'text-[12px] sm:text-[13px]'
-        }`}
-      >
-        {title}
-      </span>
+      <div className="min-h-[28px] sm:min-h-[32px] flex items-start justify-center w-full mt-1.5 px-0.5">
+        <span
+          className={`font-semibold text-[#1F2937] leading-[1.2] text-center line-clamp-2 ${
+            compact ? 'text-[11px] sm:text-[11.5px]' : 'text-[11.5px] sm:text-[12.5px]'
+          }`}
+        >
+          {title}
+        </span>
+      </div>
     </button>
   );
 };
@@ -371,37 +377,77 @@ const AllServicesTile = ({ onClick }) => (
     onClick={onClick}
     className="flex flex-col items-center text-center w-full focus:outline-none group cursor-pointer"
   >
-    <div className="relative w-full aspect-[4/3] rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex items-center justify-center p-2 transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
+    <div className="relative w-full aspect-[1/0.92] sm:aspect-square rounded-[18px] sm:rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex items-center justify-center p-2.5 transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
       <img
         src="/categories/all-services.svg?v=4"
         alt="All services"
-        className="w-[46%] h-[46%] object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_2px_5px_rgba(0,0,0,0.05)]"
+        className="w-[44%] h-[44%] object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
         loading="lazy"
         decoding="async"
       />
     </div>
-    <span className="mt-1.5 text-[12px] sm:text-[13px] font-medium text-[#1A1D20] leading-[1.25] text-center line-clamp-2 px-0.5">
-      All services
-    </span>
+    <div className="min-h-[28px] sm:min-h-[32px] flex items-start justify-center w-full mt-1.5 px-0.5">
+      <span className="text-[11.5px] sm:text-[12.5px] font-semibold text-[#1F2937] leading-[1.2] text-center line-clamp-2">
+        All services
+      </span>
+    </div>
   </button>
 );
 
+// Categories a primary tile must never resolve to (they are separate categories/services)
+const isBlockedMatch = (item, c) => {
+  const catTitle = (c.title || '').toLowerCase();
+  const catSlug = (c.slug || '').toLowerCase();
+  // Never allow electrician to match an AC or appliance category
+  if (item.id === 'electrician' && (catTitle.includes('ac ') || catTitle.includes('appliance') || catSlug === 'ac')) {
+    return true;
+  }
+  // Never allow cleaning to match water tank cleaning or car wash
+  if (item.id === 'cleaning' && (catTitle.includes('tank') || catTitle.includes('car'))) {
+    return true;
+  }
+  return false;
+};
+
 // Match an item to a real database category object
 const matchToDatabaseCategory = (item, categories) => {
+  // Items built from the database tree already are the real category.
+  if (item.dbCategory) {
+    const c = item.dbCategory;
+    const customIcon = c.homeIconUrl || c.icon || c.imageUrl;
+    return {
+      ...c,
+      id: c.id || c._id,
+      icon: customIcon ? toAssetUrl(customIcon) : item.icon,
+      etaMinutes: c.etaDefaultMinutes || c.etaMinutes || item.eta,
+      displayRating: c.displayRating || '',
+      bookingsLabel: c.bookingsLabel || '',
+      heroBanner: c.heroBanner || null
+    };
+  }
   if (!Array.isArray(categories) || categories.length === 0) {
     return { id: item.id, title: item.title, slug: item.slug, icon: item.icon };
   }
   const itemSlug = (item.slug || '').toLowerCase();
   const itemTitle = (item.title || '').toLowerCase().trim();
 
-  const directMatch = categories.find(
-    (c) =>
-      (c.slug && c.slug.toLowerCase() === itemSlug) ||
-      (itemSlug && c.slug && c.slug.toLowerCase().endsWith('-' + itemSlug)) ||
-      (c.title && itemTitle && c.title.toLowerCase().trim() === itemTitle) ||
-      c.id === item.id ||
-      c._id === item.id
-  );
+  // Exact slug/title/id wins; a loose "-slug" suffix match is only a fallback and
+  // must never let a sibling category (e.g. water-tank-cleaning) hijack a tile.
+  const directMatch =
+    categories.find(
+      (c) =>
+        (c.slug && c.slug.toLowerCase() === itemSlug) ||
+        (c.title && itemTitle && c.title.toLowerCase().trim() === itemTitle) ||
+        c.id === item.id ||
+        c._id === item.id
+    ) ||
+    categories.find(
+      (c) =>
+        itemSlug &&
+        c.slug &&
+        c.slug.toLowerCase().endsWith('-' + itemSlug) &&
+        !isBlockedMatch(item, c)
+    );
   if (directMatch) {
     const customIcon = directMatch.homeIconUrl || directMatch.icon || directMatch.imageUrl;
     let resolvedIcon = customIcon ? toAssetUrl(customIcon) : item.icon;
@@ -433,14 +479,7 @@ const matchToDatabaseCategory = (item, categories) => {
         (c) => {
           const catTitle = (c.title || '').toLowerCase();
           const catSlug = (c.slug || '').toLowerCase();
-          // Never allow electrician to match an AC or appliance category
-          if (item.id === 'electrician' && (catTitle.includes('ac ') || catTitle.includes('appliance') || catSlug === 'ac')) {
-            return false;
-          }
-          // Never allow cleaning to match water tank cleaning or car wash
-          if (item.id === 'cleaning' && (catTitle.includes('tank') || catTitle.includes('car'))) {
-            return false;
-          }
+          if (isBlockedMatch(item, c)) return false;
           return catTitle.includes(kwLower) || catSlug.includes(kwLower);
         }
       );
@@ -471,6 +510,60 @@ const matchToDatabaseCategory = (item, categories) => {
   }
 
   return { id: item.id, title: item.title, slug: item.slug, icon: item.icon };
+};
+
+// Section id -> slug of the top-level category that owns it in the database
+const SECTION_ROOT_SLUG = {
+  'womens-salon-spa': 'womens-salon',
+  'mens-salon-massage': 'mens-salon',
+  'cleaning-section': 'cleaning',
+  'ac-appliance-repair': 'ac',
+  'painting-section': 'painting',
+  'electrician-plumber-carpenter': 'electrician-services'
+};
+
+const normTitle = (t) => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Merge the admin-managed category tree into the curated layout: curated tiles keep
+// their icons/grouping, and any sub-category they don't already cover is appended.
+const buildSections = (allCategories) => {
+  if (!Array.isArray(allCategories) || allCategories.length === 0) return ALL_SERVICES_SECTIONS;
+
+  const roots = allCategories.filter((c) => !c.parentId);
+  const childrenOf = (rootId) =>
+    allCategories
+      .filter((c) => c.parentId && String(c.parentId) === String(rootId) && c.showOnHome !== false)
+      .sort((a, b) => (a.homeOrder || 0) - (b.homeOrder || 0));
+
+  return ALL_SERVICES_SECTIONS.map((section) => {
+    const root = roots.find((r) => (r.slug || '').toLowerCase() === SECTION_ROOT_SLUG[section.id]);
+    if (!root) return section;
+
+    const curated = [...(section.items || []), ...(section.subsections || []).flatMap((sub) => sub.items)];
+    const covered = (child) =>
+      curated.some(
+        (item) =>
+          normTitle(item.title) === normTitle(child.title) ||
+          (item.slug && (child.slug || '').toLowerCase() === item.slug.toLowerCase())
+      );
+
+    const extra = childrenOf(root.id || root._id)
+      .filter((child) => !covered(child))
+      .map((child) => ({
+        id: `db-${child.id || child._id}`,
+        title: child.title,
+        icon: toAssetUrl(child.homeIconUrl || child.icon) || '/categories/all-services.svg?v=4',
+        eta: child.etaDefaultMinutes || null,
+        slug: child.slug,
+        dbCategory: child
+      }));
+    if (extra.length === 0) return section;
+
+    if (Array.isArray(section.subsections)) {
+      return { ...section, subsections: [...section.subsections, { title: 'More services', gridCols: 'grid-cols-3', items: extra }] };
+    }
+    return { ...section, items: [...(section.items || []), ...extra] };
+  });
 };
 
 // =========================================================================
@@ -608,7 +701,7 @@ ALL_SERVICES_SECTIONS.forEach(sec => {
   (sec.subsections || []).forEach(sub => collect(sub.items));
 });
 
-const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose }) => {
+const AllServicesSheet = ({ open, sections = ALL_SERVICES_SECTIONS, categories = [], etaMap = {}, onPick, onClose }) => {
   const [address, setAddress] = useState('');
 
   useEffect(() => {
@@ -709,7 +802,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                   </div>
                 )}
 
-                {ALL_SERVICES_SECTIONS.map((section, sIdx) => (
+                {sections.map((section, sIdx) => (
                   <div key={section.id} className="space-y-3">
                     <h3 className="text-[19px] sm:text-[20px] font-bold text-[#111827] tracking-tight">
                       {section.title}
@@ -777,7 +870,7 @@ const AllServicesSheet = ({ open, categories = [], etaMap = {}, onPick, onClose 
                     )}
 
                     {/* Divider line except after last section */}
-                    {sIdx < ALL_SERVICES_SECTIONS.length - 1 && (
+                    {sIdx < sections.length - 1 && (
                       <div className="border-b border-gray-100/90 pt-3" />
                     )}
                   </div>
@@ -801,7 +894,24 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
   const [etaMap, setEtaMap] = useState({});
   const [showAll, setShowAll] = useState(false);
   const [activeCategorySheet, setActiveCategorySheet] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const fetchedKeyRef = useRef(null);
+
+  // Full category tree (roots + sub-categories) so the sheets mirror the admin setup
+  useEffect(() => {
+    let cancelled = false;
+    publicCatalogService
+      .getCategories({ parentId: 'all' })
+      .then((res) => {
+        if (!cancelled && Array.isArray(res?.categories)) setAllCategories(res.categories);
+      })
+      .catch(() => { /* sheets fall back to the curated layout */ });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sections = useMemo(() => buildSections(allCategories), [allCategories]);
 
   // Fetch live per-category arrival time once we know user's coords
   useEffect(() => {
@@ -825,7 +935,7 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
 
   // Handle clicking one of the top primary category tiles
   const handlePrimaryClick = (item) => {
-    const section = ALL_SERVICES_SECTIONS.find((s) => s.id === item.sectionId);
+    const section = sections.find((s) => s.id === item.sectionId);
     if (section) {
       setActiveCategorySheet(section);
     } else {
@@ -835,9 +945,9 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
   };
 
   return (
-    <div className="px-4 sm:px-5 pt-3 pb-2">
-      {/* 2x3 grid matching screenshot exactly */}
-      <div className="grid grid-cols-3 gap-x-3 gap-y-4">
+    <div className="px-4 sm:px-5 pt-0.5 pb-1">
+      {/* 2x3 grid matching screenshot cleanly */}
+      <div className="grid grid-cols-3 gap-x-2.5 sm:gap-x-3 gap-y-3 sm:gap-y-3.5">
         {PRIMARY_SERVICES.map((item) => {
           const resolvedCat = matchToDatabaseCategory(item, categories);
           const liveEta = etaMap[resolvedCat?.id] || etaMap[resolvedCat?._id] || etaMap[item.id] || resolvedCat?.etaMinutes || resolvedCat?.etaDefaultMinutes || item.defaultEta;
@@ -872,6 +982,7 @@ const ServiceCategories = React.memo(({ categories = [], onCategoryClick }) => {
       {/* Grouped Drawer matching Urban Company reference (Opens when tapping "All services") */}
       <AllServicesSheet
         open={showAll}
+        sections={sections}
         categories={categories}
         etaMap={etaMap}
         onPick={(cat) => onCategoryClick?.(cat)}

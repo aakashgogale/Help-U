@@ -44,12 +44,12 @@ const SearchBar = ({ onInputClick }) => {
   }, [displayedText, isTyping, currentServiceIndex]);
 
   return (
-    <div className="flex items-center gap-3 w-full">
+    <div className="w-full max-w-full min-w-0">
       <div
         role="button"
         tabIndex={0}
         aria-label="Search for services"
-        className="flex-1 relative cursor-pointer group"
+        className="w-full max-w-full min-w-0 relative cursor-pointer group"
         onClick={onInputClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -59,21 +59,23 @@ const SearchBar = ({ onInputClick }) => {
         }}
       >
         {/* Search icon */}
-        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
+        <div className="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none z-10">
           <FiSearch
-            className="w-[22px] h-[22px] text-gray-500 group-hover:text-accent transition-colors duration-300"
+            className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-gray-400 group-hover:text-accent transition-colors duration-300 shrink-0"
           />
         </div>
 
-        {/* Simulated Input */}
+        {/* Simulated Input Pill */}
         <div
-          className="w-full pl-14 pr-5 rounded-full bg-white border border-gray-100 flex items-center h-14 shadow-[0_8px_28px_-12px_rgba(15,27,45,0.14)] transition-shadow duration-300 group-hover:shadow-[0_10px_30px_-10px_rgba(15,27,45,0.2)]"
+          className="w-full max-w-full min-w-0 pl-11 sm:pl-13 pr-4 sm:pr-5 rounded-full bg-white border border-gray-200/90 flex items-center h-12 sm:h-13 shadow-[0_2px_12px_rgba(15,27,45,0.06)] transition-all duration-300 group-hover:shadow-[0_6px_20px_rgba(15,27,45,0.1)] group-hover:border-gray-300/90 overflow-hidden"
         >
           {/* Placeholder text with typing animation */}
-          <span className="block min-w-0 text-[15px] text-gray-400 truncate">
-            Search for Services, e.g. <span className="text-gray-500">
-              {displayedText}
-              <span className="animate-pulse ml-0.5 text-accent">|</span>
+          <span className="block w-full min-w-0 text-[13.5px] sm:text-[14.5px] text-gray-400 truncate select-none leading-none">
+            <span className="hidden sm:inline">Search for services, e.g. </span>
+            <span className="sm:hidden">Search for </span>
+            <span className="text-gray-700 font-medium">
+              &lsquo;{displayedText}&rsquo;
+              <span className="animate-pulse ml-0.5 text-accent font-normal">|</span>
             </span>
           </span>
         </div>

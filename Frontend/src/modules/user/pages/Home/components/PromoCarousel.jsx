@@ -78,14 +78,15 @@ const PromoCarousel = memo(({ promos, onPromoClick }) => {
   return (
     <div
       ref={carouselRef}
-      className="w-full relative"
+      className="w-full max-w-full relative overflow-hidden min-w-0"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-3 overflow-x-auto px-4 scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4"
+        className="flex gap-3 overflow-x-auto px-4 scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 overscroll-x-contain"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
       >
         {promotionalCards.map((promo, index) => (
           <div

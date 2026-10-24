@@ -190,50 +190,76 @@
 }
 
 /* Mobile-first styles */
-* {
+/* Mobile-first & Global Horizontal Overflow Prevention */
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-html,
+html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip !important;
+  overflow-x: hidden !important;
+  position: relative;
+  touch-action: pan-y pinch-zoom;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip !important;
+  overflow-x: hidden !important;
+  position: relative;
+  touch-action: pan-y pinch-zoom;
   background-color: #ffffff !important;
   background: #ffffff !important;
-}
-
-body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
   color: #1c1c1e;
 }
 
-#root {
-  background-color: #ffffff !important;
-  background: #ffffff !important;
+#root,
+.App {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip !important;
+  overflow-x: hidden !important;
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* Hide scrollbar for horizontal scroll */
-.scrollbar-hide {
+/* Hide scrollbar and contain horizontal gestures inside scroll containers */
+.scrollbar-hide,
+.overflow-x-auto,
+.overflow-x-scroll,
+[data-scroll-container] {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  touch-action: pan-x pan-y !important;
+  overscroll-behavior-x: contain !important;
+  scroll-padding-left: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.scrollbar-hide::-webkit-scrollbar {
+.scrollbar-hide::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar {
   display: none;
 }
 
 /* Safe area for bottom navigation */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
 }
 
 /* Active state for touch devices (Apple feel) */

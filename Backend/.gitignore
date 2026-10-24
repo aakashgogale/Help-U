@@ -34,3 +34,6 @@ data/
 
 # Firebase Config
 config/firebase-service-account.json
+
+# Migration backups
+scripts/backups/

@@ -111,7 +111,7 @@ const SpotlightCarousel = memo(({ items = [], onItemClick, title = 'In the spotl
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="pt-1">
+    <section className="pt-1 w-full max-w-full overflow-hidden min-w-0">
       <div className="px-4 sm:px-5 mb-3">
         <h2 className="text-[20px] sm:text-[22px] font-bold text-ink tracking-tight leading-tight">
           {title}
@@ -123,7 +123,8 @@ const SpotlightCarousel = memo(({ items = [], onItemClick, title = 'In the spotl
         onScroll={handleScroll}
         onTouchStart={() => { isTouchingRef.current = true; }}
         onTouchEnd={() => { isTouchingRef.current = false; }}
-        className="flex gap-3 overflow-x-auto px-4 scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4"
+        className="flex gap-3 overflow-x-auto px-4 scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 overscroll-x-contain"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
       >
         {items.map((item, idx) => (
           <div key={item.id || idx} data-spotlight-card className="shrink-0">

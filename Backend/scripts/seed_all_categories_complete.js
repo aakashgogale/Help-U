@@ -135,24 +135,6 @@ async function seedAllComplete() {
       }
     },
     {
-      slug: 'water-tank-cleaning',
-      title: 'Water Tank Cleaning',
-      homeIconUrl: '/ServiceIcon/water-tank.svg',
-      etaDefaultMinutes: 90,
-      displayRating: '4.88',
-      bookingsLabel: '310K bookings',
-      homeOrder: 8,
-      showOnHome: true,
-      hasBrands: false,
-      status: 'active',
-      heroBanner: {
-        tag: 'HYGIENIC WATER',
-        title: '6-Stage UV Tank Disinfection',
-        startingPrice: '799',
-        imageUrl: '/ServiceIcon/water-tank.svg'
-      }
-    },
-    {
       slug: 'car-wash-at-home',
       title: 'Car Wash at Home',
       homeIconUrl: '/ServiceIcon/car-wash.svg',
@@ -291,6 +273,26 @@ async function seedAllComplete() {
       homeOrder: 4,
       showOnHome: true,
       status: 'active'
+    },
+
+    // Water Tank Cleaning is a service line of Cleaning, not a top-level category
+    {
+      parentSlug: 'cleaning',
+      slug: 'cleaning-water-tank-cleaning',
+      title: 'Water Tank Cleaning',
+      homeIconUrl: '/ServiceIcon/water-tank.svg',
+      etaDefaultMinutes: 90,
+      displayRating: '4.88',
+      bookingsLabel: '310K bookings',
+      homeOrder: 5,
+      showOnHome: true,
+      status: 'active',
+      heroBanner: {
+        tag: 'HYGIENIC WATER',
+        title: '6-Stage UV Tank Disinfection',
+        startingPrice: '799',
+        imageUrl: '/ServiceIcon/water-tank.svg'
+      }
     },
 
     // AC & Appliance Subcategories
@@ -481,20 +483,6 @@ async function seedAllComplete() {
       status: 'active'
     },
 
-    // Water Tank Cleaning Subcategories
-    {
-      parentSlug: 'water-tank-cleaning',
-      slug: 'water-tank-cleaning-tank-cleaning',
-      title: 'Water Tank Cleaning',
-      homeIconUrl: '/ServiceIcon/water-tank.svg',
-      etaDefaultMinutes: 90,
-      displayRating: '4.88',
-      bookingsLabel: '310K bookings',
-      homeOrder: 1,
-      showOnHome: true,
-      status: 'active'
-    },
-
     // Car Wash at Home Subcategories
     {
       parentSlug: 'car-wash-at-home',
@@ -540,8 +528,9 @@ async function seedAllComplete() {
   }
 
   // Also clean up any legacy uncategorized or misconfigured items
+  // Legacy top-level Water Tank Cleaning (now a sub-category of Cleaning)
   await Category.updateMany(
-    { slug: 'water-tank-cleaning-water-tank-cleaning' },
+    { slug: { $in: ['water-tank-cleaning', 'water-tank-cleaning-tank-cleaning', 'water-tank-cleaning-water-tank-cleaning'] } },
     { $set: { status: 'deleted' } }
   );
   await Category.updateMany(

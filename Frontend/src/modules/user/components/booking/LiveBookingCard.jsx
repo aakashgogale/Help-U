@@ -147,23 +147,12 @@ const LiveBookingCard = ({ hasBottomNav }) => {
             navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
           }
         }}
-        className={`fixed ${hasBottomNav ? 'bottom-24' : 'bottom-6'} left-4 right-4 z-50`}
+        className={`fixed ${hasBottomNav ? 'bottom-[76px] sm:bottom-[80px]' : 'bottom-4'} left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-50`}
       >
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-4 relative overflow-hidden cursor-pointer active:scale-95 transition-transform group">
-
-          {/* Close Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsDismissed(true);
-            }}
-            className="absolute top-1 right-1 p-1 bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200 z-20 pointer-events-auto"
-          >
-            <FiX className="w-3 h-3" />
-          </button>
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_10px_35px_-5px_rgba(15,27,45,0.18)] border border-gray-100 py-2.5 px-3.5 flex items-center gap-3 relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform group">
 
           {/* Progress Bar Background */}
-          <div className="absolute bottom-0 left-0 h-1 bg-gray-100 w-full">
+          <div className="absolute bottom-0 left-0 h-[2.5px] bg-gray-100 w-full overflow-hidden">
             <motion.div
               className={`h-full ${statusInfo.color}`}
               initial={{ width: "0%" }}
@@ -173,31 +162,31 @@ const LiveBookingCard = ({ hasBottomNav }) => {
           </div>
 
           {/* Icon Box */}
-          <div className={`w-12 h-12 rounded-full ${statusInfo.color} flex items-center justify-center shrink-0 relative`}>
+          <div className={`w-9 h-9 rounded-xl ${statusInfo.color} flex items-center justify-center shrink-0 relative shadow-xs`}>
             {statusInfo.pulse && (
-              <div className={`absolute inset-0 rounded-full ${statusInfo.color} animate-ping opacity-50`}></div>
+              <div className={`absolute inset-0 rounded-xl ${statusInfo.color} animate-ping opacity-40`} />
             )}
-            <Icon className="text-white w-6 h-6 relative z-10" />
+            <Icon className="text-white w-4.5 h-4.5 relative z-10" />
           </div>
 
           {/* Text Info */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-gray-900 text-sm truncate">
+          <div className="flex-1 min-w-0 pr-1">
+            <h4 className="font-bold text-gray-900 text-[13px] leading-tight truncate">
               {statusInfo.label}
             </h4>
-            <p className="text-xs text-gray-500 truncate">
-              {statusInfo.sub} • {activeBooking.serviceName}
+            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+              {statusInfo.sub}{activeBooking.serviceName ? ` • ${activeBooking.serviceName}` : ''}
             </p>
           </div>
 
           {/* Action Chat & Arrow or Pay Button */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {Boolean(activeBooking.vendorId || activeBooking.assignedTo) && (
               <ChatButton
                 role="user"
                 booking={activeBooking}
                 compact={true}
-                className="w-9 h-9"
+                className="w-8 h-8"
               />
             )}
 
@@ -207,15 +196,27 @@ const LiveBookingCard = ({ hasBottomNav }) => {
                   e.stopPropagation();
                   navigate(`/user/booking/${activeBooking._id || activeBooking.id}`);
                 }}
-                className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-xl shadow-lg shadow-teal-100 active:scale-95 transition-all"
+                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold rounded-lg shadow-sm active:scale-95 transition-all"
               >
                 PAY NOW
               </button>
             ) : (
-              <div className="bg-gray-50 p-2 rounded-full">
-                <FiChevronRight className="text-gray-400 w-5 h-5" />
+              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                <FiChevronRight className="text-gray-600 w-4 h-4" />
               </div>
             )}
+
+            {/* Close Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsDismissed(true);
+              }}
+              aria-label="Dismiss"
+              className="w-5 h-5 -mr-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-colors pointer-events-auto"
+            >
+              <FiX className="w-3.5 h-3.5" />
+            </button>
           </div>
 
         </div>

@@ -9,7 +9,7 @@ const PageTransition = ({ children }) => {
   const location = useLocation();
 
   return (
-    <div key={location.pathname} className="animate-page-in">
+    <div key={location.pathname} className="animate-page-in w-full max-w-full overflow-x-hidden min-w-0">
       {children}
     </div>
   );

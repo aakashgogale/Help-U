@@ -16,7 +16,7 @@ const PromoCard = memo(({ title, image, onClick, className = '', priority = fals
       role="button"
       tabIndex={0}
       aria-label={title || 'Promotion'}
-      className={`relative aspect-2/1 rounded-[22px] sm:rounded-[26px] overflow-hidden w-[calc(100vw-32px)] max-w-[560px] sm:w-[440px] md:w-[520px] cursor-pointer transition-transform duration-300 active:scale-[0.99] bg-slate-100 shrink-0 ${className}`}
+      className={`relative aspect-2/1 rounded-[22px] sm:rounded-[26px] overflow-hidden w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[560px] sm:w-[440px] md:w-[520px] cursor-pointer transition-transform duration-300 active:scale-[0.99] bg-slate-100 shrink-0 ${className}`}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

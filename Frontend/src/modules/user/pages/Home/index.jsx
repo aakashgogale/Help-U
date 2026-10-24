@@ -12,6 +12,7 @@ import { useConfig } from '../../../../context/ConfigContext';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HiLocationMarker } from 'react-icons/hi';
 
 // Lazy load heavy components for better initial load performance
 import PromoCarousel from './components/PromoCarousel';
@@ -561,16 +562,16 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen relative bg-canvas">
+    <div className="min-h-screen relative bg-canvas w-full max-w-full overflow-x-hidden">
       <motion.div
-        className="relative z-10"
+        className="relative z-10 w-full max-w-full overflow-x-hidden"
         initial={initialSnapshot ? false : 'hidden'}
         animate="visible"
         variants={containerVariants}
       >
         <motion.div
           variants={itemVariants}
-          className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl"
+          className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl w-full max-w-full overflow-x-hidden"
         >
           <div className="max-w-screen-xl mx-auto w-full">
             <Header
@@ -578,27 +579,29 @@ const Home = () => {
               onLocationClick={handleLocationClick}
               showNotifications
             />
-            <div className="px-4 sm:px-5 pb-4 pt-1 max-w-2xl mx-auto w-full">
+            <div className="px-4 sm:px-5 pb-2.5 pt-0.5 max-w-2xl mx-auto w-full min-w-0 max-w-full">
               <SearchBar onInputClick={() => setIsSearchOpen(true)} />
             </div>
           </div>
         </motion.div>
 
-        <main className="flex flex-col gap-7 sm:gap-8 max-w-screen-xl mx-auto w-full pb-20">
+        <main className="flex flex-col gap-4 sm:gap-5 max-w-screen-xl mx-auto w-full pb-6 overflow-x-hidden min-w-0">
           {/* Out of Zone Notice */}
           {isOutOfZone && (
-            <div className="mx-4 sm:mx-6 -mb-3 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">📍</span>
-                <div>
-                  <p className="text-xs font-bold text-amber-900">Outside Service Area</p>
-                  <p className="text-[11px] text-amber-700">Some services may be unavailable at your current location.</p>
+            <div className="mx-4 sm:mx-5 px-3.5 py-2.5 bg-gradient-to-r from-amber-50/95 to-orange-50/80 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(245,158,11,0.06)]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <HiLocationMarker className="w-4.5 h-4.5 text-amber-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-bold text-amber-950 leading-tight">Outside Service Area</p>
+                  <p className="text-[11px] text-amber-800/90 leading-tight truncate mt-0.5">Some services may be unavailable at your current location.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddressModalOpen(true)}
-                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold whitespace-nowrap transition-colors shadow-sm"
+                className="px-3 py-1.5 bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 text-white rounded-xl text-[11px] font-bold whitespace-nowrap transition-all shadow-xs shrink-0"
               >
                 Change Location
               </button>
@@ -607,7 +610,7 @@ const Home = () => {
             <>
               {/* Hero Section - Promo Carousel */}
               {homeContent?.isPromosVisible !== false && (homeContent?.promos || []).length > 0 && (
-                <motion.section variants={itemVariants} className="relative z-0">
+                <motion.section variants={itemVariants} className="relative z-0 w-full max-w-full overflow-hidden min-w-0">
                   <PromoCarousel
                     promos={(homeContent?.promos || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(promo => ({
                       id: promo.id || promo._id,
@@ -628,7 +631,7 @@ const Home = () => {
 
               {/* Categories Section */}
               {homeContent?.isCategoriesVisible !== false && (
-                <motion.section variants={itemVariants} className="relative overflow-visible">
+                <motion.section variants={itemVariants} className="relative w-full max-w-full overflow-hidden min-w-0">
                   <ServiceCategories
                     categories={categories}
                     onCategoryClick={handleCategoryClick}
@@ -649,7 +652,7 @@ const Home = () => {
                   : [];
                 if (items.length === 0) return null;
                 return (
-                  <motion.section variants={itemVariants} className="relative overflow-visible">
+                  <motion.section variants={itemVariants} className="relative w-full max-w-full overflow-hidden min-w-0">
                     <SpotlightCarousel items={items} onItemClick={handlePromoClick} />
                   </motion.section>
                 );

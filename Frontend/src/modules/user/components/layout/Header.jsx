@@ -84,18 +84,18 @@ const Header = ({ location, onLocationClick, showNotifications = false }) => {
 
             {/* Right: Location pill + Notifications (home variant) */}
             {showNotifications ? (
-              <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">
+              <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
                 <button
                   type="button"
                   onClick={onLocationClick}
-                  className="flex items-center gap-1.5 min-w-0 py-2 pl-1 pr-0.5 rounded-full active:scale-[0.97] transition-transform"
+                  className="flex items-center gap-1.5 min-w-0 py-1.5 px-2.5 rounded-full bg-gray-50/90 hover:bg-gray-100 border border-gray-100/90 active:scale-[0.97] transition-all cursor-pointer"
                   aria-label="Change location"
                 >
-                  <HiLocationMarker className="w-5 h-5 shrink-0 text-accent" />
-                  <span className="text-[13px] sm:text-sm font-semibold text-ink truncate tracking-tight">
+                  <HiLocationMarker className="w-4 h-4 shrink-0 text-accent" />
+                  <span className="text-[12.5px] sm:text-sm font-bold text-gray-900 truncate tracking-tight">
                     {getShortLocation(location)}
                   </span>
-                  <HiChevronDown className="w-4 h-4 shrink-0 text-gray-600" />
+                  <HiChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-500" />
                 </button>
                 <NotificationBell />
               </div>

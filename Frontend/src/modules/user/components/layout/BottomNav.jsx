@@ -40,14 +40,17 @@ const BottomNav = React.memo(() => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3"
+      className="fixed bottom-0 left-0 right-0 z-40 w-full lg:hidden px-3 pointer-events-none"
       style={{
         WebkitBackfaceVisibility: 'hidden',
         paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
       }}
     >
+      {/* Soft gradient backdrop to prevent underlying scrolled content from bleeding below bottom dock */}
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none -z-10" />
+
       <div
-        className="max-w-md mx-auto rounded-[28px] px-2 py-2 bg-white/95 border border-gray-100"
+        className="max-w-md mx-auto rounded-[28px] px-2 py-2 bg-white/95 border border-gray-100 pointer-events-auto"
         style={{
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
