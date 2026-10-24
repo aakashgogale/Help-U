@@ -201,8 +201,9 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
         serviceCount: 1,
         pricingType: service.pricingType || 'fixed',
         hours: isHourly ? hours : undefined,
-        rating: "4.8",
-        reviews: "1k+",
+        // The service's admin-entered display values; empty when none
+        rating: service.displayRating || "",
+        reviews: service.reviewsLabel || "",
         vendorId: service.vendorId || selectedBrand?.vendorId || null,
         card: {
           title: service.title,

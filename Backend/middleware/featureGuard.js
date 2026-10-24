@@ -42,6 +42,8 @@ const validatePaymentMethod = async (req, res, next) => {
 
     const checks = {
       cash: ['isCashEnabled', 'Cash payment is currently unavailable.'],
+      // What checkout actually sends for "pay the professional after the service"
+      pay_at_home: ['isCashEnabled', 'Pay-after-service (cash) is currently unavailable.'],
       wallet: ['isWalletPaymentEnabled', 'Wallet payment is currently unavailable.'],
       razorpay: ['isOnlinePaymentEnabled', 'Online payment is currently unavailable.'],
       online: ['isOnlinePaymentEnabled', 'Online payment is currently unavailable.']

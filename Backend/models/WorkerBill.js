@@ -88,6 +88,8 @@ const workerBillSchema = new mongoose.Schema({
 
   // Transport Charges
   transportCharges: { type: Number, default: 0 },
+  // Cancellation fee carried over from the customer's earlier cancelled booking
+  penaltyCharges: { type: Number, default: 0 },
 
   // GST breakdown
   originalGST: { type: Number, default: 0 },

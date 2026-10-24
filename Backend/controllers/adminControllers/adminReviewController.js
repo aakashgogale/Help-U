@@ -1,4 +1,5 @@
 const Review = require('../../models/Review');
+const { invalidatePublicCatalogKeys } = require('../../utils/catalogCache');
 const Booking = require('../../models/Booking');
 
 /**
@@ -108,6 +109,9 @@ exports.updateReviewStatus = async (req, res) => {
         message: 'Review not found'
       });
     }
+
+    // Hidden or deleted reviews must leave the public average straight away
+    invalidatePublicCatalogKeys().catch(() => {});
 
     res.status(200).json({
       success: true,

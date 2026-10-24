@@ -65,7 +65,7 @@ const Checkout = () => {
   const [selectedDate, setSelectedDate] = useState(null);
 
   const [selectedTime, setSelectedTime] = useState(null);
-  const [visitedFee, setVisitedFee] = useState(29);
+  const [visitedFee, setVisitedFee] = useState(0); // replaced by the admin's value once settings load
   const [gstPercentage, setGstPercentage] = useState(18);
   const [bookingType, setBookingType] = useState('instant'); // 'instant' | 'scheduled'
   const [issuePhotos, setIssuePhotos] = useState([]); // optional photos of the problem, see IssuePhotosPicker
@@ -175,7 +175,7 @@ const Checkout = () => {
           const response = await userAuthService.getCheckoutData();
           if (response.success) {
             // Set Config
-            setVisitedFee(response.settings?.visitedCharges ?? 29);
+            setVisitedFee(response.settings?.visitedCharges ?? 0);
             setGstPercentage(response.settings?.serviceGstPercentage ?? 18);
 
             // Set Addresses
@@ -1141,7 +1141,8 @@ const Checkout = () => {
   const getDates = () => {
     const dates = [];
     const today = new Date();
-    for (let i = 0; i < 7; i++) {
+    const daysAhead = Math.max(1, Number(bookingConfig.slotMaxDaysAhead) || 7);
+    for (let i = 0; i < daysAhead; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);
@@ -1149,38 +1150,32 @@ const Checkout = () => {
     return dates;
   };
 
+  // Slots come from the admin's time-slot settings: they start at slotStartHour and run through
+  // slotEndHour (the last slot may start at that hour), one every slotDurationMinutes.
   const getTimeSlots = () => {
-    const allSlots = [
-      { value: '09:00', end: '10:00', display: '9:00 AM' },
-      { value: '10:00', end: '11:00', display: '10:00 AM' },
-      { value: '11:00', end: '12:00', display: '11:00 AM' },
-      { value: '12:00', end: '13:00', display: '12:00 PM' },
-      { value: '13:00', end: '14:00', display: '1:00 PM' },
-      { value: '14:00', end: '15:00', display: '2:00 PM' },
-      { value: '15:00', end: '16:00', display: '3:00 PM' },
-      { value: '16:00', end: '17:00', display: '4:00 PM' },
-      { value: '17:00', end: '18:00', display: '5:00 PM' },
-      { value: '18:00', end: '19:00', display: '6:00 PM' },
-      { value: '19:00', end: '20:00', display: '7:00 PM' },
-      { value: '20:00', end: '21:00', display: '8:00 PM' },
-    ];
+    const startMin = Math.max(0, Number(bookingConfig.slotStartHour) || 0) * 60;
+    const endMin = Math.max(1, Number(bookingConfig.slotEndHour) || 20) * 60;
+    const step = Math.max(15, Number(bookingConfig.slotDurationMinutes) || 60);
 
-    // If today is selected, filter out past time slots
-    const now = new Date();
-    const isToday = selectedDate && selectedDate.toDateString() === now.toDateString();
+    const fmt = (mins) => `${String(Math.floor(mins / 60) % 24).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+    const display = (mins) => {
+      const h = Math.floor(mins / 60) % 24;
+      const m = mins % 60;
+      return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    };
 
-    if (!isToday) {
-      return allSlots;
+    const allSlots = [];
+    for (let m = startMin; m <= endMin; m += step) {
+      allSlots.push({ value: fmt(m), end: fmt(m + step), display: display(m), startMin: m });
     }
 
-    // Get current hour + 1 (minimum 1 hour buffer for workers to accept)
-    const currentHour = now.getHours();
-    const minHour = currentHour + 1;
+    // If today is selected, hide slots that start sooner than the admin's minimum lead time
+    const now = new Date();
+    const isToday = selectedDate && selectedDate.toDateString() === now.toDateString();
+    if (!isToday) return allSlots;
 
-    return allSlots.filter(slot => {
-      const slotHour = parseInt(slot.value.split(':')[0], 10);
-      return slotHour >= minHour;
-    });
+    const earliest = now.getHours() * 60 + now.getMinutes() + (Number(bookingConfig.slotMinLeadMinutes) || 0);
+    return allSlots.filter((slot) => slot.startMin >= earliest);
   };
 
   const formatDate = (date) => {
@@ -1687,7 +1682,7 @@ const Checkout = () => {
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
           <h3 className="text-base font-bold text-black mb-2">Cancellation policy</h3>
           <p className="text-sm text-gray-700 mb-2">
-            Free cancellations if done more than 12 hrs before the service or if a professional isn't assigned. A fee will be charged otherwise.
+            Free cancellation until the professional starts their journey. After that, a cancellation fee applies.
           </p>
           <button
             onClick={() => navigate('/user/cancellation-policy')}

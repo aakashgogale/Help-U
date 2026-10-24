@@ -484,7 +484,7 @@ const Home = () => {
           originalPrice: service.originalPrice ? parseInt(service.originalPrice.toString().replace(/,/g, '')) : null,
           unitPrice: parseInt(service.price?.toString().replace(/,/g, '') || 0),
           serviceCount: 1,
-          rating: service.rating || "4.8",
+          rating: service.rating || "",
           reviews: service.reviews || "10k+",
           vendorId: service.vendorId || null,
           sectionId: service.sectionId || null // VITAL: Added for plan benefits
@@ -754,7 +754,7 @@ const Home = () => {
                             services={section.cards?.map((card, cIdx) => ({
                               id: card._id || cIdx,
                               title: card.title,
-                              rating: card.rating || "4.8",
+                              rating: card.rating || "",
                               reviews: card.reviews || "10k+",
                               price: card.price,
                               originalPrice: card.originalPrice,
@@ -797,7 +797,7 @@ const Home = () => {
                             return {
                               id: card._id || cIdx,
                               title: card.title,
-                              rating: card.rating || "4.8",
+                              rating: card.rating || "",
                               reviews: card.reviews || "10k+",
                               price: card.price,
                               originalPrice: card.originalPrice,

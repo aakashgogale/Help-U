@@ -121,7 +121,7 @@ const getWallet = async (req, res) => {
         totalCashCollected,
         totalSettled,
         pendingSettlements,
-        cashLimit: worker.wallet?.cashLimit || 10000,
+        cashLimit: worker.wallet?.cashLimit ?? 10000,
         worker: {
           name: worker.name,
           businessName: worker.businessName
@@ -234,7 +234,7 @@ const recordCashCollection = async (req, res) => {
     // Atomic wallet update
     const currentDues = (worker.wallet.dues || 0) + grandTotal;
     const currentEarnings = (worker.wallet.earnings || 0) + vendorEarning;
-    const cashLimit = worker.wallet.cashLimit || 10000;
+    const cashLimit = worker.wallet.cashLimit ?? 10000;
     const netOwed = currentDues - currentEarnings;
 
     const updateQuery = {
@@ -618,7 +618,7 @@ const verifySettlementPayment = async (req, res) => {
     const remainingDues = sanitizeSettlementAmount(currentDues - appliedAmount);
 
     worker.wallet.dues = remainingDues;
-    if (worker.wallet.isBlocked && remainingDues <= (worker.wallet.cashLimit || 10000)) {
+    if (worker.wallet.isBlocked && remainingDues <= (worker.wallet.cashLimit ?? 10000)) {
       worker.wallet.isBlocked = false;
       worker.wallet.blockedAt = null;
       worker.wallet.blockReason = null;

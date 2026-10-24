@@ -223,7 +223,10 @@ const createOrUpdateBill = async (req, res) => {
 
     const totalGST = parseFloat((originalGST + vendorServiceGST + partsGST).toFixed(2));
     const finalTransportCharges = Number(transportCharges) || 0;
-    const grandTotal = parseFloat((totalServiceBaseForBill + totalPartsBase + totalGST + visitingCharges + finalTransportCharges).toFixed(2));
+    // A cancellation fee the customer still owed when this booking was made. Booking creation clears
+    // it from their account, so it has to be collected here or it is lost.
+    const penaltyCharges = Math.max(0, Number(booking.penalty) || 0);
+    const grandTotal = parseFloat((totalServiceBaseForBill + totalPartsBase + totalGST + visitingCharges + finalTransportCharges + penaltyCharges).toFixed(2));
 
     // ═══════════════════════════════════════
     // 5. REVENUE SPLIT (% applied on BASE only)
@@ -270,6 +273,7 @@ const createOrUpdateBill = async (req, res) => {
       totalGST,
       visitingCharges,
       transportCharges: finalTransportCharges,
+      penaltyCharges,
       grandTotal,
       payoutConfig: toPayoutConfig(commission, {
         serviceGstPercentage: serviceGstPct,

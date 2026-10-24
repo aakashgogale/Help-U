@@ -8,6 +8,7 @@ const Settings = require('../../models/Settings');
 const Zone = require('../../models/Zone');
 const mongoose = require('mongoose');
 const { getRedis, isRedisConnected } = require('../../services/redisService');
+const { getServiceRatings, combineRatings, toDisplayRating } = require('../../services/serviceRatingService');
 
 /**
  * Helper to resolve zone from query (zoneId, lat, lng, cityId)
@@ -252,8 +253,9 @@ const getPublicBrandBySlug = async (req, res) => {
         title: svc.title,
         subtitle: svc.description || '',
         price: svc.basePrice,
-        rating: "4.8", // Default rating
-        reviews: "1k+", // Default reviews
+        // Only what the admin entered; nothing is invented when it is empty
+        rating: svc.displayRating || '',
+        reviews: svc.reviewsLabel || '',
         imageUrl: svc.iconUrl || brand.iconUrl || '',
         features: svc.description ? [svc.description] : [],
         duration: "60 min", // Default duration
@@ -367,6 +369,9 @@ const getPublicServices = async (req, res) => {
 
     // Multi-factor relevance calculation
     const queryLower = searchQuery.toLowerCase();
+    // Real review averages for these services (empty for services nobody has reviewed yet)
+    const ratingMap = await getServiceRatings(services.map((s) => s._id));
+
     const rankedServices = services.map(svc => {
       const titleLower = (svc.title || '').toLowerCase();
       const descLower = (svc.description || '').toLowerCase();
@@ -385,8 +390,11 @@ const getPublicServices = async (req, res) => {
         }
       }
 
-      const rating = Number(svc.rating || 4.8);
-      const reviewsCount = Number(svc.reviewsCount || 60);
+      // Real reviews when there are any; a neutral prior only for ranking, never shown
+      const real = ratingMap.get(String(svc._id));
+      const shown = toDisplayRating(real, svc.displayRating, svc.reviewsLabel);
+      const rating = real ? real.avg : 4.5;
+      const reviewsCount = real ? real.count : 0;
 
       // Blended multi-factor score (relevance, rating, popularity)
       const multiFactorScore = Math.round(
@@ -400,7 +408,9 @@ const getPublicServices = async (req, res) => {
         _relevance: relevance,
         _score: multiFactorScore,
         rating,
-        reviewsCount
+        reviewsCount,
+        displayRating: shown.rating,
+        reviewsLabel: shown.reviewsLabel
       };
     });
 
@@ -446,8 +456,12 @@ const getPublicServices = async (req, res) => {
         isPackage: Boolean(svc.isPackage),
         originalPrice: svc.originalPrice !== undefined ? svc.originalPrice : null,
         discountLabel: svc.discountLabel || '',
-        rating: svc.rating,
+        // Real average from reviews, or null when nobody has reviewed it (the internal ranking prior is not shown)
+        rating: svc.reviewsCount > 0 ? Number(Number(svc.rating).toFixed(1)) : null,
         reviewsCount: svc.reviewsCount,
+        // The display values: real from reviews when there are any, otherwise the admin-entered ones (Service Wizard); apps show these, and nothing if empty
+        displayRating: svc.displayRating || '',
+        reviewsLabel: svc.reviewsLabel || '',
         score: svc._score,
         ...getDisplayPricing(svc)
       }))
@@ -520,6 +534,8 @@ const advancedCatalogSearch = async (req, res) => {
       });
     }
 
+    const ratingMap = await getServiceRatings(services.map((s) => s._id));
+
     const ranked = services.map(svc => {
       const titleLower = (svc.title || '').toLowerCase();
       let rel = 0;
@@ -528,7 +544,9 @@ const advancedCatalogSearch = async (req, res) => {
       else if (titleLower.includes(queryTerm)) rel += 30;
       else rel += 10;
 
-      const rating = Number(svc.rating || 4.8);
+      const real = ratingMap.get(String(svc._id));
+      const rating = real ? real.avg : 4.5; // ranking prior only; the shown value is below
+      const shown = toDisplayRating(real, svc.displayRating, svc.reviewsLabel);
       const score = Math.round(rel * 0.6 + rating * 8);
 
       return {
@@ -537,8 +555,9 @@ const advancedCatalogSearch = async (req, res) => {
         slug: svc.slug,
         icon: svc.iconUrl,
         basePrice: svc.basePrice,
-        rating,
-        reviewsCount: svc.reviewsCount || 50,
+        rating: real ? shown.rating : (shown.rating || null),
+        reviewsCount: real ? real.count : 0,
+        reviewsLabel: shown.reviewsLabel,
         brandId: svc.brandId?._id,
         brandName: svc.brandId?.title,
         categoryId: svc.categoryId?._id,
@@ -1276,6 +1295,24 @@ const getPublicCategoryCatalog = async (req, res) => {
 
     const sections = await Brand.aggregate(sectionsPipeline);
 
+    // Ratings come from real customer reviews. A service with reviews shows its true average and
+    // count; one without keeps whatever the admin entered (possibly nothing). The category header
+    // is the weighted average over every service in this catalog.
+    const catalogServices = sections.flatMap((sec) => sec.services || []);
+    const ratingMap = await getServiceRatings(catalogServices.map((svc) => svc._id));
+    catalogServices.forEach((svc) => {
+      const real = ratingMap.get(String(svc._id));
+      const shown = toDisplayRating(real, svc.displayRating, svc.reviewsLabel);
+      svc.displayRating = shown.rating;
+      svc.reviewsLabel = shown.reviewsLabel;
+      if (real) {
+        svc.rating = Number(shown.rating);
+        svc.reviewsCount = real.count;
+      }
+    });
+    const categoryReal = combineRatings([...ratingMap.values()]);
+    const categoryShown = toDisplayRating(categoryReal, category.displayRating, '');
+
     const payload = {
       success: true,
       category: {
@@ -1283,7 +1320,8 @@ const getPublicCategoryCatalog = async (req, res) => {
         id: category._id.toString(),
         title: category.title,
         slug: category.slug,
-        displayRating: category.displayRating || '',
+        displayRating: categoryShown.rating,
+        reviewsLabel: categoryShown.reviewsLabel,
         bookingsLabel: category.bookingsLabel || '',
         etaDefaultMinutes: category.etaDefaultMinutes || null,
         hasBrands: !!category.hasBrands,

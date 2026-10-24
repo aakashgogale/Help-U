@@ -11,23 +11,32 @@ const seedAdmin = async () => {
     await connectDB();
     console.log('✅ Connected to MongoDB\n');
 
-    // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email: 'admin@appzeto.com' });
+    // Credentials come from the environment (ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD). Without a password a
+    // random one is generated and shown once. An existing admin is never touched unless
+    // --reset-password is passed explicitly.
+    const email = (process.env.ADMIN_SEED_EMAIL || 'admin@helpu.local').toLowerCase();
+    const generated = !process.env.ADMIN_SEED_PASSWORD;
+    const password = process.env.ADMIN_SEED_PASSWORD || require('crypto').randomBytes(12).toString('base64url');
+
+    const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
-      console.log('⚠️  Admin user already exists! Resetting password...');
-      existingAdmin.password = 'admin123';
+      if (!process.argv.includes('--reset-password')) {
+        console.log(`⚠️  Admin ${email} already exists. Nothing changed (pass --reset-password to reset it).`);
+        return;
+      }
+      existingAdmin.password = password;
       existingAdmin.role = 'super_admin';
       existingAdmin.isActive = true;
       await existingAdmin.save();
-      console.log('✅ Admin password reset to: admin123\n');
+      console.log(`✅ Password reset for ${email}${generated ? `: ${password}` : ' (from ADMIN_SEED_PASSWORD)'}\n`);
       return;
     }
 
     // Create admin user
     const adminData = {
       name: 'Super Admin',
-      email: 'admin@appzeto.com',
-      password: 'admin123', // Plain text, let model pre-save hook hash it
+      email,
+      password, // Plain text, let model pre-save hook hash it
       role: 'super_admin',
       isActive: true,
       permissions: {
@@ -46,8 +55,8 @@ const seedAdmin = async () => {
 
     const admin = await Admin.create(adminData);
     console.log('✅ Admin user created successfully!');
-    console.log('📧 Email: admin@appzeto.com');
-    console.log('🔑 Password: admin123');
+    console.log(`📧 Email: ${email}`);
+    console.log(generated ? `🔑 Password (shown once): ${password}` : '🔑 Password: from ADMIN_SEED_PASSWORD');
     console.log('🌐 Login URL: http://localhost:5173/admin/login\n');
 
     console.log('🔒 Important: Change the default password after first login!\n');

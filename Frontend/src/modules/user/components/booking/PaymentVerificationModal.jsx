@@ -263,6 +263,18 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
                 </div>
               )}
 
+              {/* Cancellation fee carried over from an earlier cancelled booking */}
+              {(bill?.penaltyCharges > 0 || booking.penalty > 0) && (
+                <div className="mt-4 pt-2 border-t border-slate-100">
+                  <div className="flex justify-between text-xs font-bold text-slate-600">
+                    <span className="flex items-center gap-2 uppercase tracking-wide">
+                      <FiInfo className="w-3.5 h-3.5 text-red-400" /> Pending Cancellation Fee
+                    </span>
+                    <span className="font-mono">₹{Number(bill?.penaltyCharges ?? booking.penalty ?? 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* 4. Transport Charges */}
               {(bill?.transportCharges > 0) && (
                 <div className="mt-2 pt-2 border-t border-slate-100">

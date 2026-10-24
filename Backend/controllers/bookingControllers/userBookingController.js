@@ -221,7 +221,8 @@ const cancelBooking = async (req, res) => {
 
       if (hasReached) {
         // Professional Reached -> Full Visiting Charges
-        cancellationFee = booking.visitingCharges || 49;
+        // The booking's own visiting charge; when it had none, the admin's cancellation penalty
+        cancellationFee = booking.visitingCharges > 0 ? booking.visitingCharges : settingsPenalty;
       } else {
         // Before Arrival (Journey Started) -> Dynamic Penalty
         cancellationFee = settingsPenalty;
@@ -393,23 +394,62 @@ const rescheduleBooking = async (req, res) => {
       });
     }
 
-    // Update booking
+    // Only a scheduled booking that has not started yet can move. Once the professional is on the
+    // way the visit is under way, and an instant booking has no slot to change.
+    const MOVABLE = [
+      BOOKING_STATUS.SEARCHING, BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED,
+      BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ASSIGNED
+    ];
+    if (booking.bookingType !== 'scheduled' || !MOVABLE.includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This booking can no longer be rescheduled. You can cancel it instead.'
+      });
+    }
+
+    // The new slot must respect the same admin rules as a new booking, and must not collide with
+    // another job of the professional already assigned to this one.
+    const { slotStartMs, getConflictingWorkerIds } = require('../../services/workerAvailabilityService');
+    const config = await getBookingConfig();
+    const newStart = slotStartMs({ scheduledDate, timeSlot });
+    if (!Number.isFinite(newStart)) {
+      return res.status(400).json({ success: false, message: 'Please choose a valid date and time slot.' });
+    }
+    const earliest = Date.now() + (config.slotMinLeadMinutes || 0) * 60 * 1000 - 2 * 60 * 1000;
+    const latest = Date.now() + (config.slotMaxDaysAhead + 1) * 24 * 60 * 60 * 1000;
+    if (newStart < earliest) {
+      return res.status(400).json({ success: false, message: 'That time slot is too soon. Please choose a later slot.' });
+    }
+    if (newStart > latest) {
+      return res.status(400).json({ success: false, message: `Bookings can be made up to ${config.slotMaxDaysAhead} days ahead.` });
+    }
+    if (booking.vendorId) {
+      const conflicts = await getConflictingWorkerIds([booking.vendorId], { slotStart: newStart, config, excludeBookingId: booking._id });
+      if (conflicts.size > 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'Your professional is not available at that time. Please pick another slot, or cancel and rebook.'
+        });
+      }
+    }
+
+    // Update booking (the status is left alone: a confirmed booking stays confirmed)
     booking.scheduledDate = new Date(scheduledDate);
     booking.scheduledTime = scheduledTime;
     booking.timeSlot = {
       start: timeSlot.start,
       end: timeSlot.end
     };
-
-    // Reset status to pending if it was confirmed
-    if (booking.status === BOOKING_STATUS.CONFIRMED) {
-      booking.status = BOOKING_STATUS.PENDING;
+    // Still looking for a professional: keep searching until the cut-off before the NEW slot
+    if (!booking.vendorId) {
+      const normalDeadline = Date.now() + config.maxSearchTime * 60 * 1000;
+      booking.expiresAt = new Date(Math.max(normalDeadline, newStart - (config.scheduledBookingCutoffHours || 0) * 60 * 60 * 1000));
     }
 
     await booking.save();
 
     // Send notification to worker
-    await createNotification({
+    if (booking.vendorId) await createNotification({
       vendorId: booking.vendorId,
       type: 'booking_created', // Keeping type as is for now
       title: 'Booking Rescheduled',
@@ -524,6 +564,9 @@ const addReview = async (req, res) => {
         console.error(`Error updating rating for ${Model.modelName}:`, err);
       }
     };
+
+    // The service's public rating just changed
+    require('../../utils/catalogCache').invalidatePublicCatalogKeys().catch(() => {});
 
     // Update Worker Rating (Always)
     if (booking.vendorId) {

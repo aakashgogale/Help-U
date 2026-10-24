@@ -422,8 +422,9 @@ const ServiceCatalogModal = React.memo(({
       ...base,
       title: cat.title || category?.title || '',
       etaMinutes: cat.etaDefaultMinutes || category?.etaMinutes || category?.etaDefaultMinutes || base.etaMinutes || 30,
-      rating: cat.displayRating || category?.displayRating || base.rating || '4.8',
-      bookings: cat.bookingsLabel || category?.bookingsLabel || base.bookings || '1k+ bookings',
+      // Admin-entered values only; nothing is invented when they are empty
+      rating: cat.displayRating || category?.displayRating || '',
+      bookings: cat.bookingsLabel || category?.bookingsLabel || cat.reviewsLabel || '',
       hero: (() => {
         const rawHero = (cat.heroBanner?.title ? cat.heroBanner : null) || (catalogData?.hero?.title ? catalogData.hero : null);
         if (!rawHero) return null;
@@ -490,8 +491,9 @@ const ServiceCatalogModal = React.memo(({
         price: itemPrice,
         originalPrice: itemOriginalPrice,
         discount: s.discountLabel || (itemOriginalPrice && itemPrice ? `${Math.round(((itemOriginalPrice - itemPrice) / itemOriginalPrice) * 100)}% OFF` : null),
-        rating: s.rating ? String(s.rating) : '4.8',
-        reviews: s.reviewsCount ? `${s.reviewsCount} reviews` : (s.reviews || '1k+ reviews'),
+        // The admin's display rating/reviews (Service Wizard); empty means the card shows none
+        rating: s.displayRating ? String(s.displayRating) : (s.rating ? String(s.rating) : ''),
+        reviews: s.reviewsLabel || (s.reviewsCount ? `${s.reviewsCount} reviews` : (s.reviews || '')),
         duration: durationStr,
         image: s.images?.[0] ? toAssetUrl(s.images[0]) : (s.iconUrl ? toAssetUrl(s.iconUrl) : (s.icon ? toAssetUrl(s.icon) : null)),
         images: serviceImages,
@@ -862,8 +864,8 @@ const ServiceCatalogModal = React.memo(({
         price: unitPrice,
         unitPrice: unitPrice,
         serviceCount: 1,
-        rating: item.rating || '4.9',
-        reviews: item.reviews || '1k+',
+        rating: item.rating || '',
+        reviews: item.reviews || '',
         card: {
           title: item.title,
           subtitle: item.bullets?.[0] || '',
@@ -908,8 +910,8 @@ const ServiceCatalogModal = React.memo(({
         price: unitPrice,
         unitPrice: unitPrice,
         serviceCount: 1,
-        rating: parentItem.rating || '4.9',
-        reviews: parentItem.reviews || '1k+',
+        rating: parentItem.rating || '',
+        reviews: parentItem.reviews || '',
         card: {
           title: `${parentItem.title} - ${variant.title}`,
           subtitle: variant.inclusions?.[0] || parentItem.bullets?.[0] || '',
@@ -1148,15 +1150,21 @@ const ServiceCatalogModal = React.memo(({
                   <h1 className="text-[22px] sm:text-[24px] font-bold text-gray-900 tracking-tight leading-tight">
                     {categoryTitle}
                   </h1>
-                  <div className="flex items-center gap-1.5 mt-1 text-[13px] text-gray-600">
-                    <span className="flex items-center gap-1 font-semibold text-gray-900">
-                      <FiStar className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308] stroke-none" />
-                      {catalogConfig.rating || '4.89'}
-                    </span>
-                    <span className="underline decoration-dotted text-gray-500 font-normal">
-                      ({catalogConfig.bookings || '2.2 M bookings'})
-                    </span>
-                  </div>
+                  {(catalogConfig.rating || catalogConfig.bookings) && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[13px] text-gray-600">
+                      {catalogConfig.rating && (
+                        <span className="flex items-center gap-1 font-semibold text-gray-900">
+                          <FiStar className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308] stroke-none" />
+                          {catalogConfig.rating}
+                        </span>
+                      )}
+                      {catalogConfig.bookings && (
+                        <span className="underline decoration-dotted text-gray-500 font-normal">
+                          ({catalogConfig.bookings})
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Instant Arrival Card */}
@@ -1371,15 +1379,21 @@ const ServiceCatalogModal = React.memo(({
                                 </h4>
 
                                 {/* Rating & Reviews */}
-                                <div className="flex items-center gap-1.5 mt-1 text-[12px] text-gray-500">
-                                  <span className="flex items-center gap-0.5 font-semibold text-gray-900">
-                                    <FiStar className="w-3 h-3 fill-[#EAB308] text-[#EAB308] stroke-none" />
-                                    {item.rating || '4.90'}
-                                  </span>
-                                  <span className="underline decoration-dotted text-gray-500 font-normal">
-                                    ({item.reviews || '1.2M reviews'})
-                                  </span>
-                                </div>
+                                {(item.rating || item.reviews) && (
+                                  <div className="flex items-center gap-1.5 mt-1 text-[12px] text-gray-500">
+                                    {item.rating && (
+                                      <span className="flex items-center gap-0.5 font-semibold text-gray-900">
+                                        <FiStar className="w-3 h-3 fill-[#EAB308] text-[#EAB308] stroke-none" />
+                                        {item.rating}
+                                      </span>
+                                    )}
+                                    {item.reviews && (
+                                      <span className="underline decoration-dotted text-gray-500 font-normal">
+                                        ({item.reviews})
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
 
                                 {/* Price & Duration */}
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -1862,15 +1876,21 @@ const ServiceCatalogModal = React.memo(({
                           <h3 className="text-[18px] sm:text-[19px] font-bold text-gray-900 leading-snug">
                             {selectedItemDetails.title}
                           </h3>
-                          <div className="flex items-center gap-1.5 mt-1 text-[12px] text-gray-500">
-                            <span className="flex items-center gap-0.5 font-semibold text-gray-900">
-                              <FiStar className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308] stroke-none" />
-                              {selectedItemDetails.rating || '4.90'}
-                            </span>
-                            <span className="underline decoration-dotted text-gray-500 font-normal">
-                              ({selectedItemDetails.reviews || '1.2M reviews'})
-                            </span>
-                          </div>
+                          {(selectedItemDetails.rating || selectedItemDetails.reviews) && (
+                            <div className="flex items-center gap-1.5 mt-1 text-[12px] text-gray-500">
+                              {selectedItemDetails.rating && (
+                                <span className="flex items-center gap-0.5 font-semibold text-gray-900">
+                                  <FiStar className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308] stroke-none" />
+                                  {selectedItemDetails.rating}
+                                </span>
+                              )}
+                              {selectedItemDetails.reviews && (
+                                <span className="underline decoration-dotted text-gray-500 font-normal">
+                                  ({selectedItemDetails.reviews})
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 

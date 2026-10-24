@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
 
-const SOURCE_URI = 'mongodb+srv://homecareofficialsolution:Admin123@cluster0.1tk4tkp.mongodb.net/Homster';
-const TARGET_URI = 'mongodb+srv://helpusupport_db_user:KLaC6wRMSfI3v324@serviceprovider.x4ov5z9.mongodb.net/ServerProvider';
+// Connection strings come from the environment, never from the source code:
+//   SOURCE_MONGODB_URI=...  TARGET_MONGODB_URI=...  node scripts/migrate_all_data.js
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const SOURCE_URI = process.env.SOURCE_MONGODB_URI;
+const TARGET_URI = process.env.TARGET_MONGODB_URI;
+if (!SOURCE_URI || !TARGET_URI) {
+  console.error('Set SOURCE_MONGODB_URI and TARGET_MONGODB_URI before running this migration.');
+  process.exit(1);
+}
 
 async function migrateData() {
   console.log('🚀 Starting Full Database Migration...');

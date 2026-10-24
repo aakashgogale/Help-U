@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { withNotionalCharges } from '../../../../utils/planBenefitDisplay';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
@@ -105,12 +106,8 @@ const BookingConfirmation = () => {
         setLoading(true);
         const response = await bookingService.getById(id);
         if (response.success) {
-          const data = { ...response.data };
-          // Calculate notional display values for plan_benefit
-          if (data.paymentMethod === 'plan_benefit') {
-            if (!data.tax) data.tax = (data.basePrice || 0) * 0.18;
-            if (!data.visitingCharges && !data.visitationFee) data.visitingCharges = 49;
-          }
+          // Plan bookings show the tax and visiting charge they would have cost (admin rates)
+          const data = await withNotionalCharges({ ...response.data });
           setBooking(data);
 
           // Check if worker is already assigned
@@ -143,13 +140,7 @@ const BookingConfirmation = () => {
       try {
         const response = await bookingService.getById(id);
         if (response.success) {
-          const updatedBooking = { ...response.data };
-
-          // Calculate notional display values for plan_benefit
-          if (updatedBooking.paymentMethod === 'plan_benefit') {
-            if (!updatedBooking.tax) updatedBooking.tax = (updatedBooking.basePrice || 0) * 0.18;
-            if (!updatedBooking.visitingCharges && !updatedBooking.visitationFee) updatedBooking.visitingCharges = 49;
-          }
+          const updatedBooking = await withNotionalCharges({ ...response.data });
 
           setBooking(updatedBooking);
           // If worker accepted or status changed

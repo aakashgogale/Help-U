@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { withNotionalCharges } from '../../../../utils/planBenefitDisplay';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import useAppNotifications from '../../../../hooks/useAppNotifications';
@@ -103,12 +104,8 @@ const BookingDetails = () => {
       // Don't set loading true on refresh to avoid flicker
       const response = await bookingService.getById(id);
       if (response.success) {
-        const data = { ...response.data };
-        // Calculate notional display values for plan_benefit
-        if (data.paymentMethod === 'plan_benefit') {
-          if (!data.tax) data.tax = (data.basePrice || 0) * 0.18;
-          if (!data.visitingCharges && !data.visitationFee) data.visitingCharges = 49;
-        }
+        // Plan bookings show the tax and visiting charge they would have cost (admin rates)
+        const data = await withNotionalCharges({ ...response.data });
         setBooking(data);
         setLoadError(false);
       } else {
@@ -191,10 +188,11 @@ const BookingDetails = () => {
             if (!prev) return prev;
             const newData = { ...prev, ...(data.data || data) };
 
-            // Calculate notional display values for plan_benefit
+            // A live update carries the stored zeros for a plan booking; keep the notional amounts
+            // (admin rates) that the initial load already worked out
             if (newData.paymentMethod === 'plan_benefit') {
-              if (!newData.tax) newData.tax = (newData.basePrice || 0) * 0.18;
-              if (!newData.visitingCharges && !newData.visitationFee) newData.visitingCharges = 49;
+              if (!newData.tax) newData.tax = prev.tax;
+              if (!newData.visitingCharges && !newData.visitationFee) newData.visitingCharges = prev.visitingCharges;
             }
             return newData;
           });
@@ -596,7 +594,7 @@ const BookingDetails = () => {
   });
 
   // Use bill.originalGST if available
-  const originalGST = bill ? (bill.originalGST || 0) : (originalBase * 0.18);
+  const originalGST = bill ? (bill.originalGST || 0) : (parseFloat(booking.tax) || 0);
   const totalGST = originalGST + extraServiceGST + partsGST;
 
   // Final Total
@@ -1347,6 +1345,18 @@ const BookingDetails = () => {
                             <FiClock className="w-3.5 h-3.5 text-blue-400" /> Visiting Charges
                           </span>
                           <span className="font-mono">₹{(bill?.visitingCharges || booking.visitingCharges || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cancellation fee carried over from an earlier cancelled booking */}
+                    {(bill?.penaltyCharges > 0 || booking.penalty > 0) && (
+                      <div className="mt-4 pt-2 border-t border-gray-100">
+                        <div className="flex justify-between text-xs font-bold text-gray-600">
+                          <span className="flex items-center gap-2 uppercase tracking-wide">
+                            <FiClock className="w-3.5 h-3.5 text-red-400" /> Pending Cancellation Fee
+                          </span>
+                          <span className="font-mono">₹{Number(bill?.penaltyCharges ?? booking.penalty ?? 0).toFixed(2)}</span>
                         </div>
                       </div>
                     )}

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { authenticate } = require('../../middleware/authMiddleware');
+const { requireFlag } = require('../../middleware/featureGuard');
 const { isUser } = require('../../middleware/roleMiddleware');
 const {
   createPaymentOrder,
@@ -38,13 +39,15 @@ const refundValidation = [
 ];
 
 // Routes
-router.post('/create-order', authenticate, isUser, createOrderValidation, createPaymentOrder);
+// Starting a new online or wallet payment honours the admin switches. /verify is deliberately
+// not guarded: it confirms a payment the customer has already made.
+router.post('/create-order', authenticate, isUser, requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), createOrderValidation, createPaymentOrder);
 router.post('/verify', authenticate, isUser, verifyPaymentValidation, verifyPaymentWebhook);
-router.post('/wallet', authenticate, isUser, walletPaymentValidation, processWalletPayment);
+router.post('/wallet', authenticate, isUser, requireFlag('isWalletPaymentEnabled', 'Wallet payment is currently unavailable.'), walletPaymentValidation, processWalletPayment);
 router.post('/refund', authenticate, isUser, refundValidation, processRefund);
 router.post('/pay-at-home', authenticate, isUser, walletPaymentValidation, confirmPayAtHome);
 router.get('/history', authenticate, isUser, getPaymentHistory);
-router.post('/plan/create-order', authenticate, isUser, createPlanOrder);
+router.post('/plan/create-order', authenticate, isUser, requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), createPlanOrder);
 router.post('/plan/verify', authenticate, isUser, verifyPlanPayment);
 router.get('/plan/upgrade-details', authenticate, isUser, getUpgradeDetails);
 

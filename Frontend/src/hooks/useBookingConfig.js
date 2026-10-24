@@ -34,7 +34,13 @@ export const BOOKING_CONFIG_DEFAULTS = {
   isRecurringEnabled: true,
   recurringFrequencies: ['weekly', 'biweekly', 'monthly'],
   recurringMaxOccurrences: 12,
-  recurringDiscountPercentage: 0
+  recurringDiscountPercentage: 0,
+  // Time-slot window for scheduled bookings (admin: Booking Configuration)
+  slotStartHour: 9,
+  slotEndHour: 20,
+  slotDurationMinutes: 60,
+  slotMaxDaysAhead: 7,
+  slotMinLeadMinutes: 60
 };
 
 let cached = null;

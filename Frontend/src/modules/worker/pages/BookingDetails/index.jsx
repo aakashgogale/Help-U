@@ -118,6 +118,7 @@ export default function BookingDetails() {
         // Price Breakdown
         basePrice: parseFloat(apiData.basePrice || 0),
         tax: parseFloat(apiData.tax || (apiData.paymentMethod === 'plan_benefit' ? (apiData.basePrice || 0) * 0.18 : 0)),
+        penalty: parseFloat(apiData.penalty || 0),
         visitingCharges: parseFloat(apiData.visitingCharges || apiData.visitationFee || (apiData.paymentMethod === 'plan_benefit' ? 49 : 0)),
         discount: parseFloat(apiData.discount || 0),
         platformCommission: parseFloat(apiData.adminCommission || apiData.platformFee || apiData.commission || 0),
@@ -949,6 +950,20 @@ export default function BookingDetails() {
                 <div className="flex justify-between pl-2 font-bold text-gray-800">
                   <span>Visiting Price</span>
                   <span>₹{(bill?.visitingCharges || booking.visitingCharges || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Cancellation fee carried over from an earlier cancelled booking */}
+            {(bill?.penaltyCharges > 0 || booking.penalty > 0) && (
+              <div>
+                <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                  <span className="w-6 h-6 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xs"><FiClock /></span>
+                  Pending Cancellation Fee
+                </h4>
+                <div className="flex justify-between pl-2 font-bold text-gray-800">
+                  <span>From the customer's earlier cancelled booking</span>
+                  <span>₹{Number(bill?.penaltyCharges ?? booking.penalty ?? 0).toFixed(2)}</span>
                 </div>
               </div>
             )}

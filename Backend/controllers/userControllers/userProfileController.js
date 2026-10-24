@@ -203,7 +203,7 @@ const getCheckoutData = async (req, res) => {
         addresses: user.addresses || []
       },
       cartItems: cart ? cart.items : [],
-      settings: settings || { visitedCharges: 29, serviceGstPercentage: 18, partsGstPercentage: 18 }
+      settings: settings || { visitedCharges: 0, serviceGstPercentage: 18, partsGstPercentage: 18 }
     });
   } catch (error) {
     console.error('Get checkout data error:', error);

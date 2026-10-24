@@ -296,7 +296,7 @@ export const ServiceWizard = ({
         warranty: service.warranty || "",
         cancellationPolicy: service.cancellationPolicy || "",
         isPackage: Boolean(service.isPackage),
-        displayRating: service.displayRating || "4.8",
+        displayRating: service.displayRating || "",
         reviewsLabel: service.reviewsLabel || "1.2k reviews",
         cityIds: Array.isArray(service.cityIds) ? service.cityIds.map((c) => typeof c === "object" ? c._id || c.id : c) : [],
         status: service.status || "active",
@@ -2463,13 +2463,18 @@ export const ServiceWizard = ({
                         </h3>
 
                         {/* Rating & Reviews */}
-                        <div className="flex items-center gap-1 text-[11px] text-gray-600 mt-1">
-                          <span className="flex items-center text-amber-500 font-bold">
-                            <FiStar className="w-3 h-3 fill-amber-400 stroke-none mr-0.5" />
-                            {formData.displayRating || "4.8"}
-                          </span>
-                          <span className="text-gray-400">({formData.reviewsLabel || "1.2k reviews"})</span>
-                        </div>
+                        {/* The customer app shows a rating only when one is entered here */}
+                        {(formData.displayRating || formData.reviewsLabel) && (
+                          <div className="flex items-center gap-1 text-[11px] text-gray-600 mt-1">
+                            {formData.displayRating && (
+                              <span className="flex items-center text-amber-500 font-bold">
+                                <FiStar className="w-3 h-3 fill-amber-400 stroke-none mr-0.5" />
+                                {formData.displayRating}
+                              </span>
+                            )}
+                            {formData.reviewsLabel && <span className="text-gray-400">({formData.reviewsLabel})</span>}
+                          </div>
+                        )}
 
                         {/* Price & Duration */}
                         <div className="flex items-baseline gap-2 mt-2">

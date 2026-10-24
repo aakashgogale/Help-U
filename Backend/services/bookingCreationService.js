@@ -94,6 +94,25 @@ const validateRecurringRequest = (recurring, config, bookingType) => {
 };
 
 /**
+ * The cheapest amount a customer can legitimately pay for this service: its price (or discounted
+ * price), the minimum-hours amount for hourly services, or any active variant's price. Used to
+ * reject a booking whose cart total was tampered with to something lower.
+ */
+const lowestServicePrice = (service) => {
+  const candidates = [];
+
+  const resolved = resolveCheckoutAmount(service, { hours: Number(service.minHours) || 1 });
+  if (!resolved.error && Number(resolved.amount) > 0) candidates.push(Number(resolved.amount));
+  if (Number(service.discountPrice) > 0) candidates.push(Number(service.discountPrice));
+
+  (service.variants || [])
+    .filter((v) => v && v.isActive !== false && Number(v.price) > 0)
+    .forEach((v) => candidates.push(Number(v.price)));
+
+  return candidates.length > 0 ? Math.min(...candidates) : 0;
+};
+
+/**
  * Creates a booking for `userId` from a checkout payload.
  *
  * options:
@@ -141,7 +160,9 @@ const placeBooking = async (userId, payload, options = {}) => {
   const config = await getBookingConfig();
   const gstPct = config.serviceGstPercentage;
 
-  let visitingCharges = reqVisitingCharges !== undefined ? reqVisitingCharges : (reqVisitationFee || 0);
+  // The visiting charge is set by the admin and applied here; a value sent by the app is ignored.
+  const adminVisitingCharge = Math.max(0, Number(config.visitedCharges) || 0);
+  let visitingCharges = adminVisitingCharge;
 
   // Total value of the booked cards; falls back to the service price below.
   let totalServiceValue = 0;
@@ -158,7 +179,7 @@ const placeBooking = async (userId, payload, options = {}) => {
   }
 
   const [service, user] = await Promise.all([
-    Service.findById(serviceId).select('title basePrice discountPrice description images iconUrl categoryId category categoryIds pricingType hourlyRate minHours maxHours inspectionFee status publishStatus').lean(),
+    Service.findById(serviceId).select('title basePrice discountPrice description images iconUrl categoryId category categoryIds pricingType hourlyRate minHours maxHours inspectionFee variants status publishStatus').lean(),
     User.findById(userId).select('name phone wallet plans')
   ]);
 
@@ -232,6 +253,20 @@ const placeBooking = async (userId, payload, options = {}) => {
     : null;
   const firstWaveSize = isEmergency ? config.emergencyFirstWaveSize : config.wave1Size;
 
+  // Enforce the admin's time-slot window (a recurring runner replays slots chosen earlier, so it
+  // is exempt). The grace keeps a slot picked a moment before the cut-off from failing.
+  if (isScheduledBooking && !recurringContext && Number.isFinite(scheduledSlotStart)) {
+    const graceMs = 2 * 60 * 1000;
+    const earliest = Date.now() + (config.slotMinLeadMinutes || 0) * 60 * 1000 - graceMs;
+    const latest = Date.now() + (config.slotMaxDaysAhead + 1) * 24 * 60 * 60 * 1000;
+    if (scheduledSlotStart < earliest) {
+      return fail(400, 'That time slot is too soon. Please choose a later slot.', { code: 'SLOT_TOO_SOON' });
+    }
+    if (scheduledSlotStart > latest) {
+      return fail(400, `Bookings can be made up to ${config.slotMaxDaysAhead} days ahead.`, { code: 'SLOT_TOO_FAR' });
+    }
+  }
+
   const pendingPenalty = user.wallet?.penalty || 0;
 
   // ── Worker search ──
@@ -296,7 +331,9 @@ const placeBooking = async (userId, payload, options = {}) => {
 
   const workerFilters = {
     service: matchServiceNames.length > 0 ? matchServiceNames : undefined,
-    checkCashLimit: paymentMethod === 'cash',
+    // Customers book as 'pay_at_home' (pay the professional in cash), so that is the cash case; workers
+    // already over their cash limit must not be offered these bookings.
+    checkCashLimit: ['cash', 'pay_at_home'].includes(paymentMethod),
     city: address.city,
     includeOffline: isScheduledBooking,
     ...(matchedZone ? { zoneId: matchedZone._id, zoneCoordinates: matchedZone.coordinates } : {})
@@ -390,30 +427,51 @@ const placeBooking = async (userId, payload, options = {}) => {
   }
 
   // 2. Standard pricing
+  //
+  // Policy values are decided here, never by the app: the visiting charge comes from the admin
+  // setting and GST is calculated on the net service amount at the admin GST rate. The app only
+  // contributes the cart's service amounts (basePrice / discount), which are sanity-checked and
+  // must not fall below the cheapest legitimate price of the service.
   if (!usePlanBenefits) {
-    if (amount && amount > 0) {
-      if (reqBasePrice !== undefined && reqTax !== undefined) {
-        basePrice = reqBasePrice;
-        discount = reqDiscount || 0;
-        tax = reqTax;
-        visitingCharges = (reqVisitingCharges !== undefined) ? reqVisitingCharges : (visitingCharges || 49);
-        finalAmount = (basePrice - discount + tax + visitingCharges) + pendingPenalty;
-      } else {
-        if (!visitingCharges) visitingCharges = 49;
-        basePrice = Math.round((amount - visitingCharges) / 1.18);
-        tax = amount - basePrice - visitingCharges;
-        discount = 0;
-        finalAmount = amount + pendingPenalty;
+    const hasBreakdown = amount && amount > 0 && reqBasePrice !== undefined && reqBasePrice !== null;
+
+    if (hasBreakdown) {
+      const clientBase = Number(reqBasePrice);
+      const clientDiscount = Number(reqDiscount) || 0;
+      if (!Number.isFinite(clientBase) || clientBase < 0 || clientDiscount < 0 || clientDiscount > clientBase) {
+        return fail(400, 'Invalid price details. Please review your cart and try again.', { code: 'PRICE_INVALID' });
       }
+
+      basePrice = clientBase;
+      discount = clientDiscount;
     } else {
-      if (!visitingCharges) visitingCharges = 49;
-      // totalServiceValue already resolved through the service's pricing
-      // type (hourly rate × hours, inspection fee, etc.) above.
+      // No usable breakdown (older app, or a recurring visit): price from the service itself.
+      // totalServiceValue already resolved through the service's pricing type (hourly rate x
+      // hours, inspection fee, etc.) above.
       basePrice = totalServiceValue || service.basePrice || 500;
       discount = service.discountPrice ? Math.max(0, basePrice - service.discountPrice) : 0;
-      tax = Math.round(basePrice * gstPct / 100);
-      finalAmount = (basePrice - discount + tax + visitingCharges) + pendingPenalty;
     }
+
+    let netService = Math.max(0, basePrice - discount);
+
+    // Only an active plan can make a booking free. A request that claims a zero amount without one
+    // (a plan that expired, or a tampered request) is priced from the service instead.
+    if (netService === 0) {
+      basePrice = totalServiceValue || service.basePrice || 500;
+      discount = service.discountPrice ? Math.max(0, basePrice - service.discountPrice) : 0;
+      netService = Math.max(0, basePrice - discount);
+    }
+
+    if (hasBreakdown && paymentMethod !== 'plan_benefit' && netService > 0) {
+      const floor = lowestServicePrice(service);
+      if (floor > 0 && netService + 0.5 < floor) {
+        return fail(400, 'The price for this service has changed. Please review your cart and try again.', { code: 'PRICE_MISMATCH' });
+      }
+    }
+
+    tax = Math.round(netService * gstPct / 100);
+    visitingCharges = netService > 0 ? adminVisitingCharge : 0;
+    finalAmount = (netService + tax + visitingCharges) + pendingPenalty;
   }
 
   // Service value before any extras: the base for percentage surcharges and
@@ -568,6 +626,9 @@ const placeBooking = async (userId, payload, options = {}) => {
     couponDiscount,
     tax,
     visitingCharges,
+    // A cancellation fee carried over from an earlier booking. It is part of finalAmount now and
+    // is recorded here so the final bill can charge it too (the bill replaces finalAmount).
+    penalty: pendingPenalty,
     finalAmount,
     userPayableAmount: finalAmount,
     address: {

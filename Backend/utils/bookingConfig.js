@@ -99,6 +99,8 @@ const CONFIG_SCHEMA = {
 // Existing settings the booking flow also needs; read here so callers have one
 // place to look, but they are still edited from the Settings page.
 const PASSTHROUGH_DEFAULTS = {
+  // Charged on every paid booking; set by the admin (0 means no visiting charge)
+  visitedCharges: 0,
   serviceGstPercentage: 18,
   partsGstPercentage: 18,
   servicePayoutPercentage: 90,

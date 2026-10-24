@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FiSliders, FiLoader, FiFileText, FiImage, FiPlusCircle, FiAlertTriangle, FiMessageCircle,
-  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus, FiCalendar
+  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus, FiCalendar, FiClock
 } from 'react-icons/fi';
 import bookingFeaturesAdminService from '../../services/bookingFeaturesAdminService';
 import { PageHeader, Card, Toggle, Field, Button } from '../../components/adminUi';
@@ -343,6 +343,27 @@ const BookingConfig = () => {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Minimum withdrawal" hint="Smallest amount a worker can request.">
               <NumberInput value={config.minWithdrawalAmount} onChange={set('minWithdrawalAmount')} min={0} suffix="₹" />
+            </Field>
+          </div>
+        </Card>
+
+        {/* Time slots */}
+        <Card title="Booking Time Slots" icon={FiClock}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="First slot starts at" hint="24-hour clock, e.g. 9 for 9 AM.">
+              <NumberInput value={config.slotStartHour} onChange={set('slotStartHour')} min={0} max={23} suffix="o'clock" />
+            </Field>
+            <Field label="Last slot starts at" hint="The latest slot offered starts at this hour, e.g. 20 for 8 PM.">
+              <NumberInput value={config.slotEndHour} onChange={set('slotEndHour')} min={1} max={24} suffix="o'clock" />
+            </Field>
+            <Field label="Slot length" hint="One slot is offered every this many minutes.">
+              <NumberInput value={config.slotDurationMinutes} onChange={set('slotDurationMinutes')} min={15} max={240} step={15} suffix="min" />
+            </Field>
+            <Field label="Book up to" hint="How many days ahead (including today) customers can pick.">
+              <NumberInput value={config.slotMaxDaysAhead} onChange={set('slotMaxDaysAhead')} min={1} max={30} suffix="days" />
+            </Field>
+            <Field label="Minimum notice" hint="A slot must start at least this long from now.">
+              <NumberInput value={config.slotMinLeadMinutes} onChange={set('slotMinLeadMinutes')} min={0} max={1440} suffix="min" />
             </Field>
           </div>
         </Card>

@@ -419,6 +419,8 @@ const BillingPage = () => {
 
     // Visiting Charges
     const visitingCharges = Number(booking.visitingCharges) || 0;
+    // Cancellation fee carried over from the customer's earlier cancelled booking (billed with this one)
+    const penaltyCharges = Math.max(0, Number(booking.penalty) || 0);
     const finalTransportCharges = Number(transportCharges) || 0;
 
     const totalServiceBase = originalBase + extraServiceBase;
@@ -426,7 +428,7 @@ const BillingPage = () => {
     const totalPartsBase = partsBase + customBase;
     const totalPartsGST = partsGST + customGST;
 
-    const finalBillAmount = parseFloat(((totalServiceBase + totalServiceGST) + (totalPartsBase + totalPartsGST) + visitingCharges + finalTransportCharges).toFixed(2));
+    const finalBillAmount = parseFloat(((totalServiceBase + totalServiceGST) + (totalPartsBase + totalPartsGST) + visitingCharges + finalTransportCharges + penaltyCharges).toFixed(2));
     const advancePaidAmount = booking.advancePayment?.status === 'paid'
       ? Number(booking.advancePayment.paidAmount || booking.advancePayment.requestedAmount || 0)
       : 0;
@@ -448,6 +450,7 @@ const BillingPage = () => {
       totalPartsGST,
       totalGST: parseFloat((totalServiceGST + totalPartsGST).toFixed(2)),
       visitingCharges,
+      penaltyCharges,
       transportCharges: finalTransportCharges,
       finalBillAmount,
       advancePaidAmount,
@@ -1284,6 +1287,19 @@ const BillingPage = () => {
                     <div className="flex justify-between text-sm pl-2 font-bold text-gray-800">
                       <span>Visiting Price</span>
                       <span>₹{Number(booking.visitingCharges).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {Number(booking.penalty) > 0 && (
+                  <div>
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xs"><FiClock /></span>
+                      Pending Cancellation Fee
+                    </h4>
+                    <div className="flex justify-between text-sm pl-2 font-bold text-gray-800">
+                      <span>From the customer's earlier cancelled booking</span>
+                      <span>₹{Number(booking.penalty).toFixed(2)}</span>
                     </div>
                   </div>
                 )}

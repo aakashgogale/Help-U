@@ -93,8 +93,8 @@ export const ApplianceServiceCard = memo(({ service, onServiceClick, onAddClick 
   }
 
   const title = service.title || 'Appliance Service';
-  const rating = service.rating || '4.8';
-  const reviews = service.reviews || '10k+';
+  const rating = service.rating || '';
+  const reviews = service.reviews || '';
 
   const rawOptions = parseInt(service.optionsCount, 10);
   const options = !isNaN(rawOptions) ? rawOptions : (
@@ -138,13 +138,19 @@ export const ApplianceServiceCard = memo(({ service, onServiceClick, onAddClick 
       </h3>
 
       {/* Star rating row: charcoal star + rating + (reviews count) */}
-      <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4 text-[#3F3F46]">
-        <AiFillStar className="w-3.5 h-3.5 text-[#27272A] flex-shrink-0" />
-        <span className="font-semibold text-[#18181B]">{rating}</span>
-        {reviews && (
-          <span className="text-[#52525B]">({reviews})</span>
-        )}
-      </div>
+      {(rating || reviews) && (
+        <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4 text-[#3F3F46]">
+          {rating && (
+            <>
+              <AiFillStar className="w-3.5 h-3.5 text-[#27272A] flex-shrink-0" />
+              <span className="font-semibold text-[#18181B]">{rating}</span>
+            </>
+          )}
+          {reviews && (
+            <span className="text-[#52525B]">({reviews})</span>
+          )}
+        </div>
+      )}
 
       {/* Bottom row: Price (Starts at ₹...) & Outlined Purple Add button */}
       <div className="mt-auto pt-2.5 flex items-end justify-between gap-1">
