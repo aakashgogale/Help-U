@@ -682,6 +682,9 @@ const getPublicHomeContent = async (req, res) => {
       isBookedVisible: contentObj.isBookedVisible ?? true,
       isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
       isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+      homeCategoryLimit: contentObj.homeCategoryLimit ?? 8,
+      showAllServicesTile: contentObj.showAllServicesTile ?? true,
+      allServicesLabel: contentObj.allServicesLabel || 'All services',
       isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
       isScrapVisible: isGlobalScrapEnabled
     };
@@ -870,6 +873,9 @@ const getPublicHomeData = async (req, res) => {
         isBookedVisible: contentObj.isBookedVisible ?? true,
         isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
         isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+        homeCategoryLimit: contentObj.homeCategoryLimit ?? 8,
+        showAllServicesTile: contentObj.showAllServicesTile ?? true,
+        allServicesLabel: contentObj.allServicesLabel || 'All services',
         isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
         isScrapVisible: isGlobalScrapEnabled
       };

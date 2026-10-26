@@ -39,6 +39,9 @@ const getHomeContent = async (req, res) => {
         isBookedVisible: homeContent.isBookedVisible ?? true,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible ?? true,
         isCategoriesVisible: homeContent.isCategoriesVisible ?? true,
+        homeCategoryLimit: homeContent.homeCategoryLimit ?? 8,
+        showAllServicesTile: homeContent.showAllServicesTile ?? true,
+        allServicesLabel: homeContent.allServicesLabel || 'All services',
         isSpotlightVisible: homeContent.isSpotlightVisible ?? true,
         isScrapVisible: scrapEnabled,
         createdAt: homeContent.createdAt,
@@ -150,6 +153,12 @@ const updateHomeContent = async (req, res) => {
       if (req.body.isBookedVisible !== undefined) doc.isBookedVisible = req.body.isBookedVisible;
       if (req.body.isCategorySectionsVisible !== undefined) doc.isCategorySectionsVisible = req.body.isCategorySectionsVisible;
       if (req.body.isCategoriesVisible !== undefined) doc.isCategoriesVisible = req.body.isCategoriesVisible;
+      if (req.body.homeCategoryLimit !== undefined) {
+        const limit = Math.round(Number(req.body.homeCategoryLimit));
+        if (Number.isFinite(limit)) doc.homeCategoryLimit = Math.min(24, Math.max(1, limit));
+      }
+      if (req.body.showAllServicesTile !== undefined) doc.showAllServicesTile = !!req.body.showAllServicesTile;
+      if (typeof req.body.allServicesLabel === 'string') doc.allServicesLabel = req.body.allServicesLabel.trim().slice(0, 30) || 'All services';
       if (req.body.isSpotlightVisible !== undefined) doc.isSpotlightVisible = req.body.isSpotlightVisible;
       // Scrap visibility is owned exclusively by Settings.isScrapEnabled and is never
       // written from a home-content save. Accepting it here let any unrelated home-page
@@ -183,6 +192,9 @@ const updateHomeContent = async (req, res) => {
         isBookedVisible: homeContent.isBookedVisible,
         isCategorySectionsVisible: homeContent.isCategorySectionsVisible,
         isCategoriesVisible: homeContent.isCategoriesVisible,
+        homeCategoryLimit: homeContent.homeCategoryLimit,
+        showAllServicesTile: homeContent.showAllServicesTile,
+        allServicesLabel: homeContent.allServicesLabel,
         isSpotlightVisible: homeContent.isSpotlightVisible,
         isScrapVisible: scrapEnabled
       }

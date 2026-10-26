@@ -37,7 +37,7 @@ const CategoryTile = ({ title, icon, fallbackIcon, etaMinutes, isAvatar = false,
       onClick={onClick}
       className="flex flex-col items-center text-center w-full focus:outline-none group cursor-pointer"
     >
-      <div className="relative w-full aspect-[1/0.92] sm:aspect-square rounded-[18px] sm:rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex flex-col items-center justify-center transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
+      <div className="relative w-full aspect-square rounded-[18px] sm:rounded-[20px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F6] hover:from-[#F4F6F9] hover:to-[#EAECEF] overflow-hidden flex flex-col items-center justify-center transition-all duration-200 active:scale-[0.96] group shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-200/90">
         <div className={`w-full flex-1 flex items-center justify-center overflow-hidden ${hasEta ? 'pt-1.5 pb-4 px-1.5' : 'p-2'}`}>
           {currentSrc && !imgError ? (
             <img

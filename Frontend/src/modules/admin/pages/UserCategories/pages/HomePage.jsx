@@ -302,6 +302,9 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             isBookedVisible: hc.isBookedVisible ?? true,
             isCategorySectionsVisible: hc.isCategorySectionsVisible ?? true,
             isCategoriesVisible: hc.isCategoriesVisible ?? true,
+            homeCategoryLimit: hc.homeCategoryLimit ?? 8,
+            showAllServicesTile: hc.showAllServicesTile ?? true,
+            allServicesLabel: hc.allServicesLabel || 'All services',
             isSpotlightVisible: hc.isSpotlightVisible ?? true,
             isScrapVisible: hc.isScrapVisible ?? true
           };
@@ -411,6 +414,9 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
         isBookedVisible: homeData.isBookedVisible,
         isCategorySectionsVisible: homeData.isCategorySectionsVisible,
         isCategoriesVisible: homeData.isCategoriesVisible,
+        homeCategoryLimit: homeData.homeCategoryLimit,
+        showAllServicesTile: homeData.showAllServicesTile,
+        allServicesLabel: homeData.allServicesLabel,
         isSpotlightVisible: homeData.isSpotlightVisible
       };
       await homeContentService.update(payload, { cityId: selectedCity });
@@ -1511,6 +1517,46 @@ const HomePage = ({ catalog, setCatalog, selectedCity }) => {
             checked={home?.isCategoriesVisible !== false}
             onChange={() => patchHome({ isCategoriesVisible: !home?.isCategoriesVisible })}
           />
+        </div>
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-1">Categories on home</label>
+            <input
+              key={`limit-${home?.homeCategoryLimit ?? 8}`}
+              type="number"
+              min={1}
+              max={24}
+              defaultValue={home?.homeCategoryLimit ?? 8}
+              onBlur={(e) => {
+                const n = Math.min(24, Math.max(1, Math.round(Number(e.target.value)) || 8));
+                if (n !== (home?.homeCategoryLimit ?? 8)) patchHome({ homeCategoryLimit: n });
+                else e.target.value = n;
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">First N visible categories by order; the rest sit under "All services".</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-1">"All services" label</label>
+            <input
+              key={`label-${home?.allServicesLabel || ''}`}
+              type="text"
+              maxLength={30}
+              defaultValue={home?.allServicesLabel || 'All services'}
+              onBlur={(e) => {
+                const v = e.target.value.trim() || 'All services';
+                if (v !== (home?.allServicesLabel || 'All services')) patchHome({ allServicesLabel: v });
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex items-end">
+            <ToggleSwitch
+              label='Show "All services" tile'
+              checked={home?.showAllServicesTile !== false}
+              onChange={() => patchHome({ showAllServicesTile: home?.showAllServicesTile === false })}
+            />
+          </div>
         </div>
         {categories.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No categories yet</div>

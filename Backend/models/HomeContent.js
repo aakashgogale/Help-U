@@ -336,6 +336,10 @@ const homeContentSchema = new mongoose.Schema({
   isBookedVisible: { type: Boolean, default: true },
   isCategorySectionsVisible: { type: Boolean, default: true },
   isCategoriesVisible: { type: Boolean, default: true },
+  // Home category grid: how many top-level categories to show before "All services"
+  homeCategoryLimit: { type: Number, default: 8, min: 1, max: 24 },
+  showAllServicesTile: { type: Boolean, default: true },
+  allServicesLabel: { type: String, default: 'All services', trim: true, maxlength: 30 },
   isScrapVisible: { type: Boolean, default: true },
   isSpotlightVisible: { type: Boolean, default: true }
 }, {

@@ -621,6 +621,9 @@ const Home = () => {
                   <ServiceCategories
                     categories={categories}
                     onCategoryClick={handleCategoryClick}
+                    limit={homeContent?.homeCategoryLimit}
+                    showAllServices={homeContent?.showAllServicesTile !== false}
+                    allServicesLabel={homeContent?.allServicesLabel}
                   />
                 </motion.section>
               )}
