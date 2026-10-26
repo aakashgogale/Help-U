@@ -18,6 +18,7 @@ import { categoryService, publicCatalogService } from "../../../../../services/c
 import DependencyModal from "./DependencyModal";
 import Modal from "./Modal";
 import ToggleSwitch from "./ToggleSwitch";
+import DetailFieldsEditor from "./DetailFieldsEditor";
 import { slugify, toAssetUrl } from "../utils";
 import IconUploadWithPreview from "../../../components/IconUploadWithPreview";
 
@@ -46,6 +47,7 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
     heroTitle: "",
     heroStartingPrice: "",
     heroImageUrl: "",
+    detailFields: [],
   });
   const [saving, setSaving] = useState(false);
 
@@ -208,6 +210,7 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
       heroTitle: "",
       heroStartingPrice: "",
       heroImageUrl: "",
+      detailFields: [],
     });
     setIsModalOpen(true);
   };
@@ -231,6 +234,8 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
       heroTitle: category.heroBanner?.title || "",
       heroStartingPrice: category.heroBanner?.startingPrice || "",
       heroImageUrl: category.heroBanner?.imageUrl || "",
+      // keyLocked: saved fields keep their key when the label is renamed
+      detailFields: (category.detailFields || []).map((f) => ({ ...f, keyLocked: true })),
     });
     setIsModalOpen(true);
   };
@@ -266,7 +271,12 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
           title: form.heroTitle?.trim() || "",
           startingPrice: form.heroStartingPrice?.trim() || "",
           imageUrl: form.heroImageUrl?.trim() || ""
-        }
+        },
+        detailFields: (form.detailFields || []).map((f) => {
+          const out = { ...f };
+          delete out.keyLocked;
+          return out;
+        })
       };
 
       let res;
@@ -794,6 +804,18 @@ const CategoriesListView = ({ selectedCity, onRefreshHealth }) => {
                 />
                 <span className="text-xs font-medium text-gray-700">Available for Emergency Services</span>
               </label>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100">
+              <h4 className="text-xs font-bold text-gray-800">Details customers fill in the cart</h4>
+              <p className="text-[11px] text-gray-500 mt-0.5 mb-2">
+                Questions such as appliance brand or vehicle type. They apply to every service in this
+                category and its sub-categories, and appear on the booking for the worker.
+              </p>
+              <DetailFieldsEditor
+                value={form.detailFields}
+                onChange={(detailFields) => setForm((prev) => ({ ...prev, detailFields }))}
+              />
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">

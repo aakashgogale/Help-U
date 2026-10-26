@@ -10,6 +10,7 @@ const { SERVICE_STATUS } = require('../../utils/constants');
 const { validateSubCategorySlug, subCategorySlugError, toSlugSegment } = require('../../utils/categorySlug');
 const { invalidatePublicCatalogKeys } = require('../../utils/catalogCache');
 const { writeAudit } = require('../../utils/auditLog');
+const { sanitizeDetailFields } = require('../../utils/detailFields');
 
 /**
  * Shared mapper so every response returns the same, documented shape.
@@ -32,6 +33,7 @@ const toCategoryResponse = (cat) => ({
   status: cat.status,
   isPopular: !!cat.isPopular,
   isEmergencyAvailable: !!cat.isEmergencyAvailable,
+  detailFields: cat.detailFields || [],
   cityIds: cat.cityIds || [],
   metaTitle: cat.metaTitle,
   metaDescription: cat.metaDescription,
@@ -308,6 +310,7 @@ const buildCategoryFields = (body) => {
   if (body.metaTitle !== undefined) fields.metaTitle = body.metaTitle?.trim() || null;
   if (body.metaDescription !== undefined) fields.metaDescription = body.metaDescription?.trim() || null;
   if (body.cityIds !== undefined) fields.cityIds = body.cityIds || [];
+  if (body.detailFields !== undefined) fields.detailFields = sanitizeDetailFields(body.detailFields).fields || [];
   // Display fields
   if (body.displayRating !== undefined) fields.displayRating = String(body.displayRating || '').trim();
   if (body.bookingsLabel !== undefined) fields.bookingsLabel = String(body.bookingsLabel || '').trim();
@@ -344,6 +347,9 @@ const createCategory = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
+
+    const detailCheck = sanitizeDetailFields(req.body.detailFields);
+    if (detailCheck.error) return res.status(400).json({ success: false, message: detailCheck.error });
 
     const fields = buildCategoryFields(req.body);
     fields.createdBy = req.user.id;
@@ -404,6 +410,9 @@ const updateCategory = async (req, res) => {
     if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
     const before = category.toObject();
 
+    const detailCheck = sanitizeDetailFields(req.body.detailFields);
+    if (detailCheck.error) return res.status(400).json({ success: false, message: detailCheck.error });
+
     const fields = buildCategoryFields(req.body);
 
     // Parent change needs the cycle/depth check against the *new* parent.
@@ -445,6 +454,7 @@ const updateCategory = async (req, res) => {
     Object.assign(category, fields);
     if (fields.cityIds !== undefined) category.markModified('cityIds');
     if (fields.heroBanner !== undefined) category.markModified('heroBanner');
+    if (fields.detailFields !== undefined) category.markModified('detailFields');
     await category.save();
     await invalidatePublicCatalogKeys();
     writeAudit({ adminId: req.user.id, action: 'update', entityType: 'category', entityId: category._id, before, after: category });

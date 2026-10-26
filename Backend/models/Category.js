@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { SERVICE_STATUS } = require('../utils/constants');
+const { detailFieldSchema } = require('../utils/detailFields');
 
 /**
  * Category Model
@@ -144,6 +145,12 @@ const categorySchema = new mongoose.Schema({
     type: Boolean,
     default: false,
     index: true
+  },
+  // Questions the customer answers in the cart for any service in this category (and its
+  // sub-categories), e.g. appliance brand. Empty means none are asked.
+  detailFields: {
+    type: [detailFieldSchema],
+    default: []
   },
   // Offers emergency booking for services in this category (when emergency
   // bookings are enabled in the booking configuration).
