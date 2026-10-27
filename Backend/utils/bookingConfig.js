@@ -114,7 +114,15 @@ const CONFIG_SCHEMA = {
 
   // Scrap: the customer is paid to their Help U wallet; when on, they can instead choose cash
   // from the professional at pickup (Help U then reimburses the professional).
-  scrapAllowCashPayout: [false, 'boolean']
+  scrapAllowCashPayout: [false, 'boolean'],
+
+  // What the professional earns for completing a scrap pickup. Off by default: nothing is paid
+  // until an admin switches it on. Fixed = a flat amount per pickup; percentage = a share of the
+  // final amount paid for the scrap (capped by ...Max when that is above 0).
+  scrapWorkerPayoutEnabled: [false, 'boolean'],
+  scrapWorkerPayoutType: ['fixed', 'enum', ['fixed', 'percentage']],
+  scrapWorkerPayoutValue: [0, 'number', 0, 100000],
+  scrapWorkerPayoutMax: [0, 'number', 0, 100000]
 };
 
 // Existing settings the booking flow also needs; read here so callers have one
@@ -230,7 +238,11 @@ const getPublicBookingConfig = async () => {
     workerLateCancelPenaltyType: c.workerLateCancelPenaltyType,
     workerLateCancelPenaltyValue: c.workerLateCancelPenaltyValue,
     workerLateCancelPenaltyMax: c.workerLateCancelPenaltyMax,
-    scrapAllowCashPayout: c.scrapAllowCashPayout
+    scrapAllowCashPayout: c.scrapAllowCashPayout,
+    scrapWorkerPayoutEnabled: c.scrapWorkerPayoutEnabled,
+    scrapWorkerPayoutType: c.scrapWorkerPayoutType,
+    scrapWorkerPayoutValue: c.scrapWorkerPayoutValue,
+    scrapWorkerPayoutMax: c.scrapWorkerPayoutMax
   };
 };
 

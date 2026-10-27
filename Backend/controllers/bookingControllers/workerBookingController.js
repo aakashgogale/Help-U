@@ -29,14 +29,6 @@ const getWorkerBookings = async (req, res) => {
     const vendorId = req.user.id;
     const { status, q, page = 1, limit = 20 } = req.query;
 
-    // ── Get worker categories from req.user (set in auth middleware) ──
-    let workerCategories = req.user.categories || req.user.service || [];
-    if (!workerCategories.length) {
-      const Worker = require('../../models/Worker');
-      const v = await Worker.findById(vendorId, 'service').lean();
-      workerCategories = v?.service || [];
-    }
-
     const vId = new mongoose.Types.ObjectId(vendorId);
 
     // ── Build Base Query ──
@@ -47,8 +39,11 @@ const getWorkerBookings = async (req, res) => {
         {
           vendorId: null,
           status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-          serviceCategory: { $in: workerCategories },
-          // Only jobs that have actually been SENT to this worker. (potentialVendors lists everyone
+          // Only jobs that have actually been SENT to this worker. That is already decided by the
+          // alert matching (service, category or parent category), so no second, exact-text match on
+          // serviceCategory is made here: it hid requests whose booking names the parent category
+          // ("AC & Appliance Repair") while the worker lists the appliance ("Geyser").
+          // (potentialVendors lists everyone
           // in range, including workers whose alert wave has not started; listing by that
           // let any worker see and sync a job before its wave, which defeated the waves.)
           notifiedVendors: vId

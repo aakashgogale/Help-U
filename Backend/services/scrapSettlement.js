@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const Worker = require('../models/Worker');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const MAX_QUANTITY = 100000;
@@ -95,4 +96,43 @@ const payCustomer = async (scrap, method) => {
   return { method: 'wallet', status: 'paid', amount, paidAt: new Date() };
 };
 
-module.exports = { computeWeighing, payCustomer };
+/**
+ * What the professional earns for a pickup under the admin's current setting. 0 when the earning is
+ * off. `basis` is the amount paid for the scrap (the final amount, or the estimate before weighing).
+ */
+const computeWorkerEarning = (basis, config) => {
+  if (!config.scrapWorkerPayoutEnabled) return { amount: 0 };
+  const value = Number(config.scrapWorkerPayoutValue) || 0;
+  let amount = config.scrapWorkerPayoutType === 'percentage' ? (Number(basis) || 0) * value / 100 : value;
+  const cap = Number(config.scrapWorkerPayoutMax) || 0;
+  if (cap > 0) amount = Math.min(amount, cap);
+  return { amount: round2(Math.max(0, amount)), type: config.scrapWorkerPayoutType, value };
+};
+
+/**
+ * Credits the pickup professional's earnings once the customer has been paid. Does nothing when the
+ * earning is off, there is no professional, or it was already credited. Returns the `workerEarning`
+ * object to store on the request (or null when nothing was credited).
+ */
+const creditWorker = async (scrap, config) => {
+  if (!scrap.vendorId || scrap.workerEarning?.creditedAt) return null;
+  const earning = computeWorkerEarning(scrap.finalPrice, config);
+  if (!(earning.amount > 0)) return null;
+
+  const worker = await Worker.findByIdAndUpdate(scrap.vendorId, { $inc: { 'wallet.earnings': earning.amount } }, { new: true });
+  if (!worker) return null;
+  await Transaction.create({
+    vendorId: worker._id,
+    type: 'earnings_credit',
+    amount: earning.amount,
+    status: 'completed',
+    paymentMethod: 'system',
+    description: `Scrap pickup: ${scrap.title}`,
+    balanceBefore: round2((worker.wallet?.earnings || 0) - earning.amount),
+    balanceAfter: worker.wallet?.earnings || 0,
+    metadata: { scrapId: String(scrap._id) }
+  });
+  return { amount: earning.amount, type: earning.type, value: earning.value, creditedAt: new Date() };
+};
+
+module.exports = { computeWeighing, payCustomer, computeWorkerEarning, creditWorker };

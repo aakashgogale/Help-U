@@ -5,6 +5,7 @@ import { getSettings, updateSettings } from '../../services/settingsService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { toast } from 'react-hot-toast';
 import ScrapTypes from './ScrapTypes';
+import WorkerEarningPanel from './WorkerEarningPanel';
 import { PickupModal, AmountModal } from './ScrapActions';
 import { bookingFeaturesAdminService } from '../../services/bookingFeaturesAdminService';
 
@@ -288,6 +289,8 @@ const AdminScrapPage = () => {
         </button>
       </label>
 
+      <WorkerEarningPanel />
+
       {tab === 'types' && <ScrapTypes />}
 
       {tab === 'requests' && (
@@ -371,6 +374,9 @@ const AdminScrapPage = () => {
                               : item.status === 'weighed' ? 'Weighed'
                                 : 'Agreed'}
                           </span>
+                          {item.workerEarning?.creditedAt && (
+                            <span className="text-[9px] font-semibold text-blue-700 block">Professional earned ₹{item.workerEarning.amount}</span>
+                          )}
                           {item.payout?.status === 'cash_paid_by_pro' && (
                             <span className="text-[9px] font-bold text-amber-700 block">Cash paid by professional: reimburse</span>
                           )}

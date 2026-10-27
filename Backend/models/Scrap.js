@@ -68,6 +68,14 @@ const scrapSchema = new mongoose.Schema({
     at: { type: Date, default: null }
   },
   adjustReason: { type: String, default: '' },
+  // What the pickup professional earned, frozen when the pickup was paid (nothing when the earning
+  // was switched off or no professional was assigned)
+  workerEarning: {
+    amount: { type: Number, default: 0 },
+    type: { type: String, enum: ['fixed', 'percentage'], default: undefined },
+    value: { type: Number, default: 0 },
+    creditedAt: { type: Date, default: null }
+  },
   // How the customer was paid. Cash means the professional handed it over and Help U owes them.
   payout: {
     method: { type: String, enum: ['wallet', 'cash'], default: undefined },

@@ -157,6 +157,11 @@ const PickupCard = ({ scrap, onSaved }) => {
                 <span className="text-xs font-semibold text-slate-500">Total to pay the customer</span>
                 <span className="text-lg font-extrabold text-slate-900">{money(total)}</span>
               </div>
+              {scrap.workerEarningPreview > 0 && (
+                <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                  You earn {money(scrap.workerEarningPreview)} for this pickup.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={submit}
@@ -173,6 +178,11 @@ const PickupCard = ({ scrap, onSaved }) => {
               <span className="text-xs font-semibold text-slate-500">{scrap.status === 'completed' ? 'Paid to the customer' : 'Amount sent to the customer'}</span>
               <span className="text-lg font-extrabold text-slate-900">{money(scrap.finalPrice)}</span>
             </div>
+          )}
+          {scrap.status !== 'accepted' && scrap.workerEarningPreview > 0 && (
+            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+              {scrap.status === 'completed' ? 'You earned' : 'You will earn'} {money(scrap.workerEarningPreview)} for this pickup.
+            </p>
           )}
           {scrap.status === 'completed' && scrap.payout?.method === 'cash' && (
             <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">

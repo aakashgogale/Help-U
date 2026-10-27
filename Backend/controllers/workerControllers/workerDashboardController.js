@@ -13,12 +13,6 @@ const getDashboardStats = async (req, res) => {
     const mongoose = require('mongoose');
     const vId = new mongoose.Types.ObjectId(vendorId);
 
-    // ── Get categories from req.user (from auth middleware) ──
-    const workerCategories = [
-      ...(Array.isArray(req.user.categories) ? req.user.categories : []),
-      ...(Array.isArray(req.user.service) ? req.user.service : [])
-    ];
-
     // ─── SINGLE PARALLEL BLAST ───────────────────────────────────────────────
     const [bookingData, earningsResult, bookingEarningsResult] = await Promise.all([
       // 1. ALL BOOKING DATA (Counts + Recent List + Rating) in ONE round-trip
@@ -34,7 +28,7 @@ const getDashboardStats = async (req, res) => {
                     {
                       vendorId: null,
                       status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-                      'potentialVendors.vendorId': vId
+                      notifiedVendors: vId // only requests actually sent to this worker (see getWorkerBookings)
                     }
                   ]
                 }
@@ -86,7 +80,7 @@ const getDashboardStats = async (req, res) => {
                     {
                       vendorId: null,
                       status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
-                      'potentialVendors.vendorId': vId
+                      notifiedVendors: vId // only requests actually sent to this worker (see getWorkerBookings)
                     }
                   ]
                 }

@@ -54,6 +54,10 @@ exports.updateConfig = async (req, res) => {
       return res.status(400).json({ success: false, message: 'The professional cancellation penalty cannot be more than 100% of the booking amount' });
     }
 
+    if (merged.scrapWorkerPayoutType === 'percentage' && merged.scrapWorkerPayoutValue > 100) {
+      return res.status(400).json({ success: false, message: 'The professional’s scrap share cannot be more than 100%' });
+    }
+
     let settings = await Settings.findOne({ type: 'global' });
     if (!settings) settings = new Settings({ type: 'global' });
     Object.assign(settings, updates);

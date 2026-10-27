@@ -357,6 +357,10 @@ const settingsSchema = new mongoose.Schema({
 
   // Scrap payout (see utils/bookingConfig.js)
   scrapAllowCashPayout: { type: Boolean, default: false },
+  scrapWorkerPayoutEnabled: { type: Boolean, default: false },
+  scrapWorkerPayoutType: { type: String, enum: ['fixed', 'percentage'], default: 'fixed' },
+  scrapWorkerPayoutValue: { type: Number, default: 0, min: 0 },
+  scrapWorkerPayoutMax: { type: Number, default: 0, min: 0 },
 
   // ==========================================
   // CUSTOMER <-> WORKER CHAT

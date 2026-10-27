@@ -6,7 +6,7 @@ const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationControllers/notificationController');
 const Worker = require('../models/Worker');
 const { priceScrapItems, summarise } = require('../services/scrapPricing');
-const { computeWeighing, payCustomer } = require('../services/scrapSettlement');
+const { computeWeighing, payCustomer, computeWorkerEarning, creditWorker } = require('../services/scrapSettlement');
 const { getBookingConfig } = require('../utils/bookingConfig');
 
 // Create a new scrap item (User)
@@ -379,6 +379,7 @@ exports.completeScrap = async (req, res) => {
         console.error('Scrap payout error:', payErr);
         return res.status(500).json({ success: false, message: 'Could not pay the customer. Nothing was changed.' });
       }
+      await creditPickupWorker(scrap);
       await scrap.save();
       await createNotification({
         userId: scrap.userId,
@@ -479,6 +480,17 @@ exports.deleteScrap = async (req, res) => {
 
 // ─── Pickup, weighing and payment (requests made from scrap types) ───────────────────────────
 
+// Credits the pickup professional after the customer is paid. The customer's payment is never
+// undone by a problem here: the failure is logged and the earning can be fixed by hand.
+const creditPickupWorker = async (scrap) => {
+  try {
+    const earning = await creditWorker(scrap, await getBookingConfig());
+    if (earning) scrap.workerEarning = earning;
+  } catch (err) {
+    console.error(`[Scrap] Could not credit the professional for ${scrap._id}:`, err.message);
+  }
+};
+
 const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 // Admin: choose the professional and the time. A request with nothing to quote is confirmed by this.
@@ -539,7 +551,17 @@ exports.getWorkerPickups = async (req, res) => {
       .populate('userId', 'name phone')
       .sort({ pickupDate: 1, createdAt: -1 })
       .limit(100);
-    res.json({ success: true, data: scraps });
+
+    // What each pickup pays the professional under the admin's current setting (or what it paid)
+    const config = await getBookingConfig();
+    const data = scraps.map((scrap) => {
+      const doc = scrap.toObject();
+      doc.workerEarningPreview = scrap.workerEarning?.creditedAt
+        ? scrap.workerEarning.amount
+        : computeWorkerEarning(scrap.finalPrice ?? scrap.estimatedTotal ?? 0, config).amount;
+      return doc;
+    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Worker scrap pickups error:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -608,6 +630,8 @@ exports.confirmWeighing = async (req, res) => {
     try {
       scrap.payout = await payCustomer(scrap, wantsCash ? 'cash' : 'wallet');
       await scrap.save();
+      await creditPickupWorker(scrap);
+      if (scrap.workerEarning?.creditedAt) await scrap.save();
     } catch (payErr) {
       console.error('Scrap payout error:', payErr);
       await Scrap.updateOne({ _id: scrap._id }, { $set: { status: 'weighed' } });
