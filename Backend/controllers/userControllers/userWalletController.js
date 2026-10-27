@@ -82,7 +82,7 @@ const addMoneyToWallet = async (req, res) => {
     if (!orderResult.success) {
       return res.status(500).json({
         success: false,
-        message: 'Failed to create payment order'
+        message: orderResult.error || 'Failed to create payment order'
       });
     }
 
@@ -138,6 +138,19 @@ const verifyWalletTopup = async (req, res) => {
       });
     }
 
+    // Check if this payment ID was already processed (prevent duplicate credit on replay)
+    const Transaction = require('../../models/Transaction');
+    const existingTxn = await Transaction.findOne({ referenceId: razorpay_payment_id });
+    if (existingTxn) {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already processed',
+        data: {
+          balance: existingTxn.balanceAfter
+        }
+      });
+    }
+
     // Get user
     const user = await User.findById(userId);
     if (!user) {
@@ -147,19 +160,30 @@ const verifyWalletTopup = async (req, res) => {
       });
     }
 
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount < 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount. Minimum amount is ₹100'
+      });
+    }
+
+    if (!user.wallet) {
+      user.wallet = { balance: 0, penalty: 0, promoBalance: 0, cashbackBalance: 0 };
+    }
+
     // Add money to wallet
     const previousBalance = user.wallet.balance || 0;
-    user.wallet.balance = previousBalance + amount;
+    user.wallet.balance = Math.round((previousBalance + numAmount) * 100) / 100;
     await user.save();
 
     // Create Transaction Record
-    const Transaction = require('../../models/Transaction');
     await Transaction.create({
       userId: user._id,
       type: 'credit',
-      amount: amount,
+      amount: numAmount,
       status: 'completed',
-      paymentMethod: 'razorpay', // or online
+      paymentMethod: 'razorpay',
       description: 'Wallet Top-up',
       balanceBefore: previousBalance,
       balanceAfter: user.wallet.balance,

@@ -60,7 +60,14 @@ exports.updateSettings = async (req, res, next) => {
       // Payment Control
       isOnlinePaymentEnabled,
       // Scrap Control
-      isScrapEnabled
+      isScrapEnabled,
+      // Google Maps & Language Settings
+      googleMapsApiKey,
+      googleMapsLanguage,
+      mapRegion,
+      defaultAppLanguage,
+      supportedLanguages,
+      autoDetectLanguageFromMap
     } = req.body;
 
     let settings = await Settings.findOne({ type: 'global' });
@@ -86,6 +93,12 @@ exports.updateSettings = async (req, res, next) => {
         cloudinaryCloudName,
         cloudinaryApiKey,
         cloudinaryApiSecret,
+        googleMapsApiKey: googleMapsApiKey ? String(googleMapsApiKey).trim() : null,
+        googleMapsLanguage: googleMapsLanguage || 'auto',
+        mapRegion: mapRegion || 'IN',
+        defaultAppLanguage: defaultAppLanguage || 'en',
+        supportedLanguages: Array.isArray(supportedLanguages) && supportedLanguages.length > 0 ? supportedLanguages : ['en', 'hi'],
+        autoDetectLanguageFromMap: Boolean(autoDetectLanguageFromMap),
         isOnlinePaymentEnabled: isOnlinePaymentEnabled !== undefined ? isOnlinePaymentEnabled : true,
         isScrapEnabled: isScrapEnabled !== undefined ? isScrapEnabled : true
       });
@@ -107,6 +120,14 @@ exports.updateSettings = async (req, res, next) => {
       if (cloudinaryCloudName !== undefined) settings.cloudinaryCloudName = cloudinaryCloudName;
       if (cloudinaryApiKey !== undefined) settings.cloudinaryApiKey = cloudinaryApiKey;
       if (cloudinaryApiSecret !== undefined) settings.cloudinaryApiSecret = cloudinaryApiSecret;
+
+      // Google Maps & Language update
+      if (googleMapsApiKey !== undefined) settings.googleMapsApiKey = googleMapsApiKey ? String(googleMapsApiKey).trim() : null;
+      if (googleMapsLanguage !== undefined) settings.googleMapsLanguage = googleMapsLanguage;
+      if (mapRegion !== undefined) settings.mapRegion = mapRegion;
+      if (defaultAppLanguage !== undefined) settings.defaultAppLanguage = defaultAppLanguage;
+      if (supportedLanguages !== undefined && Array.isArray(supportedLanguages)) settings.supportedLanguages = supportedLanguages;
+      if (autoDetectLanguageFromMap !== undefined) settings.autoDetectLanguageFromMap = Boolean(autoDetectLanguageFromMap);
 
       // Billing update
       if (companyName !== undefined) settings.companyName = companyName;
@@ -147,7 +168,13 @@ exports.updateSettings = async (req, res, next) => {
       if (io) {
         io.emit('system_config_updated', {
           isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
-          isScrapEnabled: settings.isScrapEnabled !== false
+          isScrapEnabled: settings.isScrapEnabled !== false,
+          googleMapsApiKey: settings.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || '',
+          googleMapsLanguage: settings.googleMapsLanguage || 'auto',
+          mapRegion: settings.mapRegion || 'IN',
+          defaultAppLanguage: settings.defaultAppLanguage || 'en',
+          supportedLanguages: settings.supportedLanguages && settings.supportedLanguages.length > 0 ? settings.supportedLanguages : ['en', 'hi'],
+          autoDetectLanguageFromMap: settings.autoDetectLanguageFromMap ?? false
         });
       }
     } catch (socketErr) {
@@ -217,6 +244,16 @@ exports.getPublicSettings = async (req, res, next) => {
         companyEmail: settings.companyEmail || '',
         isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
         isScrapEnabled: settings.isScrapEnabled !== false,
+
+        // Map API & Language configuration
+        googleMapsApiKey: settings.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || '',
+        googleMapsLanguage: settings.googleMapsLanguage || 'auto',
+        mapRegion: settings.mapRegion || 'IN',
+        defaultAppLanguage: settings.defaultAppLanguage || 'en',
+        supportedLanguages: settings.supportedLanguages && settings.supportedLanguages.length > 0
+          ? settings.supportedLanguages
+          : ['en', 'hi'],
+        autoDetectLanguageFromMap: settings.autoDetectLanguageFromMap ?? false,
 
         // Customization toggles. Read through getAllFlags so a field missing
         // from the stored document resolves to the same default the guards use.
@@ -371,3 +408,60 @@ exports.updateCustomizationToggles = async (req, res) => {
     });
   }
 };
+
+/**
+ * Test Google Maps API key connectivity and validity
+ */
+exports.testGoogleMapsApiKey = async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    let testKey = apiKey && String(apiKey).trim();
+    if (!testKey) {
+      try {
+        const settings = await Settings.findOne({ type: 'global' });
+        testKey = settings?.googleMapsApiKey;
+      } catch (err) {
+        // Fallback to environment variable
+      }
+      testKey = testKey || process.env.GOOGLE_MAPS_API_KEY;
+    }
+
+    if (!testKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'No Google Maps API key provided or configured'
+      });
+    }
+
+    const axios = require('axios');
+    const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+      params: {
+        address: 'Delhi, India',
+        key: testKey
+      },
+      timeout: 6000
+    });
+
+    if (response.data.status === 'OK') {
+      return res.status(200).json({
+        success: true,
+        message: 'Google Maps API key verified successfully! Geocoding response received.',
+        status: response.data.status,
+        result: response.data.results?.[0]?.formatted_address || 'OK'
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Google Maps API error: ${response.data.status}${response.data.error_message ? ` - ${response.data.error_message}` : ''}`,
+        status: response.data.status
+      });
+    }
+  } catch (error) {
+    console.error('Error testing Google Maps API key:', error);
+    return res.status(500).json({
+      success: false,
+      message: error?.response?.data?.error_message || error.message || 'Failed to verify Google Maps API key'
+    });
+  }
+};
+

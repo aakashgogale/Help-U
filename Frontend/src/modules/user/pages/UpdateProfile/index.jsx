@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiUser, FiMail, FiPhone, FiCamera, FiImage, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiUser, FiMail, FiPhone, FiCamera, FiImage, FiX, FiGlobe } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../../theme';
 import { userAuthService } from '../../../../services/authService';
+import { useLanguage } from '../../../../context/LanguageContext';
 import api from '../../../../services/api';
 import flutterBridge from '../../../../utils/flutterBridge';
 
@@ -18,6 +19,7 @@ const profileSchema = z.object({
 
 const UpdateProfile = () => {
   const navigate = useNavigate();
+  const { currentLanguage, setLanguage, supportedLanguages } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -370,6 +372,43 @@ const UpdateProfile = () => {
                 Phone number cannot be changed for security reasons
               </p>
             </div>
+          </div>
+
+          {/* App Language */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              App Language
+            </label>
+            <div className="relative">
+              <div
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                style={{ color: themeColors.button }}
+              >
+                <FiGlobe className="w-5 h-5" />
+              </div>
+              <select
+                value={currentLanguage}
+                onChange={(e) => {
+                  const newLang = e.target.value;
+                  setLanguage(newLang);
+                  try {
+                    localStorage.setItem('app_language_manually_set', 'true');
+                  } catch {}
+                  userAuthService.updateProfile({ settings: { language: newLang } }).catch(() => {});
+                  toast.success('Language preference updated');
+                }}
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white font-medium text-sm cursor-pointer"
+              >
+                {supportedLanguages.map(lang => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name} ({lang.native})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 ml-1">
+              Select your preferred language for maps, services, and navigation
+            </p>
           </div>
         </div>
 

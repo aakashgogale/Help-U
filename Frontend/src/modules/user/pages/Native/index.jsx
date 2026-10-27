@@ -5,6 +5,7 @@ import NativeROPurifiers from './components/NativeROPurifiers';
 import BestInClassFeatures from './components/BestInClassFeatures';
 import TestimonialsSection from './components/TestimonialsSection';
 import BrandPhilosophy from './components/BrandPhilosophy';
+import { getActiveMapsParams } from '../../../../hooks/useGoogleMapsConfig';
 
 const Native = () => {
   const [location, setLocation] = useState('...');
@@ -17,9 +18,9 @@ const Native = () => {
           async (position) => {
             try {
               const { latitude, longitude } = position.coords;
-              const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+              const { apiKey, language } = getActiveMapsParams();
               const response = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
+                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=${language || 'en'}`
               );
               const data = await response.json();
 

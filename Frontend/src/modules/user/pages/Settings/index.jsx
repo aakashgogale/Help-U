@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiBell, FiMail, FiPhone, FiMessageCircle, FiShield, FiChevronRight, FiLogOut, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiBell, FiMail, FiPhone, FiMessageCircle, FiShield, FiChevronRight, FiLogOut, FiTrash2, FiGlobe, FiCheck } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { themeColors } from '../../../../theme';
 import { userAuthService } from '../../../../services/authService';
 import { registerFCMToken, removeFCMToken } from '../../../../services/pushNotificationService';
+import { useLanguage } from '../../../../context/LanguageContext';
 import BottomNav from '../../components/layout/BottomNav';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { currentLanguage, setLanguage, supportedLanguages } = useLanguage();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // State for notification toggles
@@ -18,6 +20,26 @@ const Settings = () => {
     push: true,
     email: true,
   });
+
+  const handleLanguageSelect = async (code) => {
+    const isDifferent = code !== currentLanguage;
+    setLanguage(code);
+    localStorage.setItem('app_language_manually_set', 'true');
+    toast.success('App language updated');
+    try {
+      await userAuthService.updateProfile({
+        settings: { language: code }
+      });
+    } catch (e) {
+      // Local state and localStorage already updated
+    }
+
+    if (isDifferent && typeof window !== 'undefined' && window.google?.maps) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+  };
 
   // Load user settings on mount
   useEffect(() => {
@@ -158,6 +180,43 @@ const Settings = () => {
                 />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* App Language Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <FiGlobe className="w-5 h-5" style={{ color: themeColors.button }} />
+            <h2 className="text-base font-bold text-black">App Language</h2>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100 shadow-xs">
+            {supportedLanguages.map((lang) => {
+              const active = currentLanguage === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => handleLanguageSelect(lang.code)}
+                  className={`w-full p-4 flex items-center justify-between text-left transition-colors cursor-pointer ${
+                    active ? 'bg-teal-50/40' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div>
+                    <span className={`text-sm font-medium block ${active ? 'text-teal-900 font-bold' : 'text-gray-800'}`}>
+                      {lang.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {lang.native}
+                    </span>
+                  </div>
+                  {active && (
+                    <div className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center">
+                      <FiCheck className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

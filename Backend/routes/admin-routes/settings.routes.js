@@ -5,6 +5,7 @@ const { isAdmin, requirePermission } = require('../../middleware/roleMiddleware'
 const {
   getSettings,
   updateSettings,
+  testGoogleMapsApiKey,
   getCustomizationToggles,
   updateCustomizationToggles
 } = require('../../controllers/adminControllers/settingsController');
@@ -20,6 +21,8 @@ router.use('/customization', authenticate, isAdmin, requirePermission('customiza
 router.route('/settings')
   .get(getSettings)
   .put(updateSettings);
+
+router.post('/settings/test-map-api', testGoogleMapsApiKey);
 
 router.route('/customization')
   .get(getCustomizationToggles)

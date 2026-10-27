@@ -8,14 +8,16 @@ import LogoutConfirm from '../../../../components/common/LogoutConfirm';
 import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 import { registerFCMToken, removeFCMToken } from '../../../../services/pushNotificationService';
+import { useLanguage } from '../../../../context/LanguageContext';
 import Header from '../../components/layout/Header';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { currentLanguage, setLanguage: setGlobalLanguage, supportedLanguages } = useLanguage();
   const [settings, setSettings] = useState({
     notifications: true,
     soundAlerts: true,
-    language: 'en',
+    language: currentLanguage || 'en',
   });
   const bookingConfig = useBookingConfig();
   // Stored on the server: the dispatcher reads it when choosing who gets emergency jobs.
@@ -111,6 +113,9 @@ const Settings = () => {
     const updated = { ...settings, language: lang };
     setSettings(updated);
     localStorage.setItem('workerSettings', JSON.stringify(updated));
+    localStorage.setItem('app_language_manually_set', 'true');
+    setGlobalLanguage(lang);
+    api.put('/workers/settings', { language: lang }).catch(() => {});
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -257,29 +262,33 @@ const Settings = () => {
           </div>
 
           <div className="space-y-2">
-            {[
-              { code: 'en', name: 'English' },
-              { code: 'hi', name: 'हिंदी' },
-            ].map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => handleLanguageChange(lang.code)}
-                className={`w-full py-3 px-4 rounded-lg text-left transition-all ${settings.language === lang.code
-                  ? 'text-white'
-                  : 'bg-gray-50 text-gray-700'
+            {supportedLanguages.map((lang) => {
+              const active = (settings.language || currentLanguage) === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  onClick={() => handleLanguageChange(lang.code)}
+                  className={`w-full py-3 px-4 rounded-lg text-left transition-all flex items-center justify-between ${
+                    active
+                      ? 'text-white font-semibold'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
-                style={
-                  settings.language === lang.code
-                    ? {
-                      background: themeColors.button,
-                      boxShadow: `0 2px 8px ${themeColors.button}40`,
-                    }
-                    : {}
-                }
-              >
-                {lang.name}
-              </button>
-            ))}
+                  style={
+                    active
+                      ? {
+                        background: themeColors.button,
+                        boxShadow: `0 2px 8px ${themeColors.button}40`,
+                      }
+                      : {}
+                  }
+                >
+                  <span>{lang.name}</span>
+                  <span className={`text-xs ${active ? 'text-white/80' : 'text-gray-400'}`}>
+                    {lang.native}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

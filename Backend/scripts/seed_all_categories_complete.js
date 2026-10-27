@@ -101,7 +101,7 @@ async function seedAllComplete() {
     {
       slug: 'painting',
       title: 'Painting',
-      homeIconUrl: '/ServiceIcon/painting-roller.svg',
+      homeIconUrl: '/categories/painting.png',
       etaDefaultMinutes: 120,
       displayRating: '4.82',
       bookingsLabel: '450K bookings',
@@ -113,13 +113,13 @@ async function seedAllComplete() {
         tag: 'EXPERT PAINTERS',
         title: 'Waterproof Wall Painting & Texture',
         startingPrice: '999',
-        imageUrl: '/ServiceIcon/painting-roller.svg'
+        imageUrl: '/categories/painting.png'
       }
     },
     {
       slug: 'nail-art-extensions',
       title: 'Nail Art & Extensions',
-      homeIconUrl: '/ServiceIcon/nail-art.svg',
+      homeIconUrl: '/categories/nail-art.png',
       etaDefaultMinutes: 60,
       displayRating: '4.89',
       bookingsLabel: '280K bookings',
@@ -131,13 +131,13 @@ async function seedAllComplete() {
         tag: 'TRENDING NAILS',
         title: 'Gel Extensions & Custom Nail Art',
         startingPrice: '599',
-        imageUrl: '/ServiceIcon/nail-art.svg'
+        imageUrl: '/categories/nail-art.png'
       }
     },
     {
       slug: 'car-wash-at-home',
       title: 'Car Wash at Home',
-      homeIconUrl: '/ServiceIcon/car-wash.svg',
+      homeIconUrl: '/categories/vehicle-washing.png',
       etaDefaultMinutes: 60,
       displayRating: '4.84',
       bookingsLabel: '620K bookings',
@@ -149,13 +149,13 @@ async function seedAllComplete() {
         tag: 'DOORSTEP WASH',
         title: 'Pressure Foam Wash & Interior Vacuum',
         startingPrice: '399',
-        imageUrl: '/ServiceIcon/car-wash.svg'
+        imageUrl: '/categories/vehicle-washing.png'
       }
     },
     {
       slug: 'cctv-services',
       title: 'CCTV & Security Services',
-      homeIconUrl: '/ServiceIcon/cctv.svg',
+      homeIconUrl: '/categories/cctv.png',
       etaDefaultMinutes: 60,
       displayRating: '4.86',
       bookingsLabel: '190K bookings',
@@ -167,7 +167,7 @@ async function seedAllComplete() {
         tag: 'HOME SECURITY',
         title: 'HD CCTV Camera Setup & Online Link',
         startingPrice: '499',
-        imageUrl: '/ServiceIcon/cctv.svg'
+        imageUrl: '/categories/cctv.png'
       }
     }
   ];
@@ -280,7 +280,7 @@ async function seedAllComplete() {
       parentSlug: 'cleaning',
       slug: 'cleaning-water-tank-cleaning',
       title: 'Water Tank Cleaning',
-      homeIconUrl: '/ServiceIcon/water-tank.svg',
+      homeIconUrl: '/categories/water-tank.png',
       etaDefaultMinutes: 90,
       displayRating: '4.88',
       bookingsLabel: '310K bookings',
@@ -291,7 +291,7 @@ async function seedAllComplete() {
         tag: 'HYGIENIC WATER',
         title: '6-Stage UV Tank Disinfection',
         startingPrice: '799',
-        imageUrl: '/ServiceIcon/water-tank.svg'
+        imageUrl: '/categories/water-tank.png'
       }
     },
 
@@ -448,7 +448,7 @@ async function seedAllComplete() {
       parentSlug: 'painting',
       slug: 'painting-wall-painting',
       title: 'Wall Painting',
-      homeIconUrl: '/ServiceIcon/painting-roller.svg',
+      homeIconUrl: '/categories/painting.png',
       etaDefaultMinutes: 120,
       displayRating: '4.82',
       bookingsLabel: '350K bookings',
@@ -460,7 +460,7 @@ async function seedAllComplete() {
       parentSlug: 'painting',
       slug: 'painting-waterproofing',
       title: 'Waterproofing',
-      homeIconUrl: '/ServiceIcon/painting-roller.svg',
+      homeIconUrl: '/categories/painting.png',
       etaDefaultMinutes: 120,
       displayRating: '4.85',
       bookingsLabel: '180K bookings',
@@ -474,7 +474,7 @@ async function seedAllComplete() {
       parentSlug: 'nail-art-extensions',
       slug: 'nail-art-extensions-nail-art',
       title: 'Nail Art & Extensions',
-      homeIconUrl: '/ServiceIcon/nail-art.svg',
+      homeIconUrl: '/categories/nail-art.png',
       etaDefaultMinutes: 60,
       displayRating: '4.89',
       bookingsLabel: '280K bookings',
@@ -488,7 +488,7 @@ async function seedAllComplete() {
       parentSlug: 'car-wash-at-home',
       slug: 'car-wash-at-home-car-wash',
       title: 'Car Wash at Home',
-      homeIconUrl: '/ServiceIcon/car-wash.svg',
+      homeIconUrl: '/categories/car-wash.png',
       etaDefaultMinutes: 60,
       displayRating: '4.84',
       bookingsLabel: '620K bookings',
@@ -502,7 +502,7 @@ async function seedAllComplete() {
       parentSlug: 'cctv-services',
       slug: 'cctv-services-installation-repair',
       title: 'CCTV Installation & Repair',
-      homeIconUrl: '/ServiceIcon/cctv.svg',
+      homeIconUrl: '/categories/cctv.png',
       etaDefaultMinutes: 60,
       displayRating: '4.86',
       bookingsLabel: '190K bookings',

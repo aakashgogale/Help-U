@@ -3,7 +3,8 @@ import { db } from '../../../../firebase';
 import { ref, onValue, off } from 'firebase/database';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleMap, useJsApiLoader, OverlayView, PolylineF } from '@react-google-maps/api';
+import { GoogleMap, OverlayView, PolylineF } from '@react-google-maps/api';
+import { useAppGoogleMaps } from '../../../../hooks/useGoogleMapsConfig';
 import { FiArrowLeft, FiNavigation, FiMapPin, FiCrosshair, FiPhone, FiUser, FiStar, FiShield, FiKey, FiCheckCircle, FiLoader, FiDollarSign, FiMaximize, FiMinimize, FiClock } from 'react-icons/fi';
 import { bookingService } from '../../../../services/bookingService';
 import { paymentService } from '../../../../services/paymentService';
@@ -255,9 +256,7 @@ const BookingTrack = () => {
     }
   }, [id, coords]);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: apiKey,
+  const { isLoaded } = useAppGoogleMaps({
     libraries
   });
 

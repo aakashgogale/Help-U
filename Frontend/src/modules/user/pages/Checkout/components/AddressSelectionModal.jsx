@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FiArrowLeft, FiX, FiSearch, FiMapPin, FiHome } from 'react-icons/fi';
-import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
+import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 import { themeColors } from '../../../../../theme';
 import LocationPicker from './LocationPicker';
 import useModalLock from '../../../../../hooks/useModalLock';
@@ -15,9 +16,7 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
   const [searchQuery, setSearchQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState(null);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  const { isLoaded } = useAppGoogleMaps({
     libraries
   });
 

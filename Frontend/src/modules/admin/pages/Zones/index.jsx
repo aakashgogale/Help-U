@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   GoogleMap,
-  useJsApiLoader,
   Polygon,
   Polyline,
   Marker,
 } from "@react-google-maps/api";
+import { useAppGoogleMaps } from "../../../../hooks/useGoogleMapsConfig";
 import {
   FiPlus,
   FiTrash2,
@@ -84,9 +84,7 @@ class ZonesErrorBoundary extends React.Component {
 }
 
 const ZonesPage = () => {
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+  const { isLoaded, loadError } = useAppGoogleMaps({
     libraries: LIBRARIES,
   });
 

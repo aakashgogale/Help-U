@@ -98,6 +98,31 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Google Maps API & App Language Configuration
+  googleMapsApiKey: {
+    type: String,
+    default: null
+  },
+  googleMapsLanguage: {
+    type: String,
+    default: 'auto' // 'auto' (sync with app language) or specific code: 'en', 'hi', etc.
+  },
+  mapRegion: {
+    type: String,
+    default: 'IN'
+  },
+  defaultAppLanguage: {
+    type: String,
+    default: 'en'
+  },
+  supportedLanguages: {
+    type: [String],
+    default: ['en', 'hi']
+  },
+  autoDetectLanguageFromMap: {
+    type: Boolean,
+    default: false
+  },
   // Future extensible fields
   currency: {
     type: String,

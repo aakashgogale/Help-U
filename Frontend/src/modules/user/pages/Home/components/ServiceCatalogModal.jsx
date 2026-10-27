@@ -366,6 +366,34 @@ const resolveServiceImage = (item, category, categoryTitle) => {
     return '/categories/electrician-switch.svg';
   }
 
+  // === PAINTING ===
+  if (catTitle.includes('paint') || itemTitle.includes('paint') || catTitle.includes('waterproof')) {
+    return '/categories/painting.png';
+  }
+
+  // === VEHICLE WASHING ===
+  if (itemTitle.includes('bike') || catTitle.includes('bike')) {
+    return '/categories/bike-wash.png';
+  }
+  if (catTitle.includes('vehicle') || catTitle.includes('car wash') || itemTitle.includes('car wash') || (catTitle.includes('car') && catTitle.includes('wash'))) {
+    return '/categories/vehicle-washing.png';
+  }
+
+  // === NAIL ART ===
+  if (catTitle.includes('nail') || itemTitle.includes('nail')) {
+    return '/categories/nail-art.png';
+  }
+
+  // === CCTV ===
+  if (catTitle.includes('cctv') || itemTitle.includes('cctv') || catTitle.includes('surveillance')) {
+    return '/categories/cctv.png';
+  }
+
+  // === WATER TANK ===
+  if (catTitle.includes('tank') || itemTitle.includes('tank')) {
+    return '/categories/water-tank.png';
+  }
+
   // Fallbacks if category has an image
   if (category?.imageUrl && isImageValidForCategory(category.imageUrl)) return toAssetUrl(category.imageUrl);
   if (category?.image && isImageValidForCategory(category.image)) return toAssetUrl(category.image);
@@ -692,6 +720,11 @@ const ServiceCatalogModal = React.memo(({
     if (catalogKey === 'cleaning') return '/categories/cleaning.svg';
     if (catalogKey === 'mens-salon') return '/services/mens-salon/haircut.jpg';
     if (catalogKey === 'womens-salon') return '/noteworthy/salon-luxe.jpg';
+    if (catalogKey === 'painting') return '/categories/painting.png';
+    if (catalogKey === 'car-wash-at-home' || catalogKey === 'vehicle-washing') return '/categories/vehicle-washing.png';
+    if (catalogKey === 'nail-art-extensions') return '/categories/nail-art.png';
+    if (catalogKey === 'cctv-services') return '/categories/cctv.png';
+    if (catalogKey === 'water-tank-cleaning') return '/categories/water-tank.png';
     return '/categories/all-services.svg';
   }, [category, catalogKey]);
 

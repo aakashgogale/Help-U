@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
+import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 import { FiCrosshair } from 'react-icons/fi';
 import flutterBridge from '../../../../../utils/flutterBridge';
 import { toast } from 'react-hot-toast';
@@ -23,9 +24,7 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
   const [loading, setLoading] = useState(false);
   const loadingRef = React.useRef(false);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  const { isLoaded, loadError } = useAppGoogleMaps({
     libraries
   });
 

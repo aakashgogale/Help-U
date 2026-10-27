@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
+import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 
 const libraries = ['places', 'geometry'];
 
@@ -18,9 +19,7 @@ const GoogleMapPicker = ({ onLocationSelect, initialPosition = null }) => {
   const [marker, setMarker] = useState(initialPosition || defaultCenter);
   const [loading, setLoading] = useState(false);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  const { isLoaded, loadError } = useAppGoogleMaps({
     libraries
   });
 

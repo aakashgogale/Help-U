@@ -118,6 +118,16 @@ export const ConfigProvider = ({ children }) => {
   const isScheduledBookingEnabled = config?.isScheduledBookingEnabled !== false;
   const isVendorRegistrationEnabled = config?.isVendorRegistrationEnabled !== false;
 
+  // Map API & Language configuration
+  const googleMapsApiKey = config?.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const googleMapsLanguage = config?.googleMapsLanguage || 'auto';
+  const defaultAppLanguage = config?.defaultAppLanguage || 'en';
+  const supportedLanguages = Array.isArray(config?.supportedLanguages) && config.supportedLanguages.length > 0
+    ? config.supportedLanguages
+    : ['en', 'hi'];
+  const autoDetectLanguageFromMap = Boolean(config?.autoDetectLanguageFromMap);
+  const mapRegion = config?.mapRegion || 'IN';
+
   const value = {
     config,
     isScrapEnabled,
@@ -128,6 +138,12 @@ export const ConfigProvider = ({ children }) => {
     isInstantBookingEnabled,
     isScheduledBookingEnabled,
     isVendorRegistrationEnabled,
+    googleMapsApiKey,
+    googleMapsLanguage,
+    defaultAppLanguage,
+    supportedLanguages,
+    autoDetectLanguageFromMap,
+    mapRegion,
     configLoaded,
     loading,
     refreshConfig: fetchConfig,

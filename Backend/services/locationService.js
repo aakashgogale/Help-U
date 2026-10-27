@@ -5,8 +5,30 @@ const axios = require('axios');
  * Handles location-based operations using Google Maps API
  */
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const GOOGLE_MAPS_API_URL = 'https://maps.googleapis.com/maps/api';
+
+let cachedApiKey = null;
+let lastApiKeyFetch = 0;
+const API_KEY_CACHE_TTL = 30000; // 30s cache
+
+/**
+ * Get active Google Maps API key from DB settings with fallback to environment
+ */
+const getActiveApiKey = async () => {
+  const now = Date.now();
+  if (cachedApiKey && (now - lastApiKeyFetch) < API_KEY_CACHE_TTL) {
+    return cachedApiKey;
+  }
+  try {
+    const Settings = require('../models/Settings');
+    const settings = await Settings.findOne({ type: 'global' }).select('googleMapsApiKey');
+    cachedApiKey = settings?.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || null;
+    lastApiKeyFetch = now;
+    return cachedApiKey;
+  } catch (err) {
+    return process.env.GOOGLE_MAPS_API_KEY || null;
+  }
+};
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -29,11 +51,13 @@ const calculateDistance = (coord1, coord2) => {
 /**
  * Geocode address to coordinates using Google Maps API
  * @param {string} address - Full address string
+ * @param {string} [language] - Optional language code (e.g. 'en', 'hi')
  * @returns {Promise<Object>} {lat, lng} coordinates
  */
-const geocodeAddress = async (address) => {
+const geocodeAddress = async (address, language = 'en') => {
   try {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getActiveApiKey();
+    if (!apiKey) {
       console.warn('Google Maps API key not configured, geocoding skipped');
       return null;
     }
@@ -41,7 +65,8 @@ const geocodeAddress = async (address) => {
     const response = await axios.get(`${GOOGLE_MAPS_API_URL}/geocode/json`, {
       params: {
         address: address,
-        key: GOOGLE_MAPS_API_KEY
+        key: apiKey,
+        ...(language ? { language } : {})
       }
     });
 
@@ -56,6 +81,92 @@ const geocodeAddress = async (address) => {
     throw new Error(`Geocoding failed: ${response.data.status}`);
   } catch (error) {
     console.error('Geocoding error:', error);
+    return null;
+  }
+};
+
+/**
+ * Reverse geocode coordinates to formatted address and components
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @param {string} [language] - Language code
+ * @returns {Promise<Object|null>}
+ */
+const reverseGeocode = async (lat, lng, language = 'en') => {
+  try {
+    const apiKey = await getActiveApiKey();
+    if (!apiKey) {
+      console.warn('Google Maps API key not configured, reverse geocoding skipped');
+      return null;
+    }
+
+    const response = await axios.get(`${GOOGLE_MAPS_API_URL}/geocode/json`, {
+      params: {
+        latlng: `${lat},${lng}`,
+        key: apiKey,
+        language
+      }
+    });
+
+    if (response.data.status === 'OK' && response.data.results.length > 0) {
+      return response.data.results[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
+};
+
+/**
+ * Detect regional language recommendation from coordinates using Google Maps API
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {Promise<{language: string, state: string}|null>}
+ */
+const detectLanguageFromLocation = async (lat, lng) => {
+  try {
+    const result = await reverseGeocode(lat, lng, 'en');
+    if (!result) return null;
+
+    const stateComponent = result.address_components?.find(c =>
+      c.types.includes('administrative_area_level_1')
+    );
+    const stateName = (stateComponent?.long_name || '').toLowerCase();
+
+    // Map Indian states to primary regional language codes
+    const stateLanguageMap = {
+      'madhya pradesh': 'hi',
+      'uttar pradesh': 'hi',
+      'bihar': 'hi',
+      'rajasthan': 'hi',
+      'delhi': 'hi',
+      'haryana': 'hi',
+      'himachal pradesh': 'hi',
+      'uttarakhand': 'hi',
+      'jharkhand': 'hi',
+      'chhattisgarh': 'hi',
+      'maharashtra': 'mr',
+      'gujarat': 'gu',
+      'west bengal': 'bn',
+      'tamil nadu': 'ta',
+      'karnataka': 'kn',
+      'telangana': 'te',
+      'andhra pradesh': 'te',
+      'punjab': 'pa',
+      'kerala': 'ml',
+      'odisha': 'or',
+      'assam': 'as'
+    };
+
+    for (const [key, lang] of Object.entries(stateLanguageMap)) {
+      if (stateName.includes(key)) {
+        return { language: lang, state: stateComponent.long_name };
+      }
+    }
+    return { language: 'en', state: stateComponent?.long_name || '' };
+  } catch (err) {
+    console.error('Error detecting language from location:', err);
     return null;
   }
 };
@@ -295,9 +406,10 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
   }
 };
 
-const getDistanceMatrix = async (origins, destinations) => {
+const getDistanceMatrix = async (origins, destinations, language = 'en') => {
   try {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getActiveApiKey();
+    if (!apiKey) {
       console.warn('Google Maps API key not configured, using mock distances');
       // Return mock distances
       return origins.map(() => destinations.map(() => ({ distance: { value: 5000 } })));
@@ -310,8 +422,9 @@ const getDistanceMatrix = async (origins, destinations) => {
       params: {
         origins: originsStr,
         destinations: destinationsStr,
-        key: GOOGLE_MAPS_API_KEY,
-        units: 'metric'
+        key: apiKey,
+        units: 'metric',
+        ...(language ? { language } : {})
       }
     });
 
@@ -348,6 +461,9 @@ const findWorkersByCity = async (city, filters = {}) => {
 
 module.exports = {
   geocodeAddress,
+  reverseGeocode,
+  detectLanguageFromLocation,
+  getActiveApiKey,
   findNearbyWorkers,
   findWorkersByCity,
   calculateDistance,

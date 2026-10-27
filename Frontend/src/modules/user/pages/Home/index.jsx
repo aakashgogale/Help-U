@@ -9,6 +9,8 @@ import { useCart } from '../../../../context/CartContext';
 import { useCity } from '../../../../context/CityContext';
 import { useZone } from '../../../../context/ZoneContext';
 import { useConfig } from '../../../../context/ConfigContext';
+import { useLanguage } from '../../../../context/LanguageContext';
+import { useGoogleMapsConfig } from '../../../../hooks/useGoogleMapsConfig';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -117,6 +119,8 @@ const Home = () => {
   const { currentCity, cities, selectCity, loading: cityLoading } = useCity();
   const { isScrapEnabled } = useConfig();
   const { detectZone, zoneId, isOutOfZone, currentZone } = useZone();
+  const { apiKey: configuredMapApiKey } = useGoogleMapsConfig();
+  const { mapLanguage, detectLanguageFromLocation, autoDetectEnabled, setLanguage } = useLanguage();
 
   // Clean up legacy storage keys on mount
   useEffect(() => {
@@ -232,9 +236,9 @@ const Home = () => {
             async (position) => {
               try {
                 const { latitude, longitude } = position.coords;
-                const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+                const apiKey = configuredMapApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
                 const response = await fetch(
-                  `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
+                  `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=${mapLanguage || 'en'}`
                 );
                 const data = await response.json();
 
@@ -244,6 +248,14 @@ const Home = () => {
 
                 if (data.status === 'OK' && data.results.length > 0) {
                   const result = data.results[0];
+
+                  // Location-based language detection if enabled by admin
+                  if (autoDetectEnabled && !localStorage.getItem('app_language_manually_set')) {
+                    const detectedLang = detectLanguageFromLocation(result.address_components);
+                    if (detectedLang) {
+                      setLanguage(detectedLang);
+                    }
+                  }
                   const getComponent = (type) =>
                     result.address_components.find(c => c.types.includes(type))?.long_name || '';
 

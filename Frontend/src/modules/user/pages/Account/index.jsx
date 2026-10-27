@@ -23,10 +23,13 @@ import {
   FiShield,
   FiZap,
   FiHelpCircle,
-  FiInfo
+  FiInfo,
+  FiGlobe
 } from 'react-icons/fi';
 import { MdAccountBalanceWallet } from 'react-icons/md';
 import PageHeader from '../../components/layout/PageHeader';
+import { useLanguage } from '../../../../context/LanguageContext';
+import LanguageSelectorModal from '../../../../components/common/LanguageSelectorModal';
 
 const toProfile = (user = {}) => ({
   name: user.name || 'Verified Customer',
@@ -62,18 +65,21 @@ const itemVariants = {
 };
 
 // One row of a grouped menu list
-const MenuRow = ({ icon, label, onClick }) => {
+const MenuRow = ({ icon, label, subtitle, onClick }) => {
   const Icon = icon;
   return (
   <button
     type="button"
     onClick={onClick}
-    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
   >
     <span className="w-9 h-9 rounded-full bg-canvas flex items-center justify-center text-ink shrink-0">
       <Icon className="w-[18px] h-[18px]" />
     </span>
-    <span className="flex-1 text-[15px] font-medium text-ink">{label}</span>
+    <span className="flex-1 text-[15px] font-medium text-ink flex items-center justify-between">
+      <span>{label}</span>
+      {subtitle && <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full mr-1">{subtitle}</span>}
+    </span>
     <FiChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
   </button>
   );
@@ -112,9 +118,13 @@ const AccountSkeleton = () => (
 const Account = () => {
   const navigate = useNavigate();
   const { isScrapEnabled } = useConfig();
+  const { currentLanguage, supportedLanguages } = useLanguage();
   const bookingConfig = useBookingConfig();
   const [userProfile, setUserProfile] = useState(() => toProfile(readStoredUser() || {}));
   const [isLoading, setIsLoading] = useState(() => !readStoredUser());
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
+
+  const activeLang = supportedLanguages.find(l => l.code === currentLanguage);
 
   // Show cached profile immediately, then refresh from the API
   useEffect(() => {
@@ -280,6 +290,12 @@ const Account = () => {
           <MenuGroup
             title="Preferences"
             items={[
+              {
+                icon: FiGlobe,
+                label: 'Language',
+                subtitle: activeLang ? `${activeLang.name} (${activeLang.native})` : 'English',
+                onClick: () => setIsLanguageModalOpen(true)
+              },
               { icon: FiMapPin, label: 'Manage Addresses', onClick: () => navigate('/user/manage-addresses') },
               { icon: FiSettings, label: 'Settings', onClick: () => navigate('/user/settings') },
             ]}
@@ -311,6 +327,11 @@ const Account = () => {
           </motion.div>
         </motion.main>
       )}
+
+      <LanguageSelectorModal
+        isOpen={isLanguageModalOpen}
+        onClose={() => setIsLanguageModalOpen(false)}
+      />
     </div>
   );
 };

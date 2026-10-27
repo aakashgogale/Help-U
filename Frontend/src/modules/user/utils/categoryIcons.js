@@ -1,7 +1,7 @@
 // Vector category illustrations in public/ServiceIcon and public/categories.
 // Shared by the home category grid, cart, and booking cards so a category looks the same everywhere.
 // Bump when the SVG files change so browsers don't keep showing cached copies
-const ICON_VERSION = 6;
+const ICON_VERSION = 7;
 
 export const getCategoryIllustration = (title) => {
   if (!title) return null;
@@ -77,6 +77,34 @@ export const getCategoryIllustration = (title) => {
   // Specific Subcategory: Massage for Men (standalone)
   if (t.includes('massage')) {
     return '/services/mens-salon/massage.jpg';
+  }
+
+  // Painting
+  if (t.includes('paint') || t.includes('waterproof') || t.includes('colour') || t.includes('color')) {
+    return catFile('painting.png');
+  }
+
+  // Vehicle Washing & Car/Bike Wash
+  if (t.includes('bike') && t.includes('wash')) {
+    return catFile('bike-wash.png');
+  }
+  if (t.includes('vehicle') || t.includes('car wash') || t.includes('car-wash') || (t.includes('car') && t.includes('clean'))) {
+    return catFile('vehicle-washing.png');
+  }
+
+  // Nail Art & Extensions
+  if (t.includes('nail')) {
+    return catFile('nail-art.png');
+  }
+
+  // CCTV & Security
+  if (t.includes('cctv') || t.includes('surveillance') || (t.includes('security') && !t.includes('deposit'))) {
+    return catFile('cctv.png');
+  }
+
+  // Water Tank
+  if (t.includes('tank')) {
+    return catFile('water-tank.png');
   }
 
   // Appliances

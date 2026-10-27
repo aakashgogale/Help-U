@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleMap, useJsApiLoader, OverlayView, PolylineF } from '@react-google-maps/api';
+import { GoogleMap, OverlayView, PolylineF } from '@react-google-maps/api';
+import { useAppGoogleMaps } from '../../../../hooks/useGoogleMapsConfig';
 import { FiArrowLeft, FiNavigation, FiMapPin, FiCrosshair, FiPhone, FiClock, FiCheckCircle, FiX, FiMaximize, FiMinimize, FiWifiOff, FiAlertTriangle, FiRefreshCw, FiTool, FiDollarSign } from 'react-icons/fi';
 import { FaMotorcycle } from 'react-icons/fa';
 import { getBookingById, verifySelfVisit, startSelfJob, workerReached } from '../../services/bookingService';
@@ -76,13 +77,11 @@ const BookingMap = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const simulationRef = useRef(null);
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: apiKey,
-    libraries
+  const { isLoaded, apiKey } = useAppGoogleMaps({
+    libraries,
+    mapIds: mapId ? [mapId] : undefined
   });
 
   const mapRef = useRef(null);

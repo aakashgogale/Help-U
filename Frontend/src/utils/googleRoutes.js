@@ -10,6 +10,8 @@
 
 const ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
+import { getActiveMapsParams } from '../hooks/useGoogleMapsConfig';
+
 /**
  * Pure JS polyline decoder (Google polyline algorithm)
  */
@@ -65,7 +67,7 @@ export const computeRoute = async (origin, destination) => {
     throw new Error('Origin and destination are required');
   }
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const { apiKey, language } = getActiveMapsParams();
 
   // 1. Try Google Routes API v2
   if (apiKey) {
@@ -81,7 +83,8 @@ export const computeRoute = async (origin, destination) => {
           origin: { location: { latLng: toLatLngLiteral(origin) } },
           destination: { location: { latLng: toLatLngLiteral(destination) } },
           travelMode: 'DRIVE',
-          routingPreference: 'TRAFFIC_AWARE'
+          routingPreference: 'TRAFFIC_AWARE',
+          languageCode: language || 'en'
         })
       });
 

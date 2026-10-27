@@ -100,3 +100,12 @@ export const updateCustomizationToggles = async (toggles) => {
     throw error;
   }
 };
+
+export const testGoogleMapsApiKey = async (apiKey) => {
+  try {
+    const response = await api.post('/admin/settings/test-map-api', { apiKey });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
