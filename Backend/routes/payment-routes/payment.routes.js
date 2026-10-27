@@ -46,7 +46,7 @@ router.post('/create-order', authenticate, isUser, requireFlag('isOnlinePaymentE
 router.post('/verify', authenticate, isUser, verifyPaymentValidation, verifyPaymentWebhook);
 router.post('/webhook', handleRazorpayWebhook); // Server-to-server webhook from Razorpay (no user auth)
 router.post('/wallet', authenticate, isUser, requireFlag('isWalletPaymentEnabled', 'Wallet payment is currently unavailable.'), walletPaymentValidation, processWalletPayment);
-router.post('/refund', authenticate, isUser, refundValidation, processRefund);
+router.post('/refund', authenticate, refundValidation, processRefund);
 router.post('/pay-at-home', authenticate, isUser, walletPaymentValidation, confirmPayAtHome);
 router.get('/history', authenticate, isUser, getPaymentHistory);
 router.post('/plan/create-order', authenticate, isUser, requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), createPlanOrder);

@@ -175,6 +175,27 @@ const cancelBooking = async (req, res) => {
       booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
     }
 
+    // Restore coupon usage if applicable
+    if (booking.couponId) {
+      try {
+        const Coupon = require('../../models/Coupon');
+        const CouponRedemption = require('../../models/CouponRedemption');
+        await Coupon.findByIdAndUpdate(booking.couponId, { $inc: { usedCount: -1 } });
+        await CouponRedemption.deleteOne({ bookingId: booking._id });
+      } catch (couponErr) {
+        console.warn('[AdminCancelBooking] Failed to restore coupon usage:', couponErr.message);
+      }
+    }
+
+    // Reset worker availability if assigned
+    if (booking.vendorId) {
+      const Worker = require('../../models/Worker');
+      await Worker.findOneAndUpdate(
+        { _id: booking.vendorId, availability: 'ON_JOB' },
+        { $set: { availability: 'AVAILABLE' } }
+      ).catch(err => console.error('[AdminCancelBooking] Failed to reset worker availability:', err.message));
+    }
+
     // Update booking
     booking.status = BOOKING_STATUS.CANCELLED;
     booking.cancelledAt = new Date();
@@ -183,6 +204,28 @@ const cancelBooking = async (req, res) => {
     booking.cancellationReason = cancellationReason || 'Cancelled by admin';
 
     await booking.save();
+
+    const { createNotification } = require('../notificationControllers/notificationController');
+    if (booking.userId) {
+      await createNotification({
+        userId: booking.userId,
+        type: 'booking_cancelled',
+        title: 'Booking Cancelled by Admin',
+        message: `Your booking ${booking.bookingNumber} was cancelled by support. Reason: ${cancellationReason || 'Administrative cancellation'}.`,
+        relatedId: booking._id,
+        relatedType: 'booking'
+      }).catch(() => null);
+    }
+    if (booking.vendorId) {
+      await createNotification({
+        vendorId: booking.vendorId,
+        type: 'booking_cancelled',
+        title: 'Booking Cancelled by Admin',
+        message: `Booking ${booking.bookingNumber} was cancelled by support.`,
+        relatedId: booking._id,
+        relatedType: 'booking'
+      }).catch(() => null);
+    }
 
     res.status(200).json({
       success: true,

@@ -397,13 +397,17 @@ const Checkout = () => {
         setSearchingWorkers(false);
         toast.success(`${workerData.businessName || workerData.name || 'Worker'} accepted your booking!`);
 
-        // Close modal after 2 seconds and navigate to confirmation
+        // Close search modal after brief confirmation and transition to payment step
         setTimeout(() => {
           setShowWorkerModal(false);
-          navigate(`/user/booking-confirmation/${bookingRequest._id}`, {
-            replace: true
-          });
-        }, 2000);
+          if (itemTotal === 0) {
+            navigate(`/user/booking-confirmation/${bookingRequest._id}`, {
+              replace: true
+            });
+          } else {
+            setCurrentStep('payment');
+          }
+        }, 1500);
       }
     });
 

@@ -3,7 +3,7 @@ const User = require('../../models/User');
 const Settings = require('../../models/Settings');
 const Plan = require('../../models/Plan');
 const { validationResult } = require('express-validator');
-const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
+const { PAYMENT_STATUS, BOOKING_STATUS, ADMIN_ROLES } = require('../../utils/constants');
 const { createOrder, verifyPayment, refundPayment } = require('../../services/razorpayService');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
@@ -18,8 +18,14 @@ const getDefaultWorkerShare = async () => {
 };
 
 const getFinalPaymentAmount = (booking) => {
-  const amount = Number(booking.userPayableAmount ?? booking.finalAmount ?? 0);
-  return Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  const advancePaid = booking.advancePayment?.status === 'paid'
+    ? Number(booking.advancePayment?.paidAmount || booking.advancePayment?.requestedAmount || 0)
+    : 0;
+  if (booking.userPayableAmount != null && Number.isFinite(Number(booking.userPayableAmount))) {
+    return Math.max(0, Number(booking.userPayableAmount));
+  }
+  const total = Number(booking.finalAmount ?? 0);
+  return Number.isFinite(total) ? Math.max(0, total - advancePaid) : 0;
 };
 
 const getAdvancePaymentAmount = (booking) => {
@@ -303,7 +309,12 @@ const verifyPaymentWebhook = async (req, res) => {
 
     // Update booking status based on current state
     if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
-      booking.status = BOOKING_STATUS.CONFIRMED;
+      if (booking.vendorId) {
+        booking.status = BOOKING_STATUS.CONFIRMED;
+      } else {
+        // Upfront payment before worker assignment keeps booking searching for a worker
+        booking.status = BOOKING_STATUS.SEARCHING;
+      }
     } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
       booking.status = BOOKING_STATUS.COMPLETED;
       booking.completedAt = new Date();
@@ -565,80 +576,90 @@ const processWalletPayment = async (req, res) => {
         }
         user.wallet.balance = debitedUser.wallet.balance;
 
-        if (paymentType === 'advance') {
-          booking.advancePayment.status = 'paid';
-          booking.advancePayment.paidAmount = payableAmount;
-          booking.advancePayment.paidAt = new Date();
-          booking.advancePayment.paymentMethod = 'wallet';
-          booking.advancePayment.paymentId = `ADV_WALLET_${Date.now()}`;
+        // Freshly query the booking in this session to prevent VersionError race conditions with background dispatch
+        const currentBooking = await Booking.findById(booking._id).session(session);
+        if (!currentBooking) {
+          throw new Error('Booking not found during transaction');
+        }
 
-          await booking.save({ session });
+        if (paymentType === 'advance') {
+          currentBooking.advancePayment.status = 'paid';
+          currentBooking.advancePayment.paidAmount = payableAmount;
+          currentBooking.advancePayment.paidAt = new Date();
+          currentBooking.advancePayment.paymentMethod = 'wallet';
+          currentBooking.advancePayment.paymentId = `ADV_WALLET_${Date.now()}`;
+
+          await currentBooking.save({ session });
 
           await Transaction.create([{
             userId,
-            bookingId: booking._id,
+            bookingId: currentBooking._id,
             amount: payableAmount,
             type: 'advance_payment',
             paymentMethod: 'wallet',
             status: 'completed',
-            description: `Advance wallet payment for booking ${booking.bookingNumber}`,
+            description: `Advance wallet payment for booking ${currentBooking.bookingNumber}`,
             balanceAfter: user.wallet.balance
           }], { session });
 
         } else {
           // Final payment
-          booking.paymentStatus = PAYMENT_STATUS.SUCCESS;
-          booking.paymentMethod = 'wallet';
-          booking.paymentId = `WALLET_${Date.now()}`;
+          currentBooking.paymentStatus = PAYMENT_STATUS.SUCCESS;
+          currentBooking.paymentMethod = 'wallet';
+          currentBooking.paymentId = `WALLET_${Date.now()}`;
 
-          if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
-            booking.status = BOOKING_STATUS.CONFIRMED;
-          } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
-            booking.status = BOOKING_STATUS.COMPLETED;
-            booking.completedAt = new Date();
+          if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(currentBooking.status)) {
+            if (currentBooking.vendorId) {
+              currentBooking.status = BOOKING_STATUS.CONFIRMED;
+            } else {
+              currentBooking.status = BOOKING_STATUS.SEARCHING;
+            }
+          } else if (currentBooking.status === BOOKING_STATUS.WORK_DONE) {
+            currentBooking.status = BOOKING_STATUS.COMPLETED;
+            currentBooking.completedAt = new Date();
           }
 
           // Clear user penalty now that booking is confirmed/completed
-          if (booking.penalty > 0) {
+          if (currentBooking.penalty > 0) {
             await User.findByIdAndUpdate(userId, { $set: { 'wallet.penalty': 0 } }, { session });
           }
 
-          await booking.save({ session });
+          await currentBooking.save({ session });
 
           // Record User Payment Transaction
           await Transaction.create([{
             userId,
-            bookingId: booking._id,
+            bookingId: currentBooking._id,
             amount: payableAmount,
             type: 'debit',
             paymentMethod: 'wallet',
             status: 'completed',
-            description: `Final wallet payment for booking ${booking.bookingNumber}`,
+            description: `Final wallet payment for booking ${currentBooking.bookingNumber}`,
             balanceAfter: user.wallet.balance
           }], { session });
 
           // Credit worker earnings if bill exists
-          if (bill && booking.vendorId) {
+          if (bill && currentBooking.vendorId) {
             vendorEarning = bill.vendorTotalEarning;
             bill.status = 'paid';
             bill.paidAt = new Date();
             await bill.save({ session });
 
             await Worker.findByIdAndUpdate(
-              booking.vendorId,
+              currentBooking.vendorId,
               { $inc: { 'wallet.earnings': vendorEarning } },
               { session }
             );
 
             if (vendorEarning > 0) {
               await Transaction.create([{
-                vendorId: booking.vendorId,
-                bookingId: booking._id,
+                vendorId: currentBooking.vendorId,
+                bookingId: currentBooking._id,
                 amount: vendorEarning,
                 type: 'earnings_credit',
                 paymentMethod: 'system',
                 status: 'completed',
-                description: `Earnings ₹${vendorEarning} credited for booking ${booking.bookingNumber} (wallet payment)`,
+                description: `Earnings ₹${vendorEarning} credited for booking ${currentBooking.bookingNumber} (wallet payment)`,
                 metadata: {
                   type: 'earnings_increase',
                   billId: bill._id.toString(),
@@ -649,6 +670,7 @@ const processWalletPayment = async (req, res) => {
             }
           }
         }
+        Object.assign(booking, currentBooking.toObject());
       });
     } finally {
       await session.endSession();
@@ -795,16 +817,63 @@ const processRefund = async (req, res) => {
       });
     }
 
-    // Check if payment was successful
-    if (booking.paymentStatus !== PAYMENT_STATUS.SUCCESS) {
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN', ...Object.values(ADMIN_ROLES || {})].includes(req.userRole);
+
+    if (!isAdmin) {
+      if (String(booking.userId) !== callerId) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to refund this booking'
+        });
+      }
+      if (booking.status !== BOOKING_STATUS.CANCELLED) {
+        return res.status(400).json({
+          success: false,
+          message: 'Refund can only be requested for cancelled bookings'
+        });
+      }
+    }
+
+    // Check if payment was successful or advance was paid
+    const isPaymentSuccess = booking.paymentStatus === PAYMENT_STATUS.SUCCESS;
+    const isAdvancePaid = booking.advancePayment?.status === 'paid';
+    if (!isPaymentSuccess && !isAdvancePaid) {
       return res.status(400).json({
         success: false,
-        message: 'Payment not completed for this booking'
+        message: 'No completed payment found for this booking'
       });
     }
 
-    // Process refund based on payment method
-    const refundAmount = Number(amount || booking.finalAmount || 0);
+    const totalPaid = isPaymentSuccess
+      ? Number(booking.finalAmount || 0)
+      : Number(booking.advancePayment?.paidAmount || booking.advancePayment?.requestedAmount || 0);
+    const alreadyRefunded = Number(booking.refundedAmount || 0);
+    const maxRefundable = Math.max(0, totalPaid - alreadyRefunded);
+
+    if (maxRefundable <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This booking has already been fully refunded'
+      });
+    }
+
+    const requestedAmount = (amount !== undefined && amount !== null && amount !== '') ? Number(amount) : maxRefundable;
+    if (isNaN(requestedAmount) || requestedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund amount must be greater than zero'
+      });
+    }
+
+    if (requestedAmount > maxRefundable) {
+      return res.status(400).json({
+        success: false,
+        message: `Refund amount cannot exceed remaining refundable amount of ₹${maxRefundable}`
+      });
+    }
+
+    const refundAmount = requestedAmount;
     const Transaction = require('../../models/Transaction');
     const isOnlineMethod = ['razorpay', 'online', 'Qr online'].includes(booking.paymentMethod);
 
@@ -840,8 +909,8 @@ const processRefund = async (req, res) => {
       });
 
       // Update booking payment status
-      booking.refundedAmount = (booking.refundedAmount || 0) + refundAmount;
-      booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
+      booking.refundedAmount = alreadyRefunded + refundAmount;
+      booking.paymentStatus = (booking.refundedAmount >= totalPaid) ? PAYMENT_STATUS.REFUNDED : 'partially_refunded';
     } else if (booking.paymentMethod === 'wallet' || !booking.razorpayPaymentId) {
       // Wallet refund - add back to user wallet atomically
       const updatedUser = await User.findOneAndUpdate(
@@ -863,8 +932,8 @@ const processRefund = async (req, res) => {
       });
 
       // Update booking payment status
-      booking.refundedAmount = (booking.refundedAmount || 0) + refundAmount;
-      booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
+      booking.refundedAmount = alreadyRefunded + refundAmount;
+      booking.paymentStatus = (booking.refundedAmount >= totalPaid) ? PAYMENT_STATUS.REFUNDED : 'partially_refunded';
     } else {
       return res.status(400).json({
         success: false,
@@ -879,7 +948,8 @@ const processRefund = async (req, res) => {
       message: 'Refund processed successfully',
       data: {
         bookingId: booking._id,
-        refundAmount: amount || booking.finalAmount
+        refundAmount,
+        remainingRefundable: Math.max(0, totalPaid - booking.refundedAmount)
       }
     });
   } catch (error) {
@@ -962,10 +1032,22 @@ const confirmPayAtHome = async (req, res) => {
       });
     }
 
-    // Update booking status — NO earnings set (WorkerBill handles that later)
+    if ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot switch payment method when booking is in ${booking.status} status`
+      });
+    }
+
+    // Update booking payment method
     booking.paymentMethod = 'pay_at_home';
     booking.paymentStatus = PAYMENT_STATUS.PENDING;
-    booking.status = BOOKING_STATUS.CONFIRMED;
+
+    // Only set to CONFIRMED if booking is in initial search/requested phase and worker has accepted;
+    // Otherwise keep current status (SEARCHING if no worker, or WORK_DONE / AWAITING_PAYMENT if work is completed)
+    if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.REQUESTED].includes(booking.status)) {
+      booking.status = booking.vendorId ? BOOKING_STATUS.CONFIRMED : BOOKING_STATUS.SEARCHING;
+    }
 
     await booking.save();
 
@@ -1232,7 +1314,11 @@ const handleRazorpayWebhook = async (req, res) => {
             booking.razorpayPaymentId = paymentId;
             booking.paymentId = paymentId;
             if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.AWAITING_PAYMENT].includes(booking.status)) {
-              booking.status = BOOKING_STATUS.CONFIRMED;
+              if (booking.vendorId) {
+                booking.status = BOOKING_STATUS.CONFIRMED;
+              } else {
+                booking.status = BOOKING_STATUS.SEARCHING;
+              }
             } else if (booking.status === BOOKING_STATUS.WORK_DONE) {
               booking.status = BOOKING_STATUS.COMPLETED;
               booking.completedAt = new Date();

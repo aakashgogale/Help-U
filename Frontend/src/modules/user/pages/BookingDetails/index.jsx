@@ -465,7 +465,11 @@ const BookingDetails = () => {
       toast.dismiss();
 
       if (response.success) {
-        toast.success('Booking confirmed!');
+        toast.success(
+          booking.status === 'awaiting_payment' || booking.status === 'work_done'
+            ? 'Pay at Home selected. Please pay cash to the professional.'
+            : 'Booking confirmed!'
+        );
         loadBooking();
       } else {
         toast.error(response.message || 'Failed to confirm booking');

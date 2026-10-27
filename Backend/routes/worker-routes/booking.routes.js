@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const { body } = require('express-validator');
+const { BOOKING_STATUS } = require('../../utils/constants');
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isWorker } = require('../../middleware/roleMiddleware');
 const {
@@ -29,7 +30,7 @@ const rejectBookingValidation = [
 ];
 
 const updateStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'rejected'])
+  body('status').isIn(Object.values(BOOKING_STATUS))
     .withMessage('Invalid status')
 ];
 

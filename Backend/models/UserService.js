@@ -215,6 +215,18 @@ const userServiceSchema = new mongoose.Schema({
     default: []
   },
 
+  // Rating & Reviews
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalReviews: {
+    type: Number,
+    default: 0
+  },
+
   // ==========================================
   // VARIANTS / PACKAGES (approved sub-document approach)
   // Services without variants keep working: an empty array means pricing

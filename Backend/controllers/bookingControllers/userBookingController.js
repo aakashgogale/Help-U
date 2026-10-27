@@ -338,6 +338,15 @@ const cancelBooking = async (req, res) => {
       }
     }
 
+    // Reset worker availability if assigned
+    if (booking.vendorId) {
+      const Worker = require('../../models/Worker');
+      await Worker.findOneAndUpdate(
+        { _id: booking.vendorId, availability: 'ON_JOB' },
+        { $set: { availability: 'AVAILABLE' } }
+      ).catch(err => console.error('[CancelBooking] Failed to reset worker availability:', err.message));
+    }
+
     // Update booking status
     booking.status = BOOKING_STATUS.CANCELLED;
     booking.cancelledAt = new Date();
@@ -602,13 +611,20 @@ const addReview = async (req, res) => {
         const newTotal = oldTotal + 1;
         const updatedRating = ((oldRating * oldTotal) + newRating) / newTotal;
 
-        doc.rating = Number(updatedRating.toFixed(2));
-        doc.totalReviews = newTotal;
-        await doc.save();
+        await Model.findByIdAndUpdate(docId, {
+          rating: Number(updatedRating.toFixed(2)),
+          totalReviews: newTotal
+        });
       } catch (err) {
         console.error(`Error updating rating for ${Model.modelName}:`, err);
       }
     };
+
+    // Update Service Rating
+    if (booking.serviceId) {
+      const UserService = require('../../models/UserService');
+      await updateCumulativeRating(UserService, booking.serviceId, rating);
+    }
 
     // The service's public rating just changed
     require('../../utils/catalogCache').invalidatePublicCatalogKeys().catch(() => {});

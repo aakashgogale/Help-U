@@ -96,7 +96,8 @@ class BookingScheduler {
       // --- CIRCUIT BREAKER: Fast query to detect if any work is needed ---
       const activeBookings = await Booking.find(
         {
-          status: BOOKING_STATUS.SEARCHING,
+          status: { $in: [BOOKING_STATUS.SEARCHING, BOOKING_STATUS.CONFIRMED] },
+          vendorId: null,
           waveStartedAt: { $ne: null },
           potentialVendors: { $exists: true, $not: { $size: 0 } }
         },
@@ -130,7 +131,7 @@ class BookingScheduler {
               console.log(`[BookingScheduler] ${booking.bookingNumber}: Search timed out. Cancelling.`);
 
               await Booking.findOneAndUpdate(
-                { _id: booking._id, status: BOOKING_STATUS.SEARCHING },
+                { _id: booking._id, status: { $in: [BOOKING_STATUS.SEARCHING, BOOKING_STATUS.CONFIRMED] }, vendorId: null },
                 {
                   $set: {
                     status: BOOKING_STATUS.CANCELLED,
@@ -238,7 +239,7 @@ class BookingScheduler {
             // next wave moves on to new people.
             const notifyIds = workersToNotify.map((v) => v.vendorId);
             const advanced = await Booking.findOneAndUpdate(
-              { _id: booking._id, status: BOOKING_STATUS.SEARCHING },
+              { _id: booking._id, status: { $in: [BOOKING_STATUS.SEARCHING, BOOKING_STATUS.CONFIRMED] }, vendorId: null },
               {
                 $set: { currentWave: nextWave, waveStartedAt: new Date() },
                 $addToSet: {

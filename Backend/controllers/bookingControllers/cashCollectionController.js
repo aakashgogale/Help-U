@@ -8,8 +8,14 @@ const { billLockReason } = require('../../utils/billLock');
 const { getBookingConfig } = require('../../utils/bookingConfig');
 
 const getRemainingPayableAmount = (booking) => {
-  const amount = Number(booking.userPayableAmount ?? booking.finalAmount ?? 0);
-  return Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  const advancePaid = booking.advancePayment?.status === 'paid'
+    ? Number(booking.advancePayment?.paidAmount || booking.advancePayment?.requestedAmount || 0)
+    : 0;
+  if (booking.userPayableAmount != null && Number.isFinite(Number(booking.userPayableAmount))) {
+    return Math.max(0, Number(booking.userPayableAmount));
+  }
+  const total = Number(booking.finalAmount ?? 0);
+  return Number.isFinite(total) ? Math.max(0, total - advancePaid) : 0;
 };
 
 // Falls back to the admin-configured default commission rate when a
@@ -93,13 +99,22 @@ exports.initiateOnlineCollection = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+
     // Optional: Update final total and extra items if provided during initiation
     const { totalAmount, extraItems } = req.body;
     // Once a bill exists the server's amount is final; a client-computed total must
-    // not overwrite it (that was a source of worker/user amount mismatches).
+    // not downgrade or tamper with the final amount.
     if (!booking.vendorBillId && totalAmount !== undefined && !isNaN(parseFloat(totalAmount))) {
-      booking.userPayableAmount = parseFloat(totalAmount);
-      booking.finalAmount = parseFloat(totalAmount);
+      const parsedTotal = parseFloat(totalAmount);
+      if (parsedTotal >= (booking.finalAmount || 0)) {
+        booking.userPayableAmount = parsedTotal;
+        booking.finalAmount = parsedTotal;
+      }
     }
 
     const payableAmount = getRemainingPayableAmount(booking);
@@ -227,6 +242,12 @@ exports.initiateCashCollection = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+
     // Allow cash, pay_at_home, online (if user changes mind), AND plan_benefit (for final bill flow)
     const allowedMethods = ['cash', 'pay_at_home', 'plan_benefit', 'online'];
     if (!allowedMethods.includes(booking.paymentMethod)) {
@@ -235,9 +256,12 @@ exports.initiateCashCollection = async (req, res) => {
 
     // Optional: Update final total and extra items if provided during initiation
     const { totalAmount, extraItems } = req.body;
-    if (!booking.vendorBillId && totalAmount !== undefined) {
-      booking.userPayableAmount = Number(totalAmount);
-      booking.finalAmount = Number(totalAmount);
+    if (!booking.vendorBillId && totalAmount !== undefined && !isNaN(parseFloat(totalAmount))) {
+      const parsedTotal = parseFloat(totalAmount);
+      if (parsedTotal >= (booking.finalAmount || 0)) {
+        booking.userPayableAmount = parsedTotal;
+        booking.finalAmount = parsedTotal;
+      }
     }
 
     // Store extra items for proper commission calculation
@@ -349,13 +373,26 @@ exports.confirmCashCollection = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // OTP Verification
-    const isPlanBenefitNoExtras = booking.paymentMethod === 'plan_benefit' && otp === '0000';
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
 
-    if (!isPlanBenefitNoExtras && booking.customerConfirmationOTP && otp && booking.customerConfirmationOTP !== otp) {
-      if (process.env.NODE_ENV !== 'development' || otp !== '0000') {
-        console.warn(`[ConfirmCash] Invalid OTP attempt for booking ${id}. Expected: ${booking.customerConfirmationOTP}, Received: ${otp}`);
-        return res.status(400).json({ success: false, message: 'Invalid OTP. Please enter the correct code shared by the customer.' });
+    // OTP Verification
+    const isPlanBenefitNoExtras = booking.paymentMethod === 'plan_benefit' && (booking.userPayableAmount === 0 || booking.finalAmount === 0);
+    const expectedOtp = (booking.customerConfirmationOTP || booking.paymentOtp || '').trim();
+    const providedOtp = (otp != null) ? String(otp).trim() : '';
+
+    if (!isPlanBenefitNoExtras) {
+      if (!providedOtp) {
+        return res.status(400).json({ success: false, message: 'OTP is required to confirm cash collection.' });
+      }
+      if (expectedOtp && providedOtp !== expectedOtp) {
+        if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
+          console.warn(`[ConfirmCash] Invalid OTP attempt for booking ${id}. Expected: ${expectedOtp}, Received: ${providedOtp}`);
+          return res.status(400).json({ success: false, message: 'Invalid OTP. Please enter the correct code shared by the customer.' });
+        }
       }
     }
 
@@ -593,6 +630,12 @@ exports.customerConfirmPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.userId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+
     booking.customerConfirmed = true;
     await booking.save();
 
@@ -622,6 +665,12 @@ exports.verifyOnlinePayment = async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 
     if (!booking.razorpayQrId) {
@@ -795,9 +844,21 @@ exports.confirmManualOnlinePayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
+    }
+
     // OTP Verification (Mandatory for manual confirmation to prevent accidents)
-    if (booking.customerConfirmationOTP && otp && booking.customerConfirmationOTP !== otp) {
-      if (process.env.NODE_ENV !== 'development' || otp !== '0000') {
+    const expectedOtp = (booking.customerConfirmationOTP || booking.paymentOtp || '').trim();
+    const providedOtp = (otp != null) ? String(otp).trim() : '';
+
+    if (!providedOtp) {
+      return res.status(400).json({ success: false, message: 'OTP is required for manual confirmation.' });
+    }
+    if (expectedOtp && providedOtp !== expectedOtp) {
+      if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
         return res.status(400).json({ success: false, message: 'Invalid OTP. Please enter the code sent to the customer.' });
       }
     }
@@ -925,6 +986,12 @@ exports.getCashCollectionStatus = async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const callerId = String(req.user?._id || req.user?.id);
+    const isAdmin = ['admin', 'ADMIN'].includes(req.userRole);
+    if (!isAdmin && String(booking.userId) !== callerId && String(booking.vendorId) !== callerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 
     const statusData = {

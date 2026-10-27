@@ -928,9 +928,18 @@ const dispatchNewBooking = async ({
       }
     });
 
-    // A recurring visit never came from the cart.
-    if (!fromRecurring) {
-      await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
+    // A recurring visit never came from the cart. Only clear booked cart items if workers were found.
+    if (!fromRecurring && wave1Workers.length > 0) {
+      const cart = await Cart.findOne({ userId });
+      if (cart && Array.isArray(cart.items) && cart.items.length > 0) {
+        const remainingItems = cart.items.filter((item) => {
+          const matchService = item.serviceId && String(item.serviceId) === String(serviceId);
+          const matchCategory = item.categoryId && serviceForBackground.categoryId && String(item.categoryId) === String(serviceForBackground.categoryId);
+          return !matchService && !matchCategory;
+        });
+        cart.items = remainingItems;
+        await cart.save();
+      }
     }
 
     if (vendorId) {

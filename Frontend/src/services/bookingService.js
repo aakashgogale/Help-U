@@ -58,7 +58,10 @@ export const bookingService = {
 
   // Cancel booking
   cancel: async (id, cancellationReason) => {
-    const response = await api.post(`/users/bookings/${id}/cancel`, { cancellationReason });
+    const reason = typeof cancellationReason === 'object'
+      ? (cancellationReason?.cancellationReason || cancellationReason?.reason || '')
+      : (cancellationReason || '');
+    const response = await api.post(`/users/bookings/${id}/cancel`, { cancellationReason: reason });
     return response.data;
   },
 

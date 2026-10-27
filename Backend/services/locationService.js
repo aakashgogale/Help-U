@@ -280,7 +280,7 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
     // filter here, so a nearby worker registered under another city still qualifies.
     const { city: _ignoredCity, ...geoFilters } = filters;
     const baseQuery = _buildWorkerQuery(geoFilters);
-    const totalApprovedWorkers = await Worker.countDocuments({ approvalStatus: 'APPROVED', isActive: true });
+    const totalApprovedWorkers = await Worker.countDocuments({ approvalStatus: { $in: ['approved', 'APPROVED'] }, isActive: true });
     console.log(`[LocationService] Total Approved/Active Workers in DB: ${totalApprovedWorkers}`);
     console.log(`[LocationService] Searching with query: ${JSON.stringify(baseQuery)}`);
 

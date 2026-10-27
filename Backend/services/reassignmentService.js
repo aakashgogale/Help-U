@@ -190,6 +190,18 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
     booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
   }
 
+  // Restore coupon usage if applicable
+  if (booking.couponId) {
+    try {
+      const Coupon = require('../models/Coupon');
+      const CouponRedemption = require('../models/CouponRedemption');
+      await Coupon.findByIdAndUpdate(booking.couponId, { $inc: { usedCount: -1 } });
+      await CouponRedemption.deleteOne({ bookingId: booking._id });
+    } catch (couponErr) {
+      console.warn('[ReassignCancel] Failed to restore coupon usage:', couponErr.message);
+    }
+  }
+
   booking.status = BOOKING_STATUS.CANCELLED;
   booking.cancelledAt = new Date();
   booking.cancelledBy = 'worker';

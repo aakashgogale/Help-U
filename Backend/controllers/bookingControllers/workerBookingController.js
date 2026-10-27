@@ -257,11 +257,11 @@ const acceptBooking = async (req, res) => {
     }
 
     // ATOMIC UPDATE: Check status and vendorId in query to prevent race conditions
-    // Only accept if status is REQUESTED/SEARCHING and NO worker is assigned yet
+    // Only accept if status is REQUESTED/SEARCHING/CONFIRMED (upfront paid) and NO worker is assigned yet
     const updatedBooking = await Booking.findOneAndUpdate(
       {
         _id: id,
-        status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING] },
+        status: { $in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.CONFIRMED] },
         vendorId: null, // Crucial: Ensures another request didn't just take it
         // A worker who rejected or dropped this booking cannot take it back.
         excludedVendors: { $ne: vendorId },
@@ -631,9 +631,10 @@ const updateBookingStatus = async (req, res) => {
       const validTransitions = {
         [BOOKING_STATUS.PENDING]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.REJECTED, BOOKING_STATUS.CANCELLED],
         [BOOKING_STATUS.AWAITING_PAYMENT]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.REJECTED],
-        [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.ASSIGNED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.ASSIGNED]: [BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
-        [BOOKING_STATUS.VISITED]: [BOOKING_STATUS.WORK_DONE, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
+        [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.ASSIGNED, BOOKING_STATUS.JOURNEY_STARTED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
+        [BOOKING_STATUS.ASSIGNED]: [BOOKING_STATUS.JOURNEY_STARTED, BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
+        [BOOKING_STATUS.JOURNEY_STARTED]: [BOOKING_STATUS.VISITED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.CANCELLED],
+        [BOOKING_STATUS.VISITED]: [BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.WORK_DONE, BOOKING_STATUS.CANCELLED],
         [BOOKING_STATUS.IN_PROGRESS]: [BOOKING_STATUS.WORK_DONE, BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED],
         [BOOKING_STATUS.WORK_DONE]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED]
       };
@@ -1008,10 +1009,19 @@ const completeSelfJob = async (req, res) => {
     // -- Original booking service (from basePrice, which already includes
     //    add-ons and any emergency surcharge). On a plan booking the plan
     //    covers the service itself; only those extras are charged.
+    // The bill must preserve the discount the customer was granted, and reuse
+    // the GST recorded on the booking so the original line matches what the user saw.
     const isPlanBooking = booking.paymentMethod === 'plan_benefit';
     const bookingExtras = (Number(booking.addOnsTotal) || 0) + (Number(booking.emergencyCharge) || 0);
-    const originalBase = isPlanBooking ? bookingExtras : (Number(booking.basePrice) || 0);
-    const originalGST = parseFloat(((originalBase * serviceGstPct) / 100).toFixed(2));
+    const bookingDiscount = Math.max(0, Number(booking.discount) || 0);
+    const originalServiceBaseForBill = isPlanBooking
+      ? bookingExtras
+      : Math.max(0, parseFloat(((booking.basePrice || 0) - bookingDiscount).toFixed(2)));
+    const originalServiceBaseForEarnings = Number(booking.basePrice) || 0;
+    const originalGST = parseFloat((Number(booking.tax) || 0).toFixed(2));
+    const originalGstPct = originalServiceBaseForBill > 0
+      ? parseFloat(((originalGST / originalServiceBaseForBill) * 100).toFixed(2))
+      : 0;
 
     // -- Worker-added services --
     const billServices = (billDetails?.services || []).map(svc => {
@@ -1054,7 +1064,8 @@ const completeSelfJob = async (req, res) => {
     // ═══════════════════════════════════════════
 
     const vendorServiceBase = billServices.reduce((s, sv) => s + (sv.price * sv.quantity), 0);
-    const totalServiceBase = parseFloat((originalBase + vendorServiceBase).toFixed(2));
+    const totalServiceBaseForBill = parseFloat((originalServiceBaseForBill + vendorServiceBase).toFixed(2));
+    const totalServiceBaseForEarnings = parseFloat((originalServiceBaseForEarnings + vendorServiceBase).toFixed(2));
     const totalPartsBase = parseFloat(billParts.reduce((s, p) => s + (p.price * p.quantity), 0).toFixed(2));
 
     // ═══════════════════════════════════════════
@@ -1070,7 +1081,8 @@ const completeSelfJob = async (req, res) => {
     // ═══════════════════════════════════════════
 
     const visitingCharges = Number(booking.visitingCharges) || 0;
-    const grandTotal = parseFloat((totalServiceBase + totalPartsBase + totalGST + visitingCharges).toFixed(2));
+    const penaltyCharges = Math.max(0, Number(booking.penalty) || 0);
+    const grandTotal = parseFloat((totalServiceBaseForBill + totalPartsBase + totalGST + visitingCharges + penaltyCharges).toFixed(2));
 
     // ═══════════════════════════════════════════
     // STEP 5: REVENUE SPLIT (internal only)
@@ -1080,7 +1092,7 @@ const completeSelfJob = async (req, res) => {
     // On plan bookings the worker is still paid for the covered service.
     const earningsServiceBase = isPlanBooking
       ? parseFloat(((Number(booking.basePrice) || 0) + vendorServiceBase).toFixed(2))
-      : totalServiceBase;
+      : totalServiceBaseForEarnings;
     const { vendorServiceEarning, vendorPartsEarning, vendorTotalEarning } = computeWorkerEarnings(commission, {
       serviceBase: earningsServiceBase,
       partsBase: totalPartsBase
@@ -1095,11 +1107,11 @@ const completeSelfJob = async (req, res) => {
     const allServices = [
       {
         name: booking.serviceName || 'Original Service',
-        price: originalBase,
-        gstPercentage: serviceGstPct,
+        price: originalServiceBaseForBill,
+        gstPercentage: originalGstPct,
         quantity: 1,
         gstAmount: originalGST,
-        total: parseFloat((originalBase + originalGST).toFixed(2)),
+        total: parseFloat((originalServiceBaseForBill + originalGST).toFixed(2)),
         isOriginal: true
       },
       ...billServices
@@ -1114,11 +1126,12 @@ const completeSelfJob = async (req, res) => {
       parts: billParts,
 
       // Base totals
-      originalServiceBase: originalBase,
+      originalServiceBase: originalServiceBaseForBill,
       vendorServiceBase,
-      totalServiceBase,
+      totalServiceBase: totalServiceBaseForBill,
       totalPartsBase,
       visitingCharges,
+      penaltyCharges,
 
       // GST totals
       originalGST,
@@ -1227,7 +1240,7 @@ const completeSelfJob = async (req, res) => {
           id: bill._id,
           grandTotal,
           totalGST,
-          totalServiceBase,
+          totalServiceBase: totalServiceBaseForBill,
           totalPartsBase
         }
       }
@@ -1269,6 +1282,12 @@ const collectSelfCash = async (req, res) => {
 
     const grandTotal = Number(bill.grandTotal) || 0;
     const vendorEarning = Number(bill.vendorTotalEarning) || 0;
+    const advancePaid = booking.advancePayment?.status === 'paid'
+      ? Number(booking.advancePayment?.paidAmount || booking.advancePayment?.requestedAmount || 0)
+      : 0;
+    const cashCollectedAmount = booking.userPayableAmount != null
+      ? Math.max(0, Number(booking.userPayableAmount))
+      : Math.max(0, parseFloat((grandTotal - advancePaid).toFixed(2)));
 
     // ── Update Booking status ──
     booking.status = BOOKING_STATUS.COMPLETED;
@@ -1283,6 +1302,12 @@ const collectSelfCash = async (req, res) => {
     booking.customerConfirmationOTP = undefined;
     await booking.save();
 
+    // Clear user penalty now that booking is completed
+    if (booking.penalty > 0 && booking.userId) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } });
+    }
+
     // ── Update WorkerBill status ──
     bill.status = 'paid';
     bill.paidAt = new Date();
@@ -1293,7 +1318,7 @@ const collectSelfCash = async (req, res) => {
     const workerDoc = await Worker.findById(vendorId).select('wallet');
 
     if (workerDoc) {
-      const currentDues = (workerDoc.wallet.dues || 0) + grandTotal;
+      const currentDues = (workerDoc.wallet.dues || 0) + cashCollectedAmount;
       const cashLimit = workerDoc.wallet.cashLimit || 10000;
       // Net owed = dues − earnings (worker keeps their share from cash)
       const netOwed = currentDues - ((workerDoc.wallet.earnings || 0) + vendorEarning);
@@ -1301,9 +1326,9 @@ const collectSelfCash = async (req, res) => {
 
       const updateQuery = {
         $inc: {
-          'wallet.dues': grandTotal,
+          'wallet.dues': cashCollectedAmount,
           'wallet.earnings': vendorEarning,
-          'wallet.totalCashCollected': grandTotal
+          'wallet.totalCashCollected': cashCollectedAmount
         }
       };
 
@@ -1325,15 +1350,17 @@ const collectSelfCash = async (req, res) => {
         vendorId,
         bookingId: booking._id,
         type: 'cash_collected',
-        amount: grandTotal,
+        amount: cashCollectedAmount,
         status: 'completed',
         paymentMethod: 'cash collected', // Standardized label
-        description: `Cash ₹${grandTotal} collected for booking #${booking.bookingNumber}. Dues increased.`,
+        description: `Cash ₹${cashCollectedAmount} collected for booking #${booking.bookingNumber}. Dues increased.`,
         metadata: {
           type: 'dues_increase',
           collectedBy: 'vendor',
           billId: bill._id.toString(),
           grandTotal,
+          cashCollectedAmount,
+          advancePaid,
           vendorEarning,
           companyRevenue: bill.companyRevenue
         }

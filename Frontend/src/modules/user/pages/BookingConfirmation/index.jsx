@@ -216,7 +216,7 @@ const BookingConfirmation = () => {
   const handleCancelBooking = async () => {
     try {
       setLoading(true);
-      await bookingService.cancel(booking._id || booking.id, { reason: 'Cancelled during uncertain worker search' });
+      await bookingService.cancel(booking._id || booking.id, 'Cancelled during uncertain worker search');
       toast.success('Booking cancelled successfully');
       navigate('/user');
     } catch (error) {
