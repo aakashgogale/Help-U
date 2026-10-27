@@ -195,9 +195,9 @@ const getPendingSettlements = async (req, res) => {
  */
 const approveSettlement = async (req, res) => {
   try {
-    const { settlementId } = req.params;
+    const settlementId = req.params.settlementId || req.params.id;
     const { adminNotes } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user?.id || req.user?._id;
 
     const settlement = await Settlement.findById(settlementId);
     if (!settlement) {
@@ -248,6 +248,23 @@ const approveSettlement = async (req, res) => {
     sendDuesPaymentApprovedEmail(worker, settlement.amount, worker.wallet.dues).catch(e => console.error(e));
 
     await settlement.save();
+
+    // Record Transaction for worker ledger so totalSettled and history are accurate
+    await Transaction.create({
+      vendorId: worker._id,
+      type: 'settlement',
+      amount: settlement.amount,
+      status: 'completed',
+      paymentMethod: settlement.paymentMethod || 'bank_transfer',
+      description: `Settlement of ₹${settlement.amount} approved by admin`,
+      referenceId: settlement.paymentReference || String(settlement._id),
+      metadata: {
+        settlementId: settlement._id,
+        balanceBefore: currentDues,
+        balanceAfter: worker.wallet.dues,
+        approvedBy: adminId
+      }
+    });
 
     // Record this settlement in the earning tracker
     recordSettlement(new Date(), settlement.amount);
@@ -579,9 +596,9 @@ module.exports = {
 
   approveWithdrawal: async (req, res) => {
     try {
-      const { withdrawalId } = req.params;
+      const withdrawalId = req.params.withdrawalId || req.params.id;
       const { transactionReference, notes } = req.body;
-      const adminId = req.user.id;
+      const adminId = req.user?.id || req.user?._id;
 
       // Fetch global settings for rates
       const Settings = require('../../models/Settings');
@@ -596,10 +613,14 @@ module.exports = {
       const worker = await Worker.findById(withdrawal.vendorId);
       if (!worker) return res.status(404).json({ success: false, message: 'Worker not found' });
 
-      if (worker.wallet.earnings < withdrawal.amount) {
+      const currentEarnings = worker.wallet?.earnings || 0;
+      const currentDues = worker.wallet?.dues || 0;
+      const netWithdrawable = Math.max(0, currentEarnings - currentDues);
+
+      if (netWithdrawable < withdrawal.amount) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient earnings. Available: ₹${worker.wallet.earnings}`
+          message: `Cannot approve withdrawal: worker has ₹${currentDues} in cash collection dues. Net withdrawable: ₹${netWithdrawable}`
         });
       }
 
@@ -635,17 +656,18 @@ module.exports = {
       const { sendWithdrawalApprovedEmail } = require('../../services/emailService');
       sendWithdrawalApprovedEmail(worker, grossAmount, transactionReference).catch(e => console.error(e));
 
-      // Transaction 1: Withdrawal Payout (Gross Amount Debited from Wallet)
+      // Transaction 1: Net Withdrawal Payout Transferred to Worker's Account
       await Transaction.create({
         vendorId: worker._id,
         type: 'withdrawal',
-        amount: grossAmount,
+        amount: netAmount,
         status: 'completed',
         paymentMethod: 'bank_transfer',
-        description: `Withdrawal payout processed. Gross: ₹${grossAmount}`,
+        description: `Net payout transferred for withdrawal #${withdrawal._id}. Gross: ₹${grossAmount}`,
         referenceId: transactionReference,
         metadata: {
           withdrawalId: withdrawal._id,
+          grossAmount,
           tdsRate,
           tdsAmount,
           platformFeeRate,
@@ -654,39 +676,43 @@ module.exports = {
         }
       });
 
-      // Transaction 2: TDS Deduction
-      await Transaction.create({
-        vendorId: worker._id,
-        type: 'tds_deduction',
-        amount: tdsAmount,
-        status: 'completed',
-        paymentMethod: 'system',
-        description: `TDS Deduction (${tdsRate}%) on withdrawal of ₹${grossAmount}`,
-        referenceId: transactionReference,
-        metadata: {
-          withdrawalId: withdrawal._id,
-          grossAmount,
-          tdsRate,
-          netAmountTransferred: netAmount
-        }
-      });
+      // Transaction 2: TDS Deduction (Component of Gross)
+      if (tdsAmount > 0) {
+        await Transaction.create({
+          vendorId: worker._id,
+          type: 'tds_deduction',
+          amount: tdsAmount,
+          status: 'completed',
+          paymentMethod: 'system',
+          description: `TDS Deduction (${tdsRate}%) on withdrawal of ₹${grossAmount}`,
+          referenceId: transactionReference,
+          metadata: {
+            withdrawalId: withdrawal._id,
+            grossAmount,
+            tdsRate,
+            netAmountTransferred: netAmount
+          }
+        });
+      }
 
-      // Transaction 3: Platform Fee Deduction
-      await Transaction.create({
-        vendorId: worker._id,
-        type: 'platform_fee',
-        amount: platformFeeAmount,
-        status: 'completed',
-        paymentMethod: 'system',
-        description: `Platform Charge Fee (${platformFeeRate}%) on withdrawal of ₹${grossAmount}`,
-        referenceId: transactionReference,
-        metadata: {
-          withdrawalId: withdrawal._id,
-          grossAmount,
-          platformFeeRate,
-          netAmountTransferred: netAmount
-        }
-      });
+      // Transaction 3: Platform Fee Deduction (Component of Gross)
+      if (platformFeeAmount > 0) {
+        await Transaction.create({
+          vendorId: worker._id,
+          type: 'platform_fee',
+          amount: platformFeeAmount,
+          status: 'completed',
+          paymentMethod: 'system',
+          description: `Platform Charge Fee (${platformFeeRate}%) on withdrawal of ₹${grossAmount}`,
+          referenceId: transactionReference,
+          metadata: {
+            withdrawalId: withdrawal._id,
+            grossAmount,
+            platformFeeRate,
+            netAmountTransferred: netAmount
+          }
+        });
+      }
 
       res.status(200).json({
         success: true,

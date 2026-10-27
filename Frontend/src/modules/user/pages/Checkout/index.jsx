@@ -16,6 +16,7 @@ import bookingFeaturesService from '../../../../services/bookingFeaturesService'
 import couponService from '../../../../services/couponService';
 import { bookingService } from '../../../../services/bookingService';
 import { paymentService } from '../../../../services/paymentService';
+import { walletService } from '../../../../services/walletService';
 import { cartService } from '../../../../services/cartService';
 import { configService } from '../../../../services/configService';
 import { getPlans } from '../../services/planService';
@@ -59,7 +60,8 @@ const Checkout = () => {
   const [bookingRequest, setBookingRequest] = useState(null);
   const [searchingWorkers, setSearchingWorkers] = useState(false);
   const [showWorkerModal, setShowWorkerModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'pay_at_home'
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'pay_at_home' | 'wallet'
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -126,6 +128,9 @@ const Checkout = () => {
       }
     };
     loadUserData();
+    walletService.getBalance()
+      .then(res => { if (res.success && res.data) setWalletBalance(res.data.balance || 0); })
+      .catch(() => {});
 
     // Refresh on focus to catch updates from profile page
     window.addEventListener('focus', loadUserData);
@@ -774,6 +779,36 @@ const Checkout = () => {
     }
   };
 
+  const handleWalletPayment = async () => {
+    try {
+      if (!acceptedWorker || !bookingRequest) {
+        toast.error('No worker selected or booking not created');
+        return;
+      }
+      toast.loading('Processing wallet payment...');
+      const response = await paymentService.processWalletPayment(bookingRequest._id, 'final');
+      toast.dismiss();
+
+      if (response.success) {
+        toast.success('Payment successful via Wallet!');
+        try {
+          if (category) {
+            await removeCategoryGlobal(category);
+          } else {
+            await clearCartGlobal();
+          }
+          setCartItems([]);
+        } catch (error) {}
+        navigate(`/user/booking-confirmation/${bookingRequest._id}`, { replace: true });
+      } else {
+        toast.error(response.message || 'Failed to process wallet payment');
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error(error.response?.data?.message || 'Failed to process wallet payment');
+    }
+  };
+
   const handlePayAtHome = async () => {
     try {
       if (!bookingRequest) return;
@@ -820,6 +855,8 @@ const Checkout = () => {
       if (bookingRequest) {
         navigate(`/user/booking-confirmation/${bookingRequest._id}`, { replace: true });
       }
+    } else if (paymentMethod === 'wallet') {
+      await handleWalletPayment();
     } else if (paymentMethod === 'online') {
       await handleOnlinePayment();
     } else {
@@ -1844,6 +1881,66 @@ const Checkout = () => {
           )}
         </div>
 
+        {/* Payment Method Selector on Payment Step */}
+        {currentStep === 'payment' && totalAmount > 0 && (
+          <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2.5">Select Payment Method</p>
+            <div className="space-y-2">
+              <label className={`flex items-center justify-between p-3 rounded-xl border bg-white cursor-pointer transition-all ${paymentMethod === 'online' ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="online"
+                    checked={paymentMethod === 'online'}
+                    onChange={() => setPaymentMethod('online')}
+                    className="accent-teal-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Pay Online</p>
+                    <p className="text-xs text-gray-500">UPI, Cards, NetBanking via Razorpay</p>
+                  </div>
+                </div>
+              </label>
+
+              <label className={`flex items-center justify-between p-3 rounded-xl border bg-white transition-all ${walletBalance >= totalAmount ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'} ${paymentMethod === 'wallet' ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="wallet"
+                    disabled={walletBalance < totalAmount}
+                    checked={paymentMethod === 'wallet'}
+                    onChange={() => setPaymentMethod('wallet')}
+                    className="accent-teal-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Help-U Wallet</p>
+                    <p className="text-xs text-gray-500">Balance: ₹{walletBalance.toFixed(2)} {walletBalance < totalAmount && '(Insufficient balance)'}</p>
+                  </div>
+                </div>
+              </label>
+
+              <label className={`flex items-center justify-between p-3 rounded-xl border bg-white cursor-pointer transition-all ${paymentMethod === 'pay_at_home' ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="pay_at_home"
+                    checked={paymentMethod === 'pay_at_home'}
+                    onChange={() => setPaymentMethod('pay_at_home')}
+                    className="accent-teal-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Pay at Home</p>
+                    <p className="text-xs text-gray-500">Pay cash or QR after service completion</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
+
         <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             onClick={plan ? handlePlanPayment :
@@ -1855,7 +1952,7 @@ const Checkout = () => {
             style={{ backgroundColor: themeColors.button }}
           >
             {searchingWorkers ? 'Searching for workers...' :
-              currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : 'Confirm Booking')) :
+              currentStep === 'payment' ? (totalAmount === 0 ? 'Confirm Booking (Free)' : (paymentMethod === 'online' ? 'Proceed to Pay' : paymentMethod === 'wallet' ? 'Pay from Wallet' : 'Confirm Booking')) :
                 plan ? 'Proceed to Payment' :
                   bookingType === 'instant' ? 'Find nearby workers now' :
                     (selectedDate && selectedTime && houseNumber ?

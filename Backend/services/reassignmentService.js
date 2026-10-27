@@ -167,6 +167,29 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
     return { reassigned: true, booking, penalty };
   }
 
+  // Automatic refund if booking was paid or advance paid
+  const { PAYMENT_STATUS } = require('../utils/constants');
+  const isPaid = [PAYMENT_STATUS.SUCCESS, 'paid'].includes(booking.paymentStatus);
+  const advancePaid = booking.advancePayment?.status === 'paid' ? Number(booking.advancePayment?.paidAmount || 0) : 0;
+  const totalToRefund = (isPaid ? Number(booking.finalAmount || 0) : 0) + advancePaid;
+
+  if (totalToRefund > 0) {
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(booking.userId, { $inc: { 'wallet.balance': totalToRefund } }).catch(() => null);
+    await Transaction.create({
+      userId: booking.userId,
+      bookingId: booking._id,
+      type: 'refund',
+      amount: totalToRefund,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      description: `Automatic refund for booking ${booking.bookingNumber} (worker cancelled and no candidates available)`
+    }).catch(() => null);
+
+    booking.refundedAmount = (booking.refundedAmount || 0) + totalToRefund;
+    booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
+  }
+
   booking.status = BOOKING_STATUS.CANCELLED;
   booking.cancelledAt = new Date();
   booking.cancelledBy = 'worker';

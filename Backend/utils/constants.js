@@ -121,9 +121,11 @@ const BOOKING_STATUS = {
 const PAYMENT_STATUS = {
   PENDING: 'pending',
   SUCCESS: 'success',
+  PAID: 'paid',
   FAILED: 'failed',
   REFUNDED: 'refunded',
   COLLECTED_BY_WORKER: 'collected_by_vendor',
+  COLLECTED_BY_WORKER_LEGACY: 'collected by worker',
   PLAN_COVERED: 'plan_covered' // For plan_benefit bookings until bill is finalized
 };
 

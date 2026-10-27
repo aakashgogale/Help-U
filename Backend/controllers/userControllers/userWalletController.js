@@ -168,25 +168,50 @@ const verifyWalletTopup = async (req, res) => {
       });
     }
 
+    // Verify amount with Razorpay to prevent client-side amount tampering
+    const { getPaymentDetails } = require('../../services/razorpayService');
+    let creditedAmount = numAmount;
+    try {
+      const pDetails = await getPaymentDetails(razorpay_payment_id);
+      if (pDetails && pDetails.success && pDetails.payment) {
+        const gatewayRupees = (pDetails.payment.amount || 0) / 100;
+        if (gatewayRupees > 0) {
+          if (gatewayRupees < numAmount) {
+            return res.status(400).json({
+              success: false,
+              message: `Payment amount mismatch: captured ₹${gatewayRupees} but requested ₹${numAmount}`
+            });
+          }
+          creditedAmount = gatewayRupees;
+        }
+      }
+    } catch (fetchErr) {
+      console.warn('[WalletTopup] Could not verify amount with Razorpay directly:', fetchErr.message);
+    }
+
     if (!user.wallet) {
       user.wallet = { balance: 0, penalty: 0, promoBalance: 0, cashbackBalance: 0 };
     }
 
-    // Add money to wallet
+    // Add money to wallet atomically to prevent race conditions
     const previousBalance = user.wallet.balance || 0;
-    user.wallet.balance = Math.round((previousBalance + numAmount) * 100) / 100;
-    await user.save();
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'wallet.balance': creditedAmount } },
+      { new: true }
+    );
+    const newBalance = updatedUser?.wallet?.balance || (previousBalance + creditedAmount);
 
     // Create Transaction Record
     await Transaction.create({
       userId: user._id,
       type: 'credit',
-      amount: numAmount,
+      amount: creditedAmount,
       status: 'completed',
       paymentMethod: 'razorpay',
       description: 'Wallet Top-up',
       balanceBefore: previousBalance,
-      balanceAfter: user.wallet.balance,
+      balanceAfter: newBalance,
       referenceId: razorpay_payment_id,
       metadata: {
         orderId: razorpay_order_id,
@@ -198,7 +223,7 @@ const verifyWalletTopup = async (req, res) => {
       success: true,
       message: 'Money added to wallet successfully',
       data: {
-        balance: user.wallet.balance
+        balance: newBalance
       }
     });
   } catch (error) {

@@ -182,8 +182,8 @@ const getWorkerBookings = async (req, res) => {
  */
 const getBookingById = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
 
     const booking = await Booking.findOne({
       _id: id,
@@ -222,8 +222,8 @@ const getBookingById = async (req, res) => {
  */
 const acceptBooking = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
 
     // Availability rules, enforced again at the moment of acceptance (the alert may be old):
     //  - a scheduled job must not overlap another of this worker's jobs
@@ -424,8 +424,8 @@ const rejectBooking = async (req, res) => {
       });
     }
 
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { reason } = req.body;
 
     // Find booking
@@ -564,8 +564,8 @@ const getCancelJobPreview = async (req, res) => {
  */
 const cancelJob = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { reason } = req.body;
 
     const result = await handleWorkerCancellation(id, vendorId, reason);
@@ -607,8 +607,8 @@ const updateBookingStatus = async (req, res) => {
       });
     }
 
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { status, finalSettlementStatus } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId });
@@ -738,8 +738,8 @@ const addWorkerNotes = async (req, res) => {
       });
     }
 
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { notes } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId });
@@ -775,8 +775,8 @@ const addWorkerNotes = async (req, res) => {
  */
 const startSelfJob = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
 
     const booking = await Booking.findOne({ _id: id, vendorId });
 
@@ -840,8 +840,8 @@ const startSelfJob = async (req, res) => {
  */
 const workerReachedLocation = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
 
     // Need visitOtp to resend it
     const booking = await Booking.findOne({ _id: id, vendorId }).select('+visitOtp');
@@ -904,8 +904,8 @@ const workerReachedLocation = async (req, res) => {
  */
 const verifySelfVisit = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { otp, location } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId }).select('+visitOtp');
@@ -972,8 +972,8 @@ const verifySelfVisit = async (req, res) => {
  */
 const completeSelfJob = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { workPhotos, workDoneDetails, billDetails } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId });
@@ -1149,9 +1149,13 @@ const completeSelfJob = async (req, res) => {
     // STEP 7: UPDATE BOOKING (no earnings!)
     // ═══════════════════════════════════════════
 
+    const advancePaidAmount = booking.advancePayment?.status === 'paid'
+      ? Number(booking.advancePayment?.paidAmount || booking.advancePayment?.requestedAmount || 0)
+      : 0;
+
     booking.status = BOOKING_STATUS.WORK_DONE;
     booking.finalAmount = grandTotal;
-    booking.userPayableAmount = grandTotal; // Ensure consistency
+    booking.userPayableAmount = Math.max(0, parseFloat((grandTotal - advancePaidAmount).toFixed(2)));
     booking.vendorBillId = bill._id;
 
     // Reuse existing Payment OTP for cash collection or generate new one
@@ -1248,8 +1252,8 @@ const completeSelfJob = async (req, res) => {
  */
 const collectSelfCash = async (req, res) => {
   try {
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { otp } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId }).select('+paymentOtp +customerConfirmationOTP');
@@ -1402,8 +1406,8 @@ const requestAdvancePayment = async (req, res) => {
       });
     }
 
-    const vendorId = req.user.id;
-    const { id } = req.params;
+    const vendorId = req.user?.id || req.user?._id;
+    const id = req.params.id || req.params.bookingId;
     const { amount, reason, partsDescription } = req.body;
 
     const booking = await Booking.findOne({ _id: id, vendorId });

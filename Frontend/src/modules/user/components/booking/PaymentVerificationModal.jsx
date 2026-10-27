@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { FiCheckCircle, FiShield, FiAlertCircle, FiPackage, FiX, FiInfo } from 'react-icons/fi';
+import { FiCheckCircle, FiShield, FiAlertCircle, FiPackage, FiX, FiInfo, FiCreditCard } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { configService } from '../../../../services/configService';
+import { walletService } from '../../../../services/walletService';
 
-const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => {
+const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline, onPayWallet }) => {
   const [isOnlinePaymentEnabled, setIsOnlinePaymentEnabled] = useState(true);
   const [configLoading, setConfigLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await configService.getSettings();
+        const [res, walletRes] = await Promise.all([
+          configService.getSettings(),
+          walletService.getBalance().catch(() => null)
+        ]);
         if (res.success && res.settings) {
           setIsOnlinePaymentEnabled(res.settings.isOnlinePaymentEnabled !== false);
+        }
+        if (walletRes?.success && walletRes?.data) {
+          setWalletBalance(walletRes.data.balance || 0);
         }
       } catch (error) {
         console.error('Error fetching payment config:', error);
@@ -314,6 +322,17 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline }) => 
                 </div>
               ) : (
                 <>
+                  {/* Wallet Payment Option */}
+                  {onPayWallet && walletBalance >= amountDue && (
+                    <button
+                      onClick={onPayWallet}
+                      className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
+                    >
+                      <FiCreditCard className="w-4 h-4" />
+                      {isAdvancePending ? 'Pay Advance with Wallet' : 'Pay with Wallet'} (Bal: ₹{walletBalance.toFixed(2)})
+                    </button>
+                  )}
+
                   {/* Online Pay - CONDITIONALLY RENDERED */}
                   {!configLoading && isOnlinePaymentEnabled ? (
                     <button

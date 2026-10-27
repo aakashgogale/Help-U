@@ -69,8 +69,15 @@ const getAllTransactions = async (req, res) => {
       bookings.forEach(booking => {
         const bill = billMap[booking._id.toString()];
 
-        // 1. Company Revenue (from WorkerBill)
-        if (shouldInclude('commission') && bill && bill.companyRevenue > 0) {
+        // Disaggregate companyRevenue into base commission, GST, and visiting charges to avoid double-counting
+        const totalGST = bill?.totalGST || 0;
+        const visitingCharges = booking.visitingCharges || bill?.visitingCharges || 0;
+        const baseCommission = bill && bill.companyRevenue > 0
+          ? Math.max(0, parseFloat((bill.companyRevenue - totalGST - visitingCharges).toFixed(2)))
+          : 0;
+
+        // 1. Company Base Commission (from WorkerBill)
+        if (shouldInclude('commission') && baseCommission > 0) {
           virtualTransactions.push({
             _id: `${booking._id}_comm`,
             referenceId: `REV-${booking.bookingNumber}`,
@@ -78,37 +85,37 @@ const getAllTransactions = async (req, res) => {
             userId: booking.userId,
             vendorId: booking.vendorId,
             type: 'commission',
-            amount: bill.companyRevenue,
+            amount: baseCommission,
             status: 'completed',
             paymentMethod: 'system',
-            createdAt: bill.paidAt || booking.completedAt || booking.updatedAt || booking.createdAt,
-            description: `Company revenue for booking ${booking.bookingNumber}`
+            createdAt: bill?.paidAt || booking.completedAt || booking.updatedAt || booking.createdAt,
+            description: `Base platform commission for booking ${booking.bookingNumber}`
           });
         }
 
         // 2. GST (from WorkerBill)
-        if (shouldInclude('gst') && bill && bill.totalGST > 0) {
+        if (shouldInclude('gst') && totalGST > 0) {
           virtualTransactions.push({
             _id: `${booking._id}_gst`,
             referenceId: `GST-${booking.bookingNumber}`,
             bookingId: booking,
             type: 'gst',
-            amount: bill.totalGST,
+            amount: totalGST,
             status: 'completed',
             paymentMethod: 'system',
-            createdAt: bill.paidAt || booking.completedAt || booking.updatedAt || booking.createdAt,
+            createdAt: bill?.paidAt || booking.completedAt || booking.updatedAt || booking.createdAt,
             description: `GST for booking ${booking.bookingNumber}`
           });
         }
 
         // 3. Convenience Fee (Visiting Charges)
-        if (shouldInclude('convenience_fee') && booking.visitingCharges > 0) {
+        if (shouldInclude('convenience_fee') && visitingCharges > 0) {
           virtualTransactions.push({
             _id: `${booking._id}_conv`,
             referenceId: `FEE-${booking.bookingNumber}`,
             bookingId: booking,
             type: 'convenience_fee',
-            amount: booking.visitingCharges,
+            amount: visitingCharges,
             status: 'completed',
             paymentMethod: 'system',
             createdAt: booking.completedAt || booking.updatedAt || booking.createdAt,

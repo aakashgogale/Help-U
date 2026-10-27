@@ -1,6 +1,6 @@
 const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
-const { BOOKING_STATUS } = require('../../utils/constants');
+const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const escapeRegex = require('../../utils/escapeRegex');
 
 /**
@@ -150,6 +150,29 @@ const cancelBooking = async (req, res) => {
         success: false,
         message: 'Cannot cancel completed booking'
       });
+    }
+
+    // Process refund if booking was paid
+    const isPaid = [PAYMENT_STATUS.SUCCESS, 'paid'].includes(booking.paymentStatus);
+    const advancePaid = booking.advancePayment?.status === 'paid' ? Number(booking.advancePayment?.paidAmount || 0) : 0;
+    const totalToRefund = (isPaid ? Number(booking.finalAmount || 0) : 0) + advancePaid;
+
+    if (totalToRefund > 0) {
+      const User = require('../../models/User');
+      const Transaction = require('../../models/Transaction');
+      await User.findByIdAndUpdate(booking.userId, { $inc: { 'wallet.balance': totalToRefund } }).catch(() => null);
+      await Transaction.create({
+        userId: booking.userId,
+        bookingId: booking._id,
+        type: 'refund',
+        amount: totalToRefund,
+        status: 'completed',
+        paymentMethod: 'wallet',
+        description: `Admin cancellation refund for booking #${booking.bookingNumber}`
+      }).catch(() => null);
+
+      booking.refundedAmount = (booking.refundedAmount || 0) + totalToRefund;
+      booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
     }
 
     // Update booking

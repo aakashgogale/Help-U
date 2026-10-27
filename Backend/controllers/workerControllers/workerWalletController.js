@@ -288,10 +288,17 @@ const recordCashCollection = async (req, res) => {
     await Worker.findByIdAndUpdate(vendorId, updateQuery);
     
     // Update booking status
+    const { PAYMENT_STATUS } = require('../../utils/constants');
     booking.status = 'completed';
-    booking.paymentStatus = 'collected by worker';
+    booking.paymentStatus = PAYMENT_STATUS.COLLECTED_BY_WORKER;
     booking.paymentMethod = 'cash collected';
     booking.completedAt = new Date();
+
+    // Clear any carried-over penalty on user account now that cash has been collected
+    if (booking.penalty > 0) {
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } });
+    }
+
     await booking.save();
 
     // Create transaction record for Cash Collection
@@ -330,11 +337,6 @@ const recordCashCollection = async (req, res) => {
         }
       });
     }
-
-    // Update booking payment status
-    booking.paymentStatus = 'paid';
-    booking.paymentMethod = 'cash';
-    await booking.save();
 
     const newDues = currentDues;
     const newEarnings = currentEarnings;
@@ -705,19 +707,26 @@ const requestWithdrawal = async (req, res) => {
     if (!worker) return res.status(404).json({ success: false, message: 'Worker not found' });
 
     const currentEarnings = worker.wallet?.earnings || 0;
+    const currentDues = worker.wallet?.dues || 0;
 
-    // Check pending withdrawals?
+    // Check pending withdrawals
     const pendingWithdrawals = await Withdrawal.aggregate([
       { $match: { vendorId: worker._id, status: 'pending' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     const pendingAmount = pendingWithdrawals[0]?.total || 0;
-    const availableEarnings = currentEarnings - pendingAmount;
+    const netWithdrawable = Math.max(0, currentEarnings - pendingAmount - currentDues);
 
-    if (amount > availableEarnings) {
+    if (amount > netWithdrawable) {
+      if (currentDues > 0 && (currentEarnings - pendingAmount) >= amount) {
+        return res.status(400).json({
+          success: false,
+          message: `Outstanding cash dues of ₹${currentDues} must be settled before withdrawing full earnings. Withdrawable balance: ₹${netWithdrawable}`
+        });
+      }
       return res.status(400).json({
         success: false,
-        message: `Insufficient earnings. Available: ₹${availableEarnings} (Pending: ₹${pendingAmount})`
+        message: `Insufficient earnings. Withdrawable: ₹${netWithdrawable} (Earnings: ₹${currentEarnings}, Pending: ₹${pendingAmount}, Dues: ₹${currentDues})`
       });
     }
 

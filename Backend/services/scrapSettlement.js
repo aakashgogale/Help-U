@@ -47,6 +47,33 @@ const payCustomer = async (scrap, method) => {
   const amount = round2(scrap.finalPrice);
 
   if (method === 'cash') {
+    if (scrap.vendorId && amount > 0) {
+      const Worker = require('../models/Worker');
+      const worker = await Worker.findById(scrap.vendorId);
+      if (worker) {
+        // Reimbursing worker for paying customer in cash on behalf of the platform
+        if (!worker.wallet) worker.wallet = { dues: 0, earnings: 0 };
+        const currentDues = worker.wallet.dues || 0;
+        if (currentDues >= amount) {
+          worker.wallet.dues = currentDues - amount;
+        } else {
+          const remainder = amount - currentDues;
+          worker.wallet.dues = 0;
+          worker.wallet.earnings = (worker.wallet.earnings || 0) + remainder;
+        }
+        await worker.save();
+
+        await Transaction.create({
+          vendorId: worker._id,
+          type: 'scrap_reimbursement',
+          amount,
+          status: 'completed',
+          paymentMethod: 'system',
+          description: `Reimbursement for cash paid to customer for scrap "${scrap.title}"`,
+          metadata: { scrapId: String(scrap._id) }
+        });
+      }
+    }
     return { method: 'cash', status: 'cash_paid_by_pro', amount, paidAt: new Date() };
   }
 

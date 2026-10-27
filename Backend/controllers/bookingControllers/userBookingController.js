@@ -263,24 +263,28 @@ const cancelBooking = async (req, res) => {
     const { fee: cancellationFee, stage } = await resolveUserCancellation(booking);
     let refundMessage = '';
 
-    const isPaid = booking.paymentStatus === PAYMENT_STATUS.SUCCESS;
-    const isWalletOrOnline = ['wallet', 'razorpay', 'upi', 'card'].includes(booking.paymentMethod);
+    const isPaid = [PAYMENT_STATUS.SUCCESS, 'paid'].includes(booking.paymentStatus);
+    const advancePaid = booking.advancePayment?.status === 'paid'
+      ? Number(booking.advancePayment.paidAmount || booking.advancePayment.requestedAmount || 0)
+      : 0;
+    const totalPaid = (isPaid ? Number(booking.finalAmount || 0) : 0) + advancePaid;
+
+    const isWalletOrOnline = ['wallet', 'razorpay', 'upi', 'card', 'online', 'Qr online'].includes(booking.paymentMethod)
+      || (advancePaid > 0 && ['wallet', 'razorpay', 'online'].includes(booking.advancePayment?.paymentMethod));
     const stageLabel = { journey: 'journey start', arrived: 'professional arrival', late: 'the free cancellation period ended' }[stage];
 
     if (cancellationFee > 0) {
-      if (isPaid && isWalletOrOnline) {
-        // User paid upfront -> Refund (Total - Fee)
-        refundAmount = Math.max(0, booking.finalAmount - cancellationFee);
+      if (totalPaid > 0 && isWalletOrOnline) {
+        // User paid upfront/advance -> Refund (Total Paid - Fee)
+        refundAmount = Math.max(0, totalPaid - cancellationFee);
         refundMessage = `Booking cancelled after ${stageLabel}. Refund of ₹${refundAmount} initiated (Cancellation Fee: ₹${cancellationFee} deducted).`;
       } else {
         // User hasn't paid (e.g. COD or pending) -> Add Penalty to Wallet for Next Booking
         refundAmount = 0;
         refundMessage = `Booking cancelled after ${stageLabel}. A cancellation fee of ₹${cancellationFee} has been added to your account and will be charged on your next booking.`;
-
-        // We will add this to user.wallet.penalty below
       }
-    } else if (isPaid && isWalletOrOnline) {
-      refundAmount = booking.finalAmount;
+    } else if (totalPaid > 0 && isWalletOrOnline) {
+      refundAmount = totalPaid;
       refundMessage = `Booking cancelled successfully. Full refund of ₹${refundAmount} initiated to your wallet.`;
     } else {
       refundAmount = 0;
@@ -288,7 +292,7 @@ const cancelBooking = async (req, res) => {
     }
 
     // Update User Wallet
-    if (refundAmount > 0 || (cancellationFee > 0 && !isPaid)) {
+    if (refundAmount > 0 || (cancellationFee > 0 && totalPaid === 0)) {
       const User = require('../../models/User');
       const Transaction = require('../../models/Transaction');
 
@@ -304,28 +308,34 @@ const cancelBooking = async (req, res) => {
           amount: refundAmount,
           status: 'completed',
           paymentMethod: 'wallet',
-          description: `Refund for booking #${booking.bookingNumber}`,
+          description: `Refund for cancelled booking #${booking.bookingNumber}`,
           bookingId: booking._id,
           balanceAfter: user.wallet.balance
         });
 
+        booking.refundedAmount = (booking.refundedAmount || 0) + refundAmount;
         booking.paymentStatus = PAYMENT_STATUS.REFUNDED;
       }
 
       // 2. Process Cancellation Fee (Add to Penalty Bucket if Unpaid)
-      if (cancellationFee > 0 && !isPaid) {
-        // Use wallet.penalty bucket
+      if (cancellationFee > 0 && totalPaid === 0) {
         user.wallet.penalty = (user.wallet.penalty || 0) + cancellationFee;
-        // Do NOT create a 'debit' transaction yet, as money hasn't left. 
-        // Or create a 'penalty_added' transaction?
-        // User didn't ask for transaction record logic, just functionality.
-        // We will skip transaction for penalty addition to keep it simple, 
-        // as the actual CHARGE happens on next booking creation.
-
         console.log(`[CancelBooking] Added penalty of ₹${cancellationFee} to user ${userId}. Total Penalty: ${user.wallet.penalty}`);
       }
 
       await user.save();
+    }
+
+    // Restore coupon usage if applicable
+    if (booking.couponId) {
+      try {
+        const Coupon = require('../../models/Coupon');
+        const CouponRedemption = require('../../models/CouponRedemption');
+        await Coupon.findByIdAndUpdate(booking.couponId, { $inc: { usedCount: -1 } });
+        await CouponRedemption.deleteOne({ bookingId: booking._id });
+      } catch (couponErr) {
+        console.warn('[CancelBooking] Failed to restore coupon usage:', couponErr.message);
+      }
     }
 
     // Update booking status

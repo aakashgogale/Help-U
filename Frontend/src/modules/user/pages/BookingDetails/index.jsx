@@ -31,6 +31,7 @@ import {
 import { bookingService } from '../../../../services/bookingService';
 import RepairServicesCard from './RepairServicesCard';
 import { paymentService } from '../../../../services/paymentService';
+import { walletService } from '../../../../services/walletService';
 import { cartService } from '../../../../services/cartService';
 import RatingModal from '../../components/booking/RatingModal';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
@@ -61,6 +62,7 @@ const BookingDetails = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -96,6 +98,9 @@ const BookingDetails = () => {
       }
     };
     fetchSettings();
+    walletService.getBalance()
+      .then(res => { if (res.success && res.data) setWalletBalance(res.data.balance || 0); })
+      .catch(() => {});
   }, []);
 
   // Function to load booking
@@ -468,6 +473,34 @@ const BookingDetails = () => {
     } catch (error) {
       toast.dismiss();
       toast.error('Failed to process request');
+    }
+  };
+
+  const handleWalletPayment = async () => {
+    if (paying) return;
+    const paymentType = booking.advancePayment?.status === 'requested' ? 'advance' : 'final';
+    try {
+      setPaying(true);
+      toast.loading('Processing wallet payment...');
+      const response = await paymentService.processWalletPayment(booking._id || booking.id, paymentType);
+      toast.dismiss();
+
+      if (response.success) {
+        toast.success(response.message || 'Payment successful via Wallet!');
+        setShowPaymentModal(false);
+        loadBooking();
+        // Refresh balance
+        walletService.getBalance()
+          .then(res => { if (res.success && res.data) setWalletBalance(res.data.balance || 0); })
+          .catch(() => {});
+      } else {
+        toast.error(response.message || 'Wallet payment failed');
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error(error.response?.data?.message || 'Failed to pay with wallet');
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -1533,6 +1566,17 @@ const BookingDetails = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-3">
+                {walletBalance >= (booking.userPayableAmount || booking.finalAmount || 0) && (
+                  <button
+                    onClick={handleWalletPayment}
+                    disabled={paying}
+                    className="w-full py-4 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+                  >
+                    <FiCheckCircle className="w-5 h-5" />
+                    Pay with Wallet (Bal: ₹{walletBalance.toFixed(2)})
+                  </button>
+                )}
+
                 <button
                   onClick={handleOnlinePayment}
                   className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
@@ -1638,6 +1682,7 @@ const BookingDetails = () => {
           onClose={() => setShowPaymentModal(false)}
           booking={booking}
           onPayOnline={handleOnlinePayment}
+          onPayWallet={handleWalletPayment}
         />
 
         <ConfirmDialog

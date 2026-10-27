@@ -26,7 +26,7 @@
 const Booking = require('../models/Booking');
 const Worker = require('../models/Worker');
 const mongoose = require('mongoose');
-const { BOOKING_STATUS } = require('../utils/constants');
+const { BOOKING_STATUS, PAYMENT_STATUS } = require('../utils/constants');
 const { createNotification } = require('../controllers/notificationControllers/notificationController');
 const { getBookingConfig } = require('../utils/bookingConfig');
 const { getBusyWorkerIds } = require('./workerAvailabilityService');
@@ -100,7 +100,7 @@ class BookingScheduler {
           waveStartedAt: { $ne: null },
           potentialVendors: { $exists: true, $not: { $size: 0 } }
         },
-        '_id currentWave waveStartedAt potentialVendors notifiedVendors excludedVendors bookingNumber createdAt userId expiresAt isEmergency bookingType'
+        '_id currentWave waveStartedAt potentialVendors notifiedVendors excludedVendors bookingNumber createdAt userId expiresAt isEmergency bookingType paymentStatus finalAmount advancePayment couponId'
       ).lean();
 
       if (activeBookings.length === 0) {
@@ -142,6 +142,38 @@ class BookingScheduler {
                 },
                 { actor: 'system' }
               );
+
+              // Process automatic refund to user wallet if customer paid upfront or advance
+              const isPaid = [PAYMENT_STATUS.SUCCESS, 'paid'].includes(booking.paymentStatus);
+              const advancePaid = booking.advancePayment?.status === 'paid' ? Number(booking.advancePayment?.paidAmount || 0) : 0;
+              const totalToRefund = (isPaid ? Number(booking.finalAmount || 0) : 0) + advancePaid;
+
+              if (totalToRefund > 0) {
+                const User = require('../models/User');
+                const Transaction = require('../models/Transaction');
+                await User.findByIdAndUpdate(booking.userId, { $inc: { 'wallet.balance': totalToRefund } }).catch(() => null);
+                await Transaction.create({
+                  userId: booking.userId,
+                  bookingId: booking._id,
+                  type: 'refund',
+                  amount: totalToRefund,
+                  status: 'completed',
+                  paymentMethod: 'wallet',
+                  description: `Automatic refund for booking ${booking.bookingNumber} (no professional accepted within search window)`
+                }).catch(() => null);
+
+                await Booking.findByIdAndUpdate(booking._id, {
+                  $set: { paymentStatus: PAYMENT_STATUS.REFUNDED, refundedAmount: totalToRefund }
+                }).catch(() => null);
+              }
+
+              // Restore coupon usage if applicable
+              if (booking.couponId) {
+                const Coupon = require('../models/Coupon');
+                const CouponRedemption = require('../models/CouponRedemption');
+                await Coupon.findByIdAndUpdate(booking.couponId, { $inc: { usedCount: -1 } }).catch(() => null);
+                await CouponRedemption.deleteOne({ bookingId: booking._id }).catch(() => null);
+              }
 
               if (this.io) {
                 this.io.to(`user_${booking.userId}`).emit('booking_search_failed', {

@@ -57,6 +57,12 @@ exports.retractBill = async (req, res) => {
     booking.qrPaymentInitiated = false;
     await booking.save();
 
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
+
     const io = req.app.get('io');
     if (io) {
       io.to(`user_${booking.userId}`).emit('booking_updated', {
@@ -149,6 +155,12 @@ exports.initiateOnlineCollection = async (req, res) => {
     booking.paymentMethod = 'online'; // Mark as online as soon as QR is shown
     booking.billFinalizedAt = new Date();
     await booking.save();
+
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
 
     // Emit socket event to user with full bill details & OTP
     const io = req.app.get('io');
@@ -270,6 +282,12 @@ exports.initiateCashCollection = async (req, res) => {
     booking.paymentOtp = otp;
     booking.billFinalizedAt = new Date();
     await booking.save();
+
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
 
     // Emit socket event to user with full bill details and OTP
     const io = req.app.get('io');
@@ -431,6 +449,12 @@ exports.confirmCashCollection = async (req, res) => {
 
     await booking.save();
 
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
+
     // Update Worker Wallet
     const vendorId = booking.vendorId;
     const worker = await Worker.findById(vendorId).lean();
@@ -572,6 +596,12 @@ exports.customerConfirmPayment = async (req, res) => {
     booking.customerConfirmed = true;
     await booking.save();
 
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
+
     res.status(200).json({ success: true, message: 'Payment confirmed by customer' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -603,6 +633,15 @@ exports.verifyOnlinePayment = async (req, res) => {
       return res.status(400).json({ success: false, message: `Cannot verify payment for booking in ${booking.status} status` });
     }
 
+    // Idempotency: if already paid, return immediately to prevent double crediting earnings
+    if (booking.paymentStatus === PAYMENT_STATUS.SUCCESS || booking.paymentStatus === 'paid') {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified and completed',
+        status: booking.status
+      });
+    }
+
     const qrRes = await getQRCodePayments(booking.razorpayQrId);
 
     if (qrRes.success && qrRes.payments && qrRes.payments.length > 0) {
@@ -628,6 +667,12 @@ exports.verifyOnlinePayment = async (req, res) => {
         booking.customerConfirmationOTP = undefined;
 
         await booking.save();
+
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
 
         // 2. Handle Earnings & Wallet
         const WorkerBill = require('../../models/WorkerBill');
@@ -772,6 +817,12 @@ exports.confirmManualOnlinePayment = async (req, res) => {
     booking.status = BOOKING_STATUS.COMPLETED;
     booking.completedAt = new Date();
     await booking.save();
+
+    // Clear penalty on user account now that cash payment is collected
+    if (booking.penalty > 0) {
+      const User = require('../../models/User');
+      await User.findByIdAndUpdate(booking.userId, { $set: { 'wallet.penalty': 0 } }).catch(() => null);
+    }
 
     // 2. Handle Earnings & Wallet (Reuse logic)
     const WorkerBill = require('../../models/WorkerBill');

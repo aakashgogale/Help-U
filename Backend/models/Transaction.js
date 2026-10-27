@@ -18,7 +18,12 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['credit', 'debit', 'refund', 'withdrawal', 'commission', 'cash_collected', 'settlement', 'earnings_credit', 'tds_deduction', 'payment', 'platform_fee', 'convenience_fee', 'gst', 'penalty', 'referral_bonus', 'cashback', 'promo_credit'],
+    enum: [
+      'credit', 'debit', 'refund', 'withdrawal', 'commission', 'cash_collected',
+      'settlement', 'earnings_credit', 'tds_deduction', 'payment', 'advance_payment',
+      'platform_fee', 'convenience_fee', 'gst', 'penalty', 'referral_bonus',
+      'cashback', 'promo_credit', 'scrap_payout', 'scrap_reimbursement'
+    ],
     required: true
   },
   amount: {
@@ -32,7 +37,11 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['wallet', 'razorpay', 'cash', 'bank_transfer', 'system', 'other', 'hand_to_hand', 'online', 'cash collected', 'Qr online'],
+    enum: [
+      'wallet', 'razorpay', 'cash', 'bank_transfer', 'system', 'other',
+      'hand_to_hand', 'online', 'cash collected', 'Qr online', 'pay_at_home',
+      'plan_benefit', 'upi', 'card'
+    ],
     default: 'wallet'
   },
   description: {

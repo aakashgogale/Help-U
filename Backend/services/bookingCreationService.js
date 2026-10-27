@@ -553,11 +553,8 @@ const placeBooking = async (userId, payload, options = {}) => {
     bookingPaymentStatus = finalAmount > 0 ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.PLAN_COVERED;
   }
 
-  // Clear penalty from user wallet if we charged it
-  if (pendingPenalty > 0) {
-    user.wallet.penalty = 0;
-    await user.save();
-  }
+  // Note: pendingPenalty is recorded in booking.penalty and included in finalAmount.
+  // It is cleared from user.wallet.penalty only once payment is verified or cash is collected.
 
   // Ensure minimum amount for Razorpay (₹1) for paid bookings
   if (finalAmount < 1 && paymentMethod !== 'plan_benefit') {

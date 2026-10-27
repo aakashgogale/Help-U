@@ -13,7 +13,8 @@ const {
   confirmPayAtHome,
   createPlanOrder,
   verifyPlanPayment,
-  getUpgradeDetails
+  getUpgradeDetails,
+  handleRazorpayWebhook
 } = require('../../controllers/paymentControllers/paymentController');
 
 // Validation rules
@@ -43,6 +44,7 @@ const refundValidation = [
 // not guarded: it confirms a payment the customer has already made.
 router.post('/create-order', authenticate, isUser, requireFlag('isOnlinePaymentEnabled', 'Online payment is currently unavailable.'), createOrderValidation, createPaymentOrder);
 router.post('/verify', authenticate, isUser, verifyPaymentValidation, verifyPaymentWebhook);
+router.post('/webhook', handleRazorpayWebhook); // Server-to-server webhook from Razorpay (no user auth)
 router.post('/wallet', authenticate, isUser, requireFlag('isWalletPaymentEnabled', 'Wallet payment is currently unavailable.'), walletPaymentValidation, processWalletPayment);
 router.post('/refund', authenticate, isUser, refundValidation, processRefund);
 router.post('/pay-at-home', authenticate, isUser, walletPaymentValidation, confirmPayAtHome);
