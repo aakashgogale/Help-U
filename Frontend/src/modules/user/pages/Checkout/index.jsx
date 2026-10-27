@@ -475,6 +475,13 @@ const Checkout = () => {
         return;
       }
 
+      const needsDetails = cartItems.find(item => (item.missingDetailKeys || []).length > 0);
+      if (needsDetails) {
+        toast.error(`Please add the required details for ${needsDetails.title || 'your service'}`);
+        navigate('/user/cart');
+        return;
+      }
+
       if (issuePhotos.some(p => p.status === 'uploading') || issueVideos.some(v => v.status === 'uploading')) {
         toast.error('Please wait, your photos and videos are still uploading');
         return;
@@ -536,6 +543,8 @@ const Checkout = () => {
       // Prepare bookedItems array matching Service catalog structure
       // Prepare bookedItems array matching Service catalog structure
       const bookedItemsData = cartItems.map(item => ({
+        // The server reads this cart item's saved details (answers are never taken from here)
+        cartItemId: item._id || item.id,
         brandName: item.sectionTitle || item.brand || '',
         brandIcon: item.sectionIcon || null,
         card: {
@@ -659,6 +668,8 @@ const Checkout = () => {
       setCurrentStep('details');
       setSearchingWorkers(false);
       setShowWorkerModal(false);
+      // Details were removed or changed since the cart was loaded; they are filled in on the cart
+      if (error.response?.data?.code === 'DETAILS_REQUIRED') navigate('/user/cart');
     }
   };
 
@@ -1284,6 +1295,16 @@ const Checkout = () => {
                         <FiClock className="w-3 h-3" />
                         {item.duration}
                       </div>
+                    )}
+                    {(item.details || []).length > 0 && (
+                      <dl className="mt-2 flex flex-wrap gap-1.5">
+                        {item.details.map(d => (
+                          <div key={d.key} className="text-[11px] bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                            <dt className="inline text-gray-500">{d.label}: </dt>
+                            <dd className="inline font-semibold text-gray-800">{d.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
                     )}
                   </div>
                   {!item.isPlan && (

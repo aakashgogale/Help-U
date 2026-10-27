@@ -1,6 +1,7 @@
 const Cart = require('../../models/Cart');
 const Service = require('../../models/UserService');
 const { validationResult } = require('express-validator');
+const { resolveFieldsForCategories, validateDetailAnswers, enrichCartItems } = require('../../utils/detailFields');
 
 /**
  * Get user's cart
@@ -31,7 +32,7 @@ const getUserCart = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: cart.items || []
+      data: await enrichCartItems(cart.items)
     });
   } catch (error) {
     console.error('Get user cart error:', error);
@@ -187,7 +188,7 @@ const addToCart = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Item added to cart',
-      data: cart.items
+      data: await enrichCartItems(cart.items)
     });
   } catch (error) {
     console.error('Add to cart error:', error);
@@ -199,7 +200,7 @@ const addToCart = async (req, res) => {
 };
 
 /**
- * Update cart item quantity
+ * Update a cart item's quantity and/or its detail answers
  */
 const updateCartItem = async (req, res) => {
   try {
@@ -214,9 +215,15 @@ const updateCartItem = async (req, res) => {
 
     const userId = req.user.id;
     const { itemId } = req.params;
-    const { serviceCount } = req.body;
+    const { serviceCount, details } = req.body;
 
-    if (serviceCount < 1) {
+    if (serviceCount === undefined && details === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nothing to update'
+      });
+    }
+    if (serviceCount !== undefined && !(Number(serviceCount) >= 1)) {
       return res.status(400).json({
         success: false,
         message: 'Quantity must be at least 1'
@@ -239,14 +246,27 @@ const updateCartItem = async (req, res) => {
       });
     }
 
-    item.serviceCount = serviceCount;
-    item.price = item.unitPrice * serviceCount;
+    if (serviceCount !== undefined) {
+      item.serviceCount = Number(serviceCount);
+      item.price = item.unitPrice * item.serviceCount;
+    }
+
+    if (details !== undefined) {
+      // `details` is { [fieldKey]: answer } for the full set of answers on this item
+      const fieldsByCategory = await resolveFieldsForCategories([item.categoryId]);
+      const fields = fieldsByCategory.get(String(item.categoryId)) || [];
+      const result = validateDetailAnswers(fields, details);
+      if (result.errors.length) {
+        return res.status(400).json({ success: false, message: result.errors[0], errors: result.errors });
+      }
+      item.details = result.details;
+    }
     await cart.save();
 
     res.status(200).json({
       success: true,
       message: 'Cart item updated',
-      data: cart.items
+      data: await enrichCartItems(cart.items)
     });
   } catch (error) {
     console.error('Update cart item error:', error);
@@ -279,7 +299,7 @@ const removeFromCart = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Item removed from cart',
-      data: cart.items
+      data: await enrichCartItems(cart.items)
     });
   } catch (error) {
     console.error('Remove from cart error:', error);
@@ -344,7 +364,7 @@ const removeCategoryItems = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Category items removed from cart',
-      data: cart.items
+      data: await enrichCartItems(cart.items)
     });
   } catch (error) {
     console.error('Remove category items error:', error);

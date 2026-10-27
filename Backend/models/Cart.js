@@ -124,6 +124,16 @@ const cartItemSchema = new mongoose.Schema({
   hours: {
     type: Number,
     default: null
+  },
+  // Answers to the category's detail fields (e.g. appliance brand). `label` is a snapshot so
+  // the cart and booking read correctly even if the admin renames the question later.
+  details: {
+    type: [new mongoose.Schema({
+      key: { type: String, required: true },
+      label: { type: String, default: '' },
+      value: { type: String, default: '' }
+    }, { _id: false })],
+    default: []
   }
 }, { _id: true });
 

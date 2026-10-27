@@ -31,6 +31,7 @@ const { findNearbyWorkers, geocodeAddress } = require('./locationService');
 const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs } = require('./workerAvailabilityService');
 const { nextOccurrenceDate } = require('../utils/recurrence');
 const { resolveCheckoutAmount } = require('../utils/servicePricing');
+const { resolveBookedItemDetails } = require('./bookingDetailsService');
 
 const fail = (statusCode, message, extra = {}) => ({
   statusCode,
@@ -156,6 +157,14 @@ const placeBooking = async (userId, payload, options = {}) => {
   } = payload;
 
   if (!address || !timeSlot) return fail(400, 'Address and time slot are required');
+
+  // Answers to the category's questions come from the customer's cart items, and the required
+  // ones must be filled in before a booking can be placed.
+  const detailsResult = await resolveBookedItemDetails(userId, bookedItems, { trustPayload: !!recurringContext });
+  if (detailsResult.error) {
+    return fail(400, detailsResult.error, { code: 'DETAILS_REQUIRED', problems: detailsResult.problems });
+  }
+  bookedItems = detailsResult.bookedItems;
 
   const config = await getBookingConfig();
   const gstPct = config.serviceGstPercentage;
@@ -561,7 +570,8 @@ const placeBooking = async (userId, payload, options = {}) => {
     brandName: item.brandName || item.sectionTitle || item.brand || '',
     brandIcon: item.brandIcon || item.sectionIcon || item.icon || null,
     card: item.card || item,
-    quantity: item.quantity || 1
+    quantity: item.quantity || 1,
+    details: item.details || []
   })) : [];
 
   const categoryIcon = category?.icon || category?.image || service.iconUrl || 'https://cdn-icons-png.flaticon.com/512/3500/3500833.png';

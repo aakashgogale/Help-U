@@ -6,13 +6,14 @@ import { useCart } from '../../../../context/CartContext';
 import { useZone } from '../../../../context/ZoneContext';
 import PageHeader from '../../components/layout/PageHeader';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
+import ItemDetailsForm from './ItemDetailsForm';
 
 const formatINR = (value) => `₹${Math.round(value || 0).toLocaleString('en-IN')}`;
 
 // Hourly and inspection items are priced per visit, so their count is not user-editable
 const hasQuantity = (item) => item.pricingType !== 'hourly' && item.pricingType !== 'inspection_fee';
 
-const CartItemRow = ({ item, busy, onQuantityChange, onDelete }) => {
+const CartItemRow = ({ item, busy, onQuantityChange, onDelete, onSaveDetails }) => {
   const id = item._id || item.id;
   const count = item.serviceCount || 1;
 
@@ -42,6 +43,14 @@ const CartItemRow = ({ item, busy, onQuantityChange, onDelete }) => {
         </div>
         <p className="text-[14px] font-bold text-ink shrink-0">{formatINR(item.price)}</p>
       </div>
+
+      {/* key resets the draft whenever the saved answers change */}
+      <ItemDetailsForm
+        key={JSON.stringify(item.details || [])}
+        item={item}
+        busy={busy}
+        onSave={onSaveDetails}
+      />
 
       <div className="mt-2.5 flex items-center justify-between">
         {hasQuantity(item) ? (
@@ -105,7 +114,7 @@ const CartSkeleton = () => (
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { cartItems, isLoading: loading, removeItem, removeCategoryItems, updateItem } = useCart();
+  const { cartItems, isLoading: loading, removeItem, removeCategoryItems, updateItem, updateItemDetails } = useCart();
   const { currentZone, isOutOfZone } = useZone();
   const [busyIds, setBusyIds] = useState(() => new Set());
 
@@ -175,6 +184,22 @@ const Cart = () => {
     }
   };
 
+  const handleSaveDetails = async (itemId, answers) => {
+    setBusy(itemId, true);
+    try {
+      const response = await updateItemDetails(itemId, answers);
+      if (response.success) {
+        toast.success('Details saved');
+      } else {
+        toast.error(response.message || 'Failed to save details');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save details');
+    } finally {
+      setBusy(itemId, false);
+    }
+  };
+
   const handleAddServices = (category) => {
     const categoryId = groupedItems[category]?.[0]?.categoryId;
     navigate(`/user/category/${categoryId || encodeURIComponent(category)}`);
@@ -197,6 +222,13 @@ const Cart = () => {
           return;
         }
       }
+    }
+    // Required details must be filled in before booking; the server checks this again at checkout
+    const incomplete = (groupedItems[category] || []).find((i) => (i.missingDetailKeys || []).length > 0);
+    if (incomplete) {
+      toast.error(`Please fill in the required details for ${incomplete.title}`, { id: 'missing-details' });
+      document.getElementById(`details-${incomplete._id || incomplete.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
     navigate('/user/checkout', { state: { category } });
   };
@@ -275,6 +307,7 @@ const Cart = () => {
                         busy={busyIds.has(item._id || item.id)}
                         onQuantityChange={handleQuantityChange}
                         onDelete={handleDelete}
+                        onSaveDetails={handleSaveDetails}
                       />
                     ))}
                   </div>

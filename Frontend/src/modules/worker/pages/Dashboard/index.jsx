@@ -689,13 +689,9 @@ const Dashboard = memo(() => {
 
                         {/* Main Content */}
                         <div className="flex-1 min-w-0">
-                          {/* Name and Service in one line */}
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-bold text-slate-800 truncate">{job.customerName}</p>
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 flex-shrink-0">
-                              {job.serviceType || 'Service'}
-                            </span>
-                          </div>
+                          {/* Service on its own line (names can be long); customer below it */}
+                          <p className="text-sm font-bold text-slate-800 truncate">{job.serviceType || 'Service'}</p>
+                          <p className="text-xs font-medium text-slate-500 truncate mb-1">{job.customerName}</p>
 
                           {/* Address, Time, Status in one line */}
                           <div className="flex items-center gap-2 flex-wrap">

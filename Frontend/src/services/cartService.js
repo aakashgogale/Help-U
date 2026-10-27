@@ -24,6 +24,12 @@ export const cartService = {
     return response.data;
   },
 
+  // Save the customer's answers to a cart item's detail questions ({ [fieldKey]: answer })
+  updateDetails: async (itemId, details) => {
+    const response = await api.put(`/users/cart/${itemId}`, { details });
+    return response.data;
+  },
+
   // Remove item from cart
   removeItem: async (itemId) => {
     const response = await api.delete(`/users/cart/${itemId}`);

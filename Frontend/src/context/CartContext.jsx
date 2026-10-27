@@ -130,6 +130,15 @@ export const CartProvider = ({ children }) => {
     }
   }, [fetchCart]);
 
+  // Save answers to an item's detail questions; the server returns the full, re-validated cart
+  const updateItemDetails = useCallback(async (itemId, details) => {
+    const response = await cartService.updateDetails(itemId, details);
+    if (response.success && Array.isArray(response.data)) {
+      setCartItems(response.data);
+    }
+    return response;
+  }, []);
+
   // Remove item from cart - instant update
   const removeItem = useCallback(async (itemId) => {
     // Optimistic update
@@ -202,6 +211,7 @@ export const CartProvider = ({ children }) => {
     fetchCart,
     addToCart,
     updateItem,
+    updateItemDetails,
     removeItem,
     removeCategoryItems,
     clearCart,

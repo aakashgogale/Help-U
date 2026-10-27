@@ -3,6 +3,7 @@ const Cart = require('../../models/Cart');
 const Settings = require('../../models/Settings');
 const { validationResult } = require('express-validator');
 const cloudinaryService = require('../../services/cloudinaryService');
+const { enrichCartItems } = require('../../utils/detailFields');
 
 /**
  * Get user profile
@@ -202,7 +203,7 @@ const getCheckoutData = async (req, res) => {
         phone: user.phone,
         addresses: user.addresses || []
       },
-      cartItems: cart ? cart.items : [],
+      cartItems: await enrichCartItems(cart ? cart.items : []),
       settings: settings || { visitedCharges: 0, serviceGstPercentage: 18, partsGstPercentage: 18 }
     });
   } catch (error) {

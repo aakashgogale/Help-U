@@ -126,7 +126,17 @@ const bookingSchema = new mongoose.Schema({
       imageUrl: { type: String },
       features: [{ type: String }]
     },
-    quantity: { type: Number, default: 1 }
+    quantity: { type: Number, default: 1 },
+    // The customer's answers to the category's questions (e.g. Appliance brand: LG),
+    // copied from the cart at booking time.
+    details: {
+      type: [new mongoose.Schema({
+        key: { type: String, required: true },
+        label: { type: String, default: '' },
+        value: { type: String, default: '' }
+      }, { _id: false })],
+      default: []
+    }
   }],
   // Extras picked at checkout. Prices are copied from the AddOn at booking
   // time so later price changes do not alter an existing booking.

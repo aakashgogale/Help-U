@@ -11,6 +11,7 @@ import { getBookingById, requestAdvancePayment } from '../../services/bookingSer
 import { publicCatalogService } from '../../../../services/catalogService';
 import { OtpVerificationModal, ScanAndPayModal } from '../../components/common';
 import LogoLoader from '../../../../components/common/LogoLoader';
+import useAppNotifications from '../../../../hooks/useAppNotifications';
 
 const BillingPage = () => {
   const { id } = useParams();
@@ -561,6 +562,35 @@ const BillingPage = () => {
       workerWalletService.retractBill(id).catch(() => {});
     }
   }, [id]);
+
+  // The customer can finish paying (online or by confirming the cash code) while this page is
+  // open; move on to the booking as soon as the server says it is completed.
+  const socket = useAppNotifications('worker');
+  useEffect(() => {
+    if (!socket || !id) return undefined;
+
+    const handlePaymentUpdate = (data) => {
+      if (String(data?.bookingId || data?._id || '') !== String(id)) return;
+      if (data.status !== 'completed') return;
+
+      // Nothing left to withdraw once the booking is paid
+      billSentRef.current = false;
+      setShowQrModal(false);
+      setShowOtpModal(false);
+      toast.success('Payment received. Job completed!');
+      localStorage.removeItem(`billing_step_${id}`);
+      localStorage.removeItem(`billing_max_step_${id}`);
+      localStorage.removeItem(`billing_data_${id}`);
+      navigate(`/worker/booking/${id}`, { replace: true });
+    };
+
+    socket.on('booking_updated', handlePaymentUpdate);
+    socket.on('payment_success', handlePaymentUpdate);
+    return () => {
+      socket.off('booking_updated', handlePaymentUpdate);
+      socket.off('payment_success', handlePaymentUpdate);
+    };
+  }, [socket, id, navigate]);
 
   const handleSubmit = async () => {
     try {
@@ -1521,7 +1551,20 @@ const BillingPage = () => {
             </button>
           </>
         )}
-        {currentStep === 6 && (
+        {currentStep === 6 && booking?.status === 'completed' && (
+          <>
+            <div className="flex-1 flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-sm">
+              <FiCheckCircle className="w-5 h-5" /> Paid
+            </div>
+            <button
+              onClick={() => navigate(`/worker/booking/${id}`, { replace: true })}
+              className="flex-[2] py-3.5 bg-gray-900 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              View booking <FiArrowRight />
+            </button>
+          </>
+        )}
+        {currentStep === 6 && booking?.status !== 'completed' && (
           <>
             <button
               onClick={async () => { if (await withdrawBill()) setCurrentStep(5); }}
