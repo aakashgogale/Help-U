@@ -96,9 +96,11 @@ const sendSMS = async (phone, message) => {
  */
 const sendOTP = async (phone, otp) => {
   // DLT-compliant message format (must match registered template)
-  // Template: "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
-  const appName = 'HOMECARE';
-  const message = `Welcome to the ${appName} powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
+  // Template: "Welcome to the ##var## powered by Help-U.Your OTP for registration is ##var##.BGADEC"
+  const appName = process.env.APP_NAME || 'Help-U';
+  const message = process.env.SMS_OTP_TEMPLATE
+    ? process.env.SMS_OTP_TEMPLATE.replace('##appName##', appName).replace('##otp##', otp)
+    : `Welcome to the ${appName} powered by Help-U.Your OTP for registration is ${otp}.BGADEC`;
 
   console.log(`[SMS] Attempting to send OTP to ${phone}`);
   console.log(`[SMS] Message: ${message}`);

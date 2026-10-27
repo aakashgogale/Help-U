@@ -12,8 +12,8 @@ if (!SOURCE_URI || !TARGET_URI) {
 
 async function migrateData() {
   console.log('🚀 Starting Full Database Migration...');
-  console.log(`Source DB: Homster`);
-  console.log(`Target DB: ServerProvider\n`);
+  console.log(`Source DB: Legacy`);
+  console.log(`Target DB: Help-U\n`);
 
   let sourceConn;
   let targetConn;
@@ -22,7 +22,7 @@ async function migrateData() {
     sourceConn = await mongoose.createConnection(SOURCE_URI, {
       serverSelectionTimeoutMS: 20000
     }).asPromise();
-    console.log('✅ Connected to Source DB (Homster)');
+    console.log('✅ Connected to Source DB');
 
     targetConn = await mongoose.createConnection(TARGET_URI, {
       serverSelectionTimeoutMS: 20000

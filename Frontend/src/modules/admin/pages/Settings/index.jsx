@@ -1644,7 +1644,7 @@ const AdminSettings = () => {
                               <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                               <input
                                 type="email"
-                                placeholder="admin@appzeto.com"
+                                placeholder="admin@help-u.in"
                                 value={newAdmin.email}
                                 onChange={e => setNewAdmin(p => ({ ...p, email: e.target.value }))}
                                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all font-medium text-gray-800"

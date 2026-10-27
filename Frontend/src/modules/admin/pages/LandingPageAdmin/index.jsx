@@ -285,7 +285,7 @@ const LandingPageAdmin = () => {
                   <input
                     type="url"
                     placeholder="https://play.google.com/store/apps/details?id=in.helpu.customer"
-                    value={config.appLinks?.playStoreUrl?.includes('homestr') ? '' : (config.appLinks?.playStoreUrl || '')}
+                    value={(config.appLinks?.playStoreUrl?.includes('homestr') || config.appLinks?.playStoreUrl?.includes('homster')) ? '' : (config.appLinks?.playStoreUrl || '')}
                     onChange={(e) =>
                       setConfig({ ...config, appLinks: { ...config.appLinks, playStoreUrl: e.target.value } })
                     }

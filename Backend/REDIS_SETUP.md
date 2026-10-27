@@ -1,4 +1,4 @@
-# Redis Setup Guide for Appzeto
+# Redis Setup Guide for Help-U
 
 ## Why Redis?
 Redis provides high-performance caching for:
@@ -30,7 +30,7 @@ Redis provides high-performance caching for:
 ### Option 2: Docker (Recommended for Dev)
 
 ```bash
-docker run -d --name redis-appzeto -p 6379:6379 redis:alpine
+docker run -d --name redis-helpu -p 6379:6379 redis:alpine
 ```
 
 ### Option 3: Cloud Redis (Production)

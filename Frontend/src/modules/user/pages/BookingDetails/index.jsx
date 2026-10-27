@@ -73,7 +73,7 @@ const BookingDetails = () => {
   });
 
   const [supportInfo, setSupportInfo] = useState({
-    email: 'support@homestr.com',
+    email: 'support@help-u.in',
     phone: ''
   });
 
@@ -87,14 +87,14 @@ const BookingDetails = () => {
         if (response.data?.success && response.data?.settings) {
           const { supportEmail, supportPhone } = response.data.settings;
           setSupportInfo({
-            email: supportEmail || 'help@homestr.in',
+            email: supportEmail || 'help@help-u.in',
             phone: supportPhone || '+919999999999'
           });
         }
       } catch (error) {
         console.error('Failed to fetch support settings:', error);
         setSupportInfo({
-          email: 'help@homestr.in',
+          email: 'help@help-u.in',
           phone: '+919999999999'
         });
       }
@@ -1667,7 +1667,7 @@ const BookingDetails = () => {
             </button>
             <button
               onClick={() => {
-                const email = supportInfo.email || 'help@homestr.in';
+                const email = supportInfo.email || 'help@help-u.in';
                 const link = document.createElement('a');
                 link.href = `mailto:${email}`;
                 document.body.appendChild(link);

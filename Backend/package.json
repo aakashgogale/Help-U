@@ -1,7 +1,7 @@
 {
-  "name": "Appzeto-backend",
+  "name": "help-u-backend",
   "version": "1.0.0",
-  "description": "Backend API for Appzeto platform",
+  "description": "Backend API for Help-U platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -31,7 +31,7 @@
     "upload:services": "node scripts/uploadServiceImages.js"
   },
   "keywords": [
-    "Appzeto",
+    "Help-U",
     "api",
     "express",
     "mongodb"

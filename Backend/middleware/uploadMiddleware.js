@@ -7,7 +7,7 @@ const cloudinary = require('../config/cloudinary');
 const cloudinaryStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'appzeto',
+    folder: 'helpu',
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif'],
     // Apply quality-preserving optimization on upload
     transformation: [

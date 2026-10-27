@@ -14,7 +14,7 @@ import api from '../services/api';
  * @param {Function} onProgress - Progress callback (percent) => {}
  * @returns {Promise<string>} - The secure URL of the uploaded image
  */
-export const uploadToCloudinary = async (file, folder = 'appzeto', onProgress) => {
+export const uploadToCloudinary = async (file, folder = 'helpu', onProgress) => {
   try {
     // 1. Get signature from our backend
     // Use the generic /upload/sign-signature instead of /admin prefix to ensure User access

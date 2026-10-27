@@ -29,9 +29,9 @@ exports.getPublicLandingConfig = async (req, res) => {
     // Optionally get company settings as fallback
     const globalSettings = await Settings.findOne({ type: 'global' }).lean();
 
-    // Clean Play Store link: remove placeholder 'homestr' if present
+    // Clean Play Store link: remove placeholder URLs if present
     const rawPlayUrl = config.appLinks?.playStoreUrl;
-    const playStoreUrl = (rawPlayUrl && !rawPlayUrl.includes('homestr'))
+    const playStoreUrl = (rawPlayUrl && !rawPlayUrl.includes('homestr') && !rawPlayUrl.includes('homster'))
       ? rawPlayUrl
       : 'https://play.google.com/store/search?q=Help-U%20Services&c=apps';
 

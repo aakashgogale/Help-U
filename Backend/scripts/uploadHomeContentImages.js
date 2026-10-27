@@ -112,7 +112,7 @@ const uploadHomeContentImages = async () => {
 
           const imageBuffer = fs.readFileSync(imagePath);
           const result = await uploadFile(imageBuffer, {
-            folder: `Homster/HomeContent/${section.name}`,
+            folder: `helpu/HomeContent/${section.name}`,
             public_id: path.basename(imagePath, path.extname(imagePath)).replace(/[^a-zA-Z0-9-_]/g, '-')
           });
 
@@ -158,7 +158,7 @@ const uploadHomeContentImages = async () => {
 const runUpload = async () => {
   try {
     await uploadHomeContentImages();
-    console.log('\n🎯 Next step: Update seeding scripts with these Homster HomeContent URLs');
+    console.log('\n🎯 Next step: Update seeding scripts with these Help-U HomeContent URLs');
   } catch (error) {
     console.error('Upload failed:', error);
     process.exit(1);

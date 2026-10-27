@@ -137,7 +137,7 @@ const sendOTPEmail = async (email, otp, purpose = 'verification') => {
     `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+      from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
       to: email,
       subject: `${subjectPrefix} - Help U`,
       html: emailWrapper(content, subjectPrefix, `Your verification code is ${otp}`)
@@ -185,7 +185,7 @@ const sendWelcomeEmail = async (email, name) => {
     `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+      from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
       to: email,
       subject: 'Welcome to Help U!',
       html: emailWrapper(content, 'Welcome', 'Welcome to the future of home services')
@@ -231,7 +231,7 @@ const sendBookingEmails = async (booking, user, worker, service) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
         to: user.email,
         subject: `Booking Confirmed #${bookingId} - Help U`,
         html: emailWrapper(content, 'Confirmed', 'Your booking is scheduled successfully')
@@ -259,7 +259,7 @@ const sendBookingEmails = async (booking, user, worker, service) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
         to: worker.email,
         subject: `New Job Assigned #${bookingId} - Help U`,
         html: emailWrapper(vContent, 'New Job', 'Action Required: New job assigned')
@@ -310,7 +310,7 @@ const sendBookingCompletionEmails = async (booking) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+        from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
         to: user.email,
         subject: `Service Invoice #${bookingId} - Help U`,
         html: emailWrapper(content, 'Invoice', 'Your service is complete. Here is the receipt.')
@@ -345,7 +345,7 @@ const sendWithdrawalApprovedEmail = async (worker, amount, transactionId) => {
     `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+      from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
       to: worker.email,
       subject: 'Withdrawal Success - Help U',
       html: emailWrapper(content, 'Withdrawal', 'Your funds are on the way')
@@ -378,7 +378,7 @@ const sendDuesPaymentApprovedEmail = async (worker, amount, balanceAfter) => {
     `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'Help U <noreply@homster.com>',
+      from: process.env.EMAIL_FROM || 'Help-U <noreply@help-u.in>',
       to: worker.email,
       subject: 'Dues Payment Verified - Help U',
       html: emailWrapper(content, 'Verified', 'We have received your payment')

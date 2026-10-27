@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="Frontend/public/logo.png" alt="Appzeto Logo" width="200"/>
+  <img src="Frontend/public/logo.png" alt="Help-U Logo" width="200"/>
 </p>
 
-<h1 align="center">🏠 Appzeto - Home Services Platform</h1>
+<h1 align="center">🏠 Help-U - Home Services Platform</h1>
 
 <p align="center">
   <strong>A comprehensive on-demand home services marketplace connecting users with trusted workers and skilled workers</strong>
@@ -52,7 +52,7 @@
 
 ## 🎯 Overview
 
-**Appzeto** is a full-stack, enterprise-grade home services marketplace platform that connects customers with professional service providers. The platform supports multiple user roles including:
+**Help-U** is a full-stack, enterprise-grade home services marketplace platform that connects customers with professional service providers. The platform supports multiple user roles including:
 
 - **Users/Customers** - Book services, track bookings, make payments
 - **Workers** - Manage services, accept bookings, manage workers
@@ -224,8 +224,8 @@ Ensure you have the following installed on your system:
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/appzeto.git
-cd appzeto
+git clone https://github.com/yourusername/help-u.git
+cd help-u
 ```
 
 #### 2. Install Backend Dependencies
@@ -274,9 +274,9 @@ PORT=5000
 NODE_ENV=development
 
 # MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/appzeto
+MONGODB_URI=mongodb://localhost:27017/helpu
 # For MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/appzeto?retryWrites=true&w=majority
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/helpu?retryWrites=true&w=majority
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -301,7 +301,7 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
-EMAIL_FROM="Appzeto <noreply@appzeto.com>"
+EMAIL_FROM="Help-U <noreply@help-u.in>"
 
 # Razorpay Configuration
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
@@ -340,7 +340,7 @@ VITE_API_BASE_URL=http://localhost:5000/api
 VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
 
 # App Configuration
-VITE_APP_NAME=Appzeto
+VITE_APP_NAME=Help-U
 
 # Socket.io Configuration
 VITE_SOCKET_URL=http://localhost:5000
@@ -418,7 +418,7 @@ npm run upload:icons
 ## 📁 Project Structure
 
 ```
-appzeto/
+help-u/
 ├── 📁 Backend/
 │   ├── 📁 config/              # Database and service configurations
 │   │   ├── db.js               # MongoDB connection
@@ -826,7 +826,7 @@ This project is licensed under the **ISC License**.
 ```
 ISC License
 
-Copyright (c) 2024 Appzeto
+Copyright (c) 2024 Help-U
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -853,10 +853,10 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ### Get Help
 
-- 📧 **Email**: support@appzeto.com
+- 📧 **Email**: support@help-u.in
 - 💬 **Discord**: [Join our community](#)
 - 📖 **Documentation**: [Wiki](#)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/appzeto/issues)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/help-u/issues)
 
 ---
 
@@ -874,7 +874,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 <p align="center">
-  Made with ❤️ by the Appzeto Team
+  Made with ❤️ by the Help-U Team
 </p>
 
 <p align="center">

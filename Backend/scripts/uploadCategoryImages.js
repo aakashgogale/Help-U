@@ -28,12 +28,12 @@ const uploadCategoryImages = async () => {
         icon: null
       };
 
-      // Upload category icon to Homster/{category}/icons/
+      // Upload category icon to helpu/{category}/icons/
       if (fs.existsSync(category.icon)) {
         console.log(`  📤 Uploading category icon: ${path.basename(category.icon)}`);
         const iconBuffer = fs.readFileSync(category.icon);
         const iconResult = await uploadFile(iconBuffer, {
-          folder: `Homster/${category.name}/icons`,
+          folder: `helpu/${category.name}/icons`,
           public_id: `${category.name}-icon`,
           overwrite: true
         });
@@ -73,7 +73,7 @@ const uploadCategoryImages = async () => {
 const runUpload = async () => {
   try {
     await uploadCategoryImages();
-    console.log('\n🎯 Next step: Update seeding scripts with these Homster Cloudinary URLs');
+    console.log('\n🎯 Next step: Update seeding scripts with these Help-U Cloudinary URLs');
   } catch (error) {
     console.error('Upload failed:', error);
     process.exit(1);

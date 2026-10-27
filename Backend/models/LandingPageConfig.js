@@ -321,7 +321,7 @@ const landingPageConfigSchema = new mongoose.Schema(
 
     // Contact Information
     contact: {
-      supportEmail: { type: String, default: 'support@homestr.in' },
+      supportEmail: { type: String, default: 'support@help-u.in' },
       supportPhone: { type: String, default: '+91 98765 43210' },
       supportWhatsapp: { type: String, default: '+91 98765 43210' },
       companyAddress: { type: String, default: 'Vijay Nagar, Scheme 54, Indore, MP 452010' },

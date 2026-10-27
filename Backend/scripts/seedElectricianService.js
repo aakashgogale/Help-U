@@ -8,7 +8,7 @@ const { uploadFile } = require('../services/fileStorageService');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/appzeto');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helpu');
     console.log('MongoDB connected');
   } catch (error) {
     console.error('MongoDB connection error:', error);

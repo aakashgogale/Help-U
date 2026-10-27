@@ -4,11 +4,11 @@ const streamifier = require('streamifier');
 /**
  * Upload file to Cloudinary
  * @param {Buffer} fileBuffer - File buffer from multer
- * @param {String} folder - Cloudinary folder path (e.g., 'homster/documents')
+ * @param {String} folder - Cloudinary folder path (e.g., 'helpu/documents')
  * @param {String} resourceType - 'image', 'raw', 'video', 'auto'
  * @returns {Promise<Object>} - Cloudinary upload result
  */
-const uploadToCloudinary = (fileBuffer, folder = 'homster/documents', resourceType = 'auto') => {
+const uploadToCloudinary = (fileBuffer, folder = 'helpu/documents', resourceType = 'auto') => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -39,7 +39,7 @@ const uploadToCloudinary = (fileBuffer, folder = 'homster/documents', resourceTy
  */
 const uploadWorkerDocument = async (fileBuffer, documentType, vendorId) => {
   try {
-    const folder = `homster/documents/vendors/${vendorId}`;
+    const folder = `helpu/documents/vendors/${vendorId}`;
     const result = await uploadToCloudinary(fileBuffer, folder, 'auto');
     return result.secure_url;
   } catch (error) {
@@ -57,7 +57,7 @@ const uploadWorkerDocument = async (fileBuffer, documentType, vendorId) => {
  */
 const uploadProfilePhoto = async (fileBuffer, userType, userId) => {
   try {
-    const folder = `homster/profiles/${userType}s/${userId}`;
+    const folder = `helpu/profiles/${userType}s/${userId}`;
     const result = await uploadToCloudinary(fileBuffer, folder, 'image');
     return result.secure_url;
   } catch (error) {
@@ -92,7 +92,7 @@ const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
  */
 const uploadPaymentScreenshot = async (base64Data, transactionId) => {
   try {
-    const folder = `homster/payment_proofs/${transactionId}`;
+    const folder = `helpu/payment_proofs/${transactionId}`;
 
     const result = await cloudinary.uploader.upload(base64Data, {
       folder: folder,

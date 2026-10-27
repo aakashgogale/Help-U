@@ -429,7 +429,7 @@ const LandingPage = () => {
   };
 
   const rawPlayUrl = config.appLinks?.playStoreUrl;
-  const playStoreLink = (rawPlayUrl && !rawPlayUrl.includes('homestr'))
+  const playStoreLink = (rawPlayUrl && !rawPlayUrl.includes('homestr') && !rawPlayUrl.includes('homster'))
     ? rawPlayUrl
     : 'https://play.google.com/store/search?q=Help-U%20Services&c=apps';
 
@@ -615,7 +615,7 @@ const LandingPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full mb-4 text-[11px] sm:text-xs font-bold hover:bg-brand/20 transition-colors cursor-pointer"
               >
                 <span>🛠️ Skilled Technician?</span>
-                <span className="underline">Register as Partner &rarr;</span>
+                <span className="underline">Register as Partner →</span>
               </button>
 
               <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.2] mb-3 sm:mb-5">
@@ -1097,7 +1097,7 @@ const LandingPage = () => {
                       }}
                       className="text-xs font-bold text-brand hover:underline"
                     >
-                      Register another partner profile &rarr;
+                      Register another partner profile →
                     </button>
                   </motion.div>
                 ) : (
@@ -1205,7 +1205,7 @@ const LandingPage = () => {
                       disabled={partnerSubmitting}
                       className="w-full py-3 sm:py-3.5 bg-[#163B66] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95 disabled:opacity-50 mt-1"
                     >
-                      {partnerSubmitting ? 'Submitting...' : 'Register as Partner &rarr;'}
+                      {partnerSubmitting ? 'Submitting...' : 'Register as Partner →'}
                     </button>
                     <p className="text-[10px] text-gray-400 text-center">
                       By registering, you agree to our Partner Guidelines.
@@ -1356,7 +1356,7 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">WhatsApp</h4>
-                  <p className="text-[10px] sm:text-xs text-green-600 font-bold">Chat Now &rarr;</p>
+                  <p className="text-[10px] sm:text-xs text-green-600 font-bold">Chat Now →</p>
                 </div>
               </a>
               )}
@@ -1448,7 +1448,7 @@ const LandingPage = () => {
                   disabled={contactSubmitting}
                   className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95 disabled:opacity-50"
                 >
-                  {contactSubmitting ? 'Sending...' : 'Send Message &rarr;'}
+                  {contactSubmitting ? 'Sending...' : 'Send Message →'}
                 </button>
               </form>
             </div>

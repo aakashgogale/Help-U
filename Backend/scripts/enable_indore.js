@@ -13,7 +13,7 @@ const migrateData = async () => {
   try {
     console.log('Connecting to MongoDB...');
     // Use MONGODB_URI as per config/db.js
-    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/appzeto';
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/helpu';
     console.log(`Using URI length: ${uri.length}`); // Debug: check if URI is loaded
     await mongoose.connect(uri);
     console.log('Connected to MongoDB.');

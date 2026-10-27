@@ -19,7 +19,7 @@ cloudinary.config({
 const uploadFile = async (file, options = {}) => {
   try {
     const {
-      folder = 'appzeto',
+      folder = 'helpu',
       resource_type = 'auto',
       transformation = [],
       public_id,

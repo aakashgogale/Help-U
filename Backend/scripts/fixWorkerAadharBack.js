@@ -6,7 +6,7 @@ const PLACEHOLDER_URL = 'https://placehold.co/400x250/e2e8f0/94a3b8?text=Aadhar+
 
 const run = async () => {
   try {
-    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/appzeto';
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/helpu';
     console.log('Connecting to MongoDB...');
     await mongoose.connect(uri);
     console.log('Connected.');

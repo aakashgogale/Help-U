@@ -11,7 +11,7 @@ const cloudinary = require('../config/cloudinary');
  */
 exports.getSignature = async (req, res) => {
   try {
-    const { folder = 'appzeto' } = req.query;
+    const { folder = 'helpu' } = req.query;
     const timestamp = Math.round(new Date().getTime() / 1000);
 
     // Params to be signed

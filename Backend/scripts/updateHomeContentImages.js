@@ -172,7 +172,7 @@ const updateHomeContentImages = async () => {
       return;
     }
 
-    console.log('📝 Updating HomeContent images with Homster URLs...\n');
+    console.log('📝 Updating HomeContent images with Help-U URLs...\n');
 
     // Update banners if they exist
     if (homeContent.banners && homeContent.banners.length > 0) {
@@ -256,7 +256,7 @@ const updateHomeContentImages = async () => {
     // Save the updated HomeContent
     await homeContent.save();
     console.log('\n🎉 HomeContent images updated successfully!');
-    console.log('✅ All homepage images now use Homster/HomeContent URLs');
+    console.log('✅ All homepage images now use Help-U/HomeContent URLs');
 
   } catch (error) {
     console.error('❌ Error updating HomeContent:', error);

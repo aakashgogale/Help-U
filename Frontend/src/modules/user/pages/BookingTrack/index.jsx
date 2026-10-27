@@ -90,7 +90,7 @@ const BookingTrack = () => {
           : (booking.userPayableAmount || booking.finalAmount)) || 0) * 100),
         currency: 'INR',
         order_id: existingOrderId,
-        name: 'Appzeto',
+        name: 'Help-U',
         description: `${paymentType === 'advance' ? 'Advance' : 'Final'} payment for ${booking.serviceName}`,
         handler: async function (response) {
           toast.loading('Verifying payment...');
@@ -141,7 +141,7 @@ const BookingTrack = () => {
         amount: orderResponse.data.amount * 100,
         currency: orderResponse.data.currency || 'INR',
         order_id: orderResponse.data.orderId,
-        name: 'Appzeto',
+        name: 'Help-U',
         description: `${paymentType === 'advance' ? 'Advance' : 'Final'} payment for ${booking.serviceName}`,
         handler: async function (response) {
           toast.loading('Verifying payment...');
