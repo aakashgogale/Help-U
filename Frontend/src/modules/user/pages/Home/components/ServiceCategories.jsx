@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { publicCatalogService } from '../../../../../services/catalogService';
 import CategoryTile from '../../../components/common/CategoryTile';
 import { getRootCategories, readStoredCoords, toAssetUrl } from '../../../utils/categoryTree';
+import scrapBoxImg from '../../../../../assets/images/pages/Home/Scrap/scrap-box.webp';
 
 // Fallbacks only; the admin sets these in Home page > Home Categories
 const DEFAULT_TILE_COUNT = 8;
@@ -36,12 +37,18 @@ const ServiceCategories = React.memo(({
   onCategoryClick,
   limit = DEFAULT_TILE_COUNT,
   showAllServices = true,
-  allServicesLabel = DEFAULT_ALL_LABEL
+  allServicesLabel = DEFAULT_ALL_LABEL,
+  showScrapTile = false
 }) => {
   const navigate = useNavigate();
   const [etaMap, setEtaMap] = useState({});
 
-  const tiles = useMemo(() => getRootCategories(categories).slice(0, Math.max(1, Number(limit) || DEFAULT_TILE_COUNT)), [categories, limit]);
+  // The Scrap tile takes the last of the category slots, so the grid keeps the same number of tiles
+  const slots = Math.max(1, Number(limit) || DEFAULT_TILE_COUNT);
+  const tiles = useMemo(
+    () => getRootCategories(categories).slice(0, showScrapTile ? Math.max(1, slots - 1) : slots),
+    [categories, slots, showScrapTile]
+  );
 
   // Live per-category arrival time once we know the user's coordinates
   useEffect(() => {
@@ -76,6 +83,9 @@ const ServiceCategories = React.memo(({
             />
           );
         })}
+        {showScrapTile && (
+          <CategoryTile title="Sell Scrap" icon={scrapBoxImg} onClick={() => navigate('/user/scrap')} />
+        )}
         {showAllServices && (
           <AllServicesTile label={allServicesLabel || DEFAULT_ALL_LABEL} onClick={() => navigate('/user/services')} />
         )}

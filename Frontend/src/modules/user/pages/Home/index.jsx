@@ -624,7 +624,15 @@ const Home = () => {
                     limit={homeContent?.homeCategoryLimit}
                     showAllServices={homeContent?.showAllServicesTile !== false}
                     allServicesLabel={homeContent?.allServicesLabel}
+                    showScrapTile={isScrapEnabled && homeContent?.isScrapVisible !== false}
                   />
+                </motion.section>
+              )}
+
+              {/* Scrap banner, right under the categories so it is seen without scrolling */}
+              {(isScrapEnabled && homeContent?.isScrapVisible !== false) && (
+                <motion.section variants={itemVariants} className="pt-3">
+                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
                 </motion.section>
               )}
 
@@ -713,12 +721,6 @@ const Home = () => {
                 );
               })()}
 
-              {/* Scrap Promotion Section (right below Most Booked) */}
-              {(isScrapEnabled && homeContent?.isScrapVisible !== false) && (
-                <motion.section variants={itemVariants}>
-                  <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
-                </motion.section>
-              )}
 
               {/* Dynamic Category Sections — all admin-managed. Visibility controlled
                   per-section via admin UI (delete or set isVisible=false). No hardcoded

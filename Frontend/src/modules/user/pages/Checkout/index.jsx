@@ -1272,11 +1272,11 @@ const Checkout = () => {
                   <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-50">
                     {item.sectionIcon ? (
                       <img src={toAssetUrl(item.sectionIcon)} className="w-5 h-5 rounded-md object-cover border border-gray-100" alt="" />
-                    ) : (
+                    ) : brandName ? (
                       <div className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                        {(brandName || "B").charAt(0)}
+                        {brandName.charAt(0)}
                       </div>
-                    )}
+                    ) : null}
                     <div className="flex flex-col leading-none">
                       {brandName && <span className="text-xs font-bold text-gray-900">{brandName}</span>}
                       {categoryName && <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mt-0.5">{categoryName}</span>}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiShoppingCart, FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiArrowRight, FiTag } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { useZone } from '../../../../context/ZoneContext';
 import PageHeader from '../../components/layout/PageHeader';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
 import ItemDetailsForm from './ItemDetailsForm';
+import { configService } from '../../../../services/configService';
 
 const formatINR = (value) => `₹${Math.round(value || 0).toLocaleString('en-IN')}`;
 
@@ -117,6 +118,17 @@ const Cart = () => {
   const { cartItems, isLoading: loading, removeItem, removeCategoryItems, updateItem, updateItemDetails } = useCart();
   const { currentZone, isOutOfZone } = useZone();
   const [busyIds, setBusyIds] = useState(() => new Set());
+  // Same GST and convenience fee that checkout charges, so the cart shows the real total
+  const [charges, setCharges] = useState({ gst: 18, fee: 0 });
+  useEffect(() => {
+    let active = true;
+    configService.getSettings().then((res) => {
+      if (active && res?.success && res.settings) {
+        setCharges({ gst: res.settings.serviceGstPercentage ?? 18, fee: res.settings.visitedCharges ?? 0 });
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   // Group items by category
   const groupedItems = useMemo(() => {
@@ -312,23 +324,42 @@ const Cart = () => {
                     ))}
                   </div>
 
-                  {/* Total */}
-                  <div className="mt-4 rounded-2xl bg-canvas px-3.5 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-[12px] text-gray-500">Total</p>
-                      {savings >= 1 && (
-                        <p className="inline-flex items-center gap-1 text-[12px] font-semibold text-accent">
-                          <FiTag className="w-3 h-3" /> You save {formatINR(savings)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      {savings >= 1 && (
-                        <p className="text-[12px] text-gray-400 line-through">{formatINR(categoryOriginal)}</p>
-                      )}
-                      <p className="text-[18px] font-bold text-ink leading-tight">{formatINR(categoryTotal)}</p>
-                    </div>
-                  </div>
+                  {/* Price breakdown: the same GST and fee as checkout (coupons and extras are added there) */}
+                  {(() => {
+                    const gstAmount = Math.round((categoryTotal * charges.gst) / 100);
+                    const fee = categoryTotal === 0 ? 0 : charges.fee;
+                    const payable = categoryTotal + gstAmount + fee;
+                    return (
+                      <div className="mt-4 rounded-2xl bg-canvas px-3.5 py-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-[13px] text-gray-500">
+                          <span>Item total</span>
+                          <span className="flex items-baseline gap-2">
+                            {savings >= 1 && <span className="text-[12px] text-gray-400 line-through">{formatINR(categoryOriginal)}</span>}
+                            <span className="font-semibold text-ink">{formatINR(categoryTotal)}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px] text-gray-500">
+                          <span>GST ({charges.gst}%)</span>
+                          <span className="font-semibold text-ink">{formatINR(gstAmount)}</span>
+                        </div>
+                        {fee > 0 && (
+                          <div className="flex items-center justify-between text-[13px] text-gray-500">
+                            <span>Convenience fee</span>
+                            <span className="font-semibold text-ink">{formatINR(fee)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between border-t border-gray-200 pt-2">
+                          <span className="text-[14px] font-bold text-ink">Total payable</span>
+                          <span className="text-[18px] font-bold text-ink leading-tight">{formatINR(payable)}</span>
+                        </div>
+                        {savings >= 1 && (
+                          <p className="inline-flex items-center gap-1 text-[12px] font-semibold text-accent">
+                            <FiTag className="w-3 h-3" /> You save {formatINR(savings)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Actions */}
                   <div className="mt-4 flex gap-2">

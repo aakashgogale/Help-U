@@ -19,10 +19,10 @@ export const Chip = ({ active, disabled, onClick, children }) => (
 );
 
 /** One answer input for an admin-defined question (dropdown/chips, yes-no, text or number). */
-const FieldControl = ({ field, value, disabled, onChange }) => {
+const FieldControl = ({ field, value, disabled, onChange, chipLimit = CHIP_LIMIT }) => {
   if (field.type === 'select') {
     const options = field.options || [];
-    if (options.length <= CHIP_LIMIT) {
+    if (options.length <= chipLimit) {
       return (
         <div className="flex flex-wrap gap-2">
           {options.map((opt) => (

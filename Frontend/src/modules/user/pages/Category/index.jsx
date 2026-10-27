@@ -7,7 +7,7 @@ import LogoLoader from '../../../../components/common/LogoLoader';
 import ServiceCatalogModal from '../Home/components/ServiceCatalogModal';
 
 /**
- * /user/category/:idOrSlug
+ * /user/category/:idOrSlug and /user/category/:parentSlug/:idOrSlug (a sub-category under its parent)
  *
  * Gives every category (and sub-category) its own URL so back, refresh and shared
  * links work. The category object normally arrives via navigation state; on a
@@ -56,6 +56,7 @@ const CategoryPage = () => {
 
   return (
     <ServiceCatalogModal
+      key={category.id || category._id || idOrSlug}
       asPage
       isOpen
       onClose={handleClose}

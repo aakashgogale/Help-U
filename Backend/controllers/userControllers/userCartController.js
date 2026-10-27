@@ -81,7 +81,8 @@ const addToCart = async (req, res) => {
       sectionId,
       card,         // Card details snapshot
       pricingType,  // fixed/hourly/starting_from/inspection_fee (see utils/servicePricing.js)
-      hours         // hourly only: duration chosen at add-to-cart time
+      hours,        // hourly only: duration chosen at add-to-cart time
+      details       // answers to the category's questions, { [key]: value }, from the option sheet
     } = req.body;
 
     console.log(`[AddToCart] Request details - Title: ${title}, Section: ${sectionTitle}, Variant: ${variantId || 'none'}`);
@@ -100,6 +101,20 @@ const addToCart = async (req, res) => {
         message: 'Service not found'
       });
     }
+
+    // Answers given at add time (e.g. the brand chosen in the option sheet). Values are checked
+    // against the category's questions; missing required ones are allowed here and asked for in the cart.
+    let answeredDetails = [];
+    if (details && typeof details === 'object') {
+      const fieldsOf = await resolveFieldsForCategories([categoryId || service.categoryId]);
+      const fields = fieldsOf.get(String(categoryId || service.categoryId)) || [];
+      const checked = validateDetailAnswers(fields, Array.isArray(details) ? Object.fromEntries(details.map((d) => [d.key, d.value])) : details);
+      if (checked.errors.length) {
+        return res.status(400).json({ success: false, message: checked.errors[0] });
+      }
+      answeredDetails = checked.details;
+    }
+    const detailsKey = (list) => JSON.stringify((list || []).map((d) => [d.key, d.value]).sort());
 
     // Get or create cart
     let cart = await Cart.findOne({ userId });
@@ -120,6 +135,8 @@ const addToCart = async (req, res) => {
         const itemVarId = String(item.variantId || '');
         const targetVarId = String(variantId || '');
         if (itemVarId !== targetVarId) return false;
+        // Same service for a different brand (or any other answer) is a separate line
+        if (answeredDetails.length && detailsKey(item.details) !== detailsKey(answeredDetails)) return false;
         if (pricingType === 'hourly' || item.pricingType === 'hourly') {
           return item.pricingType === pricingType && Number(item.hours) === Number(hours);
         }
@@ -169,7 +186,8 @@ const addToCart = async (req, res) => {
         sectionId: sectionId || null,
         card: card || null,
         pricingType: pricingType || 'fixed',
-        hours: hours ?? null
+        hours: hours ?? null,
+        details: answeredDetails
       };
 
       // Only add serviceId, variantId and categoryId if they are provided

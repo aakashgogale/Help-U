@@ -23,6 +23,8 @@ import {
   FiHelpCircle
 } from 'react-icons/fi';
 import { useCart } from '../../../../../context/CartContext';
+import ServiceOptionsSheet from './ServiceOptionsSheet';
+import CategoryTile from '../../../components/common/CategoryTile';
 import { publicCatalogService } from '../../../../../services/catalogService';
 import { getCategoryIllustration } from '../../../utils/categoryIcons';
 import { toast } from 'react-hot-toast';
@@ -385,6 +387,7 @@ const ServiceCatalogModal = React.memo(({
 }) => {
   const navigate = useNavigate();
   const { cartItems, addToCart, updateItem, removeItem } = useCart();
+  const [optionsRequest, setOptionsRequest] = useState(null); // the option sheet, when a service has questions
 
   const [activeSubTab, setActiveSubTab] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -502,6 +505,7 @@ const ServiceCatalogModal = React.memo(({
         inclusions: Array.isArray(s.inclusions) ? s.inclusions : [],
         exclusions: Array.isArray(s.exclusions) ? s.exclusions : [],
         faqs: Array.isArray(s.faqs) ? s.faqs : [],
+        detailFields: Array.isArray(s.detailFields) ? s.detailFields : [],
         warranty: s.warranty || '',
         cancellationPolicy: s.cancellationPolicy || '',
         bullets: Array.isArray(s.inclusions) && s.inclusions.length > 0
@@ -696,7 +700,8 @@ const ServiceCatalogModal = React.memo(({
     const isMenCat = (categoryTitle || '').toLowerCase().includes('men') || (category?.slug || '').includes('men') || catalogKey === 'mens-salon';
     const isWomenCat = (categoryTitle || '').toLowerCase().includes('women') || (category?.slug || '').includes('women') || catalogKey === 'womens-salon';
 
-    const livePills = liveSections.map((sec) => {
+    // A single brand is no choice: its services are listed directly, without a brand pill
+    const livePills = (liveSections.length > 1 ? liveSections : []).map((sec) => {
       let icon = sec.icon;
       // If icon is cross-contaminated or generic, resolve cleanly
       const isCrossContaminated = !icon || 
@@ -710,8 +715,7 @@ const ServiceCatalogModal = React.memo(({
       return {
         id: sec.id,
         title: sec.title,
-        icon,
-        isNew: true
+        icon
       };
     });
 
@@ -724,7 +728,9 @@ const ServiceCatalogModal = React.memo(({
         .map(sc => ({
           id: sc._id || sc.slug,
           title: sc.title,
-          icon: sc.icon || sc.homeIconUrl || getCategoryIllustration(sc.title) || resolveServiceImage({ title: sc.title }, category, sc.title)
+          icon: sc.icon || sc.homeIconUrl || getCategoryIllustration(sc.title) || resolveServiceImage({ title: sc.title }, category, sc.title),
+          isSubCategory: true,
+          raw: sc
         }));
 
       return [...livePills, ...backendSubCats];
@@ -779,6 +785,12 @@ const ServiceCatalogModal = React.memo(({
             setBackendServices(allServices);
             return;
           }
+          // A page that is only a choice of appliances has no services of its own. That is the
+          // complete answer, so do not fall back to listing every service under it.
+          if ((res.subCategories || []).length > 0) {
+            setBackendServices([]);
+            return;
+          }
         }
       } catch { /* fall through to getServices */ }
 
@@ -826,6 +838,9 @@ const ServiceCatalogModal = React.memo(({
     return [];
   }, [liveSections, searchQuery]);
 
+  // A category that only leads to sub-categories (AC, Cooler...) is its banner and a set of tiles: no rating or offers
+  const tilesOnly = combinedSections.length === 0 && (catalogData?.subCategories || []).length > 0;
+
   // Cart calculations
   const cartItemMap = useMemo(() => {
     const map = new Map();
@@ -847,9 +862,34 @@ const ServiceCatalogModal = React.memo(({
     return last.title || last.serviceName || categoryTitle;
   }, [cartItems, categoryTitle]);
 
+  // A sub-category (an appliance such as AC or Washing Machine) opens as its own page
+  const openSubCategory = (sc) => {
+    const id = sc._id || sc.id;
+    // Nested under this category so the URL reads /user/category/ac/air-conditioner and survives refresh
+    const parent = category?.slug || category?.id || category?._id;
+    navigate(`/user/category/${encodeURIComponent(parent)}/${encodeURIComponent(sc.slug || id)}`, {
+      state: { category: { id, _id: id, slug: sc.slug, title: sc.title, homeIconUrl: sc.homeIconUrl || sc.icon } }
+    });
+  };
+
   // Handle Add to Cart
-  const handleAddToCart = async (item, e) => {
+  const handleAddToCart = async (item, e, answers) => {
     e?.stopPropagation?.();
+
+    // A service with questions (brand, vehicle type...) asks them in a bottom sheet first
+    if (!answers && (item.detailFields || []).length > 0) {
+      setOptionsRequest({
+        title: item.title,
+        price: item.price,
+        fields: item.detailFields,
+        onConfirm: async (chosen) => {
+          await handleAddToCart(item, null, chosen);
+          setOptionsRequest(null);
+        }
+      });
+      return;
+    }
+
     setAddingId(item.id);
 
     try {
@@ -864,6 +904,7 @@ const ServiceCatalogModal = React.memo(({
         price: unitPrice,
         unitPrice: unitPrice,
         serviceCount: 1,
+        details: answers || undefined,
         rating: item.rating || '',
         reviews: item.reviews || '',
         card: {
@@ -887,8 +928,22 @@ const ServiceCatalogModal = React.memo(({
   };
 
   // Handle Add to Cart for specific Variant
-  const handleVariantAddToCart = async (parentItem, variant, e) => {
+  const handleVariantAddToCart = async (parentItem, variant, e, answers) => {
     e?.stopPropagation?.();
+
+    if (!answers && (parentItem.detailFields || []).length > 0) {
+      setOptionsRequest({
+        title: `${parentItem.title} - ${variant.title}`,
+        price: Number(variant.price) || Number(parentItem.price),
+        fields: parentItem.detailFields,
+        onConfirm: async (chosen) => {
+          await handleVariantAddToCart(parentItem, variant, null, chosen);
+          setOptionsRequest(null);
+        }
+      });
+      return;
+    }
+
     const variantKey = `${parentItem.id}-${variant._id || variant.id}`;
     setAddingId(variantKey);
 
@@ -910,6 +965,7 @@ const ServiceCatalogModal = React.memo(({
         price: unitPrice,
         unitPrice: unitPrice,
         serviceCount: 1,
+        details: answers || undefined,
         rating: parentItem.rating || '',
         reviews: parentItem.reviews || '',
         card: {
@@ -1144,6 +1200,7 @@ const ServiceCatalogModal = React.memo(({
             )}
 
             {/* STORE TITLE, RATING & INSTANT BADGE */}
+            {!tilesOnly && (
             <div className="px-4 pt-4 pb-2">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1201,11 +1258,12 @@ const ServiceCatalogModal = React.memo(({
                 </div>
               )}
             </div>
+            )}
 
             {/* ========================================================================= */}
             {/* SUB-CATEGORY PILL SELECTOR (Screenshots 1 & 2) */}
             {/* ========================================================================= */}
-            {combinedSubCategories?.length > 0 && (
+            {combinedSubCategories?.length > 0 && combinedSections.length > 0 && (
               <div className="mt-2.5 border-y border-gray-100 bg-white py-3">
                 <div className="flex items-start gap-3.5 overflow-x-auto px-4 scrollbar-hide overscroll-x-contain">
                   {combinedSubCategories.map((sub) => {
@@ -1214,7 +1272,7 @@ const ServiceCatalogModal = React.memo(({
                       <button
                         key={sub.id}
                         type="button"
-                        onClick={() => scrollToSection(sub.id)}
+                        onClick={() => (sub.isSubCategory ? openSubCategory(sub.raw) : scrollToSection(sub.id))}
                         className="flex flex-col items-center text-center shrink-0 w-[68px] sm:w-[74px] group focus:outline-none cursor-pointer"
                       >
                         <div
@@ -1269,7 +1327,21 @@ const ServiceCatalogModal = React.memo(({
             {/* SECTIONS & DETAILED SERVICE CARDS */}
             {/* ========================================================================= */}
             <div className="px-4 py-4 space-y-6">
-              {combinedSections.length === 0 ? (
+              {combinedSections.length === 0 && (catalogData?.subCategories || []).length > 0 ? (
+                <div>
+                  <div className="grid grid-cols-3 gap-3.5">
+                    {catalogData.subCategories.map((sc) => (
+                      <CategoryTile
+                        key={sc._id || sc.slug}
+                        title={sc.title}
+                        icon={sc.icon || sc.homeIconUrl}
+                        fallbackIcon={getCategoryIllustration(sc.title) || defaultCategoryIcon}
+                        onClick={() => openSubCategory(sc)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : combinedSections.length === 0 ? (
                 <div className="py-16 px-4 text-center">
                   <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">
                     <FiInfo className="w-8 h-8" />
@@ -1284,10 +1356,12 @@ const ServiceCatalogModal = React.memo(({
                   ref={(el) => (sectionRefs.current[section.id] = el)}
                   className="space-y-3.5 pt-1"
                 >
-                  {/* Section Title */}
-                  <h3 className="text-[19px] sm:text-[20px] font-bold text-gray-900 tracking-tight">
-                    {section.title}
-                  </h3>
+                  {/* Section Title (only when there is more than one brand to tell apart) */}
+                  {combinedSections.length > 1 && (
+                    <h3 className="text-[19px] sm:text-[20px] font-bold text-gray-900 tracking-tight">
+                      {section.title}
+                    </h3>
+                  )}
 
                   {/* Optional Large Promo Banner Card */}
                   {section.bannerPromo && (
@@ -2270,7 +2344,12 @@ const ServiceCatalogModal = React.memo(({
     </AnimatePresence>
   );
 
-  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
+  return typeof document !== 'undefined' ? (
+    <>
+      {createPortal(content, document.body)}
+      <ServiceOptionsSheet request={optionsRequest} onClose={() => setOptionsRequest(null)} />
+    </>
+  ) : content;
 });
 
 ServiceCatalogModal.displayName = 'ServiceCatalogModal';

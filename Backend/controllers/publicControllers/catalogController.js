@@ -9,6 +9,7 @@ const Zone = require('../../models/Zone');
 const mongoose = require('mongoose');
 const { getRedis, isRedisConnected } = require('../../services/redisService');
 const { getServiceRatings, combineRatings, toDisplayRating } = require('../../services/serviceRatingService');
+const { resolveFieldsForCategories } = require('../../utils/detailFields');
 
 /**
  * Helper to resolve zone from query (zoneId, lat, lng, cityId)
@@ -585,6 +586,36 @@ const advancedCatalogSearch = async (req, res) => {
   }
 };
 
+
+/**
+ * Home cards that link to a real service show that service's CURRENT price, discount and picture,
+ * so a price change in the catalog shows on the home page without editing the card. The card's own
+ * title, subtitle and badge stay as the admin wrote them. Cards without a service link are left alone.
+ */
+const applyLiveServiceData = async (contentObj) => {
+  const lists = [contentObj.noteworthy, contentObj.booked, ...(contentObj.categorySections || []).map((sec) => sec.cards)];
+  const items = lists.flatMap((list) => list || []).filter((it) => it && it.targetServiceId);
+  if (!items.length) return;
+
+  const ids = [...new Set(items.map((it) => String(it.targetServiceId)))].filter((id) => mongoose.isValidObjectId(id));
+  const services = await Service.find({ _id: { $in: ids }, status: 'active', publishStatus: { $ne: 'draft' } })
+    .select('basePrice originalPrice images iconUrl categoryId')
+    .lean();
+  const byId = new Map(services.map((s) => [String(s._id), s]));
+
+  items.forEach((it) => {
+    const svc = byId.get(String(it.targetServiceId));
+    if (!svc) return;
+    const price = Number(svc.basePrice) || 0;
+    const original = Number(svc.originalPrice) || 0;
+    it.price = String(price);
+    it.originalPrice = original > price ? String(original) : '';
+    it.discount = original > price ? `${Math.round(((original - price) / original) * 100)}% OFF` : '';
+    if (!it.imageUrl) it.imageUrl = (svc.images && svc.images[0]) || svc.iconUrl || '';
+    if (!it.targetCategoryId && svc.categoryId) it.targetCategoryId = svc.categoryId;
+  });
+};
+
 /**
  * Get home content
  */
@@ -615,6 +646,7 @@ const getPublicHomeContent = async (req, res) => {
 
     const activeZoneId = matchedZone ? String(matchedZone._id) : (zoneId || null);
     const contentObj = contentObjDoc.toObject();
+    await applyLiveServiceData(contentObj);
     const isGlobalScrapEnabled = settings ? settings.isScrapEnabled !== false : true;
 
     const formattedContent = {
@@ -795,6 +827,7 @@ const getPublicHomeData = async (req, res) => {
     let formattedContent = null;
     if (homeContent) {
       const contentObj = homeContent.toObject();
+      await applyLiveServiceData(contentObj);
       formattedContent = {
         banners: (contentObj.banners || [])
           .filter(item => matchesZone(item, activeZoneId))
@@ -1094,12 +1127,18 @@ const getPublicCategoryCatalog = async (req, res) => {
       }
     }
 
-    // 3. Category hero
+    // 3. Category hero. A sub-category with no banner of its own shows its parent's, so every
+    // page under a category keeps the banner (the admin can still set a specific one on any of them).
+    let heroSource = category.heroBanner;
+    if (!heroSource?.title && category.parentId) {
+      const parent = await Category.findById(category.parentId).select('heroBanner').lean();
+      if (parent?.heroBanner?.title) heroSource = parent.heroBanner;
+    }
     const hero = {
-      tag: category.heroBanner?.tag || '',
-      title: category.heroBanner?.title || '',
-      startingPrice: category.heroBanner?.startingPrice || '',
-      imageUrl: category.heroBanner?.imageUrl || ''
+      tag: heroSource?.tag || '',
+      title: heroSource?.title || '',
+      startingPrice: heroSource?.startingPrice || '',
+      imageUrl: heroSource?.imageUrl || ''
     };
 
     // 4. SubCategories (active children of this category)
@@ -1228,7 +1267,12 @@ const getPublicCategoryCatalog = async (req, res) => {
       ];
     }
 
-    const allowedCategoryIds = [category._id, ...subCategoriesDocs.map(sc => sc._id)];
+    // A category with two or more tiles is a choice between them: its page lists only services filed
+    // directly on it, and each tile opens its own services. With one tile (or none) the page is the list.
+    const isTilesPage = subCategoriesDocs.length >= 2;
+    const allowedCategoryIds = isTilesPage
+      ? [category._id]
+      : [category._id, ...subCategoriesDocs.map(sc => sc._id)];
 
     const sectionsPipeline = [
       { $match: brandMatch },
@@ -1299,7 +1343,8 @@ const getPublicCategoryCatalog = async (req, res) => {
       }
     ];
 
-    const sections = await Brand.aggregate(sectionsPipeline);
+    let sections = await Brand.aggregate(sectionsPipeline);
+    if (isTilesPage) sections = sections.filter((sec) => (sec.services || []).length > 0);
 
     // Ratings come from real customer reviews. A service with reviews shows its true average and
     // count; one without keeps whatever the admin entered (possibly nothing). The category header
@@ -1315,6 +1360,12 @@ const getPublicCategoryCatalog = async (req, res) => {
         svc.rating = Number(shown.rating);
         svc.reviewsCount = real.count;
       }
+    });
+    // The questions the customer answers when adding each service (brand, vehicle type...), set by
+    // the admin on its category and inherited from the parent when the sub-category has none
+    const fieldsByCategory = await resolveFieldsForCategories(catalogServices.map((svc) => svc.categoryId));
+    catalogServices.forEach((svc) => {
+      svc.detailFields = fieldsByCategory.get(String(svc.categoryId)) || [];
     });
     const categoryReal = combineRatings([...ratingMap.values()]);
     const categoryShown = toDisplayRating(categoryReal, category.displayRating, '');

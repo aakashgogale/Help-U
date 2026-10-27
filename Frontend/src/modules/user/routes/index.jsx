@@ -200,6 +200,8 @@ const UserRoutes = () => {
               {/* Protected routes (auth required) */}
               <Route path="/" element={<ProtectedRoute userType="user"><Home /></ProtectedRoute>} />
               <Route path="/category/:idOrSlug" element={<ProtectedRoute userType="user"><Category /></ProtectedRoute>} />
+              {/* An appliance under its parent, e.g. /user/category/ac/air-conditioner */}
+              <Route path="/category/:parentSlug/:idOrSlug" element={<ProtectedRoute userType="user"><Category /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute userType="user"><Services /></ProtectedRoute>} />
               <Route path="/native" element={<ProtectedRoute userType="user"><Native /></ProtectedRoute>} />
 
