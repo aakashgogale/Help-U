@@ -103,5 +103,54 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate };
+/**
+ * Optional authentication middleware - populates req.user if token is present & valid,
+ * but allows unauthenticated guest requests to proceed without error.
+ */
+const optionalAuthenticate = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    let decoded;
+    try {
+      decoded = verifyAccessToken(token);
+    } catch {
+      return next();
+    }
+
+    if (!decoded || !decoded.userId) {
+      return next();
+    }
+
+    let user;
+    if (decoded.role === USER_ROLES.USER) {
+      user = await User.findById(decoded.userId).select('-password').lean();
+    } else if (decoded.role === USER_ROLES.WORKER) {
+      user = await Worker.findById(decoded.userId).select('-password').lean();
+    } else if (decoded.role === USER_ROLES.ADMIN) {
+      user = await Admin.findById(decoded.userId).select('-password').lean();
+    }
+
+    if (user) {
+      req.user = { ...user, id: user._id.toString() };
+      req.userId = decoded.userId;
+      req.userRole = decoded.role;
+    }
+    next();
+  } catch (err) {
+    // Guest continues on error
+    next();
+  }
+};
+
+module.exports = { authenticate, optionalAuthenticate };
 

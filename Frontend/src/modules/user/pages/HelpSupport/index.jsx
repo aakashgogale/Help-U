@@ -41,9 +41,29 @@ const HelpSupport = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     subject: '',
     message: ''
   });
+  const [submitting, setSubmitting] = useState(false);
+
+  // Autofill details if user is signed in
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('userData') || sessionStorage.getItem('userData');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || u.name || '',
+          email: prev.email || u.email || '',
+          phone: prev.phone || u.phone || ''
+        }));
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }, []);
 
   // The questions come from the admin's Customer FAQ (Admin > Legal & Help Pages), so there is one
   // place to edit them. The admin FAQ is one flat list, shown here as a single group.
@@ -108,18 +128,42 @@ const HelpSupport = () => {
     },
   ];
 
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-      toast.error('Please fill all fields');
+    if (!formData.name?.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+    if (!formData.email?.trim() && !formData.phone?.trim()) {
+      toast.error('Please give an email or a phone number so we can reply');
+      return;
+    }
+    if (!formData.subject?.trim()) {
+      toast.error('Please enter a subject');
+      return;
+    }
+    if (!formData.message?.trim() || formData.message.trim().length < 5) {
+      toast.error('Please write a short message (at least 5 characters)');
       return;
     }
 
-    // TODO: Send to backend
-    toast.success('Your message has been sent! We\'ll get back to you soon.');
-    setShowContactForm(false);
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    try {
+      setSubmitting(true);
+      const res = await api.post('/users/support-requests', formData);
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Your message has been sent! We will get back to you soon.');
+        setShowContactForm(false);
+        setFormData(prev => ({ ...prev, subject: '', message: '' }));
+      } else {
+        toast.error(res.data?.message || 'Failed to send message');
+      }
+    } catch (err) {
+      console.error('Submit support request error:', err);
+      toast.error(err.response?.data?.message || 'Failed to send message. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const filteredQuestions = categories.flatMap(cat =>
@@ -325,19 +369,31 @@ const HelpSupport = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-                  placeholder="your.email@example.com"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                 <input
                   type="text"
                   value={formData.subject}
@@ -348,11 +404,11 @@ const HelpSupport = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
                 <textarea
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  rows={6}
+                  rows={5}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-none"
                   placeholder="Describe your issue in detail..."
                 />
@@ -360,10 +416,11 @@ const HelpSupport = () => {
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-4 font-semibold shadow-lg hover:shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-4 font-semibold shadow-lg hover:shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <FiSend className="w-5 h-5" />
-                Submit Request
+                {submitting ? 'Sending Request...' : 'Submit Request'}
               </button>
             </form>
           </div>

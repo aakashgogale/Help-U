@@ -75,8 +75,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401, we haven't tried to refresh yet, and it's NOT a login request
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/login')) {
+    // If error is 401, we haven't tried to refresh yet, and it's NOT a login request or public endpoint
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/login') && !originalRequest.url.includes('/public/')) {
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
@@ -163,11 +163,27 @@ api.interceptors.response.use(
   }
 );
 
+// Public paths where 401 should clear credentials but never force a redirect to login
+const PUBLIC_BROWSE_PATHS = [
+  '/login',
+  '/signup',
+  '/terms',
+  '/privacy-policy',
+  '/faq',
+  '/cancellation-policy',
+  '/help-support',
+  '/about-helpu'
+];
+
+const isPublicRoute = (pathname) => {
+  if (!pathname || pathname === '/' || pathname.toLowerCase().startsWith('/home')) return true;
+  return PUBLIC_BROWSE_PATHS.some((p) => pathname.includes(p));
+};
+
 // Handle logout
 export const handleLogout = (role = null) => {
+  const path = window.location.pathname;
   if (!role) {
-    // Determine role from path if not provided
-    const path = window.location.pathname;
     if (path.startsWith('/admin')) role = 'admin';
     else if (path.startsWith('/worker') || path.startsWith('/vendor')) role = 'worker';
     else role = 'user';
@@ -187,12 +203,12 @@ export const handleLogout = (role = null) => {
 
   if (role === 'worker') {
     clearTokens('worker');
-    if (window.location.pathname !== '/worker/login' && window.location.pathname !== '/vendor/login') {
+    if (!isPublicRoute(path) && path !== '/worker/login' && path !== '/vendor/login') {
       window.location.href = '/worker/login';
     }
   } else if (role === 'admin') {
     clearTokens('admin');
-    if (window.location.pathname !== '/admin/login') {
+    if (path !== '/admin/login') {
       window.location.href = '/admin/login';
     }
   } else {
@@ -203,7 +219,7 @@ export const handleLogout = (role = null) => {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('userData');
-    if (!window.location.pathname.includes('/login')) {
+    if (!isPublicRoute(path)) {
       window.location.href = '/user/login';
     }
   }

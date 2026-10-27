@@ -183,8 +183,9 @@ const UserRoutes = () => {
   const isBookingConfirmationPage = location.pathname.includes('/booking-confirmation');
 
 
-  // Check if we are on public pages (login/signup) where we shouldn't fetch bookings
-  const isPublicPage = location.pathname.includes('/login') || location.pathname.includes('/signup');
+  // Check if we are on public pages where we shouldn't fetch bookings or mount live booking cards
+  const publicPaths = ['/login', '/signup', '/terms', '/privacy-policy', '/faq', '/cancellation-policy', '/help-support', '/about-helpu'];
+  const isPublicPage = publicPaths.some((p) => location.pathname.includes(p));
 
   return (
     <ErrorBoundary>
@@ -220,12 +221,12 @@ const UserRoutes = () => {
               <Route path="/my-plan" element={<ProtectedRoute userType="user"><MyPlan /></ProtectedRoute>} />
               <Route path="/my-plan/:id" element={<ProtectedRoute userType="user"><PlanDetails /></ProtectedRoute>} />
               <Route path="/my-rating" element={<ProtectedRoute userType="user"><MyRating /></ProtectedRoute>} />
-              <Route path="/about-helpu" element={<ProtectedRoute userType="user"><AboutHelpU /></ProtectedRoute>} />
+              <Route path="/about-helpu" element={<AboutHelpU />} />
               <Route path="/update-profile" element={<ProtectedRoute userType="user"><UpdateProfile /></ProtectedRoute>} />
               <Route path="/scrap" element={<ProtectedRoute userType="user"><Scrap /></ProtectedRoute>} />
               <Route path="/scrap/add" element={<ProtectedRoute userType="user"><AddScrap /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute userType="user"><Notifications /></ProtectedRoute>} />
-              <Route path="/help-support" element={<ProtectedRoute userType="user"><HelpSupport /></ProtectedRoute>} />
+              <Route path="/help-support" element={<HelpSupport />} />
               <Route path="/cancellation-policy" element={<CancellationPolicy />} />
               {/* Public — must be reachable before login (e.g. linked from signup) */}
               <Route path="/terms" element={<Terms />} />

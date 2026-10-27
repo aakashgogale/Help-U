@@ -31,8 +31,9 @@ const Footer = () => {
         { label: 'About Us', path: '/user/about-helpu' },
         { label: 'Help & Support', path: '/user/help-support' },
         { label: 'Cancellation Policy', path: '/user/cancellation-policy' },
-        { label: 'Terms & Conditions', path: '#' },
-        { label: 'Privacy Policy', path: '#' },
+        { label: 'Terms & Conditions', path: '/user/terms' },
+        { label: 'Privacy Policy', path: '/user/privacy-policy' },
+        { label: 'FAQ', path: '/user/faq' },
       ]
     },
     {
@@ -136,9 +137,9 @@ const Footer = () => {
             © {currentYear} {settings?.companyName || 'Help U'}. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <Link to="#" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Privacy</Link>
-            <Link to="#" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Terms</Link>
-            <Link to="#" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Cookies</Link>
+            <Link to="/user/privacy-policy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Privacy</Link>
+            <Link to="/user/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Terms</Link>
+            <Link to="/user/faq" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">FAQ</Link>
           </div>
         </div>
       </div>

@@ -95,8 +95,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parser middleware
-app.use(express.json({ limit: '50mb' }));
+// Body parser middleware (with rawBody capture for webhook signature verification)
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
@@ -206,6 +211,7 @@ app.use('/api/public/zones', require('./routes/public-routes/zone.routes.js'));
 
 // User routes
 app.use('/api/users/auth', require('./routes/user-routes/auth.routes'));
+app.use('/api/users/support-requests', require('./routes/user-routes/supportRequest.routes'));
 app.use('/api/users', require('./routes/user-routes/profile.routes'));
 app.use('/api/user/wallet', require('./routes/user-routes/userWallet.routes'));
 app.use('/api/users/bookings', require('./routes/user-routes/booking.routes'));

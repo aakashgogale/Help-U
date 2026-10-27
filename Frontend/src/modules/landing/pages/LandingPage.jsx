@@ -68,7 +68,7 @@ const DEFAULT_CONFIG = {
     heroImageUrl: '/hero-image.png'
   },
   appLinks: {
-    playStoreUrl: 'https://play.google.com/store/search?q=homestr&c=apps',
+    playStoreUrl: 'https://play.google.com/store/search?q=Help-U%20Services&c=apps',
     appStoreUrl: '',
     isQrCodeVisible: true
   },
@@ -103,10 +103,10 @@ const DEFAULT_CONFIG = {
     ]
   },
   stats: [
-    { label: 'Verified Xperts', value: '450+', color: 'text-brand' },
-    { label: 'Indore Families', value: '12k+', color: 'text-white' },
-    { label: 'Certified Parts', value: '1.5k+', color: 'text-brand' },
-    { label: 'Reliability Score', value: '99%', color: 'text-white' }
+    { label: 'Verified Experts', value: '150+', color: 'text-brand' },
+    { label: 'Happy Customers', value: '500+', color: 'text-white' },
+    { label: 'Services Available', value: '50+', color: 'text-brand' },
+    { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
   ],
   howItWorks: {
     userSteps: [
@@ -428,7 +428,10 @@ const LandingPage = () => {
     }
   };
 
-  const playStoreLink = config.appLinks?.playStoreUrl || 'https://play.google.com/store/search?q=homestr&c=apps';
+  const rawPlayUrl = config.appLinks?.playStoreUrl;
+  const playStoreLink = (rawPlayUrl && !rawPlayUrl.includes('homestr'))
+    ? rawPlayUrl
+    : 'https://play.google.com/store/search?q=Help-U%20Services&c=apps';
 
   // Safeguarded arrays
   const pillars =

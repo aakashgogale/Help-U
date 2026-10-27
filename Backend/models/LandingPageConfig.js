@@ -24,10 +24,10 @@ const DEFAULT_PILLARS = [
 ];
 
 const DEFAULT_STATS = [
-  { label: 'Verified Xperts', value: '450+', color: 'text-brand' },
-  { label: 'Indore Families', value: '12k+', color: 'text-white' },
-  { label: 'Certified Parts', value: '1.5k+', color: 'text-brand' },
-  { label: 'Reliability Score', value: '99%', color: 'text-white' }
+  { label: 'Verified Experts', value: '150+', color: 'text-brand' },
+  { label: 'Happy Customers', value: '500+', color: 'text-white' },
+  { label: 'Services Available', value: '50+', color: 'text-brand' },
+  { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
 ];
 
 const DEFAULT_USER_STEPS = [
@@ -236,7 +236,7 @@ const landingPageConfigSchema = new mongoose.Schema(
     appLinks: {
       playStoreUrl: {
         type: String,
-        default: 'https://play.google.com/store/search?q=homestr&c=apps'
+        default: 'https://play.google.com/store/search?q=Help-U%20Services&c=apps'
       },
       appStoreUrl: {
         type: String,

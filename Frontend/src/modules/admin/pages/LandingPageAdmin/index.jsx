@@ -284,7 +284,8 @@ const LandingPageAdmin = () => {
                 <Field label="Google Play Store URL" hint="Direct link to your app on Google Play">
                   <input
                     type="url"
-                    value={config.appLinks?.playStoreUrl || ''}
+                    placeholder="https://play.google.com/store/apps/details?id=in.helpu.customer"
+                    value={config.appLinks?.playStoreUrl?.includes('homestr') ? '' : (config.appLinks?.playStoreUrl || '')}
                     onChange={(e) =>
                       setConfig({ ...config, appLinks: { ...config.appLinks, playStoreUrl: e.target.value } })
                     }
@@ -320,7 +321,29 @@ const LandingPageAdmin = () => {
             </div>
           </Card>
 
-          <Card title="Platform Metrics & Stats Counters">
+          <Card
+            title="Platform Metrics & Stats Counters"
+            actions={
+              <button
+                type="button"
+                onClick={() => {
+                  setConfig({
+                    ...config,
+                    stats: [
+                      { label: 'Verified Experts', value: '150+', color: 'text-brand' },
+                      { label: 'Happy Customers', value: '500+', color: 'text-white' },
+                      { label: 'Services Available', value: '50+', color: 'text-brand' },
+                      { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
+                    ]
+                  });
+                  toast.success('Stats reset to platform standards');
+                }}
+                className="text-xs font-semibold text-[#00a6a6] hover:underline"
+              >
+                Reset to Standard Stats
+              </button>
+            }
+          >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {(config.stats || []).map((stat, idx) => (
                 <div key={idx} className="rounded-lg border border-gray-200 p-4 space-y-2">

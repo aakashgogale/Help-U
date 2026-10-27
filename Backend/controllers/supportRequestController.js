@@ -56,13 +56,24 @@ exports.submitLandingInquiry = async (req, res) => {
   }
 };
 
-/** POST /api/users/support-requests: the app's Help & Support form (signed-in customer) */
+/** POST /api/users/support-requests: the app's Help & Support form (signed-in customer or visitor) */
 exports.submitAppRequest = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('name phone email').lean();
+    const userId = req.user?.id || req.user?._id || null;
+    let user = null;
+    if (userId) {
+      user = await User.findById(userId).select('name phone email').lean();
+    }
     // Fill what the customer left blank from their profile, so they need not retype it
-    req.body = { name: user?.name, email: user?.email, phone: user?.phone, ...Object.fromEntries(Object.entries(req.body || {}).filter(([, v]) => String(v || '').trim() !== '')) };
-    await save(req, res, 'app', req.user.id);
+    if (user) {
+      req.body = {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        ...Object.fromEntries(Object.entries(req.body || {}).filter(([, v]) => String(v || '').trim() !== ''))
+      };
+    }
+    await save(req, res, 'app', userId);
   } catch (error) {
     console.error('App support request error:', error);
     res.status(500).json({ success: false, message: 'Failed to send message. Please try again.' });
