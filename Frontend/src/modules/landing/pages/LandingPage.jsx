@@ -21,7 +21,8 @@ import {
   FaTimes,
   FaUserCheck,
   FaWallet,
-  FaBoxes
+  FaBoxes,
+  FaStar
 } from 'react-icons/fa';
 import landingService from '../../../services/landingService';
 
@@ -427,7 +428,7 @@ const LandingPage = () => {
 
   const playStoreLink = config.appLinks?.playStoreUrl || 'https://play.google.com/store/search?q=homestr&c=apps';
 
-  // Safeguarded arrays (never empty)
+  // Safeguarded arrays
   const pillars =
     config.aboutUs?.pillars && config.aboutUs.pillars.length > 0
       ? config.aboutUs.pillars
@@ -476,32 +477,32 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-brand selection:text-white">
+    <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-brand selection:text-white pb-16 sm:pb-0">
       {/* ============================================================ */}
       {/* 1. STICKY HEADER & NAVBAR */}
       {/* ============================================================ */}
       <header
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
-          isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3 border-b border-gray-100' : 'bg-white py-4'
+          isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-2.5 sm:py-3 border-b border-gray-100' : 'bg-white py-3 sm:py-4'
         }`}
       >
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl flex items-center justify-between">
-          <Link to="/Home" className="flex items-center gap-3 group">
+          <Link to="/Home" className="flex items-center gap-2 group">
             <img
               src="/helpu-logo.png"
               alt="Help-U Logo"
-              className="h-10 sm:h-12 w-auto transition-transform group-hover:scale-105"
+              className="h-8 sm:h-11 w-auto transition-transform group-hover:scale-105"
               onError={(e) => {
                 e.target.style.display = 'none';
               }}
             />
-            <span className="font-extrabold text-2xl tracking-tight text-gray-900 flex items-center">
+            <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-gray-900 flex items-center">
               Help<span className="text-brand">-U</span>
             </span>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold text-gray-700">
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-7 text-xs font-semibold text-gray-700">
             {navMenuItems.map((item) => (
               <a
                 key={item.label}
@@ -517,7 +518,7 @@ const LandingPage = () => {
           <div className="hidden sm:flex items-center gap-3">
             <a
               href="#partner"
-              className="text-xs font-semibold text-gray-700 hover:text-brand px-3 py-2 transition-colors"
+              className="text-xs font-semibold text-gray-700 hover:text-brand px-2 py-1.5 transition-colors"
             >
               Earn with Us
             </a>
@@ -525,20 +526,30 @@ const LandingPage = () => {
               href={playStoreLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-full text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95"
+              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95"
             >
               <FaGooglePlay className="text-sm" /> Get the App
             </a>
           </div>
 
-          {/* Mobile Menu Hamburger */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-gray-800 text-xl focus:outline-none"
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
-          </button>
+          {/* Mobile Right Bar: App Pill + Menu Hamburger */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <a
+              href={playStoreLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm"
+            >
+              <FaGooglePlay className="text-[10px]" /> App
+            </a>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-1.5 text-gray-800 text-lg focus:outline-none"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Dropdown Menu */}
@@ -548,34 +559,36 @@ const LandingPage = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden bg-white border-b border-gray-200 px-6 py-6 space-y-4 shadow-xl"
+              className="lg:hidden bg-white border-b border-gray-200 px-5 py-4 space-y-3 shadow-xl"
             >
-              {navMenuItems.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-sm font-semibold text-gray-800 hover:text-brand py-1"
-                >
-                  {item.label}
-                </a>
-              ))}
-              <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-2 pb-2 border-b border-gray-100">
+                {navMenuItems.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-xs font-semibold text-gray-800 hover:text-brand py-1.5"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
                 <a
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-xs font-bold"
+                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-bold"
                 >
-                  <FaGooglePlay /> Download on Play Store
+                  <FaGooglePlay /> Download on Google Play Store
                 </a>
-                <Link
-                  to="/user"
+                <a
+                  href="#partner"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-center bg-brand text-white py-3 rounded-xl text-xs font-bold"
+                  className="w-full text-center bg-brand/10 text-brand py-2 rounded-xl text-xs font-bold"
                 >
-                  Order Service Web
-                </Link>
+                  🛠️ Register as a Service Partner
+                </a>
               </div>
             </motion.div>
           )}
@@ -587,44 +600,41 @@ const LandingPage = () => {
       {/* ============================================================ */}
       <section
         id="hero"
-        className="relative pt-28 sm:pt-36 pb-16 sm:pb-24 bg-gradient-to-b from-gray-50/80 via-white to-white overflow-hidden"
+        className="relative pt-20 sm:pt-32 pb-8 sm:pb-20 bg-gradient-to-b from-gray-50/80 via-white to-white overflow-hidden"
       >
-        <div className="absolute top-10 right-0 w-96 h-96 bg-brand/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-        <div className="absolute top-40 left-0 w-80 h-80 bg-orange-500/5 blur-[100px] rounded-full pointer-events-none -z-10"></div>
-
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
             {/* Left Column: Headlines & CTA */}
             <div className="flex-1 text-center lg:text-left">
               {/* Partner Banner Pill */}
               <a
                 href="#partner"
-                className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand/10 border border-brand/20 text-brand rounded-full mb-6 text-xs font-bold hover:bg-brand/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full mb-4 text-[11px] sm:text-xs font-bold hover:bg-brand/20 transition-colors"
               >
-                <span>🛠️ Skilled Technician or Contractor?</span>
+                <span>🛠️ Skilled Technician?</span>
                 <span className="underline">Register as Partner &rarr;</span>
               </a>
 
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 leading-[1.15] mb-6">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.2] mb-3 sm:mb-5">
                 {config.hero?.title}
               </h1>
 
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+              <p className="text-xs sm:text-base text-gray-600 leading-relaxed mb-6 max-w-xl mx-auto lg:mx-0">
                 {config.hero?.subtitle}
               </p>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start items-center mb-6">
                 <a
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-brand transition-all shadow-xl active:scale-95 group"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-brand transition-all shadow-md active:scale-95 group"
                 >
-                  <FaGooglePlay className="text-xl group-hover:scale-110 transition-transform" />
+                  <FaGooglePlay className="text-lg group-hover:scale-110 transition-transform" />
                   <div className="text-left">
-                    <div className="text-[10px] text-gray-400 font-normal leading-none">GET IT ON</div>
-                    <div className="text-sm font-bold leading-tight">Google Play</div>
+                    <div className="text-[9px] text-gray-400 font-normal leading-none">FREE ON</div>
+                    <div className="text-xs sm:text-sm font-bold leading-tight">Google Play Store</div>
                   </div>
                 </a>
 
@@ -632,30 +642,30 @@ const LandingPage = () => {
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-900 transition-all shadow-lg active:scale-95"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95"
                 >
-                  {config.hero?.ctaUserText || 'Book on Play Store'} <FaArrowRight />
+                  {config.hero?.ctaUserText || 'Book on Play Store'} <FaArrowRight className="text-[10px]" />
                 </a>
               </div>
 
               {/* Quick Trust Highlights */}
-              <div className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <FaCheckCircle className="text-green-500" /> Platform Warranty
+              <div className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 text-[11px] sm:text-xs font-semibold text-gray-500">
+                <span className="flex items-center gap-1">
+                  <FaCheckCircle className="text-green-500 text-xs" /> Platform Warranty
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <FaCheckCircle className="text-green-500" /> Verified Technicians
+                <span className="flex items-center gap-1">
+                  <FaCheckCircle className="text-green-500 text-xs" /> Verified Technicians
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <FaCheckCircle className="text-green-500" /> Live GPS Tracking
+                <span className="flex items-center gap-1">
+                  <FaCheckCircle className="text-green-500 text-xs" /> Live GPS Tracking
                 </span>
               </div>
             </div>
 
             {/* Right Column: Hero Visual with Warranty Shield */}
-            <div className="flex-1 w-full max-w-lg lg:max-w-none relative">
-              <div className="relative p-3 bg-white rounded-[3rem] border border-gray-100 shadow-2xl overflow-hidden group">
-                <div className="overflow-hidden rounded-[2.5rem] aspect-[4/3] sm:aspect-[16/11] relative bg-gray-100">
+            <div className="w-full max-w-md sm:max-w-lg lg:max-w-none flex-1 relative">
+              <div className="relative p-2 sm:p-3 bg-white rounded-3xl sm:rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden group">
+                <div className="overflow-hidden rounded-2xl sm:rounded-[2.5rem] aspect-[16/10] sm:aspect-[16/11] relative bg-gray-100">
                   <img
                     src={config.hero?.heroImageUrl || '/hero-image.png'}
                     alt="Help-U Verified Services"
@@ -669,19 +679,19 @@ const LandingPage = () => {
                 </div>
 
                 {/* Floating Trust Badge */}
-                <div className="absolute bottom-6 left-6 right-6 bg-gray-900/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl text-white shadow-2xl border border-white/20 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand rounded-full flex items-center justify-center text-white shadow-lg text-lg sm:text-xl">
+                <div className="absolute bottom-3 sm:bottom-6 left-3 sm:left-6 right-3 sm:right-6 bg-gray-900/90 backdrop-blur-md p-3 sm:p-5 rounded-xl sm:rounded-2xl text-white shadow-xl border border-white/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-11 sm:h-11 bg-brand rounded-full flex items-center justify-center text-white shadow text-sm sm:text-lg">
                       <FaShieldAlt />
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold">
                         Platform Guarantee
                       </p>
-                      <p className="text-xs sm:text-sm font-bold">100% Certified Genuine Parts</p>
+                      <p className="text-[11px] sm:text-xs md:text-sm font-bold">100% Certified Genuine Parts</p>
                     </div>
                   </div>
-                  <span className="hidden sm:inline-block bg-white/10 text-brand text-xs font-bold px-3 py-1 rounded-full">
+                  <span className="hidden sm:inline-block bg-white/10 text-brand text-xs font-bold px-2.5 py-1 rounded-full">
                     Warranty
                   </span>
                 </div>
@@ -694,18 +704,18 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 3. PLATFORM STATS STRIP */}
       {/* ============================================================ */}
-      <section className="py-10 sm:py-14 bg-gray-900 text-white relative overflow-hidden">
+      <section className="py-6 sm:py-10 bg-gray-900 text-white relative overflow-hidden">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats.map((stat, idx) => (
               <div
                 key={idx}
-                className="text-center border-r border-white/10 last:border-0 lg:border-r p-2"
+                className="text-center p-2 sm:p-3 border-r border-white/10 last:border-0 lg:border-r"
               >
-                <div className="text-3xl sm:text-5xl font-extrabold mb-1 tracking-tight text-brand">
+                <div className="text-2xl sm:text-4xl font-extrabold mb-0.5 tracking-tight text-brand">
                   {stat.value}
                 </div>
-                <div className="text-gray-400 text-xs sm:text-sm font-medium">{stat.label}</div>
+                <div className="text-gray-400 text-[11px] sm:text-xs font-medium">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -713,37 +723,43 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
-      {/* 4. ABOUT US & TRUST PILLARS */}
+      {/* 4. ABOUT US & TRUST PILLARS (COMPACT 2-COL MOBILE GRID) */}
       {/* ============================================================ */}
-      <section id="about-us" className="py-20 sm:py-28 bg-white border-b border-gray-100">
+      <section id="about-us" className="py-10 sm:py-20 bg-white border-b border-gray-100">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+          <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-14">
+            <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
               Who We Are
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-2 sm:mb-3">
               {config.aboutUs?.title || 'About Help-U'}
             </h2>
-            <p className="text-gray-600 text-base sm:text-lg leading-relaxed">
+            <p className="text-gray-600 text-xs sm:text-base leading-relaxed">
               {config.aboutUs?.description}
             </p>
           </div>
 
-          {/* 4 Pillars Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* 4 Pillars Grid: 2 columns on mobile, 4 on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {pillars.map((pillar, idx) => (
               <div
                 key={idx}
-                className="p-6 sm:p-8 rounded-3xl bg-gray-50 border border-gray-100 hover:border-brand/30 hover:shadow-xl transition-all duration-300 group"
+                className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-50 border border-gray-100 hover:border-brand/30 hover:shadow-md transition-all duration-300 group flex flex-col justify-between"
               >
-                <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-xl mb-5 group-hover:scale-110 group-hover:bg-brand group-hover:text-white transition-all">
-                  {idx === 0 && <FaShieldAlt />}
-                  {idx === 1 && <FaUserCheck />}
-                  {idx === 2 && <FaMapMarkerAlt />}
-                  {idx === 3 && <FaFileInvoiceDollar />}
+                <div>
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-base sm:text-xl mb-3 sm:mb-4 group-hover:scale-105 group-hover:bg-brand group-hover:text-white transition-all">
+                    {idx === 0 && <FaShieldAlt />}
+                    {idx === 1 && <FaUserCheck />}
+                    {idx === 2 && <FaMapMarkerAlt />}
+                    {idx === 3 && <FaFileInvoiceDollar />}
+                  </div>
+                  <h3 className="text-xs sm:text-base font-bold text-gray-900 mb-1 leading-snug">
+                    {pillar.title}
+                  </h3>
+                  <p className="text-[10px] sm:text-xs text-gray-600 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                    {pillar.desc}
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{pillar.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{pillar.desc}</p>
               </div>
             ))}
           </div>
@@ -751,46 +767,46 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
-      {/* 5. POPULAR SERVICES GRID */}
+      {/* 5. POPULAR SERVICES GRID (COMPACT TOUCH CAROUSEL) */}
       {/* ============================================================ */}
-      <section id="services" className="py-20 sm:py-28 bg-gray-50/60">
+      <section id="services" className="py-10 sm:py-20 bg-gray-50/70">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12">
+          <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
-              <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+              <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
                 Our Catalog
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 leading-tight">
                 Explore Expert Services
               </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Book verified professionals with guaranteed warranty across Indore
+              <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                Tap any category to install or book via Google Play Store
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <button
                 onClick={() => scroll('left')}
-                className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-brand hover:border-brand transition-all shadow-sm"
+                className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-brand hover:border-brand transition-all shadow-sm"
                 aria-label="Scroll left"
               >
-                <FaChevronLeft />
+                <FaChevronLeft className="text-xs" />
               </button>
               <button
                 onClick={() => scroll('right')}
-                className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-brand hover:border-brand transition-all shadow-sm"
+                className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-brand hover:border-brand transition-all shadow-sm"
                 aria-label="Scroll right"
               >
-                <FaChevronRight />
+                <FaChevronRight className="text-xs" />
               </button>
             </div>
           </div>
 
-          {/* Carousel scroll */}
+          {/* Carousel scroll: snap-x touch friendly */}
           <div
             ref={scrollRef}
-            className="overflow-x-auto scrollbar-hide scroll-smooth py-2 -mx-2 px-2"
+            className="overflow-x-auto scrollbar-hide scroll-smooth py-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory"
           >
-            <div className="flex gap-5 min-w-max">
+            <div className="flex gap-3 sm:gap-5 min-w-max">
               {categories.map((cat, idx) => {
                 const iconSrc = toAssetUrl(cat.icon);
                 return (
@@ -799,9 +815,9 @@ const LandingPage = () => {
                     href={playStoreLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-52 bg-white rounded-3xl p-6 border border-gray-100 hover:border-brand/40 hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center group cursor-pointer"
+                    className="w-36 sm:w-52 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 hover:border-brand/40 hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center group cursor-pointer snap-start"
                   >
-                    <div className="w-20 h-20 rounded-2xl bg-gray-50 flex items-center justify-center p-3 mb-4 group-hover:scale-110 transition-transform relative overflow-hidden">
+                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gray-50 flex items-center justify-center p-2 sm:p-3 mb-3 group-hover:scale-105 transition-transform relative overflow-hidden">
                       {iconSrc ? (
                         <>
                           <img
@@ -814,19 +830,19 @@ const LandingPage = () => {
                               if (fallback) fallback.classList.remove('hidden');
                             }}
                           />
-                          <div className="cat-fallback hidden items-center justify-center text-brand text-3xl">
+                          <div className="cat-fallback hidden items-center justify-center text-brand text-2xl">
                             <FaTools />
                           </div>
                         </>
                       ) : (
-                        <FaTools className="text-3xl text-brand" />
+                        <FaTools className="text-2xl sm:text-3xl text-brand" />
                       )}
                     </div>
-                    <h3 className="font-bold text-sm text-gray-900 group-hover:text-brand transition-colors line-clamp-2">
+                    <h3 className="font-bold text-xs sm:text-sm text-gray-900 group-hover:text-brand transition-colors line-clamp-2 min-h-[32px] sm:min-h-[40px] flex items-center justify-center">
                       {cat.title}
                     </h3>
-                    <span className="text-[11px] text-brand mt-2 flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform">
-                      Get on Play Store <FaArrowRight className="text-[9px]" />
+                    <span className="text-[10px] sm:text-[11px] text-brand mt-1.5 flex items-center gap-1 font-semibold group-hover:translate-x-0.5 transition-transform">
+                      Play Store <FaArrowRight className="text-[8px]" />
                     </span>
                   </a>
                 );
@@ -839,22 +855,22 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 6. HOW IT WORKS (TABBED: CUSTOMERS VS PARTNERS) */}
       {/* ============================================================ */}
-      <section id="how-it-works" className="py-20 sm:py-28 bg-white border-b border-gray-100">
+      <section id="how-it-works" className="py-10 sm:py-20 bg-white border-b border-gray-100">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+            <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
               Simple Workflow
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-5">
               How Help-U Works
             </h2>
 
             {/* Persona Switcher Tabs */}
-            <div className="inline-flex rounded-full bg-gray-100 p-1.5 border border-gray-200">
+            <div className="inline-flex rounded-full bg-gray-100 p-1 border border-gray-200">
               <button
                 type="button"
                 onClick={() => setHowItWorksTab('user')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                   howItWorksTab === 'user'
                     ? 'bg-gray-900 text-white shadow'
                     : 'text-gray-600 hover:text-gray-900'
@@ -865,35 +881,39 @@ const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => setHowItWorksTab('partner')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                   howItWorksTab === 'partner'
                     ? 'bg-brand text-white shadow'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                🛠️ For Service Partners
+                🛠️ For Partners
               </button>
             </div>
           </div>
 
-          {/* Steps Timeline Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Steps Timeline Grid: 2 columns on mobile, 4 on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {(howItWorksTab === 'user' ? userSteps : partnerSteps).map((st, idx) => (
               <div
                 key={idx}
-                className="relative p-8 rounded-3xl bg-gray-50 border border-gray-100 flex flex-col justify-between"
+                className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-50 border border-gray-100 flex flex-col justify-between"
               >
                 <div>
-                  <div className="w-12 h-12 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-extrabold text-lg mb-6 shadow-md">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-extrabold text-xs sm:text-sm mb-3 sm:mb-4 shadow-sm">
                     0{idx + 1}
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{st.title}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{st.desc}</p>
+                  <h3 className="text-xs sm:text-base font-bold text-gray-900 mb-1 leading-snug">
+                    {st.title}
+                  </h3>
+                  <p className="text-[10px] sm:text-xs text-gray-600 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                    {st.desc}
+                  </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-200/60 flex items-center gap-1.5 text-brand text-xs font-bold">
+                <div className="mt-3 pt-2 sm:mt-4 sm:pt-3 border-t border-gray-200/60 flex items-center gap-1 text-brand text-[10px] sm:text-xs font-bold">
                   <span>Step {idx + 1}</span>
-                  <FaArrowRight className="text-[10px]" />
+                  <FaArrowRight className="text-[8px]" />
                 </div>
               </div>
             ))}
@@ -904,58 +924,58 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 7. APP SHOWCASE & PLAY STORE DOWNLOAD STRIP */}
       {/* ============================================================ */}
-      <section id="why-us" className="py-20 sm:py-28 bg-gray-900 text-white overflow-hidden relative">
+      <section id="why-us" className="py-10 sm:py-20 bg-gray-900 text-white overflow-hidden relative">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
             <div className="max-w-xl text-center lg:text-left">
-              <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-3">
+              <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-2">
                 Mobile First Experience
               </span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold mb-6 leading-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-5 leading-tight">
                 Quality Home Repair is <br />
                 <span className="text-brand">Just a Tap Away.</span>
               </h2>
-              <p className="text-gray-400 text-base leading-relaxed mb-8">
+              <p className="text-gray-400 text-xs sm:text-base leading-relaxed mb-6">
                 Download the official Help-U Android app for instant emergency bookings, live technician map tracking, digital receipts, and hassle-free wallet payments.
               </p>
 
               {/* Download badge & QR code */}
-              <div className="flex flex-col sm:flex-row items-center gap-6 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 justify-center lg:justify-start">
                 <a
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl font-bold text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95 group"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95"
                 >
-                  <FaGooglePlay className="text-2xl text-gray-900 group-hover:text-white" />
+                  <FaGooglePlay className="text-xl text-gray-900 group-hover:text-white" />
                   <div className="text-left">
-                    <div className="text-[10px] text-gray-500 leading-none">FREE ON</div>
-                    <div className="text-base font-extrabold">Google Play Store</div>
+                    <div className="text-[9px] text-gray-500 leading-none">FREE ON</div>
+                    <div className="text-xs sm:text-sm font-extrabold">Google Play Store</div>
                   </div>
                 </a>
 
                 {config.appLinks?.isQrCodeVisible !== false && (
-                  <div className="hidden sm:flex items-center gap-3 bg-white/5 border border-white/10 p-3 rounded-2xl">
+                  <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 p-2.5 rounded-xl">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(
                         playStoreLink
                       )}`}
                       alt="Scan to Download Help-U"
-                      className="w-14 h-14 rounded-lg bg-white p-1"
+                      className="w-12 h-12 rounded-lg bg-white p-1"
                     />
                     <div className="text-left text-xs">
-                      <div className="font-bold text-white">Scan with Camera</div>
-                      <div className="text-gray-400 text-[10px]">Instant Play Store install</div>
+                      <div className="font-bold text-white text-[11px]">Scan with Camera</div>
+                      <div className="text-gray-400 text-[9px]">Direct Play Store install</div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* App Screen Mockup */}
-            <div className="w-full max-w-sm relative">
-              <div className="p-3 bg-gray-800 rounded-[3rem] border border-white/10 shadow-2xl">
-                <div className="aspect-[9/16] rounded-[2.5rem] bg-gray-900 overflow-hidden relative">
+            {/* App Screen Mockup: Compact on mobile */}
+            <div className="w-full max-w-[220px] sm:max-w-xs relative mx-auto">
+              <div className="p-2 sm:p-3 bg-gray-800 rounded-3xl sm:rounded-[3rem] border border-white/10 shadow-2xl">
+                <div className="aspect-[9/16] rounded-2xl sm:rounded-[2.5rem] bg-gray-900 overflow-hidden relative">
                   <img
                     src="/helpu-user.png"
                     alt="Help-U Mobile Application"
@@ -975,53 +995,58 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 8. DEDICATED PARTNER SECTION & REGISTRATION FORM */}
       {/* ============================================================ */}
-      <section id="partner" className="py-20 sm:py-32 bg-gray-50 relative">
+      <section id="partner" className="py-10 sm:py-24 bg-gray-50 relative">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-14">
+            <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
               For Skilled Professionals
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-gray-900 mb-4">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-2 sm:mb-3">
               {config.partnerSection?.title || 'Grow Your Business with Help-U'}
             </h2>
-            <p className="text-gray-600 text-base leading-relaxed">
+            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
               {config.partnerSection?.subtitle}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 items-start">
             {/* Left Column: Partner Perks */}
-            <div className="lg:col-span-6 space-y-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">
+            <div className="lg:col-span-6 space-y-4 sm:space-y-6">
+              <h3 className="text-lg sm:text-2xl font-bold text-gray-900">
                 Why Top Technicians Choose Help-U
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Compact 2-column grid on mobile */}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                 {perks.map((perk, idx) => (
                   <div
                     key={idx}
-                    className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                    className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-100 shadow-sm"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg mb-4">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-sm sm:text-lg mb-2 sm:mb-3">
                       {idx === 0 && <FaTools />}
                       {idx === 1 && <FaWallet />}
                       {idx === 2 && <FaBoxes />}
                       {idx === 3 && <FaClock />}
                     </div>
-                    <h4 className="font-bold text-base text-gray-900 mb-1">{perk.title}</h4>
-                    <p className="text-xs text-gray-600 leading-relaxed">{perk.desc}</p>
+                    <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5 leading-snug">
+                      {perk.title}
+                    </h4>
+                    <p className="text-[10px] sm:text-xs text-gray-600 leading-relaxed line-clamp-3 sm:line-clamp-none">
+                      {perk.desc}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* Partner App direct download prompt */}
-              <div className="p-6 rounded-3xl bg-brand/10 border border-brand/20 flex items-center justify-between">
+              {/* Partner App prompt */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-between gap-3">
                 <div>
-                  <h4 className="font-bold text-sm text-gray-900">Have a Partner Account?</h4>
-                  <p className="text-xs text-gray-600">Access your partner dashboard and active jobs.</p>
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-900">Have a Partner Account?</h4>
+                  <p className="text-[10px] sm:text-xs text-gray-600">Access your partner job dashboard.</p>
                 </div>
                 <Link
                   to="/worker/login"
-                  className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-colors whitespace-nowrap"
+                  className="px-3.5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-colors whitespace-nowrap"
                 >
                   Partner Login
                 </Link>
@@ -1030,12 +1055,12 @@ const LandingPage = () => {
 
             {/* Right Column: Live Partner Registration Lead Form */}
             <div className="lg:col-span-6">
-              <div className="bg-white p-8 sm:p-10 rounded-3xl border border-gray-200 shadow-xl">
-                <div className="mb-6">
-                  <h3 className="text-2xl font-extrabold text-gray-900 mb-1">
+              <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-gray-200 shadow-lg">
+                <div className="mb-4 sm:mb-6">
+                  <h3 className="text-lg sm:text-2xl font-extrabold text-gray-900 mb-1">
                     Register as a Service Partner
                   </h3>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[11px] sm:text-xs text-gray-500">
                     Takes 2 minutes. Free registration with zero joining charges.
                   </p>
                 </div>
@@ -1044,14 +1069,14 @@ const LandingPage = () => {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-8 text-center bg-green-50 rounded-2xl border border-green-200"
+                    className="p-6 text-center bg-green-50 rounded-2xl border border-green-200"
                   >
-                    <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                    <div className="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
                       <FaCheckCircle />
                     </div>
-                    <h4 className="text-xl font-bold text-gray-900 mb-2">Registration Received!</h4>
-                    <p className="text-sm text-gray-600 mb-6">
-                      Thank you for joining Help-U. Our partner onboarding manager will call your phone number within 24 hours to verify documents and activate your account.
+                    <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Registration Received!</h4>
+                    <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+                      Thank you for joining Help-U. Our onboarding manager will call your phone number within 24 hours to activate your account.
                     </p>
                     <button
                       type="button"
@@ -1073,10 +1098,10 @@ const LandingPage = () => {
                     </button>
                   </motion.div>
                 ) : (
-                  <form onSubmit={handlePartnerSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <form onSubmit={handlePartnerSubmit} className="space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           Full Name *
                         </label>
                         <input
@@ -1085,12 +1110,12 @@ const LandingPage = () => {
                           placeholder="e.g. Rahul Sharma"
                           value={partnerForm.name}
                           onChange={(e) => setPartnerForm({ ...partnerForm, name: e.target.value })}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           Mobile Number *
                         </label>
                         <input
@@ -1100,20 +1125,20 @@ const LandingPage = () => {
                           placeholder="10-digit phone number"
                           value={partnerForm.phone}
                           onChange={(e) => setPartnerForm({ ...partnerForm, phone: e.target.value })}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           Primary Trade / Skill *
                         </label>
                         <select
                           value={partnerForm.trade}
                           onChange={(e) => setPartnerForm({ ...partnerForm, trade: e.target.value })}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none bg-white"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none bg-white"
                         >
                           <option value="AC & Appliance Repair">AC & Appliance Repair</option>
                           <option value="Electrician">Electrician</option>
@@ -1126,7 +1151,7 @@ const LandingPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           City *
                         </label>
                         <input
@@ -1135,14 +1160,14 @@ const LandingPage = () => {
                           value={partnerForm.city}
                           onChange={(e) => setPartnerForm({ ...partnerForm, city: e.target.value })}
                           placeholder="Indore"
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           Experience Level
                         </label>
                         <select
@@ -1150,7 +1175,7 @@ const LandingPage = () => {
                           onChange={(e) =>
                             setPartnerForm({ ...partnerForm, experience: e.target.value })
                           }
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none bg-white"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none bg-white"
                         >
                           <option value="1-2 years">1 – 2 years</option>
                           <option value="3-5 years">3 – 5 years</option>
@@ -1159,7 +1184,7 @@ const LandingPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1">
                           Email (Optional)
                         </label>
                         <input
@@ -1167,7 +1192,7 @@ const LandingPage = () => {
                           placeholder="partner@example.com"
                           value={partnerForm.email}
                           onChange={(e) => setPartnerForm({ ...partnerForm, email: e.target.value })}
-                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                          className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1175,12 +1200,12 @@ const LandingPage = () => {
                     <button
                       type="submit"
                       disabled={partnerSubmitting}
-                      className="w-full py-4 bg-[#163B66] text-white rounded-2xl text-sm font-bold hover:bg-gray-900 transition-all shadow-lg active:scale-95 disabled:opacity-50 mt-2"
+                      className="w-full py-3 sm:py-3.5 bg-[#163B66] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95 disabled:opacity-50 mt-1"
                     >
-                      {partnerSubmitting ? 'Submitting Registration...' : 'Register as Partner &rarr;'}
+                      {partnerSubmitting ? 'Submitting...' : 'Register as Partner &rarr;'}
                     </button>
-                    <p className="text-[11px] text-gray-400 text-center">
-                      By registering, you agree to our Partner Guidelines & Code of Conduct.
+                    <p className="text-[10px] text-gray-400 text-center">
+                      By registering, you agree to our Partner Guidelines.
                     </p>
                   </form>
                 )}
@@ -1193,22 +1218,22 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 9. FREQUENTLY ASKED QUESTIONS (CUSTOMER & PARTNER ACCORDION) */}
       {/* ============================================================ */}
-      <section id="faq" className="py-20 sm:py-28 bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4 sm:px-8 max-w-4xl">
-          <div className="text-center mb-12">
-            <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+      <section id="faq" className="py-10 sm:py-20 bg-white border-b border-gray-100">
+        <div className="container mx-auto px-4 sm:px-8 max-w-3xl">
+          <div className="text-center mb-8 sm:mb-12">
+            <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
               Got Questions?
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-5">
               Frequently Asked Questions
             </h2>
 
             {/* FAQ Tabs */}
-            <div className="inline-flex rounded-full bg-gray-100 p-1.5 border border-gray-200">
+            <div className="inline-flex rounded-full bg-gray-100 p-1 border border-gray-200">
               <button
                 type="button"
                 onClick={() => setFaqTab('user')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                   faqTab === 'user'
                     ? 'bg-gray-900 text-white shadow'
                     : 'text-gray-600 hover:text-gray-900'
@@ -1219,7 +1244,7 @@ const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => setFaqTab('partner')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                   faqTab === 'partner'
                     ? 'bg-brand text-white shadow'
                     : 'text-gray-600 hover:text-gray-900'
@@ -1231,28 +1256,28 @@ const LandingPage = () => {
           </div>
 
           {/* Accordion List */}
-          <div className="space-y-4">
+          <div className="space-y-2.5 sm:space-y-3">
             {filteredFaqs.map((faq, idx) => {
               const isOpen = openFaqIndex === idx;
               return (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-gray-200 bg-white transition-all overflow-hidden"
+                  className="rounded-xl sm:rounded-2xl border border-gray-200 bg-white transition-all overflow-hidden"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 focus:outline-none"
+                    className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 focus:outline-none"
                   >
-                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                    <span className="font-bold text-xs sm:text-sm text-gray-900 leading-snug">
                       {faq.question}
                     </span>
                     <span
-                      className={`w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 transition-transform ${
+                      className={`w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0 transition-transform ${
                         isOpen ? 'rotate-180 bg-brand text-white' : ''
                       }`}
                     >
-                      <FaChevronDown className="text-xs" />
+                      <FaChevronDown className="text-[10px]" />
                     </span>
                   </button>
 
@@ -1262,7 +1287,7 @@ const LandingPage = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="px-5 sm:px-6 pb-6 text-xs sm:text-sm text-gray-600 leading-relaxed border-t border-gray-50 pt-3"
+                        className="px-4 sm:px-5 pb-4 sm:pb-5 text-[11px] sm:text-xs text-gray-600 leading-relaxed border-t border-gray-50 pt-2"
                       >
                         {faq.answer}
                       </motion.div>
@@ -1276,103 +1301,93 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
-      {/* 10. CONTACT US & DIRECT SUPPORT CHANNELS */}
+      {/* 10. CONTACT US & DIRECT SUPPORT CHANNELS (COMPACT 2-COL MOBILE) */}
       {/* ============================================================ */}
-      <section id="contact" className="py-20 sm:py-28 bg-gray-50/70">
+      <section id="contact" className="py-10 sm:py-20 bg-gray-50/70">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-brand font-bold text-xs uppercase tracking-widest block mb-2">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+            <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
               We're Here For You
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">Contact Us</h2>
-            <p className="text-gray-600 text-sm">
-              Reach our customer care or visit our central Indore operations office.
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-1 sm:mb-2">Contact Us</h2>
+            <p className="text-gray-600 text-xs sm:text-sm">
+              Reach our customer care or message us directly anytime.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Contact Details Cards */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="p-6 rounded-3xl bg-white border border-gray-200 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+            {/* Contact Details Cards: 2-column compact grid on mobile */}
+            <div className="lg:col-span-5 grid grid-cols-2 gap-2.5 sm:gap-4">
+              <a
+                href={`tel:${config.contact?.supportPhone || '+919876543210'}`}
+                className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between hover:border-brand/40 transition-colors"
+              >
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-base mb-2">
                   <FaPhoneAlt />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-gray-900 mb-1">Customer Helpline</h4>
-                  <p className="text-xs text-gray-500 mb-2">Direct telephone support for booking assistance</p>
-                  <a
-                    href={`tel:${config.contact?.supportPhone || '+919876543210'}`}
-                    className="text-sm font-extrabold text-brand hover:underline"
-                  >
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Helpline</h4>
+                  <p className="text-[10px] sm:text-xs text-brand font-bold truncate">
                     {config.contact?.supportPhone || '+91 98765 43210'}
-                  </a>
+                  </p>
                 </div>
-              </div>
+              </a>
 
-              <div className="p-6 rounded-3xl bg-white border border-gray-200 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center text-xl shrink-0">
+              <a
+                href={`https://wa.me/91${(config.contact?.supportWhatsapp || '9876543210').replace(
+                  /\D/g,
+                  ''
+                ).slice(-10)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between hover:border-green-400 transition-colors"
+              >
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center text-base sm:text-lg mb-2">
                   <FaWhatsapp />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-gray-900 mb-1">WhatsApp Chat</h4>
-                  <p className="text-xs text-gray-500 mb-2">Instant messaging support & technician updates</p>
-                  <a
-                    href={`https://wa.me/91${(config.contact?.supportWhatsapp || '9876543210').replace(
-                      /\D/g,
-                      ''
-                    ).slice(-10)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition-colors"
-                  >
-                    <FaWhatsapp /> Chat on WhatsApp
-                  </a>
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">WhatsApp</h4>
+                  <p className="text-[10px] sm:text-xs text-green-600 font-bold">Chat Now &rarr;</p>
                 </div>
-              </div>
+              </a>
 
-              <div className="p-6 rounded-3xl bg-white border border-gray-200 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shrink-0">
+              <a
+                href={`mailto:${config.contact?.supportEmail || 'support@homestr.in'}`}
+                className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between hover:border-brand/40 transition-colors"
+              >
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm sm:text-base mb-2">
                   <FaEnvelope />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-gray-900 mb-1">Official Email</h4>
-                  <p className="text-xs text-gray-500 mb-2">Billing, enterprise & partner escalations</p>
-                  <a
-                    href={`mailto:${config.contact?.supportEmail || 'support@homestr.in'}`}
-                    className="text-xs font-bold text-gray-900 hover:text-brand"
-                  >
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Email</h4>
+                  <p className="text-[10px] sm:text-xs text-gray-500 truncate">
                     {config.contact?.supportEmail || 'support@homestr.in'}
-                  </a>
+                  </p>
                 </div>
-              </div>
+              </a>
 
-              <div className="p-6 rounded-3xl bg-white border border-gray-200 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg shrink-0">
+              <div className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm sm:text-base mb-2">
                   <FaClock />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-gray-900 mb-1">Working Hours</h4>
-                  <p className="text-xs text-gray-600">
-                    {config.contact?.workingHours || 'Monday – Sunday: 8:00 AM – 9:00 PM'}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    {config.contact?.companyAddress || 'Indore, MP'}
-                  </p>
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Hours</h4>
+                  <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">8 AM – 9 PM Daily</p>
                 </div>
               </div>
             </div>
 
             {/* Quick Contact Form */}
-            <div className="lg:col-span-7 bg-white p-8 sm:p-10 rounded-3xl border border-gray-200 shadow-sm">
-              <h3 className="text-xl font-extrabold text-gray-900 mb-2">Send Us a Direct Message</h3>
-              <p className="text-xs text-gray-500 mb-6">
-                Have a question or request? Drop a message and our team will get back to you.
+            <div className="lg:col-span-7 bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm">
+              <h3 className="text-base sm:text-xl font-extrabold text-gray-900 mb-1">Send Us a Direct Message</h3>
+              <p className="text-[11px] sm:text-xs text-gray-500 mb-4">
+                Have a question? We typically reply within a few hours.
               </p>
 
-              <form onSubmit={handleContactSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form onSubmit={handleContactSubmit} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    <label className="block text-[11px] font-semibold text-gray-700 mb-1">
                       Your Name *
                     </label>
                     <input
@@ -1381,13 +1396,13 @@ const LandingPage = () => {
                       placeholder="e.g. Anand Jain"
                       value={contactForm.name}
                       onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-xs text-gray-900 focus:border-brand focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Mobile Number / Email *
+                    <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                      Phone / Email *
                     </label>
                     <input
                       type="text"
@@ -1395,42 +1410,29 @@ const LandingPage = () => {
                       placeholder="Phone or email"
                       value={contactForm.phone}
                       onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-xs text-gray-900 focus:border-brand focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                    placeholder="General Inquiry"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">
                     Message *
                   </label>
                   <textarea
-                    rows={4}
+                    rows={3}
                     required
-                    placeholder="How can we help you today?"
+                    placeholder="How can we help you?"
                     value={contactForm.message}
                     onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-xs text-gray-900 focus:border-brand focus:outline-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={contactSubmitting}
-                  className="px-8 py-3.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95 disabled:opacity-50"
                 >
                   {contactSubmitting ? 'Sending...' : 'Send Message &rarr;'}
                 </button>
@@ -1443,144 +1445,110 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 11. DYNAMIC FOOTER */}
       {/* ============================================================ */}
-      <footer className="py-16 bg-gray-950 text-white border-t border-gray-800">
+      <footer className="py-10 sm:py-16 bg-gray-950 text-white border-t border-gray-800">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-10 mb-8 sm:mb-12">
             {/* Brand Col */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="col-span-2 space-y-3">
               <Link to="/Home" className="flex items-center gap-2">
                 <img
                   src="/helpu-logo.png"
                   alt="Help-U Logo"
-                  className="h-10 w-auto"
+                  className="h-8 w-auto"
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
                 />
-                <span className="font-extrabold text-2xl tracking-tight text-white">
+                <span className="font-extrabold text-xl tracking-tight text-white">
                   Help<span className="text-brand">-U</span>
                 </span>
               </Link>
               <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
-                Enterprise on-demand technical services marketplace. Certified genuine spare parts, transparent doorstep billing, and background-checked technicians across Indore.
+                Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.
               </p>
-              <div className="pt-2">
-                <a
-                  href={playStoreLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white hover:text-gray-900 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                >
-                  <FaGooglePlay /> Download Android App
-                </a>
-              </div>
             </div>
 
             {/* Quick Links */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
                 Explore
               </h4>
-              <ul className="space-y-2.5 text-xs text-gray-400">
-                <li>
-                  <a href="#about-us" className="hover:text-white transition-colors">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#services" className="hover:text-white transition-colors">
-                    Service Catalog
-                  </a>
-                </li>
-                <li>
-                  <a href="#how-it-works" className="hover:text-white transition-colors">
-                    How It Works
-                  </a>
-                </li>
-                <li>
-                  <a href="#partner" className="hover:text-white transition-colors">
-                    Become a Partner
-                  </a>
-                </li>
-                <li>
-                  <a href="#faq" className="hover:text-white transition-colors">
-                    Frequently Asked Questions
-                  </a>
-                </li>
-                <li>
-                  <a href="#contact" className="hover:text-white transition-colors">
-                    Contact & Support
-                  </a>
-                </li>
+              <ul className="space-y-1.5 text-xs text-gray-400">
+                <li><a href="#about-us" className="hover:text-white transition-colors">About Us</a></li>
+                <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
+                <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+                <li><a href="#partner" className="hover:text-white transition-colors">For Partners</a></li>
+                <li><a href="#faq" className="hover:text-white transition-colors">FAQs</a></li>
               </ul>
             </div>
 
             {/* Legal Links */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
                 Legal & Safety
               </h4>
-              <ul className="space-y-2.5 text-xs text-gray-400">
-                <li>
-                  <Link to="/user/terms" className="hover:text-white transition-colors">
-                    Terms & Conditions
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/user/privacy-policy" className="hover:text-white transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/user/cancellation-policy" className="hover:text-white transition-colors">
-                    Cancellation & Refunds
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/worker/login" className="hover:text-white transition-colors">
-                    Worker Partner Portal
-                  </Link>
-                </li>
+              <ul className="space-y-1.5 text-xs text-gray-400">
+                <li><Link to="/user/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/user/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/user/cancellation-policy" className="hover:text-white transition-colors">Refunds & Cancel</Link></li>
+                <li><Link to="/worker/login" className="hover:text-white transition-colors">Partner Portal</Link></li>
               </ul>
             </div>
 
             {/* City & Contact Info */}
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4">
-                Headquarters
+            <div className="col-span-2 sm:col-span-1">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
+                Location
               </h4>
-              <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                {config.contact?.companyAddress || 'Indore, Madhya Pradesh 452010'}
-              </p>
-              <p className="text-xs text-gray-400 mb-1">
-                Helpline:{' '}
-                <a
-                  href={`tel:${config.contact?.supportPhone || '+919876543210'}`}
-                  className="text-white hover:underline"
-                >
-                  {config.contact?.supportPhone || '+91 98765 43210'}
-                </a>
+              <p className="text-xs text-gray-400 leading-relaxed mb-2">
+                {config.contact?.companyAddress || 'Indore, MP 452010'}
               </p>
               <p className="text-xs text-gray-400">
-                Email:{' '}
-                <a
-                  href={`mailto:${config.contact?.supportEmail || 'support@homestr.in'}`}
-                  className="text-white hover:underline"
-                >
-                  {config.contact?.supportEmail || 'support@homestr.in'}
-                </a>
+                Helpline: <a href={`tel:${config.contact?.supportPhone || '+919876543210'}`} className="text-white hover:underline">{config.contact?.supportPhone || '+91 98765 43210'}</a>
               </p>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-500">
+          <div className="pt-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-[11px] text-gray-500 text-center sm:text-left">
             <p>© {new Date().getFullYear()} Help-U Technologies. All rights reserved.</p>
-            <p className="flex items-center gap-1">
-              Proudly built in Indore 🇮🇳 • Designed for Speed, Safety & Reliability
+            <p className="flex items-center justify-center gap-1">
+              Built in Indore 🇮🇳 • Speed, Safety & Quality
             </p>
           </div>
         </div>
       </footer>
+
+      {/* ============================================================ */}
+      {/* 12. HIGH-CONVERTING MOBILE STICKY BOTTOM DOWNLOAD BAR */}
+      {/* ============================================================ */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-200 px-4 py-2.5 flex items-center justify-between sm:hidden shadow-2xl">
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/helpu-logo.png"
+            alt="Help-U"
+            className="w-8 h-8 rounded-lg object-contain bg-gray-50 p-0.5 border border-gray-200"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+          <div>
+            <div className="font-extrabold text-xs text-gray-900 leading-none">Help-U Home Services</div>
+            <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+              <span className="flex text-amber-500 text-[9px]"><FaStar /><FaStar /><FaStar /><FaStar /></span>
+              <span>4.8 Rating</span>
+            </div>
+          </div>
+        </div>
+
+        <a
+          href={playStoreLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95"
+        >
+          <FaGooglePlay className="text-[11px]" /> Install App
+        </a>
+      </div>
     </div>
   );
 };
