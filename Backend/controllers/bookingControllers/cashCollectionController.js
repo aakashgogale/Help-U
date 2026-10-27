@@ -93,7 +93,7 @@ exports.retractBill = async (req, res) => {
 exports.initiateOnlineCollection = async (req, res) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -236,7 +236,7 @@ exports.initiateOnlineCollection = async (req, res) => {
 exports.initiateCashCollection = async (req, res) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -367,7 +367,7 @@ exports.confirmCashCollection = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.role;
 
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -518,6 +518,8 @@ exports.confirmCashCollection = async (req, res) => {
           'wallet.blockedAt': new Date(),
           'wallet.blockReason': `Cash limit exceeded. Net owed: ₹${netOwed.toFixed(2)}, Limit: ₹${cashLimit}`
         };
+      } else {
+        walletUpdate.$set = { availability: 'AVAILABLE' };
       }
 
       await Worker.findByIdAndUpdate(vendorId, walletUpdate, { runValidators: false });
@@ -624,7 +626,7 @@ exports.confirmCashCollection = async (req, res) => {
 exports.customerConfirmPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -661,7 +663,7 @@ exports.customerConfirmPayment = async (req, res) => {
 exports.verifyOnlinePayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -748,7 +750,8 @@ exports.verifyOnlinePayment = async (req, res) => {
         const vendorId = booking.vendorId;
         const Worker = require('../../models/Worker');
         await Worker.findByIdAndUpdate(vendorId, {
-          $inc: { 'wallet.earnings': vendorEarning }
+          $inc: { 'wallet.earnings': vendorEarning },
+          $set: { availability: 'AVAILABLE' }
         });
 
         // 3. Transactions
@@ -838,7 +841,7 @@ exports.confirmManualOnlinePayment = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.role;
 
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -909,7 +912,8 @@ exports.confirmManualOnlinePayment = async (req, res) => {
 
     const vendorId = booking.vendorId;
     await Worker.findByIdAndUpdate(vendorId, {
-      $inc: { 'wallet.earnings': vendorEarning }
+      $inc: { 'wallet.earnings': vendorEarning },
+      $set: { availability: 'AVAILABLE' }
     });
 
     // 3. Transactions
@@ -982,7 +986,7 @@ exports.confirmManualOnlinePayment = async (req, res) => {
 exports.getCashCollectionStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).select('+paymentOtp +customerConfirmationOTP');
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });

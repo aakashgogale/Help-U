@@ -13,6 +13,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Landing Page */}
       <Route path="/Home" element={<LandingPage />} />
+      <Route path="/home" element={<LandingPage />} />
 
       {/* Redirect Root Slash to User App */}
       <Route path="/" element={<Navigate to="/user" replace />} />

@@ -87,6 +87,7 @@ export const ROUTE_PERMISSION_MAP = {
   '/admin/plans': 'plans',
   '/admin/coupons': 'coupons',
   '/admin/settings': 'settings',
+  '/admin/landing-page': 'landing-page',
   '/admin/customization': 'customization',
   '/admin/booking-config': 'booking-config'
 };
@@ -145,7 +146,7 @@ export const NAV_GROUPS = [
   { label: 'Finance', titles: ['Payments', 'Settlements', 'Commission', 'Plans', 'Coupons'] },
   { label: 'Catalog', titles: ['User Catalog', 'Worker Services', 'Worker Parts', 'Add-ons', 'Zones'] },
   { label: 'Insights', titles: ['Reports'] },
-  { label: 'System', titles: ['Settings', 'Booking Config', 'Customization', 'Legal & Help Pages'] },
+  { label: 'System', titles: ['Landing Page', 'Settings', 'Booking Config', 'Customization', 'Legal & Help Pages'] },
 ];
 
 /** Splits the visible menu into the labelled sections above (empty sections are dropped). */

@@ -862,8 +862,8 @@ const BookingDetails = () => {
                     <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100">
                       <FiStar className="w-3 h-3 text-yellow-500 fill-current" />
                       <span className="text-xs font-bold text-yellow-700">
-                        {(booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
-                          ? (booking.assignedTo?.rating || booking.vendorId?.rating).toFixed(1)
+                        {Number(booking.assignedTo?.rating || booking.vendorId?.rating || 0) > 0
+                          ? Number(booking.assignedTo?.rating || booking.vendorId?.rating || 0).toFixed(1)
                           : 'New'}
                       </span>
                     </div>

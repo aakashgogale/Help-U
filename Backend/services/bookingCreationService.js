@@ -933,8 +933,11 @@ const dispatchNewBooking = async ({
       const cart = await Cart.findOne({ userId });
       if (cart && Array.isArray(cart.items) && cart.items.length > 0) {
         const remainingItems = cart.items.filter((item) => {
-          const matchService = item.serviceId && String(item.serviceId) === String(serviceId);
-          const matchCategory = item.categoryId && serviceForBackground.categoryId && String(item.categoryId) === String(serviceForBackground.categoryId);
+          const itemServiceId = item.serviceId ? String(item.serviceId._id || item.serviceId) : '';
+          const matchService = itemServiceId && itemServiceId === String(serviceId);
+          const itemCatId = item.categoryId ? String(item.categoryId._id || item.categoryId) : '';
+          const svcCatId = serviceForBackground?.categoryId ? String(serviceForBackground.categoryId._id || serviceForBackground.categoryId) : '';
+          const matchCategory = itemCatId && svcCatId && itemCatId === svcCatId;
           return !matchService && !matchCategory;
         });
         cart.items = remainingItems;

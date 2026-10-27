@@ -400,7 +400,7 @@ const Checkout = () => {
         // Close search modal after brief confirmation and transition to payment step
         setTimeout(() => {
           setShowWorkerModal(false);
-          if (itemTotal === 0) {
+          if (totalAmount === 0 || itemTotal === 0) {
             navigate(`/user/booking-confirmation/${bookingRequest._id}`, {
               replace: true
             });

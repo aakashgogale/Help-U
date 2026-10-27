@@ -27,6 +27,7 @@ import {
   FiBook,
   FiMap,
   FiSearch,
+  FiLayout,
 } from "react-icons/fi";
 import dashboardService from "../../services/dashboardService";
 import {
@@ -57,6 +58,7 @@ const iconMap = {
   Settings: FiSettings,
   Plans: FiPackage,
   Customization: FiSliders,
+  "Landing Page": FiLayout,
   "Legal & Help Pages": FiBook,
   Disputes: FiAlertOctagon,
   "Recurring Bookings": FiRepeat,

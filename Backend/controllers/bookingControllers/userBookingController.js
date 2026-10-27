@@ -632,17 +632,17 @@ const addReview = async (req, res) => {
     // Update Worker Rating (Always)
     if (booking.vendorId) {
       await updateCumulativeRating(Worker, booking.vendorId, rating);
-    }
 
-    // Send notification to worker
-    await createNotification({
-      vendorId: booking.vendorId,
-      type: 'review_submitted',
-      title: 'New Review Received',
-      message: `You have received a ${rating}-star review for booking ${booking.bookingNumber}.`,
-      relatedId: booking._id,
-      relatedType: 'booking'
-    });
+      // Send notification to worker
+      await createNotification({
+        vendorId: booking.vendorId,
+        type: 'review_submitted',
+        title: 'New Review Received',
+        message: `You have received a ${rating}-star review for booking ${booking.bookingNumber}.`,
+        relatedId: booking._id,
+        relatedType: 'booking'
+      });
+    }
 
     res.status(200).json({
       success: true,

@@ -659,6 +659,10 @@ const updateBookingStatus = async (req, res) => {
 
       if (status === BOOKING_STATUS.COMPLETED) {
         booking.completedAt = new Date();
+        if (booking.vendorId) {
+          const Worker = require('../../models/Worker');
+          await Worker.findByIdAndUpdate(booking.vendorId, { availability: 'AVAILABLE' }).catch(() => null);
+        }
       }
     }
 
@@ -1338,6 +1342,8 @@ const collectSelfCash = async (req, res) => {
           'wallet.blockedAt': new Date(),
           'wallet.blockReason': `Cash limit exceeded. Net owed: ₹${netOwed.toFixed(2)}, Limit: ₹${cashLimit}`
         };
+      } else {
+        updateQuery.$set = { availability: 'AVAILABLE' };
       }
 
       await Worker.findByIdAndUpdate(vendorId, updateQuery);

@@ -211,6 +211,15 @@
     "children": []
   },
   {
+    "title": "Landing Page",
+    "route": "/admin/landing-page",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
     "title": "Customization",
     "route": "/admin/customization",
     "allowedRoles": [

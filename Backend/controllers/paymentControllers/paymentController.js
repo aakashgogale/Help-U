@@ -361,7 +361,10 @@ const verifyPaymentWebhook = async (req, res) => {
           // Online payment: only earnings increase, NO dues (platform holds the money)
           await Worker.findByIdAndUpdate(
             booking.vendorId,
-            { $inc: { 'wallet.earnings': vendorEarning } },
+            {
+              $inc: { 'wallet.earnings': vendorEarning },
+              ...(booking.status === BOOKING_STATUS.COMPLETED ? { $set: { availability: 'AVAILABLE' } } : {})
+            },
             { session }
           );
 
@@ -647,7 +650,10 @@ const processWalletPayment = async (req, res) => {
 
             await Worker.findByIdAndUpdate(
               currentBooking.vendorId,
-              { $inc: { 'wallet.earnings': vendorEarning } },
+              {
+                $inc: { 'wallet.earnings': vendorEarning },
+                ...(currentBooking.status === BOOKING_STATUS.COMPLETED ? { $set: { availability: 'AVAILABLE' } } : {})
+              },
               { session }
             );
 
@@ -1052,14 +1058,16 @@ const confirmPayAtHome = async (req, res) => {
     await booking.save();
 
     // Notify Worker that booking is confirmed
-    await createNotification({
-      vendorId: booking.vendorId,
-      type: 'booking_confirmed',
-      title: 'Booking Confirmed (Pay at Home)',
-      message: `Booking ${booking.bookingNumber} has been confirmed. Payment method: Pay at Home.`,
-      relatedId: booking._id,
-      relatedType: 'booking'
-    });
+    if (booking.vendorId) {
+      await createNotification({
+        vendorId: booking.vendorId,
+        type: 'booking_confirmed',
+        title: 'Booking Confirmed (Pay at Home)',
+        message: `Booking ${booking.bookingNumber} has been confirmed. Payment method: Pay at Home.`,
+        relatedId: booking._id,
+        relatedType: 'booking'
+      });
+    }
 
     res.status(200).json({
       success: true,
