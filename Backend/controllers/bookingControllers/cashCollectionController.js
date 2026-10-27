@@ -1,3 +1,4 @@
+const otpGuard = require('../../utils/otpGuard');
 const Booking = require('../../models/Booking');
 const Worker = require('../../models/Worker');
 const Transaction = require('../../models/Transaction');
@@ -388,12 +389,16 @@ exports.confirmCashCollection = async (req, res) => {
       if (!providedOtp) {
         return res.status(400).json({ success: false, message: 'OTP is required to confirm cash collection.' });
       }
+      const payLock = otpGuard.lockedMinutes(booking, 'payment');
+      if (payLock) { const r = otpGuard.lockedResponse(payLock); return res.status(r.statusCode).json(r.body); }
       if (expectedOtp && providedOtp !== expectedOtp) {
         if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
-          console.warn(`[ConfirmCash] Invalid OTP attempt for booking ${id}. Expected: ${expectedOtp}, Received: ${providedOtp}`);
-          return res.status(400).json({ success: false, message: 'Invalid OTP. Please enter the correct code shared by the customer.' });
+          // The expected code is never written to the logs
+          const failure = await otpGuard.registerFailure(booking._id, 'payment');
+          return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the correct code shared by the customer.', failure) });
         }
       }
+      if (expectedOtp) await otpGuard.clearFailures(booking._id, 'payment');
     }
 
     // --- ATOMIC LOCK AGAINST RACE CONDITIONS ---
@@ -860,11 +865,15 @@ exports.confirmManualOnlinePayment = async (req, res) => {
     if (!providedOtp) {
       return res.status(400).json({ success: false, message: 'OTP is required for manual confirmation.' });
     }
+    const payLock2 = otpGuard.lockedMinutes(booking, 'payment');
+    if (payLock2) { const r = otpGuard.lockedResponse(payLock2); return res.status(r.statusCode).json(r.body); }
     if (expectedOtp && providedOtp !== expectedOtp) {
       if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
-        return res.status(400).json({ success: false, message: 'Invalid OTP. Please enter the code sent to the customer.' });
+        const failure = await otpGuard.registerFailure(booking._id, 'payment');
+        return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the code sent to the customer.', failure) });
       }
     }
+    if (expectedOtp) await otpGuard.clearFailures(booking._id, 'payment');
 
     // prevent race conditions
     if (booking.status === BOOKING_STATUS.COMPLETED) {

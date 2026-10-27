@@ -3,6 +3,7 @@ const Booking = require('../../models/Booking');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { normalizeWorkPhotos, persistWorkPhotos } = require('../../utils/workPhotos');
+const otpGuard = require('../../utils/otpGuard');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToWorker } = require('../../services/firebaseAdmin');
 const { resolveCommission, computeWorkerEarnings, toPayoutConfig, describeCommission } = require('../../services/commissionService');
@@ -646,6 +647,12 @@ const updateBookingStatus = async (req, res) => {
         });
       }
 
+      // Marking work done needs photo proof of the finished work, whichever route is used
+      if (status === BOOKING_STATUS.WORK_DONE
+        && !normalizeWorkPhotos(booking.workPhotos).some((photo) => photo.type === 'after')) {
+        return res.status(400).json({ success: false, message: 'Add at least one photo of the finished work first.' });
+      }
+
       // Update booking status
       booking.status = status;
 
@@ -917,7 +924,13 @@ const verifySelfVisit = async (req, res) => {
 
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     if (booking.status !== BOOKING_STATUS.JOURNEY_STARTED) return res.status(400).json({ success: false, message: 'Journey not started' });
-    if (booking.visitOtp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    const visitLock = otpGuard.lockedMinutes(booking, 'visit');
+    if (visitLock) { const r = otpGuard.lockedResponse(visitLock); return res.status(r.statusCode).json(r.body); }
+    if (!booking.visitOtp || booking.visitOtp !== String(otp ?? '').trim()) {
+      const failure = await otpGuard.registerFailure(booking._id, 'visit');
+      return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP.', failure) });
+    }
+    await otpGuard.clearFailures(booking._id, 'visit');
 
     booking.status = BOOKING_STATUS.VISITED;
     booking.visitedAt = new Date();
@@ -987,6 +1000,13 @@ const completeSelfJob = async (req, res) => {
     // Status guard
     if (booking.status !== BOOKING_STATUS.VISITED && booking.status !== BOOKING_STATUS.IN_PROGRESS) {
       return res.status(400).json({ success: false, message: 'Cannot complete from current status' });
+    }
+
+    // Proof of the finished work is required here, not only in the app: at least one "after" photo
+    // (a photo with no type counts as one). "Before" photos are optional extras.
+    const incomingPhotos = normalizeWorkPhotos(workPhotos);
+    if (!incomingPhotos.some((photo) => photo.type === 'after')) {
+      return res.status(400).json({ success: false, message: 'Add at least one photo of the finished work to complete the job.' });
     }
 
     // Prevent duplicate bills
@@ -1277,7 +1297,13 @@ const collectSelfCash = async (req, res) => {
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     if (booking.status !== BOOKING_STATUS.WORK_DONE) return res.status(400).json({ success: false, message: 'Work not done yet' });
     const expectedOtp = booking.customerConfirmationOTP || booking.paymentOtp;
-    if (expectedOtp && expectedOtp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP. Please check code with customer.' });
+    const payLock = otpGuard.lockedMinutes(booking, 'payment');
+    if (payLock) { const r = otpGuard.lockedResponse(payLock); return res.status(r.statusCode).json(r.body); }
+    if (expectedOtp && expectedOtp !== String(otp ?? '').trim()) {
+      const failure = await otpGuard.registerFailure(booking._id, 'payment');
+      return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please check the code with the customer.', failure) });
+    }
+    await otpGuard.clearFailures(booking._id, 'payment');
 
     // ── Fetch the WorkerBill (single source of truth) ──
     const WorkerBill = require('../../models/WorkerBill');

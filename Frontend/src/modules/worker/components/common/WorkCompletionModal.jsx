@@ -8,6 +8,8 @@ import flutterBridge from '../../../../utils/flutterBridge';
 const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
   useModalLock(isOpen);
   const [workPhotos, setWorkPhotos] = useState([]);
+  const [beforePhotos, setBeforePhotos] = useState([]); // optional: how it looked before the work
+  const beforeInputRef = React.useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const cameraInputRef = React.useRef(null);
@@ -52,6 +54,17 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
     });
   };
 
+  const handleBeforeUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    Promise.all(files.map((file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    }))).then((urls) => setBeforePhotos((prev) => [...prev, ...urls].slice(0, 3)));
+    e.target.value = '';
+  };
+
   const handleRemovePhoto = (index) => {
     setWorkPhotos(prev => prev.filter((_, i) => i !== index));
     flutterBridge.hapticFeedback('light');
@@ -80,7 +93,11 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
       flutterBridge.hapticFeedback('error');
       return;
     }
-    onComplete(workPhotos);
+    // Typed so the booking can show before and after separately
+    onComplete([
+      ...beforePhotos.map((url) => ({ url, type: 'before' })),
+      ...workPhotos.map((url) => ({ url, type: 'after' }))
+    ]);
   };
 
   return createPortal(
@@ -177,6 +194,40 @@ const WorkCompletionModal = ({ isOpen, onClose, job, onComplete, loading }) => {
                   </p>
                 )}
                 {isUploading && <p className="text-blue-500 text-[10px] font-bold mt-2 ml-1 animate-pulse">Uploading photos...</p>}
+              </div>
+
+              {/* Optional "before" photos */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Before the work <span className="text-gray-400 font-semibold normal-case">(optional)</span></p>
+                  <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">{beforePhotos.length}/3</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {beforePhotos.map((photo, index) => (
+                    <div key={index} className="aspect-square rounded-2xl bg-gray-100 border border-gray-100 relative overflow-hidden">
+                      <img src={photo} className="w-full h-full object-cover" alt="before the work" />
+                      <button
+                        type="button"
+                        onClick={() => setBeforePhotos((prev) => prev.filter((_, i) => i !== index))}
+                        aria-label="Remove before photo"
+                        className="absolute top-1 right-1 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {beforePhotos.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => beforeInputRef.current?.click()}
+                      className="aspect-square rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 hover:border-gray-300 flex flex-col items-center justify-center text-gray-400 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <FiCamera className="w-6 h-6 mb-1" />
+                      <span className="text-[10px] font-bold uppercase">Add</span>
+                    </button>
+                  )}
+                </div>
+                <input type="file" accept="image/*" capture="environment" ref={beforeInputRef} onChange={handleBeforeUpload} className="hidden" />
               </div>
 
               {/* Quality Checklist (Restored from Worker Design) */}

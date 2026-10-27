@@ -469,6 +469,11 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Wrong-code counters for the arrival and payment codes (see utils/otpGuard.js)
+  otpGuard: {
+    visit: { attempts: { type: Number, default: 0 }, lockedUntil: { type: Date, default: null } },
+    payment: { attempts: { type: Number, default: 0 }, lockedUntil: { type: Date, default: null } }
+  },
   // Set when the worker sends the finished bill to the customer (Collect Cash / Online QR) and
   // cleared when they go back to edit it. The customer only sees the amount, the pay buttons and the
   // verification code while this is set.

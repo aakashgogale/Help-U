@@ -26,21 +26,30 @@ import {
 import landingService from '../../../services/landingService';
 
 const toAssetUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  // Local static files in public folder
-  if (
-    url.startsWith('/categories/') ||
-    url.startsWith('/ServiceIcon/') ||
-    url.startsWith('/appliance/') ||
-    url.startsWith('/cleaning/') ||
-    url.startsWith('/services/') ||
-    url.startsWith('/helpu-') ||
-    url.startsWith('/hero-')
-  ) {
-    return url;
+  if (!url || typeof url !== 'string') return '';
+  const clean = url.trim().replace('/api/upload', '/upload');
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+  // Local static files in frontend public directory
+  const publicPrefixes = [
+    '/categories', 'categories',
+    '/ServiceIcon', 'ServiceIcon',
+    '/appliance', 'appliance',
+    '/cleaning', 'cleaning',
+    '/services', 'services',
+    '/spotlight', 'spotlight',
+    '/noteworthy', 'noteworthy',
+    '/helpu', 'helpu',
+    '/hero', 'hero'
+  ];
+
+  for (const prefix of publicPrefixes) {
+    if (clean.startsWith(prefix)) {
+      return clean.startsWith('/') ? clean : `/${clean}`;
+    }
   }
-  const clean = url.replace('/api/upload', '/upload');
+
+  // Backend uploads
   const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/api$/, '');
   return `${base}${clean.startsWith('/') ? '' : '/'}${clean}`;
 };
@@ -619,12 +628,14 @@ const LandingPage = () => {
                   </div>
                 </a>
 
-                <Link
-                  to="/user"
+                <a
+                  href={playStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-900 transition-all shadow-lg active:scale-95"
                 >
-                  {config.hero?.ctaUserText || 'Book Repair'} <FaArrowRight />
-                </Link>
+                  {config.hero?.ctaUserText || 'Book on Play Store'} <FaArrowRight />
+                </a>
               </div>
 
               {/* Quick Trust Highlights */}
@@ -780,35 +791,46 @@ const LandingPage = () => {
             className="overflow-x-auto scrollbar-hide scroll-smooth py-2 -mx-2 px-2"
           >
             <div className="flex gap-5 min-w-max">
-              {categories.map((cat, idx) => (
-                <Link
-                  key={cat.id || idx}
-                  to="/user"
-                  state={{ openCategoryId: cat.id }}
-                  className="w-52 bg-white rounded-3xl p-6 border border-gray-100 hover:border-brand/30 hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center group cursor-pointer"
-                >
-                  <div className="w-20 h-20 rounded-2xl bg-gray-50 flex items-center justify-center p-4 mb-4 group-hover:scale-110 transition-transform">
-                    {cat.icon ? (
-                      <img
-                        src={toAssetUrl(cat.icon)}
-                        alt={cat.title}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <FaTools className="text-3xl text-brand" />
-                    )}
-                  </div>
-                  <h3 className="font-bold text-sm text-gray-900 group-hover:text-brand transition-colors">
-                    {cat.title}
-                  </h3>
-                  <span className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 group-hover:text-brand">
-                    Book Now <FaArrowRight className="text-[9px]" />
-                  </span>
-                </Link>
-              ))}
+              {categories.map((cat, idx) => {
+                const iconSrc = toAssetUrl(cat.icon);
+                return (
+                  <a
+                    key={cat.id || idx}
+                    href={playStoreLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-52 bg-white rounded-3xl p-6 border border-gray-100 hover:border-brand/40 hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center group cursor-pointer"
+                  >
+                    <div className="w-20 h-20 rounded-2xl bg-gray-50 flex items-center justify-center p-3 mb-4 group-hover:scale-110 transition-transform relative overflow-hidden">
+                      {iconSrc ? (
+                        <>
+                          <img
+                            src={iconSrc}
+                            alt={cat.title}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.parentElement?.querySelector('.cat-fallback');
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="cat-fallback hidden items-center justify-center text-brand text-3xl">
+                            <FaTools />
+                          </div>
+                        </>
+                      ) : (
+                        <FaTools className="text-3xl text-brand" />
+                      )}
+                    </div>
+                    <h3 className="font-bold text-sm text-gray-900 group-hover:text-brand transition-colors line-clamp-2">
+                      {cat.title}
+                    </h3>
+                    <span className="text-[11px] text-brand mt-2 flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform">
+                      Get on Play Store <FaArrowRight className="text-[9px]" />
+                    </span>
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>
