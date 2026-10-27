@@ -311,7 +311,7 @@ const BookingConfirmation = () => {
                 We couldn't find a nearby expert for your request at this moment.
               </p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/user')}
                 className="px-8 py-3 bg-teal-600 text-white rounded-xl font-bold shadow-lg shadow-teal-600/20 active:scale-95 transition-all flex items-center gap-2"
               >
                 <FiArrowRight className="w-5 h-5" />

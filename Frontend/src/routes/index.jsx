@@ -11,12 +11,10 @@ import LandingPage from '../modules/landing/pages/LandingPage';
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Landing Page */}
+      {/* Landing Page (Main help-u.in Website) */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/Home" element={<LandingPage />} />
       <Route path="/home" element={<LandingPage />} />
-
-      {/* Redirect Root Slash to User App */}
-      <Route path="/" element={<Navigate to="/user" replace />} />
 
       {/* User Routes */}
       <Route path="/user/*" element={<UserRoutes />} />
