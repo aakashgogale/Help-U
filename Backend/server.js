@@ -238,6 +238,7 @@ app.use('/api/workers/disputes', require('./routes/dispute.routes').workerDisput
 // Admin routes
 app.use('/api/admin/auth', require('./routes/admin-routes/adminAuth.routes'));
 app.use('/api/admin', require('./routes/admin-routes/cityManagement.routes.js'));
+app.use('/api/admin', require('./routes/admin-routes/supportRequest.routes'));
 app.use('/api/admin', require('./routes/admin-routes/dashboard.routes'));
 app.use('/api/admin', require('./routes/admin-routes/userManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/workerManagement.routes'));
@@ -248,6 +249,7 @@ app.use('/api/admin', require('./routes/admin-routes/serviceManagement.routes'))
 app.use('/api/admin', require('./routes/admin-routes/workerCatalogManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/homePageManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/legalPage.routes'));
+app.use('/api/admin', require('./routes/admin-routes/supportMessage.routes'));
 app.use('/api/admin', require('./routes/admin-routes/bookingManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/paymentManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/transactionManagement.routes'));

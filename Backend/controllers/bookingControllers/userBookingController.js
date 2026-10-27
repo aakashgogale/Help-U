@@ -2,14 +2,13 @@ const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
 const Worker = require('../../models/Worker');
 const Review = require('../../models/Review');
-const Settings = require('../../models/Settings');
 const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { createNotification } = require('../notificationControllers/notificationController');
 const cloudinaryService = require('../../services/cloudinaryService');
 const { placeBooking } = require('../../services/bookingCreationService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
-const { evaluateCancellation } = require('../../utils/cancellationPolicy');
+const { evaluateCancellation, onTheWayFee } = require('../../utils/cancellationPolicy');
 const { resolveFieldsForCategories, validateDetailAnswers } = require('../../utils/detailFields');
 
 // The customer can change their answers (brand, vehicle type...) until the professional is on the way
@@ -254,26 +253,16 @@ const updateBookingDetails = async (req, res) => {
 
 /**
  * What cancelling costs the customer right now.
- * Once the professional is on the way the admin's flat cancellation penalty applies (the
- * booking's own visiting charge once they have arrived); before that, the cancellation policy
- * (free window, then the late fee) decides.
+ * Before the professional is on the way, the cancellation policy decides (free window, then the late
+ * fee). Once they are on the way, or have arrived, a flat fee applies that is never lower than the
+ * late fee. All of it is set by the admin in Booking Configuration > Cancellation Policy.
  */
 const resolveUserCancellation = async (booking) => {
   const config = await getBookingConfig();
 
   if (booking.journeyStartedAt) {
-    let journeyPenalty = 49;
-    try {
-      const globalSettings = await Settings.findOne({ type: 'global' });
-      if (globalSettings && globalSettings.cancellationPenalty !== undefined) {
-        journeyPenalty = globalSettings.cancellationPenalty;
-      }
-    } catch (err) {
-      console.error('Error fetching settings for cancellation penalty:', err);
-    }
-
     const hasReached = !!booking.visitedAt || booking.status === 'visited';
-    const fee = hasReached && booking.visitingCharges > 0 ? booking.visitingCharges : journeyPenalty;
+    const fee = onTheWayFee(booking, config, { arrived: hasReached });
     return { fee, isFree: fee === 0, stage: hasReached ? 'arrived' : 'journey', freeUntil: null, windowHours: config.userFreeCancelHours };
   }
 

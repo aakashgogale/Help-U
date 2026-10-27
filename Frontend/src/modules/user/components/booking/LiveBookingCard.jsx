@@ -66,6 +66,14 @@ const LiveBookingCard = ({ hasBottomNav }) => {
   }, [socket]);
 
   const fetchActiveBooking = async () => {
+    // Only for a signed-in customer. Without a token the bookings API answers 401, and the API
+    // client turns a 401 into a redirect to the login page, which used to bounce logged-out
+    // visitors off public pages such as Terms and Privacy.
+    const signedIn = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    if (!signedIn) {
+      setLoading(false);
+      return;
+    }
     try {
       // Fetch bookings with active statuses
       // We manually fetch latest and check status on client or assume API supports status filter array

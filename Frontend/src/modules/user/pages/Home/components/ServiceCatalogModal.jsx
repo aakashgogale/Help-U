@@ -24,6 +24,8 @@ import {
 } from 'react-icons/fi';
 import { useCart } from '../../../../../context/CartContext';
 import ServiceOptionsSheet from './ServiceOptionsSheet';
+import useBookingConfig from '../../../../../hooks/useBookingConfig';
+import { policySummaryLine } from '../../../../../components/common/legal/cancellationPolicyModel';
 import CategoryTile from '../../../components/common/CategoryTile';
 import { publicCatalogService } from '../../../../../services/catalogService';
 import { getCategoryIllustration } from '../../../utils/categoryIcons';
@@ -415,6 +417,7 @@ const ServiceCatalogModal = React.memo(({
 }) => {
   const navigate = useNavigate();
   const { cartItems, addToCart, updateItem, removeItem } = useCart();
+  const bookingConfig = useBookingConfig(); // the live cancellation policy shown on service pages
   const [optionsRequest, setOptionsRequest] = useState(null); // the option sheet, when a service has questions
 
   const [activeSubTab, setActiveSubTab] = useState(null);
@@ -2095,18 +2098,16 @@ const ServiceCatalogModal = React.memo(({
                         </p>
                       </div>
 
-                      {/* Cancellation Policy */}
-                      {selectedItemDetails.cancellationPolicy && (
-                        <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-amber-950">
-                          <div className="flex items-center gap-2 font-bold text-[12px] text-amber-900 mb-0.5">
-                            <FiClock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            Cancellation Policy
-                          </div>
-                          <p className="text-[12px] text-amber-900/90 leading-relaxed">
-                            {selectedItemDetails.cancellationPolicy}
-                          </p>
+                      {/* Cancellation Policy: always the platform policy, so it matches what is charged */}
+                      <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 text-amber-950">
+                        <div className="flex items-center gap-2 font-bold text-[12px] text-amber-900 mb-0.5">
+                          <FiClock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          Cancellation Policy
                         </div>
-                      )}
+                        <p className="text-[12px] text-amber-900/90 leading-relaxed">
+                          {policySummaryLine(bookingConfig)}
+                        </p>
+                      </div>
 
                       {/* FAQs Accordion */}
                       {selectedItemDetails.faqs && selectedItemDetails.faqs.length > 0 && (

@@ -22,8 +22,11 @@ export const userPolicy = (config, settings) => {
   const hours = Number(config.userFreeCancelHours) || 0;
   const grace = Number(config.userFreeCancelGraceMinutes) || 0;
   const lateFee = feeText(config.userLateCancelFeeType, config.userLateCancelFeeValue, config.userLateCancelFeeMax);
-  const onTheWay = Number(settings.cancellationPenalty) || 0;
-  const visiting = Number(settings.visitedCharges) > 0 ? Number(settings.visitedCharges) : onTheWay;
+  // Mirrors the server: a flat fee, never lower than a fixed late fee
+  const flat = Number(config.cancellationPenalty ?? settings.cancellationPenalty) || 0;
+  const lateFixed = config.userLateCancelFeeType === 'fixed' ? Number(config.userLateCancelFeeValue) || 0 : 0;
+  const onTheWay = Math.max(flat, lateFixed);
+  const visiting = Math.max(Number(settings.visitedCharges) > 0 ? Number(settings.visitedCharges) : onTheWay, lateFixed);
 
   const stages = [
     {
@@ -47,7 +50,9 @@ export const userPolicy = (config, settings) => {
     onTheWay > 0 && {
       key: 'way', tone: 'orange', icon: 'navigation', title: 'Professional on the way',
       when: 'After they start travelling to you', result: rupees(onTheWay),
-      detail: 'A flat cancellation fee for the travel already under way.'
+      detail: config.userLateCancelFeeType === 'percentage'
+        ? 'A flat fee for the travel already under way, or the late fee if that is higher.'
+        : 'A flat cancellation fee for the travel already under way.'
     },
     {
       key: 'arrived', tone: 'red', icon: 'pin', title: 'Professional arrived',
@@ -129,4 +134,20 @@ export const builtInContent = (audience, graceMinutes = 0) => {
       }
     ]
   };
+};
+
+/**
+ * One sentence of the customer's cancellation policy, built from the admin's current settings.
+ * Shown on service pages so it always matches what is charged.
+ */
+export const policySummaryLine = (config) => {
+  const hours = Number(config.userFreeCancelHours) || 0;
+  const grace = Number(config.userFreeCancelGraceMinutes) || 0;
+  const fee = feeText(config.userLateCancelFeeType, config.userLateCancelFeeValue, config.userLateCancelFeeMax);
+
+  const freeParts = [];
+  if (hours > 0) freeParts.push(`at least ${hoursText(hours)} before your slot`);
+  if (grace > 0) freeParts.push(`within ${grace} minutes of your professional accepting`);
+  const free = freeParts.length ? `Free cancellation ${freeParts.join(', or ')}.` : 'Free cancellation until a professional is assigned.';
+  return fee ? `${free} After that, a cancellation fee of ${fee} applies.` : `${free} After that, cancelling is still free.`;
 };

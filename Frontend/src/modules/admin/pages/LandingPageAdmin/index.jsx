@@ -112,36 +112,6 @@ const LandingPageAdmin = () => {
     }
   };
 
-  // FAQ helpers
-  const addFaq = (audience = 'user') => {
-    const newFaq = {
-      question: '',
-      answer: '',
-      audience,
-      order: (config.faqs?.length || 0) + 1,
-      isActive: true
-    };
-    setConfig(prev => ({
-      ...prev,
-      faqs: [...(prev.faqs || []), newFaq]
-    }));
-  };
-
-  const updateFaq = (index, field, value) => {
-    setConfig(prev => {
-      const faqs = [...(prev.faqs || [])];
-      faqs[index] = { ...faqs[index], [field]: value };
-      return { ...prev, faqs };
-    });
-  };
-
-  const removeFaq = (index) => {
-    setConfig(prev => {
-      const faqs = prev.faqs.filter((_, i) => i !== index);
-      return { ...prev, faqs };
-    });
-  };
-
   // Lead actions
   const handleUpdateLeadStatus = async (id, newStatus) => {
     try {
@@ -648,125 +618,30 @@ const LandingPageAdmin = () => {
 
       {/* TAB 5: FAQS MANAGER */}
       {activeTab === 'faqs' && config && (
-        <div className="space-y-6">
-          <Card
-            title="Frequently Asked Questions (Dual Audience)"
-            right={
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={() => addFaq('user')} className="text-xs">
-                  <FiPlus /> Add Customer FAQ
-                </Button>
-                <Button variant="secondary" onClick={() => addFaq('partner')} className="text-xs">
-                  <FiPlus /> Add Partner FAQ
-                </Button>
-              </div>
-            }
+        <Card title="Frequently Asked Questions">
+          <p className="text-sm text-gray-700">
+            The landing page shows the same questions as the apps, so there is one place to edit them:
+            the <span className="font-semibold">Customer FAQ</span> fills the “Customer Questions” tab and the
+            <span className="font-semibold"> Professional FAQ</span> fills the “Partner Questions” tab.
+          </p>
+          <a
+            href="/admin/legal-pages"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-blue-700"
           >
-            <div className="space-y-4">
-              {(config.faqs || []).length === 0 ? (
-                <EmptyState icon={FiHelpCircle} title="No FAQs added yet" description="Click above to add questions for customers or service partners." />
-              ) : (
-                config.faqs.map((faq, idx) => (
-                  <div key={idx} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-500">#{idx + 1}</span>
-                        <select
-                          value={faq.audience || 'user'}
-                          onChange={(e) => updateFaq(idx, 'audience', e.target.value)}
-                          className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700"
-                        >
-                          <option value="user">Customer FAQ</option>
-                          <option value="partner">Partner FAQ</option>
-                          <option value="both">Both / General</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={faq.isActive !== false}
-                            onChange={(e) => updateFaq(idx, 'isActive', e.target.checked)}
-                            className="rounded border-gray-300 text-[#163B66]"
-                          />
-                          Active
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => removeFaq(idx)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                          title="Delete FAQ"
-                        >
-                          <FiTrash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <Field label="Question">
-                      <input
-                        type="text"
-                        value={faq.question}
-                        onChange={(e) => updateFaq(idx, 'question', e.target.value)}
-                        placeholder="e.g., How do I get paid?"
-                        className={inputClass}
-                      />
-                    </Field>
-
-                    <Field label="Answer">
-                      <textarea
-                        rows={2}
-                        value={faq.answer}
-                        onChange={(e) => updateFaq(idx, 'answer', e.target.value)}
-                        placeholder="Detailed answer text..."
-                        className={inputClass}
-                      />
-                    </Field>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
+            <FiHelpCircle /> Edit FAQs in Legal &amp; Help Pages
+          </a>
+        </Card>
       )}
 
-      {/* TAB 6: CONTACT & SOCIALS */}
       {activeTab === 'contact' && config && (
         <div className="space-y-6">
           <Card title="Direct Support & Office Channels">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field label="Support Phone Number">
-                <input
-                  type="text"
-                  value={config.contact?.supportPhone || ''}
-                  onChange={(e) =>
-                    setConfig({ ...config, contact: { ...config.contact, supportPhone: e.target.value } })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Support WhatsApp Number">
-                <input
-                  type="text"
-                  value={config.contact?.supportWhatsapp || ''}
-                  onChange={(e) =>
-                    setConfig({ ...config, contact: { ...config.contact, supportWhatsapp: e.target.value } })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Customer Support Email">
-                <input
-                  type="email"
-                  value={config.contact?.supportEmail || ''}
-                  onChange={(e) =>
-                    setConfig({ ...config, contact: { ...config.contact, supportEmail: e.target.value } })
-                  }
-                  className={inputClass}
-                />
-              </Field>
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900 md:col-span-2">
+                The support phone, WhatsApp and email shown here come from{' '}
+                <a href="/admin/settings" className="font-semibold underline">Settings &rsaquo; Support</a>, the same
+                details the apps use, so they can never differ. Set them once there.
+              </div>
 
               <Field label="Working / Operating Hours">
                 <input

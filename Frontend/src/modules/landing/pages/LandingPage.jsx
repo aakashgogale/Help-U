@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import legalPageService from '../../../services/legalPageService';
 import {
   FaGooglePlay,
   FaArrowRight,
@@ -177,62 +178,13 @@ const DEFAULT_CONFIG = {
       }
     ]
   },
-  faqs: [
-    {
-      question: 'How do I book a service on Help-U?',
-      answer:
-        'You can book directly using our web portal or by downloading our Android app from the Google Play Store. Simply choose your service, pick a date & time slot, and confirm your address.',
-      audience: 'user'
-    },
-    {
-      question: 'Are the technicians background-verified?',
-      answer:
-        'Yes! Every technician undergoes a thorough government ID verification (Aadhaar/PAN), police background check, and hands-on skill assessment before taking jobs on our platform.',
-      audience: 'user'
-    },
-    {
-      question: 'What if the issue recurs after repair?',
-      answer:
-        'We offer an official platform warranty on certified parts and services. If the same issue happens within the warranty period, we provide a free inspection and revisit.',
-      audience: 'user'
-    },
-    {
-      question: 'Can I pay with Cash or UPI?',
-      answer:
-        'Both! We support Cash on Delivery, UPI (Google Pay, PhonePe, Paytm), Credit/Debit cards, Net Banking, and the in-app Help-U Wallet.',
-      audience: 'user'
-    },
-    {
-      question: 'How do I join Help-U as a Service Partner?',
-      answer:
-        'Fill out the partner registration form on this page with your name, phone number, trade skill, and city. Our partner onboarding team will contact you within 24 hours to complete verification.',
-      audience: 'partner'
-    },
-    {
-      question: 'How and when do Partners receive earnings?',
-      answer:
-        'Cash payments are collected immediately by you at the customer doorstep. Online payments are credited to your Partner Wallet instantly and can be withdrawn directly to your bank account anytime.',
-      audience: 'partner'
-    },
-    {
-      question: 'Is there any joining fee for Partners?',
-      answer:
-        'No! Partner registration and onboarding on Help-U is 100% free with zero joining fees. You only pay a transparent, modest commission on completed bookings.',
-      audience: 'partner'
-    },
-    {
-      question: 'Which cities does Help-U currently service?',
-      answer:
-        'We are currently fully operational across Indore and expanding rapidly to surrounding regions in Madhya Pradesh.',
-      audience: 'both'
-    }
-  ],
   contact: {
-    supportEmail: 'support@homestr.in',
-    supportPhone: '+91 98765 43210',
-    supportWhatsapp: '+91 98765 43210',
-    companyAddress: 'Vijay Nagar, Scheme 54, Indore, Madhya Pradesh 452010',
-    workingHours: 'Monday – Sunday: 8:00 AM – 9:00 PM',
+    // Filled by the server from Admin > Settings > Support; nothing is invented here
+    supportEmail: '',
+    supportPhone: '',
+    supportWhatsapp: '',
+    companyAddress: '',
+    workingHours: '',
     isContactFormEnabled: true
   },
   socialLinks: {
@@ -268,6 +220,17 @@ const LandingPage = () => {
   // FAQ active tab: 'user' or 'partner'
   const [faqTab, setFaqTab] = useState('user');
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
+  const [legalFaqs, setLegalFaqs] = useState({ user: [], partner: [] });
+  useEffect(() => {
+    let active = true;
+    Promise.all([legalPageService.get('faq'), legalPageService.get('worker-faq')])
+      .then(([customer, partner]) => {
+        if (!active) return;
+        setLegalFaqs({ user: customer?.page?.faqs || [], partner: partner?.page?.faqs || [] });
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   // Partner Registration Form state
   const [partnerForm, setPartnerForm] = useState({
@@ -390,10 +353,6 @@ const LandingPage = () => {
                   ? data.config.partnerSection.perks
                   : prev.partnerSection.perks
             },
-            faqs:
-              data.config.faqs && data.config.faqs.length > 0
-                ? data.config.faqs
-                : prev.faqs,
             contact: { ...prev.contact, ...data.config.contact }
           }));
 
@@ -497,17 +456,9 @@ const LandingPage = () => {
       ? config.partnerSection.perks
       : DEFAULT_CONFIG.partnerSection.perks;
 
-  const allFaqs =
-    config.faqs && config.faqs.length > 0
-      ? config.faqs
-      : DEFAULT_CONFIG.faqs;
-
-  // Filter FAQs based on active tab
-  const filteredFaqs = allFaqs.filter((f) => {
-    if (faqTab === 'user') return f.audience === 'user' || f.audience === 'both';
-    if (faqTab === 'partner') return f.audience === 'partner' || f.audience === 'both';
-    return true;
-  });
+  // The questions are the admin's Customer FAQ and Professional FAQ (Admin > Legal & Help Pages),
+  // the same ones the apps show, so there is one place to edit them.
+  const filteredFaqs = faqTab === 'user' ? legalFaqs.user : legalFaqs.partner;
 
   const navMenuItems = [
     { label: 'About Us', href: '#about-us' },
@@ -1306,6 +1257,9 @@ const LandingPage = () => {
 
           {/* Accordion List */}
           <div className="space-y-2.5 sm:space-y-3">
+            {filteredFaqs.length === 0 && (
+              <p className="text-center text-xs text-gray-500">No questions here yet.</p>
+            )}
             {filteredFaqs.map((faq, idx) => {
               const isOpen = openFaqIndex === idx;
               return (
@@ -1367,8 +1321,9 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
             {/* Contact Details Cards: 2-column compact grid on mobile */}
             <div className="lg:col-span-5 grid grid-cols-2 gap-2.5 sm:gap-4">
+              {config.contact?.supportPhone && (
               <a
-                href={`tel:${config.contact?.supportPhone || '+919876543210'}`}
+                href={`tel:${config.contact.supportPhone}`}
                 className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between hover:border-brand/40 transition-colors"
               >
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-base mb-2">
@@ -1377,13 +1332,15 @@ const LandingPage = () => {
                 <div>
                   <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Helpline</h4>
                   <p className="text-[10px] sm:text-xs text-brand font-bold truncate">
-                    {config.contact?.supportPhone || '+91 98765 43210'}
+                    {config.contact.supportPhone}
                   </p>
                 </div>
               </a>
+              )}
 
+              {config.contact?.supportWhatsapp && (
               <a
-                href={`https://wa.me/91${(config.contact?.supportWhatsapp || '9876543210').replace(
+                href={`https://wa.me/91${config.contact.supportWhatsapp.replace(
                   /\D/g,
                   ''
                 ).slice(-10)}`}
@@ -1399,9 +1356,11 @@ const LandingPage = () => {
                   <p className="text-[10px] sm:text-xs text-green-600 font-bold">Chat Now &rarr;</p>
                 </div>
               </a>
+              )}
 
+              {config.contact?.supportEmail && (
               <a
-                href={`mailto:${config.contact?.supportEmail || 'support@homestr.in'}`}
+                href={`mailto:${config.contact.supportEmail}`}
                 className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between hover:border-brand/40 transition-colors"
               >
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm sm:text-base mb-2">
@@ -1410,20 +1369,23 @@ const LandingPage = () => {
                 <div>
                   <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Email</h4>
                   <p className="text-[10px] sm:text-xs text-gray-500 truncate">
-                    {config.contact?.supportEmail || 'support@homestr.in'}
+                    {config.contact.supportEmail}
                   </p>
                 </div>
               </a>
+              )}
 
+              {config.contact?.workingHours && (
               <div className="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 flex flex-col justify-between">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm sm:text-base mb-2">
                   <FaClock />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs sm:text-sm text-gray-900 mb-0.5">Hours</h4>
-                  <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">8 AM – 9 PM Daily</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">{config.contact.workingHours}</p>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Quick Contact Form */}
@@ -1599,11 +1561,13 @@ const LandingPage = () => {
                 Location
               </h4>
               <p className="text-xs text-gray-400 leading-relaxed mb-2">
-                {config.contact?.companyAddress || 'Indore, MP 452010'}
+                {config.contact?.companyAddress}
               </p>
-              <p className="text-xs text-gray-400">
-                Helpline: <a href={`tel:${config.contact?.supportPhone || '+919876543210'}`} className="text-white hover:underline">{config.contact?.supportPhone || '+91 98765 43210'}</a>
-              </p>
+              {config.contact?.supportPhone && (
+                <p className="text-xs text-gray-400">
+                  Helpline: <a href={`tel:${config.contact.supportPhone}`} className="text-white hover:underline">{config.contact.supportPhone}</a>
+                </p>
+              )}
             </div>
           </div>
 

@@ -7,14 +7,15 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
+import legalPageService from '../../../../services/legalPageService';
 
 const HelpSupport = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('faq'); // the one group starts open
   const [showContactForm, setShowContactForm] = useState(false);
   const [supportInfo, setSupportInfo] = useState({
-    email: 'support@homestr.com',
+    email: '',
     phone: '',
     whatsapp: ''
   });
@@ -26,7 +27,7 @@ const HelpSupport = () => {
         if (response.data?.success && response.data?.settings) {
           const { supportEmail, supportPhone, supportWhatsapp } = response.data.settings;
           setSupportInfo({
-            email: supportEmail || 'support@homestr.com',
+            email: supportEmail || '',
             phone: supportPhone || '',
             whatsapp: supportWhatsapp || ''
           });
@@ -44,71 +45,23 @@ const HelpSupport = () => {
     message: ''
   });
 
-  // FAQ Categories
-  const categories = [
-    {
-      id: 'booking',
-      title: 'Booking & Services',
-      icon: FiBook,
-      color: '#3B82F6',
-      questions: [
-        {
-          q: 'How do I book a service?',
-          a: 'Navigate to the home page, select your desired service category, choose a service provider, select time slot, and confirm booking.'
-        },
-        {
-          q: 'Can I cancel or reschedule my booking?',
-          a: 'Yes, you can cancel or reschedule your booking from the My Bookings page up to 2 hours before the scheduled time.'
-        },
-        {
-          q: 'What payment methods are accepted?',
-          a: 'We accept all major payment methods including UPI, Credit/Debit cards, Net Banking, and Wallets.'
-        },
-      ]
-    },
-    {
-      id: 'payment',
-      title: 'Payments & Wallet',
-      icon: FiClock,
-      color: '#10B981',
-      questions: [
-        {
-          q: 'How do I add money to my wallet?',
-          a: 'Go to Wallet page, click on "Add Money", enter amount, and complete the payment using your preferred method.'
-        },
-        {
-          q: 'Is my payment information secure?',
-          a: 'Yes, we use industry-standard encryption and never store your complete card details on our servers.'
-        },
-        {
-          q: 'How long does refund take?',
-          a: 'Refunds are processed within 5-7 business days and will be credited to your original payment method or wallet.'
-        },
-      ]
-    },
-    {
-      id: 'account',
-      title: 'Account & Profile',
-      icon: FiAlertCircle,
-      color: '#F59E0B',
-      questions: [
-        {
-          q: 'How do I update my profile?',
-          a: 'Go to Account page, tap on the edit icon next to your name, update your details, and save changes.'
-        },
-        {
-          q: 'How do I change my phone number?',
-          a: 'Phone number can be changed from Settings > Update Phone Number. OTP verification will be required.'
-        },
-        {
-          q: 'Can I delete my account?',
-          a: 'Yes, you can request account deletion from Settings > Account Management > Delete Account.'
-        },
-      ]
-    },
-  ];
+  // The questions come from the admin's Customer FAQ (Admin > Legal & Help Pages), so there is one
+  // place to edit them. The admin FAQ is one flat list, shown here as a single group.
+  const [faqs, setFaqs] = useState([]);
+  useEffect(() => {
+    let active = true;
+    legalPageService.get('faq')
+      .then((res) => {
+        if (active && res?.success && res.page) setFaqs((res.page.faqs || []).map((f) => ({ q: f.question, a: f.answer })));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
-  // Quick actions
+  const categories = faqs.length > 0
+    ? [{ id: 'faq', title: 'Frequently asked questions', icon: FiBook, color: '#3B82F6', questions: faqs }]
+    : [];
+
   const quickActions = [
     {
       id: 'chat',
@@ -128,11 +81,15 @@ const HelpSupport = () => {
     {
       id: 'email',
       title: 'Email Us',
-      subtitle: supportInfo.email,
+      subtitle: supportInfo.email || 'Not Available',
       icon: FiMail,
       color: '#10B981',
       action: () => {
-        window.location.href = `mailto:${supportInfo.email}`;
+        if (supportInfo.email) {
+          window.location.href = `mailto:${supportInfo.email}`;
+        } else {
+          toast('Email support is currently unavailable');
+        }
       }
     },
     {

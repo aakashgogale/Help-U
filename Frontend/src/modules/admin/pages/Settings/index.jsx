@@ -387,7 +387,9 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateSettings(financialSettings);
+      // The cancellation fee is edited in Booking Configuration; do not send a stale copy of it from here
+      const { cancellationPenalty, ...financialPayload } = financialSettings; // eslint-disable-line no-unused-vars
+      await updateSettings(financialPayload);
       toast.success('Financial settings updated');
     } catch (error) {
       toast.error('Failed to update settings');
@@ -1005,9 +1007,10 @@ const AdminSettings = () => {
                       <p className="text-[10px] text-gray-400 mt-1">Fee charged on worker withdrawals</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Cancellation Penalty (₹)</label>
-                      <input type="number" name="cancellationPenalty" value={financialSettings.cancellationPenalty} onChange={handleFinancialChange}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Cancellation fees</label>
+                      <p className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-600">
+                        Set in <a href="/admin/booking-config" className="font-semibold text-sky-700 underline">Booking Configuration &rsaquo; Cancellation Policy</a>, together with the free-cancellation time.
+                      </p>
                     </div>
                     <div className="pt-4 border-t border-gray-100 md:col-span-2">
                       <h4 className="text-xs font-bold text-gray-700 uppercase mb-3">Booking Timing & Waves</h4>

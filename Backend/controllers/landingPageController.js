@@ -38,12 +38,15 @@ exports.getPublicLandingConfig = async (req, res) => {
         howItWorks: config.howItWorks,
         partnerSection: config.partnerSection,
         faqs: (config.faqs || []).filter(f => f.isActive !== false).sort((a, b) => a.order - b.order),
+        // Support phone, email and WhatsApp come only from Admin > Settings > Support, the same
+        // numbers the apps use, so the landing page can never show a different set. Nothing is
+        // invented when they are empty: the page hides that contact option instead.
         contact: {
-          supportEmail: config.contact?.supportEmail || globalSettings?.supportEmail || 'support@homestr.in',
-          supportPhone: config.contact?.supportPhone || globalSettings?.supportPhone || '+91 98765 43210',
-          supportWhatsapp: config.contact?.supportWhatsapp || globalSettings?.supportWhatsapp || '+91 98765 43210',
-          companyAddress: config.contact?.companyAddress || globalSettings?.companyAddress || 'Indore, Madhya Pradesh',
-          workingHours: config.contact?.workingHours || 'Monday – Sunday: 8:00 AM – 9:00 PM',
+          supportEmail: globalSettings?.supportEmail || '',
+          supportPhone: globalSettings?.supportPhone || '',
+          supportWhatsapp: globalSettings?.supportWhatsapp || '',
+          companyAddress: globalSettings?.companyAddress || config.contact?.companyAddress || '',
+          workingHours: config.contact?.workingHours || '',
           isContactFormEnabled: config.contact?.isContactFormEnabled !== false
         },
         socialLinks: config.socialLinks,
@@ -109,36 +112,6 @@ exports.submitPartnerLead = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to submit registration. Please try again or call our helpline.'
-    });
-  }
-};
-
-/**
- * Public: Submit general contact inquiry
- * POST /api/public/contact-inquiry
- */
-exports.submitContactInquiry = async (req, res) => {
-  try {
-    const { name, email, phone, subject, message } = req.body;
-
-    if (!name || (!email && !phone) || !message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, contact info, and message are required.'
-      });
-    }
-
-    console.log('📬 Landing Page Contact Inquiry received:', { name, email, phone, subject, message });
-
-    res.status(200).json({
-      success: true,
-      message: 'Thank you! Your message has been sent to our customer care team.'
-    });
-  } catch (error) {
-    console.error('Error submitting contact inquiry:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send message. Please try again.'
     });
   }
 };

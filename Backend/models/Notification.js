@@ -65,6 +65,8 @@ const notificationSchema = new mongoose.Schema({
       'scrap_pickup_assigned',
       'scrap_weighed',
       'scrap_weight_disputed',
+      'support_message',
+      'support_request',
       'vendor_withdrawal_request',
       'vendor_referral_success',
       'vendor_referral_rewarded',
@@ -99,7 +101,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedType: {
     type: String,
-    enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal', 'dispute', 'recurring'],
+    enum: ['booking', 'payment', 'user', 'vendor', 'service', 'scrap', 'withdrawal', 'dispute', 'recurring', 'support'],
     default: null
   },
   // Zone scoping (optional - for zone-specific broadcasts/notifications)

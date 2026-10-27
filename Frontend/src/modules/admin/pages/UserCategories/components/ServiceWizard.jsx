@@ -2186,13 +2186,10 @@ export const ServiceWizard = ({
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Cancellation Policy
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Free cancellation up to 2 hours before scheduled visit"
-                      value={formData.cancellationPolicy}
-                      onChange={(e) => updateField("cancellationPolicy", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
-                    />
+                    <p className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      Every service follows the platform cancellation policy, so customers always see what is actually charged.
+                      Change it in Booking Configuration &rsaquo; Cancellation Policy.
+                    </p>
                   </div>
                 </div>
 

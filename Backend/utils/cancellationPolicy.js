@@ -82,4 +82,26 @@ const evaluateCancellation = (booking, party, config, now = Date.now()) => {
   return { isFree: fee === 0, fee, reason: 'late', freeUntil: null, windowHours };
 };
 
-module.exports = { evaluateCancellation };
+/** The late-cancellation fee for a party, ignoring the free window (what a late cancel would cost). */
+const lateFeeAmount = (booking, party, config) => {
+  const keys = PARTY_KEYS[party];
+  return feeFor(booking, {
+    type: config[keys.type],
+    value: Number(config[keys.value]) || 0,
+    max: Number(config[keys.max]) || 0
+  });
+};
+
+/**
+ * Fee once the professional is on the way (or has arrived). A flat admin fee (`cancellationPenalty`,
+ * or the booking's own visiting charge after arrival), but never less than the late fee: cancelling
+ * later must not cost less than cancelling a little earlier. Never more than the booking amount.
+ */
+const onTheWayFee = (booking, config, { arrived = false } = {}) => {
+  const flat = Number(config.cancellationPenalty) || 0;
+  const base = arrived && Number(booking.visitingCharges) > 0 ? Number(booking.visitingCharges) : flat;
+  const total = Math.max(0, Number(booking.finalAmount) || 0);
+  return round2(Math.min(Math.max(base, lateFeeAmount(booking, 'user', config)), total));
+};
+
+module.exports = { evaluateCancellation, lateFeeAmount, onTheWayFee };

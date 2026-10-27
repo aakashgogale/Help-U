@@ -104,6 +104,8 @@ const CONFIG_SCHEMA = {
   userLateCancelFeeType: ['fixed', 'enum', ['fixed', 'percentage']],
   userLateCancelFeeValue: [49, 'number', 0, 100000],
   userLateCancelFeeMax: [0, 'number', 0, 100000], // 0 = no cap
+  // Flat fee once the professional is on the way (never less than the late fee above)
+  cancellationPenalty: [49, 'number', 0, 100000],
 
   // The worker's penalty is taken from their earnings. 0 (the default) means no penalty.
   workerFreeCancelHours: [2, 'number', 0, 168],
@@ -233,6 +235,7 @@ const getPublicBookingConfig = async () => {
     userLateCancelFeeType: c.userLateCancelFeeType,
     userLateCancelFeeValue: c.userLateCancelFeeValue,
     userLateCancelFeeMax: c.userLateCancelFeeMax,
+    cancellationPenalty: c.cancellationPenalty,
     workerFreeCancelHours: c.workerFreeCancelHours,
     workerFreeCancelGraceMinutes: c.workerFreeCancelGraceMinutes,
     workerLateCancelPenaltyType: c.workerLateCancelPenaltyType,

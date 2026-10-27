@@ -46,23 +46,24 @@ const Footer = () => {
     },
     {
       title: 'Contact Us',
+      // Only what the admin has set in Settings; nothing is invented
       links: [
-        { 
-          label: settings?.supportEmail || settings?.companyEmail || 'support@homestr.in', 
-          path: `mailto:${settings?.supportEmail || settings?.companyEmail || 'support@homestr.in'}`, 
-          icon: FiMail 
-        },
-        { 
-          label: settings?.supportPhone || settings?.companyPhone || '+91 98765 43210', 
-          path: `tel:${(settings?.supportPhone || settings?.companyPhone || '+91 98765 43210').replace(/\s/g, '')}`, 
-          icon: FiPhone 
-        },
-        { 
-          label: settings?.companyAddress ? `${settings.companyAddress}, ${settings.companyCity}, ${settings.companyState} - ${settings.companyPincode}` : 'Bhopal, Madhya Pradesh, India', 
-          path: '#', 
-          icon: FiMapPin 
-        },
-      ]
+        (() => {
+          const email = settings?.supportEmail || settings?.companyEmail;
+          return email ? { label: email, path: `mailto:${email}`, icon: FiMail } : null;
+        })(),
+        (() => {
+          const phone = settings?.supportPhone || settings?.companyPhone;
+          return phone ? { label: phone, path: `tel:${String(phone).replace(/\s/g, '')}`, icon: FiPhone } : null;
+        })(),
+        settings?.companyAddress
+          ? {
+              label: [settings.companyAddress, settings.companyCity, settings.companyState].filter(Boolean).join(', ') + (settings.companyPincode ? ` - ${settings.companyPincode}` : ''),
+              path: '#',
+              icon: FiMapPin
+            }
+          : null
+      ].filter(Boolean)
     }
   ];
 

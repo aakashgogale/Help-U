@@ -391,7 +391,7 @@ const BookingConfig = () => {
             Applies once a professional has been allotted; before that, cancelling is always free.
             Cancelling is free if the slot is at least the free-cancellation time away, or for a short grace time after the
             professional accepts (this is what lets customers undo an instant booking). After that the fee below applies.
-            Once the professional is on the way, the flat “Cancellation penalty” from Settings applies instead.
+            Once the professional is on the way, the flat fee below applies instead (never lower than the late fee).
           </p>
           <div className="grid gap-6 lg:grid-cols-2">
             {[
@@ -429,6 +429,11 @@ const BookingConfig = () => {
                     {type === 'percentage' && (
                       <Field label="Maximum" hint="Caps the percentage fee. 0 = no cap.">
                         <NumberInput value={config[maxKey]} onChange={set(maxKey)} min={0} suffix="₹" />
+                      </Field>
+                    )}
+                    {prefix === 'user' && (
+                      <Field label="Fee once the professional is on the way (₹)" hint="Charged after they start travelling. If the late fee above is higher, the higher of the two is charged, so cancelling later never costs less.">
+                        <NumberInput value={config.cancellationPenalty} onChange={set('cancellationPenalty')} min={0} suffix="₹" />
                       </Field>
                     )}
                   </div>
