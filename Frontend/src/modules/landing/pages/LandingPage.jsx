@@ -103,9 +103,9 @@ const DEFAULT_CONFIG = {
     ]
   },
   stats: [
-    { label: 'Verified Experts', value: '150+', color: 'text-brand' },
+    { label: 'Verified Experts', value: '150+', color: 'text-amber-400' },
     { label: 'Happy Customers', value: '500+', color: 'text-white' },
-    { label: 'Services Available', value: '50+', color: 'text-brand' },
+    { label: 'Services Available', value: '50+', color: 'text-amber-400' },
     { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
   ],
   howItWorks: {
@@ -694,7 +694,7 @@ const LandingPage = () => {
                       <p className="text-[11px] sm:text-xs md:text-sm font-bold">100% Certified Genuine Parts</p>
                     </div>
                   </div>
-                  <span className="hidden sm:inline-block bg-white/10 text-brand text-xs font-bold px-2.5 py-1 rounded-full">
+                  <span className="hidden sm:inline-block bg-white/10 text-amber-400 text-xs font-bold px-2.5 py-1 rounded-full">
                     Warranty
                   </span>
                 </div>
@@ -715,7 +715,7 @@ const LandingPage = () => {
                 key={idx}
                 className="text-center p-2 sm:p-3 border-r border-white/10 last:border-0 lg:border-r"
               >
-                <div className="text-2xl sm:text-4xl font-extrabold mb-0.5 tracking-tight text-brand">
+                <div className={`text-2xl sm:text-4xl font-extrabold mb-0.5 tracking-tight ${stat.color || 'text-white'}`}>
                   {stat.value}
                 </div>
                 <div className="text-gray-400 text-[11px] sm:text-xs font-medium">{stat.label}</div>
@@ -931,12 +931,12 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
             <div className="max-w-xl text-center lg:text-left">
-              <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-2">
+              <span className="text-amber-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-2">
                 Mobile First Experience
               </span>
               <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold mb-3 sm:mb-5 leading-tight">
                 Quality Home Repair is <br />
-                <span className="text-brand">Just a Tap Away.</span>
+                <span className="text-amber-400">Just a Tap Away.</span>
               </h2>
               <p className="text-gray-400 text-xs sm:text-base leading-relaxed mb-6">
                 Download the official Help-U Android app for instant emergency bookings, live technician map tracking, digital receipts, and hassle-free wallet payments.
@@ -1464,17 +1464,17 @@ const LandingPage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-10 mb-8 sm:mb-12">
             {/* Brand Col */}
             <div className="col-span-2 space-y-3">
-              <Link to="/Home" className="flex items-center gap-2">
+              <Link to="/Home" className="flex items-center gap-2.5 group">
                 <img
                   src="/helpu-logo.png"
                   alt="Help-U Logo"
-                  className="h-8 w-auto"
+                  className="h-8 w-auto bg-white rounded-lg px-2 py-1 object-contain shadow-xs transition-transform group-hover:scale-105"
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
                 />
                 <span className="font-extrabold text-xl tracking-tight text-white">
-                  Help<span className="text-brand">-U</span>
+                  Help<span className="text-amber-400">-U</span>
                 </span>
               </Link>
               <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
@@ -1484,7 +1484,7 @@ const LandingPage = () => {
 
             {/* Quick Links */}
             <div>
-              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-gray-200 mb-3">
                 Explore
               </h4>
               <ul className="space-y-1.5 text-xs text-gray-400">
@@ -1547,7 +1547,7 @@ const LandingPage = () => {
 
             {/* Legal Links */}
             <div>
-              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-gray-200 mb-3">
                 Legal & Safety
               </h4>
               <ul className="space-y-1.5 text-xs text-gray-400">
@@ -1560,7 +1560,7 @@ const LandingPage = () => {
 
             {/* City & Contact Info */}
             <div className="col-span-2 sm:col-span-1">
-              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand mb-3">
+              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-gray-200 mb-3">
                 Location
               </h4>
               <p className="text-xs text-gray-400 leading-relaxed mb-2">

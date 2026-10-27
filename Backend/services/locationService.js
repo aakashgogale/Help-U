@@ -184,6 +184,7 @@ const _buildWorkerQuery = (filters = {}) => {
   delete queryFilters.includeOffline;
   delete queryFilters.checkCashLimit;
   delete queryFilters.service;
+  delete queryFilters.serviceCategory;
   delete queryFilters.city;
   delete queryFilters.zoneId;
   delete queryFilters.zoneCoordinates;

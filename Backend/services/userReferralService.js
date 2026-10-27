@@ -223,12 +223,35 @@ const handleBookingCompleted = async (userId, bookingId) => {
 
 /**
  * Referral summary for the customer-facing "Refer and earn" screen.
+ * Dynamically ensures the user has a unique referral code even if they signed up
+ * before the referral feature was introduced or via a path that bypassed pre-save.
  */
 const getReferralStats = async (userId) => {
-  const [user, settings] = await Promise.all([
+  let [user, settings] = await Promise.all([
     User.findById(userId).select('referralCode referralEarnings').lean(),
     getReferralSettings()
   ]);
+
+  // Dynamic self-healing: Ensure user has a referral code on the fly
+  if (user && !user.referralCode) {
+    let uniqueCode = null;
+    let attempts = 0;
+    while (!uniqueCode && attempts < 10) {
+      const candidate = typeof User.generateReferralCode === 'function'
+        ? User.generateReferralCode()
+        : `HU${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const exists = await User.exists({ referralCode: candidate });
+      if (!exists) {
+        uniqueCode = candidate;
+      }
+      attempts++;
+    }
+
+    if (uniqueCode) {
+      await User.findByIdAndUpdate(userId, { referralCode: uniqueCode });
+      user.referralCode = uniqueCode;
+    }
+  }
 
   const [total, rewarded, pending] = await Promise.all([
     UserReferral.countDocuments({ referrerId: userId }),

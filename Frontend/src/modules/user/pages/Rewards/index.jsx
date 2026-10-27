@@ -50,18 +50,46 @@ const Rewards = () => {
     ? `Use my code ${code} to sign up on Help U${stats.joiningBonus > 0 ? ` and get ${money(stats.joiningBonus)} in your wallet` : ''}! ${link}`
     : '';
 
+  const fallbackCopy = (value, label) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = value;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (successful) {
+        toast.success(`${label} copied`);
+      } else {
+        toast.error('Could not copy');
+      }
+    } catch {
+      toast.error('Could not copy');
+    }
+  };
+
   const copy = (value, label) => {
-    navigator.clipboard.writeText(value)
-      .then(() => toast.success(`${label} copied`))
-      .catch(() => toast.error('Could not copy'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value)
+        .then(() => toast.success(`${label} copied`))
+        .catch(() => fallbackCopy(value, label));
+    } else {
+      fallbackCopy(value, label);
+    }
   };
 
   const share = async () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Help U', text: shareText, url: link });
-      } catch {
-        // User dismissed the share sheet.
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          copy(shareText, 'Invite message');
+        }
       }
     } else {
       copy(shareText, 'Invite message');

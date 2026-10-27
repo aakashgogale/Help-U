@@ -15,6 +15,7 @@ import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiLocationMarker } from 'react-icons/hi';
+import api from '../../../../services/api';
 
 // Lazy load heavy components for better initial load performance
 import PromoCarousel from './components/PromoCarousel';
@@ -120,7 +121,7 @@ const Home = () => {
   const { isScrapEnabled } = useConfig();
   const { detectZone, zoneId, isOutOfZone, currentZone } = useZone();
   const { apiKey: configuredMapApiKey } = useGoogleMapsConfig();
-  const { mapLanguage, detectLanguageFromLocation, autoDetectEnabled, setLanguage } = useLanguage();
+  const { currentLanguage, mapLanguage, detectLanguageFromLocation, autoDetectEnabled, setLanguage } = useLanguage();
 
   // Clean up legacy storage keys on mount
   useEffect(() => {
@@ -190,6 +191,7 @@ const Home = () => {
 
       // Try to parse city from location object (Google Places)
       const components = locationObj.components || locationObj.address_components;
+
       let city = '';
       if (components) {
         const getComponent = (type) => components.find(c => c.types.includes(type))?.long_name || '';
@@ -236,36 +238,51 @@ const Home = () => {
             async (position) => {
               try {
                 const { latitude, longitude } = position.coords;
-                const apiKey = configuredMapApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-                const response = await fetch(
-                  `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=${mapLanguage || 'en'}`
-                );
-                const data = await response.json();
-
                 // Cache coordinates so category ETA badges can use them
                 try { localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude })); } catch { /* ignore */ }
                 detectZone(latitude, longitude);
 
-                if (data.status === 'OK' && data.results.length > 0) {
-                  const result = data.results[0];
+                let result = null;
 
-                  // Location-based language detection if enabled by admin
-                  if (autoDetectEnabled && !localStorage.getItem('app_language_manually_set')) {
-                    const detectedLang = detectLanguageFromLocation(result.address_components);
-                    if (detectedLang) {
-                      setLanguage(detectedLang);
-                    }
+                // 1. Try server-side reverse geocode endpoint (uses backend Google Maps API key, no client referrer restrictions)
+                try {
+                  const backendRes = await api.get('/public/reverse-geocode', {
+                    params: { lat: latitude, lng: longitude, language: mapLanguage || 'en' }
+                  });
+                  if (backendRes.data?.success && backendRes.data?.result) {
+                    result = backendRes.data.result;
                   }
+                } catch (apiErr) {
+                  // Fallback to direct client fetch
+                }
+
+                // 2. Direct client fetch fallback
+                if (!result) {
+                  try {
+                    const apiKey = configuredMapApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+                    const response = await fetch(
+                      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=${mapLanguage || 'en'}`
+                    );
+                    const data = await response.json();
+                    if (data.status === 'OK' && data.results?.length > 0) {
+                      result = data.results[0];
+                    }
+                  } catch (directErr) {
+                    // Ignore direct fetch error
+                  }
+                }
+
+                if (result) {
                   const getComponent = (type) =>
-                    result.address_components.find(c => c.types.includes(type))?.long_name || '';
+                    result.address_components?.find(c => c.types?.includes(type))?.long_name || '';
 
                   const area = getComponent('sublocality_level_1') || getComponent('neighborhood') || getComponent('locality');
                   const city = getComponent('locality') || getComponent('administrative_area_level_2');
                   const state = getComponent('administrative_area_level_1');
 
-                  const formattedAddress = `${area}, ${city}, ${state}`;
-                  setAddress(formattedAddress);
-                  localStorage.setItem('currentAddress', formattedAddress);
+                  const formattedAddress = `${area ? area + ', ' : ''}${city ? city + ', ' : ''}${state}`;
+                  setAddress(formattedAddress || result.formatted_address);
+                  localStorage.setItem('currentAddress', formattedAddress || result.formatted_address);
 
                   if (city) {
                     setDetectedCityName(city);

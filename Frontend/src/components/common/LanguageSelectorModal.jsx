@@ -6,16 +6,18 @@ import { userAuthService } from '../../services/authService';
 import { toast } from 'react-hot-toast';
 
 const LanguageSelectorModal = ({ isOpen, onClose }) => {
-  const { currentLanguage, setLanguage, supportedLanguages } = useLanguage();
+  const {
+    currentLanguage,
+    setLanguage,
+    supportedLanguages,
+    t
+  } = useLanguage();
 
   if (!isOpen) return null;
 
   const handleSelect = async (code, name) => {
     const isDifferent = code !== currentLanguage;
     setLanguage(code);
-    try {
-      localStorage.setItem('app_language_manually_set', 'true');
-    } catch {}
     toast.success(`Language set to ${name}`);
     onClose();
 
@@ -28,12 +30,12 @@ const LanguageSelectorModal = ({ isOpen, onClose }) => {
       // Ignored for guests / non-auth users
     }
 
-    // If map was already loaded into DOM in a previous language, reload cleanly
-    // so Google Maps script initializes completely in the newly selected language
-    if (isDifferent && typeof window !== 'undefined' && window.google?.maps) {
+    // When the user changes language, reload so Google Maps API and singleton loaders
+    // re-initialize completely in the newly selected language
+    if (isDifferent) {
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 350);
     }
   };
 
@@ -64,8 +66,8 @@ const LanguageSelectorModal = ({ isOpen, onClose }) => {
                 <FiGlobe className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Choose Language</h3>
-                <p className="text-xs text-gray-400">Select your preferred app language</p>
+                <h3 className="text-base font-bold text-gray-900">{t('choose_language', 'Choose Language')}</h3>
+                <p className="text-xs text-gray-400">{t('select_app_language', 'Select your preferred app language')}</p>
               </div>
             </div>
             <button
@@ -99,7 +101,7 @@ const LanguageSelectorModal = ({ isOpen, onClose }) => {
                       </span>
                       {active && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-600 text-white uppercase">
-                          Active
+                          {t('active', 'Active')}
                         </span>
                       )}
                     </div>
@@ -120,7 +122,7 @@ const LanguageSelectorModal = ({ isOpen, onClose }) => {
 
           {/* Footer Info */}
           <div className="p-4 bg-gray-50 border-t border-gray-100 text-center text-xs text-gray-400">
-            Google Maps & interface elements adapt automatically
+            {t('map_adapts_auto', 'Google Maps & interface elements adapt automatically')}
           </div>
         </motion.div>
       </div>

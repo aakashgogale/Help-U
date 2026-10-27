@@ -1,6 +1,21 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// Ambiguous characters (0/O, 1/I) are excluded so codes survive being read
+// aloud or retyped from a screenshot.
+const REFERRAL_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+// Helper to generate a random referral code.
+// The prefix differs from the worker code prefix (HOMV) so a customer code can
+// never be mistaken for a worker code when one is entered at signup.
+const generateReferralCode = () => {
+  let code = 'HU';
+  for (let i = 0; i < 6; i++) {
+    code += REFERRAL_CHARS.charAt(Math.floor(Math.random() * REFERRAL_CHARS.length));
+  }
+  return code;
+};
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -81,7 +96,7 @@ const userSchema = new mongoose.Schema({
   // ==========================================
 
   // Sparse so the unique index tolerates existing users who have no code yet;
-  // one is generated for them on their next save.
+  // one is generated for them on their next save or dynamically on demand.
   referralCode: {
     type: String,
     unique: true,
@@ -178,20 +193,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Helper to generate a random referral code.
-// The prefix differs from the worker code prefix (HOMV) so a customer code can
-// never be mistaken for a worker code when one is entered at signup.
-const generateReferralCode = () => {
-  // Ambiguous characters (0/O, 1/I) are excluded so codes survive being read
-  // aloud or retyped from a screenshot.
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'HU';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-};
-
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   // Generate referral code if missing. Existing users get one the next time
@@ -200,7 +201,7 @@ userSchema.pre('save', async function (next) {
     this.referralCode = generateReferralCode();
   }
 
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
   const salt = await bcrypt.genSalt(10);
@@ -213,5 +214,8 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+User.generateReferralCode = generateReferralCode;
+
+module.exports = User;
 

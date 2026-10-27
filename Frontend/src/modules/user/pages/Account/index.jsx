@@ -118,7 +118,7 @@ const AccountSkeleton = () => (
 const Account = () => {
   const navigate = useNavigate();
   const { isScrapEnabled } = useConfig();
-  const { currentLanguage, supportedLanguages } = useLanguage();
+  const { currentLanguage, supportedLanguages, t } = useLanguage();
   const bookingConfig = useBookingConfig();
   const [userProfile, setUserProfile] = useState(() => toProfile(readStoredUser() || {}));
   const [isLoading, setIsLoading] = useState(() => !readStoredUser());
@@ -171,7 +171,7 @@ const Account = () => {
 
   return (
     <div className="min-h-screen pb-28 bg-canvas">
-      <PageHeader title="Account" />
+      <PageHeader title={t('account', 'Account')} />
 
       {isLoading ? (
         <AccountSkeleton />
@@ -213,7 +213,7 @@ const Account = () => {
               {userProfile.email && <p className="text-[13px] text-gray-400 truncate">{userProfile.email}</p>}
             </div>
             <span className="shrink-0 inline-flex items-center gap-0.5 text-[13px] font-semibold text-accent">
-              Edit <FiChevronRight className="w-4 h-4" />
+              {t('edit', 'Edit')} <FiChevronRight className="w-4 h-4" />
             </span>
           </motion.button>
 
@@ -229,10 +229,10 @@ const Account = () => {
                 <FiZap className="w-5 h-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-white/75">Active membership</p>
+                <p className="text-[12px] text-white/75">{t('active_membership', 'Active membership')}</p>
                 <p className="text-[16px] font-bold truncate">{plan.name}</p>
                 {plan.expiry && (
-                  <p className="text-[12px] text-white/75">Valid till {new Date(plan.expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-[12px] text-white/75">{t('valid_till', 'Valid till')} {new Date(plan.expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                 )}
               </div>
               <FiChevronRight className="w-5 h-5 text-white/80 shrink-0" />
@@ -249,7 +249,7 @@ const Account = () => {
               <span className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-accent">
                 <MdAccountBalanceWallet className="w-5 h-5" />
               </span>
-              <p className="mt-3 text-[12px] text-gray-500">Wallet balance</p>
+              <p className="mt-3 text-[12px] text-gray-500">{t('wallet_balance', 'Wallet balance')}</p>
               <p className={`text-[18px] font-bold leading-tight ${balance < 0 ? 'text-red-600' : 'text-ink'}`}>
                 {balance < 0 ? '-' : ''}₹{Math.abs(balance).toLocaleString('en-IN')}
               </p>
@@ -264,52 +264,52 @@ const Account = () => {
               <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-accent">
                 <FiGift className="w-5 h-5" />
               </span>
-              <p className="mt-3 text-[12px] text-gray-600">Refer & earn</p>
-              <p className="text-[15px] font-bold text-ink leading-tight">Invite friends</p>
+              <p className="mt-3 text-[12px] text-gray-600">{t('refer_and_earn', 'Refer & earn')}</p>
+              <p className="text-[15px] font-bold text-ink leading-tight">{t('invite_friends', 'Invite friends')}</p>
             </button>
           </motion.div>
 
           <MenuGroup
-            title="Activity"
+            title={t('activity', 'Activity')}
             items={[
-              { icon: FiClipboard, label: 'My Bookings', onClick: () => navigate('/user/my-bookings') },
-              { icon: FiStar, label: 'My Ratings', onClick: () => navigate('/user/my-rating') },
-              bookingConfig.isRecurringEnabled && { icon: FiRepeat, label: 'Recurring Bookings', onClick: () => navigate('/user/recurring-bookings') },
-              bookingConfig.isDisputeEnabled && { icon: FiAlertOctagon, label: 'My Disputes', onClick: () => navigate('/user/disputes') },
+              { icon: FiClipboard, label: t('my_bookings', 'My Bookings'), onClick: () => navigate('/user/my-bookings') },
+              { icon: FiStar, label: t('my_ratings', 'My Ratings'), onClick: () => navigate('/user/my-rating') },
+              bookingConfig.isRecurringEnabled && { icon: FiRepeat, label: t('recurring_bookings', 'Recurring Bookings'), onClick: () => navigate('/user/recurring-bookings') },
+              bookingConfig.isDisputeEnabled && { icon: FiAlertOctagon, label: t('my_disputes', 'My Disputes'), onClick: () => navigate('/user/disputes') },
             ]}
           />
 
           <MenuGroup
-            title="Shopping"
+            title={t('shopping', 'Shopping')}
             items={[
-              isScrapEnabled && { icon: FiShoppingBag, label: 'Scrap Deals', onClick: () => navigate('/user/scrap') },
-              { icon: FiFileText, label: 'My Plans', onClick: () => navigate('/user/my-plan') },
+              isScrapEnabled && { icon: FiShoppingBag, label: t('scrap_deals', 'Scrap Deals'), onClick: () => navigate('/user/scrap') },
+              { icon: FiFileText, label: t('my_plans', 'My Plans'), onClick: () => navigate('/user/my-plan') },
             ]}
           />
 
           <MenuGroup
-            title="Preferences"
+            title={t('preferences', 'Preferences')}
             items={[
               {
                 icon: FiGlobe,
-                label: 'Language',
+                label: t('language', 'Language'),
                 subtitle: activeLang ? `${activeLang.name} (${activeLang.native})` : 'English',
                 onClick: () => setIsLanguageModalOpen(true)
               },
-              { icon: FiMapPin, label: 'Manage Addresses', onClick: () => navigate('/user/manage-addresses') },
-              { icon: FiSettings, label: 'Settings', onClick: () => navigate('/user/settings') },
+              { icon: FiMapPin, label: t('manage_addresses', 'Manage Addresses'), onClick: () => navigate('/user/manage-addresses') },
+              { icon: FiSettings, label: t('settings', 'Settings'), onClick: () => navigate('/user/settings') },
             ]}
           />
 
           <MenuGroup
-            title="Support & more"
+            title={t('support_and_more', 'Support & more')}
             items={[
-              { icon: FiHeadphones, label: 'Help & Support', onClick: () => navigate('/user/help-support') },
-              { icon: FiHelpCircle, label: 'FAQ', onClick: () => navigate('/user/faq') },
-              { icon: FiFileText, label: 'Cancellation Policy', onClick: () => navigate('/user/cancellation-policy') },
-              { icon: FiFileText, label: 'Terms & Conditions', onClick: () => navigate('/user/terms') },
-              { icon: FiShield, label: 'Privacy Policy', onClick: () => navigate('/user/privacy-policy') },
-              { icon: FiInfo, label: 'About Help U', onClick: () => navigate('/user/about-helpu') },
+              { icon: FiHeadphones, label: t('help_support', 'Help & Support'), onClick: () => navigate('/user/help-support') },
+              { icon: FiHelpCircle, label: t('faq', 'FAQ'), onClick: () => navigate('/user/faq') },
+              { icon: FiFileText, label: t('cancellation_policy', 'Cancellation Policy'), onClick: () => navigate('/user/cancellation-policy') },
+              { icon: FiFileText, label: t('terms_conditions', 'Terms & Conditions'), onClick: () => navigate('/user/terms') },
+              { icon: FiShield, label: t('privacy_policy', 'Privacy Policy'), onClick: () => navigate('/user/privacy-policy') },
+              { icon: FiInfo, label: t('about_helpu', 'About Help U'), onClick: () => navigate('/user/about-helpu') },
             ]}
           />
 
@@ -320,7 +320,7 @@ const Account = () => {
               className="w-full h-12 rounded-full border border-red-200 bg-white text-red-600 text-[15px] font-semibold hover:bg-red-50 active:scale-[0.99] transition-all inline-flex items-center justify-center gap-2"
             >
               <FiLogOut className="w-[18px] h-[18px]" />
-              Log out
+              {t('log_out', 'Log out')}
             </button>
             <LogoutConfirm isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} onConfirm={handleLogout} />
             <p className="text-center text-[12px] text-gray-400 mt-4 pb-6">Version 7.6.27 R547</p>

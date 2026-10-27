@@ -23,8 +23,8 @@ const getAllBookings = async (req, res) => {
     // Build query
     const query = {};
 
-    if (status) query.status = status;
-    if (paymentStatus) query.paymentStatus = paymentStatus;
+    if (status) query.status = new RegExp(`^${escapeRegex(status)}$`, 'i');
+    if (paymentStatus) query.paymentStatus = new RegExp(`^${escapeRegex(paymentStatus)}$`, 'i');
     if (userId) query.userId = userId;
     if (vendorId) query.vendorId = vendorId;
 
