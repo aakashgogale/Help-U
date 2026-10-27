@@ -11,8 +11,10 @@ import api from '../../../../services/api';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useConfig } from '../../../../context/ConfigContext';
 import PageHeader from '../../components/layout/PageHeader';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import WeighedBox from './WeighedBox';
 
-const ACTIVE_STATUSES = ['pending', 'offered', 'accepted'];
+const ACTIVE_STATUSES = ['pending', 'offered', 'accepted', 'weighed'];
 const HISTORY_STATUSES = ['completed', 'cancelled', 'rejected'];
 const DELETABLE_STATUSES = ['pending', 'cancelled', 'rejected'];
 
@@ -20,6 +22,7 @@ const STATUS_META = {
   pending: { label: 'Under review', className: 'bg-amber-50 text-amber-700' },
   offered: { label: 'Offer received', className: 'bg-blue-50 text-blue-700' },
   accepted: { label: 'Pickup scheduled', className: 'bg-accent-soft text-accent' },
+  weighed: { label: 'Confirm amount', className: 'bg-blue-50 text-blue-700' },
   completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
   rejected: { label: 'Rejected', className: 'bg-red-50 text-red-600' },
   cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-600' },
@@ -114,6 +117,7 @@ const UserScrapPage = () => {
   const [loading, setLoading] = useState(() => !readScrapCache());
   const [selectedScrap, setSelectedScrap] = useState(null);
   const [respondingToOffer, setRespondingToOffer] = useState(false);
+  const { scrapAllowCashPayout } = useBookingConfig();
 
   const fetchMyScrap = useCallback(async () => {
     const hasShownData = Boolean(readScrapCache());
@@ -168,6 +172,23 @@ const UserScrapPage = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to update offer', { id: 'offer-resp' });
+    } finally {
+      setRespondingToOffer(false);
+    }
+  };
+
+  // The customer confirms the weighed amount (and is paid), or questions the weight
+  const handleWeighing = async (scrapId, action, body, successFallback) => {
+    try {
+      setRespondingToOffer(true);
+      const res = await api.put(`/scrap/${scrapId}/${action}`, body);
+      if (res.data.success) {
+        toast.success(res.data.message || successFallback);
+        if (selectedScrap && selectedScrap._id === scrapId) setSelectedScrap(res.data.data);
+        fetchMyScrap();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setRespondingToOffer(false);
     }
@@ -339,9 +360,16 @@ const UserScrapPage = () => {
               )}
 
               <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                {item.status === 'accepted' ? (
+                {item.status === 'weighed' ? (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-700">
+                    <FiAlertCircle className="w-4 h-4" /> Confirm {formatPrice(item.finalPrice)}
+                  </span>
+                ) : item.status === 'accepted' ? (
                   <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent">
-                    <FiCheckCircle className="w-4 h-4" /> Accepted{item.finalPrice ? ` at ${formatPrice(item.finalPrice)}` : ''}
+                    <FiCheckCircle className="w-4 h-4" />
+                    {item.items?.length > 0 && item.pickupDate
+                      ? `Pickup ${new Date(item.pickupDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}${item.pickupSlot ? `, ${item.pickupSlot}` : ''}`
+                      : `Accepted${item.finalPrice ? ` at ${formatPrice(item.finalPrice)}` : ''}`}
                   </span>
                 ) : item.status === 'offered' ? (
                   <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-700">
@@ -349,6 +377,10 @@ const UserScrapPage = () => {
                   </span>
                 ) : item.status === 'completed' && item.finalPrice ? (
                   <span className="text-[13px] font-semibold text-ink">Sold for {formatPrice(item.finalPrice)}</span>
+                ) : item.status === 'pending' && item.estimatedTotal > 0 ? (
+                  <span className="text-[13px] font-semibold text-ink">
+                    Estimate {formatPrice(item.estimatedTotal)}{item.hasQuoteItems ? ' + quote' : ''}
+                  </span>
                 ) : (
                   <span className="text-[13px] text-gray-500">{item.address?.city || 'Pickup address saved'}</span>
                 )}
@@ -446,12 +478,86 @@ const UserScrapPage = () => {
                     <OfferBox item={selectedScrap} responding={respondingToOffer} onRespond={handleRespondOffer} large />
                   )}
 
+                  {selectedScrap.status === 'weighed' && (
+                    <WeighedBox
+                      item={selectedScrap}
+                      busy={respondingToOffer}
+                      cashAllowed={!!scrapAllowCashPayout}
+                      onConfirm={(method) => handleWeighing(selectedScrap._id, 'confirm', { payoutMethod: method }, 'Confirmed')}
+                      onDispute={(reason) => handleWeighing(selectedScrap._id, 'dispute', { reason }, 'Sent to our team')}
+                    />
+                  )}
+
+                  {selectedScrap.status === 'accepted' && selectedScrap.items?.length > 0 && selectedScrap.pickupDate && (
+                    <div className="rounded-2xl bg-accent-soft px-4 py-3">
+                      <p className="text-[12px] font-semibold text-accent">Pickup</p>
+                      <p className="text-[15px] font-bold text-ink">
+                        {new Date(selectedScrap.pickupDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+                        {selectedScrap.pickupSlot ? `, ${selectedScrap.pickupSlot}` : ''}
+                      </p>
+                      <p className="text-[12px] text-gray-600">You are paid by the weight when the professional arrives.</p>
+                    </div>
+                  )}
+
                   {(selectedScrap.status === 'accepted' || selectedScrap.status === 'completed') && selectedScrap.finalPrice && (
                     <div className="rounded-2xl bg-accent-soft px-4 py-3 flex items-center justify-between">
                       <span className="text-[13px] font-semibold text-accent">
                         {selectedScrap.status === 'completed' ? 'Sold for' : 'Agreed price'}
                       </span>
                       <span className="text-[18px] font-bold text-ink">{formatPrice(selectedScrap.finalPrice)}</span>
+                    </div>
+                  )}
+
+                  {selectedScrap.items?.length > 0 && (
+                    <div>
+                      <p className="text-[12px] font-semibold text-gray-500 mb-1.5">What you are selling</p>
+                      <ul className="rounded-2xl bg-canvas divide-y divide-gray-100">
+                        {selectedScrap.items.map((it) => (
+                          <li key={it._id || it.name} className="px-3.5 py-3">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <span className="text-[14px] font-semibold text-ink">
+                                {it.name} · {it.actualQuantity != null ? `${it.actualQuantity} ${it.unit}` : `${it.quantity} ${it.unit}`}
+                              </span>
+                              <span className="text-[13px] font-semibold text-gray-600">
+                                {it.finalAmount != null
+                                  ? formatPrice(it.finalAmount)
+                                  : it.pricingMode === 'quote'
+                                    ? (it.quotedAmount != null ? formatPrice(it.quotedAmount) : 'To be quoted')
+                                    : formatPrice(it.estimatedAmount)}
+                              </span>
+                            </div>
+                            {it.actualQuantity != null && it.actualQuantity !== it.quantity ? (
+                              <p className="text-[12px] text-gray-400">You said {it.quantity} {it.unit}{it.pricingMode !== 'quote' ? ` · ${formatPrice(it.rate)} per ${it.unit}` : ''}</p>
+                            ) : it.pricingMode !== 'quote' && (
+                              <p className="text-[12px] text-gray-400">{formatPrice(it.rate)} per {it.unit}</p>
+                            )}
+                            {it.details?.length > 0 && (
+                              <p className="mt-0.5 text-[12px] text-gray-500">{it.details.map((d) => `${d.label}: ${d.value}`).join(' · ')}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      {selectedScrap.finalPrice != null && ['weighed', 'completed'].includes(selectedScrap.status) ? (
+                        <p className="mt-2 flex items-baseline justify-between px-1 text-[13px]">
+                          <span className="font-semibold text-gray-500">{selectedScrap.status === 'completed' ? 'Paid' : 'Amount'}</span>
+                          <span className="text-[16px] font-bold text-ink">{formatPrice(selectedScrap.finalPrice)}</span>
+                        </p>
+                      ) : (
+                        <>
+                          {selectedScrap.estimatedTotal > 0 && (
+                            <p className="mt-2 flex items-baseline justify-between px-1 text-[13px]">
+                              <span className="font-semibold text-gray-500">Estimated total</span>
+                              <span className="text-[16px] font-bold text-ink">{formatPrice(selectedScrap.estimatedTotal)}</span>
+                            </p>
+                          )}
+                          <p className="mt-1 px-1 text-[12px] text-gray-400">The final amount is worked out from the weight at pickup.</p>
+                        </>
+                      )}
+                      {selectedScrap.status === 'completed' && selectedScrap.payout?.method && (
+                        <p className="mt-1 px-1 text-[12px] text-gray-500">
+                          {selectedScrap.payout.method === 'wallet' ? 'Added to your Help U wallet.' : 'Paid to you in cash.'}
+                        </p>
+                      )}
                     </div>
                   )}
 

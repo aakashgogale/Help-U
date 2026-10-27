@@ -330,6 +330,9 @@ const settingsSchema = new mongoose.Schema({
   workerLateCancelPenaltyValue: { type: Number, default: 0, min: 0 },
   workerLateCancelPenaltyMax: { type: Number, default: 0, min: 0 },
 
+  // Scrap payout (see utils/bookingConfig.js)
+  scrapAllowCashPayout: { type: Boolean, default: false },
+
   // ==========================================
   // CUSTOMER <-> WORKER CHAT
   // ==========================================

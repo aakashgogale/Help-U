@@ -63,6 +63,7 @@ const SettlementHistory = lazyLoad(() => import('../pages/Wallet/SettlementHisto
 const MyRatings = lazyLoad(() => import('../pages/MyRatings'));
 const AboutHelpU = lazyLoad(() => import('../pages/AboutHelpU'));
 const Terms = lazyLoad(() => import('../pages/Terms'));
+const ScrapPickups = lazyLoad(() => import('../pages/ScrapPickups'));
 const CancellationPolicy = lazyLoad(() => import('../pages/CancellationPolicy'));
 const PrivacyPolicy = lazyLoad(() => import('../pages/PrivacyPolicy'));
 const Faq = lazyLoad(() => import('../pages/Faq'));
@@ -187,6 +188,7 @@ const WorkerRoutes = () => {
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/faq" element={<Faq />} />
+              <Route path="/scrap-pickups" element={<ProtectedRoute userType="worker"><ScrapPickups /></ProtectedRoute>} />
               <Route path="/disputes" element={<ProtectedRoute userType="worker"><WorkerDisputes /></ProtectedRoute>} />
               <Route path="/disputes/:id" element={<ProtectedRoute userType="worker"><WorkerDisputeDetail /></ProtectedRoute>} />
             </Routes>

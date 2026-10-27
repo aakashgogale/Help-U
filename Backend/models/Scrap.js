@@ -42,6 +42,9 @@ const scrapSchema = new mongoose.Schema({
     rate: { type: Number, default: 0 },          // rate per unit when the request was made
     quantity: { type: Number, default: 0 },      // the customer's estimate
     estimatedAmount: { type: Number, default: 0 },
+    quotedAmount: { type: Number, default: null },   // set by the admin for quote items
+    actualQuantity: { type: Number, default: null }, // weighed at pickup
+    finalAmount: { type: Number, default: null },    // worked out from the weighing
     details: {
       type: [new mongoose.Schema({
         key: { type: String, required: true },
@@ -56,6 +59,22 @@ const scrapSchema = new mongoose.Schema({
   hasQuoteItems: { type: Boolean, default: false },
   preferredDate: { type: Date, default: null },
   preferredSlot: { type: String, trim: true, default: '' },
+  // Pickup: who is coming and when (set by the admin); the professional weighs at the door
+  pickupSlot: { type: String, trim: true, default: '' },
+  weighedAt: { type: Date, default: null },
+  weighNote: { type: String, trim: true, default: '' },
+  weightDispute: {
+    reason: { type: String, default: '' },
+    at: { type: Date, default: null }
+  },
+  adjustReason: { type: String, default: '' },
+  // How the customer was paid. Cash means the professional handed it over and Help U owes them.
+  payout: {
+    method: { type: String, enum: ['wallet', 'cash'], default: undefined },
+    status: { type: String, enum: ['paid', 'cash_paid_by_pro'], default: undefined },
+    amount: { type: Number, default: 0 },
+    paidAt: { type: Date, default: null }
+  },
   images: [{
     type: String
   }],
@@ -69,7 +88,7 @@ const scrapSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'offered', 'accepted', 'completed', 'cancelled', 'rejected'],
+    enum: ['pending', 'offered', 'accepted', 'weighed', 'completed', 'cancelled', 'rejected'],
     default: 'pending',
     index: true
   },

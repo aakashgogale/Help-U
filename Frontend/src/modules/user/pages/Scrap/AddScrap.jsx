@@ -12,6 +12,8 @@ import { uploadToCloudinary } from '../../../../utils/cloudinaryUpload';
 import flutterBridge from '../../../../utils/flutterBridge';
 import { useConfig } from '../../../../context/ConfigContext';
 import PageHeader from '../../components/layout/PageHeader';
+import ScrapBasket from './ScrapBasket';
+import { basketTotals, basketProblem, formatMoney } from './scrapEstimate';
 
 // Zod schema for Scrap
 const scrapSchema = z.object({
@@ -48,10 +50,27 @@ const AddScrap = () => {
     }
   });
 
+  // What can be sold, set by the admin. null while loading; with no types the old free-text form is used.
+  const [types, setTypes] = useState(null);
+  const [basket, setBasket] = useState({}); // { [typeId]: { quantity, details } }
+
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isFlutter, setIsFlutter] = useState(flutterBridge.isFlutter);
   const [showSourceSheet, setShowSourceSheet] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/scrap/types')
+      .then((res) => { if (active) setTypes(res.data?.success ? res.data.data : []); })
+      .catch(() => { if (active) setTypes([]); });
+    return () => { active = false; };
+  }, []);
+
+  const typesMode = Array.isArray(types) && types.length > 0;
+  const chosenTypes = typesMode ? types.filter((t) => basket[t.id]) : [];
+  const photoRequired = chosenTypes.some((t) => t.requiresPhoto);
+  const totals = typesMode ? basketTotals(types, basket) : { total: 0, hasQuote: false };
 
   // Sync flutter bridge state
   useEffect(() => {
@@ -108,11 +127,18 @@ const AddScrap = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    // Zod Validation
-    const validationResult = scrapSchema.safeParse(formData);
-    if (!validationResult.success) {
-      toast.error(validationResult.error.errors[0].message);
-      return;
+    // Validation: the basket (picked from the scrap types) or the free-text form
+    if (typesMode) {
+      const problem = basketProblem(types, basket);
+      if (problem) return toast.error(problem);
+      if (!formData.address.addressLine1) return toast.error('Pickup address is required');
+      if (photoRequired && selectedFiles.length === 0) return toast.error('Please add a photo of your scrap.');
+    } else {
+      const validationResult = scrapSchema.safeParse(formData);
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
     }
 
     try {
@@ -150,10 +176,18 @@ const AddScrap = () => {
       }
 
       // 2. Prepare final data
-      const finalData = {
-        ...formData,
-        images: imageUrls
-      };
+      const finalData = typesMode
+        ? {
+            description: formData.description,
+            address: formData.address,
+            images: imageUrls,
+            items: chosenTypes.map((t) => ({
+              typeId: t.id,
+              quantity: Number(basket[t.id].quantity),
+              details: basket[t.id].details || {}
+            }))
+          }
+        : { ...formData, images: imageUrls };
 
       const res = await api.post('/scrap', finalData);
       if (res.data.success) {
@@ -161,7 +195,7 @@ const AddScrap = () => {
         navigate(-1);
       }
     } catch (err) {
-      toast.error('Failed to create listing', { id: 'scrap' });
+      toast.error(err.response?.data?.message || 'Failed to create listing', { id: 'scrap' });
     } finally {
       setIsUploading(false);
     }
@@ -226,6 +260,26 @@ const AddScrap = () => {
       <PageHeader title="Sell Scrap" showBell={false} />
 
       <form onSubmit={handleCreate} className="px-4 py-4 max-w-2xl mx-auto space-y-3 pb-32">
+        {types === null ? (
+          <div className="h-40 animate-pulse rounded-[20px] bg-white" />
+        ) : typesMode ? (
+          <>
+            <ScrapBasket types={types} basket={basket} onChange={setBasket} />
+            <section className="bg-white rounded-[20px] border border-gray-100 p-4">
+              <label htmlFor="scrap-description" className="block text-[13px] font-semibold text-ink mb-1.5">
+                Anything else we should know? <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <textarea
+                id="scrap-description"
+                className={`${fieldClass} resize-none`}
+                rows="2"
+                placeholder="Floor, access, how it is stored, etc."
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+              />
+            </section>
+          </>
+        ) : (
         <section className="bg-white rounded-[20px] border border-gray-100 p-4 space-y-4">
           <div>
             <label htmlFor="scrap-title" className="block text-[13px] font-semibold text-ink mb-1.5">What are you selling?</label>
@@ -253,11 +307,12 @@ const AddScrap = () => {
             />
           </div>
         </section>
+        )}
 
         {/* Photos */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-4">
           <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-[13px] font-semibold text-ink">Photos</h3>
+            <h3 className="text-[13px] font-semibold text-ink">Photos{photoRequired && <span className="text-red-500"> *</span>}</h3>
             <span className="text-[12px] text-gray-400">{selectedFiles.length}/5</span>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
@@ -320,7 +375,9 @@ const AddScrap = () => {
               </div>
             )}
           </div>
-          <p className="mt-3 text-[12px] text-gray-400">Clear photos help us send you a better price.</p>
+          <p className="mt-3 text-[12px] text-gray-400">
+            {photoRequired ? 'A photo is needed for what you picked.' : 'Clear photos help us send you a better price.'}
+          </p>
         </section>
 
         {/* Pickup address */}
@@ -360,6 +417,15 @@ const AddScrap = () => {
         {/* Submit */}
         <div className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
           <div className="max-w-2xl mx-auto">
+            {typesMode && chosenTypes.length > 0 && (
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-[13px] font-semibold text-gray-500">Estimated amount</span>
+                <span className="text-[18px] font-bold text-ink">
+                  {totals.total > 0 ? formatMoney(totals.total) : '—'}
+                  {totals.hasQuote && <span className="ml-1 text-[12px] font-medium text-gray-400">+ items we quote</span>}
+                </span>
+              </div>
+            )}
             <button
               type="submit"
               disabled={!formData.address.addressLine1 || isUploading}
@@ -371,7 +437,7 @@ const AddScrap = () => {
                   Listing item...
                 </>
               ) : (
-                'List item for pickup'
+                typesMode ? 'Request pickup' : 'List item for pickup'
               )}
             </button>
             {!formData.address.addressLine1 && (

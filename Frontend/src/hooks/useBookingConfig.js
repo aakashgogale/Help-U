@@ -51,7 +51,9 @@ export const BOOKING_CONFIG_DEFAULTS = {
   workerFreeCancelGraceMinutes: 5,
   workerLateCancelPenaltyType: 'fixed',
   workerLateCancelPenaltyValue: 0,
-  workerLateCancelPenaltyMax: 0
+  workerLateCancelPenaltyMax: 0,
+  // Scrap payout: wallet by default; the customer may choose cash when this is on
+  scrapAllowCashPayout: false
 };
 
 let cached = null;

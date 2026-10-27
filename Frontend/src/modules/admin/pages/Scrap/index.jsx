@@ -5,12 +5,18 @@ import { getSettings, updateSettings } from '../../services/settingsService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { toast } from 'react-hot-toast';
 import ScrapTypes from './ScrapTypes';
+import { PickupModal, AmountModal } from './ScrapActions';
+import { bookingFeaturesAdminService } from '../../services/bookingFeaturesAdminService';
 
 const AdminScrapPage = () => {
   const [scraps, setScraps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [tab, setTab] = useState('requests'); // requests | types
+  const [pickupItem, setPickupItem] = useState(null);
+  const [amountItem, setAmountItem] = useState(null);
+  const [itemQuotes, setItemQuotes] = useState({}); // { [itemId]: amount } for items that need a quote
+  const [cashPayout, setCashPayout] = useState(false);
   const [isScrapEnabled, setIsScrapEnabled] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -24,6 +30,9 @@ const AdminScrapPage = () => {
   useEffect(() => {
     fetchScrap();
     fetchFeatureStatus();
+    bookingFeaturesAdminService.getConfig()
+      .then((res) => { if (res.success) setCashPayout(!!res.config.scrapAllowCashPayout); })
+      .catch(() => {});
 
     const handleSync = () => fetchFeatureStatus();
     window.addEventListener('systemConfigUpdated', handleSync);
@@ -87,7 +96,20 @@ const AdminScrapPage = () => {
     }
   };
 
+  const toggleCashPayout = async () => {
+    const next = !cashPayout;
+    setCashPayout(next);
+    try {
+      await bookingFeaturesAdminService.updateConfig({ scrapAllowCashPayout: next });
+      toast.success(next ? 'Customers can now choose cash' : 'Customers are paid to their wallet');
+    } catch (err) {
+      setCashPayout(!next);
+      toast.error(err.response?.data?.message || 'Could not change this setting');
+    }
+  };
+
   const openOfferModal = (item) => {
+    setItemQuotes(Object.fromEntries((item.items || []).filter((i) => i.pricingMode === 'quote').map((i) => [i._id, i.quotedAmount != null ? String(i.quotedAmount) : ''])));
     setSelectedItem(item);
     setOfferedPrice(item.offeredPrice !== null && item.offeredPrice !== undefined ? String(item.offeredPrice) : (item.expectedPrice ? String(item.expectedPrice) : ''));
     setAdminNote(item.adminNote || '');
@@ -105,7 +127,15 @@ const AdminScrapPage = () => {
     e.preventDefault();
     if (!selectedItem) return;
 
-    const price = Number(offeredPrice);
+    // Items that need a quote are priced one by one; the server adds them to the priced items
+    const quoting = selectedItem.hasQuoteItems;
+    const price = quoting
+      ? (selectedItem.estimatedTotal || 0) + Object.values(itemQuotes).reduce((sum, v) => sum + (Number(v) || 0), 0)
+      : Number(offeredPrice);
+    if (quoting && Object.values(itemQuotes).some((v) => v === '' || Number(v) < 0 || Number.isNaN(Number(v)))) {
+      toast.error('Enter a price for every item that needs a quote');
+      return;
+    }
     if (isNaN(price) || price <= 0) {
       toast.error('Please enter a valid price amount greater than 0');
       return;
@@ -114,7 +144,9 @@ const AdminScrapPage = () => {
     try {
       setSubmittingOffer(true);
       const res = await api.put(`/scrap/${selectedItem._id}/accept`, {
-        offeredPrice: price,
+        ...(quoting
+          ? { itemQuotes: Object.entries(itemQuotes).map(([itemId, amount]) => ({ itemId, amount: Number(amount) })) }
+          : { offeredPrice: price }),
         adminNote: adminNote.trim()
       });
 
@@ -239,6 +271,23 @@ const AdminScrapPage = () => {
         ))}
       </div>
 
+      <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <span className="text-sm font-semibold text-gray-800">
+          Let customers choose cash at pickup
+          <span className="block text-xs font-normal text-gray-500">Off: they are paid to their Help U wallet. On: they can take cash from the professional, and you reimburse the professional.</span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={cashPayout}
+          aria-label="Let customers choose cash at pickup"
+          onClick={toggleCashPayout}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${cashPayout ? 'bg-green-500' : 'bg-gray-300'}`}
+        >
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${cashPayout ? 'left-[18px]' : 'left-0.5'}`} />
+        </button>
+      </label>
+
       {tab === 'types' && <ScrapTypes />}
 
       {tab === 'requests' && (
@@ -250,6 +299,7 @@ const AdminScrapPage = () => {
             { key: 'pending', label: 'Pending' },
             { key: 'offered', label: 'Price Offered' },
             { key: 'accepted', label: 'Accepted' },
+            { key: 'weighed', label: 'Weighed' },
             { key: 'completed', label: 'Completed' },
             { key: 'rejected', label: 'Rejected' }
           ].map(f => (
@@ -299,6 +349,12 @@ const AdminScrapPage = () => {
                             {item.category || 'Scrap'} {item.quantity ? `• Qty: ${item.quantity}` : ''}
                             {item.expectedPrice ? ` • Exp: ₹${item.expectedPrice}` : ''}
                           </p>
+                          {item.vendorId && (
+                            <p className="text-[10px] font-semibold text-blue-700">
+                              {item.vendorId.name || 'Professional'}
+                              {item.pickupDate ? ` · ${new Date(item.pickupDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}${item.pickupSlot ? `, ${item.pickupSlot}` : ''}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -310,7 +366,14 @@ const AdminScrapPage = () => {
                       {item.finalPrice ? (
                         <div>
                           <span className="text-xs font-black text-green-700">₹{item.finalPrice}</span>
-                          <span className="text-[9px] text-gray-400 block font-medium">Agreed</span>
+                          <span className="text-[9px] text-gray-400 block font-medium">
+                            {item.status === 'completed' && item.payout?.method === 'wallet' ? 'Paid to wallet'
+                              : item.status === 'weighed' ? 'Weighed'
+                                : 'Agreed'}
+                          </span>
+                          {item.payout?.status === 'cash_paid_by_pro' && (
+                            <span className="text-[9px] font-bold text-amber-700 block">Cash paid by professional: reimburse</span>
+                          )}
                         </div>
                       ) : item.offeredPrice ? (
                         <div>
@@ -326,11 +389,12 @@ const AdminScrapPage = () => {
                         ${item.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : ''}
                         ${item.status === 'offered' ? 'bg-amber-100 text-amber-800 border border-amber-200' : ''}
                         ${item.status === 'accepted' ? 'bg-green-100 text-green-800 border border-green-200' : ''}
+                        ${item.status === 'weighed' ? 'bg-blue-100 text-blue-800 border border-blue-200' : ''}
                         ${item.status === 'completed' ? 'bg-gray-100 text-gray-800 border border-gray-200' : ''}
                         ${item.status === 'rejected' ? 'bg-red-100 text-red-800 border border-red-200' : ''}
                         ${item.status === 'cancelled' ? 'bg-red-100 text-red-800 border border-red-200' : ''}
                       `}>
-                        {item.status === 'offered' ? 'Price Offered' : item.status}
+                        {item.status === 'offered' ? 'Price Offered' : item.status === 'weighed' ? 'Weighed, customer to confirm' : item.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -358,6 +422,31 @@ const AdminScrapPage = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
+                        {item.items?.length > 0 ? (
+                          <>
+                            {item.status === 'pending' && item.hasQuoteItems && (
+                              <button onClick={() => openOfferModal(item)} className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider shadow-sm transition-colors flex items-center gap-1">
+                                <FiDollarSign className="w-3 h-3" /> Quote &amp; Offer
+                              </button>
+                            )}
+                            {item.status === 'offered' && (
+                              <button onClick={() => openOfferModal(item)} className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider shadow-sm transition-colors flex items-center gap-1">
+                                <FiDollarSign className="w-3 h-3" /> Update Quote
+                              </button>
+                            )}
+                            {['pending', 'offered', 'accepted'].includes(item.status) && !(item.status === 'pending' && item.hasQuoteItems) && (
+                              <button onClick={() => setPickupItem(item)} className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider shadow-sm transition-colors flex items-center gap-1">
+                                <FiClock className="w-3 h-3" /> {item.vendorId ? 'Reschedule' : item.status === 'pending' ? 'Confirm & Schedule' : 'Schedule'}
+                              </button>
+                            )}
+                            {['accepted', 'weighed'].includes(item.status) && (
+                              <button onClick={() => setAmountItem(item)} className="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider shadow-sm transition-colors flex items-center gap-1">
+                                <FiCheck className="w-3 h-3" /> Amount / Complete
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
                         {item.status === 'pending' && (
                           <button
                             onClick={() => openOfferModal(item)}
@@ -385,6 +474,8 @@ const AdminScrapPage = () => {
                             Complete Pickup
                           </button>
                         )}
+                          </>
+                        )}
                         <button
                           onClick={() => handleDelete(item._id)}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -402,6 +493,9 @@ const AdminScrapPage = () => {
         </div>
       </div>
       )}
+
+      {pickupItem && <PickupModal item={pickupItem} onClose={() => setPickupItem(null)} onDone={() => { setPickupItem(null); fetchScrap(); }} />}
+      {amountItem && <AmountModal item={amountItem} onClose={() => setAmountItem(null)} onDone={() => { setAmountItem(null); fetchScrap(); }} />}
 
       {/* Price Offer Modal Popup */}
       {offerModalOpen && selectedItem && (
@@ -472,6 +566,34 @@ const AdminScrapPage = () => {
 
             {/* Offer Form */}
             <form onSubmit={handleSendOffer} className="space-y-4">
+              {selectedItem.hasQuoteItems ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Your price for each item that needs a quote (₹)
+                  </label>
+                  <div className="space-y-2">
+                    {selectedItem.items.filter((i) => i.pricingMode === 'quote').map((i) => (
+                      <div key={i._id} className="flex items-center gap-2">
+                        <span className="flex-1 text-xs font-semibold text-gray-800">{i.name} × {i.quantity}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          required
+                          value={itemQuotes[i._id] ?? ''}
+                          onChange={(e) => setItemQuotes((q) => ({ ...q, [i._id]: e.target.value }))}
+                          className="w-28 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="₹"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs font-bold text-gray-900">
+                    Offer to the customer: ₹{(selectedItem.estimatedTotal || 0) + Object.values(itemQuotes).reduce((sum, v) => sum + (Number(v) || 0), 0)}
+                    <span className="font-normal text-gray-500"> (priced items ₹{selectedItem.estimatedTotal || 0} plus these)</span>
+                  </p>
+                </div>
+              ) : (
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                   Your Price Offer (₹) <span className="text-red-500">*</span>
@@ -494,6 +616,7 @@ const AdminScrapPage = () => {
                   This amount will be notified to the user. User can approve or reject this offer.
                 </p>
               </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">

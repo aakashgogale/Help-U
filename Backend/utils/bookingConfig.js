@@ -110,7 +110,11 @@ const CONFIG_SCHEMA = {
   workerFreeCancelGraceMinutes: [5, 'number', 0, 120],
   workerLateCancelPenaltyType: ['fixed', 'enum', ['fixed', 'percentage']],
   workerLateCancelPenaltyValue: [0, 'number', 0, 100000],
-  workerLateCancelPenaltyMax: [0, 'number', 0, 100000] // 0 = no cap
+  workerLateCancelPenaltyMax: [0, 'number', 0, 100000], // 0 = no cap
+
+  // Scrap: the customer is paid to their Help U wallet; when on, they can instead choose cash
+  // from the professional at pickup (Help U then reimburses the professional).
+  scrapAllowCashPayout: [false, 'boolean']
 };
 
 // Existing settings the booking flow also needs; read here so callers have one
@@ -225,7 +229,8 @@ const getPublicBookingConfig = async () => {
     workerFreeCancelGraceMinutes: c.workerFreeCancelGraceMinutes,
     workerLateCancelPenaltyType: c.workerLateCancelPenaltyType,
     workerLateCancelPenaltyValue: c.workerLateCancelPenaltyValue,
-    workerLateCancelPenaltyMax: c.workerLateCancelPenaltyMax
+    workerLateCancelPenaltyMax: c.workerLateCancelPenaltyMax,
+    scrapAllowCashPayout: c.scrapAllowCashPayout
   };
 };
 

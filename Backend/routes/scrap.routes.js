@@ -12,7 +12,13 @@ const {
   completeScrap,
   getAllScrapAdmin,
   getScrapById,
-  deleteScrap
+  deleteScrap,
+  assignPickup,
+  getWorkerPickups,
+  submitWeights,
+  confirmWeighing,
+  disputeWeighing,
+  adjustFinalAmount
 } = require('../controllers/scrapController');
 const {
   listScrapTypes,
@@ -29,11 +35,19 @@ router.get('/types', authenticate, isUser, listScrapTypes);
 router.post('/', authenticate, isUser, createScrap);
 router.get('/my', authenticate, isUser, getMyScrap);
 router.put('/:id/respond', authenticate, isUser, respondToOffer);
+router.put('/:id/confirm', authenticate, isUser, confirmWeighing);
+router.put('/:id/dispute', authenticate, isUser, disputeWeighing);
+
+// Worker: their pickups, and entering the weights
+router.get('/worker/mine', authenticate, isWorker, getWorkerPickups);
+router.put('/worker/:id/weigh', authenticate, isWorker, submitWeights);
 
 // Admin Actions
 router.put('/:id/accept', authenticate, isAdmin, acceptScrap);
 router.put('/:id/offer', authenticate, isAdmin, acceptScrap);
 router.put('/:id/complete', authenticate, isAdmin, completeScrap);
+router.put('/:id/assign', authenticate, isAdmin, assignPickup);
+router.put('/:id/adjust', authenticate, isAdmin, adjustFinalAmount);
 router.delete('/:id', authenticate, deleteScrap); // Allow delete (controller checks auth)
 // Admin Routes
 router.get('/all', authenticate, isAdmin, getAllScrapAdmin);
