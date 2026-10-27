@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FiArrowLeft, FiFileText, FiChevronDown } from 'react-icons/fi';
 import legalPageService from '../../services/legalPageService';
+import LegalDocument from './legal/LegalDocument';
+import { themeFor } from './legal/legalThemes';
 
 /**
  * Renders one of the admin-managed legal/help pages (Terms & Conditions,
@@ -11,6 +13,7 @@ import legalPageService from '../../services/legalPageService';
  */
 const LegalPageView = ({ slug, fallbackTitle = 'Page' }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [page, setPage] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ready | missing | error
   const [openFaq, setOpenFaq] = useState(null);
@@ -35,7 +38,19 @@ const LegalPageView = ({ slug, fallbackTitle = 'Page' }) => {
     return () => { active = false; };
   }, [slug]);
 
-  const isFaq = slug === 'faq';
+  const isFaq = slug === 'faq' || slug === 'worker-faq';
+
+  // Terms and Privacy get the structured document layout
+  if (status === 'ready' && !isFaq) {
+    const isWorker = pathname.startsWith('/worker');
+    return (
+      <LegalDocument
+        page={page}
+        theme={themeFor(pathname)}
+        contact={isWorker ? { label: 'View FAQ', path: '/worker/faq' } : { label: 'Help & Support', path: '/user/help-support' }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -96,12 +111,6 @@ const LegalPageView = ({ slug, fallbackTitle = 'Page' }) => {
           </div>
         )}
 
-        {status === 'ready' && !isFaq && (
-          <div
-            className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-p:text-gray-600 prose-li:text-gray-600"
-            dangerouslySetInnerHTML={{ __html: page.content }}
-          />
-        )}
       </main>
     </div>
   );

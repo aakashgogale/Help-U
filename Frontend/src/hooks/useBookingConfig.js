@@ -40,7 +40,18 @@ export const BOOKING_CONFIG_DEFAULTS = {
   slotEndHour: 20,
   slotDurationMinutes: 60,
   slotMaxDaysAhead: 7,
-  slotMinLeadMinutes: 60
+  slotMinLeadMinutes: 60,
+  // Cancellation policy (admin: Booking Configuration)
+  userFreeCancelHours: 2,
+  userFreeCancelGraceMinutes: 5,
+  userLateCancelFeeType: 'fixed',
+  userLateCancelFeeValue: 49,
+  userLateCancelFeeMax: 0,
+  workerFreeCancelHours: 2,
+  workerFreeCancelGraceMinutes: 5,
+  workerLateCancelPenaltyType: 'fixed',
+  workerLateCancelPenaltyValue: 0,
+  workerLateCancelPenaltyMax: 0
 };
 
 let cached = null;

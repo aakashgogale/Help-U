@@ -30,6 +30,7 @@ const Profile = () => {
     { id: 8, label: 'Settings', icon: FiSettings, path: '/worker/settings' },
     { id: 9, label: 'About Help U', icon: null, customIcon: 'H', path: '/worker/about-helpu' },
     { id: 11, label: 'FAQ', icon: FiHelpCircle, path: '/worker/faq' },
+    { id: 14, label: 'Cancellation Policy', icon: FiAlertOctagon, path: '/worker/cancellation-policy' },
     { id: 12, label: 'Terms & Conditions', icon: FiFileText, path: '/worker/terms' },
     { id: 13, label: 'Privacy Policy', icon: FiShield, path: '/worker/privacy-policy' },
   ];

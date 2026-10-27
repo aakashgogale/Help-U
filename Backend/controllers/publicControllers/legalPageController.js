@@ -14,7 +14,7 @@ const getPublicLegalPage = async (req, res) => {
     }
 
     const page = await LegalPage.findOne({ slug, isActive: true })
-      .select('slug title content faqs updatedAt')
+      .select('slug title content intro sections showUpdatedDate faqs updatedAt')
       .lean();
 
     if (!page) {
@@ -22,6 +22,9 @@ const getPublicLegalPage = async (req, res) => {
       // browser console free of red 404s; clients treat `page: null` as "not available yet".
       return res.status(200).json({ success: true, page: null, message: 'This page has not been published yet' });
     }
+
+    // Hidden sections are the admin's drafts
+    page.sections = (page.sections || []).filter((section) => section.isVisible !== false);
 
     res.status(200).json({ success: true, page });
   } catch (error) {

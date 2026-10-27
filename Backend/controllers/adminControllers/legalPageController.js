@@ -3,8 +3,15 @@ const LegalPage = require('../../models/LegalPage');
 const DEFAULT_TITLES = {
   'terms-and-conditions': 'Terms & Conditions',
   'privacy-policy': 'Privacy Policy',
-  faq: 'Frequently Asked Questions'
+  'cancellation-policy': 'Cancellation Policy',
+  faq: 'Frequently Asked Questions',
+  'worker-cancellation-policy': 'Cancellation Policy',
+  'worker-faq': 'Frequently Asked Questions'
 };
+
+// Pages that are only a list of questions, and pages that show a list under their sections
+const FAQ_SLUGS = ['faq', 'worker-faq'];
+const POLICY_SLUGS = ['cancellation-policy', 'worker-cancellation-policy'];
 
 /**
  * GET /api/admin/legal-pages
@@ -20,6 +27,9 @@ const getAllLegalPages = async (req, res) => {
       slug,
       title: DEFAULT_TITLES[slug],
       content: '',
+      intro: '',
+      sections: [],
+      showUpdatedDate: true,
       faqs: [],
       isActive: false,
       isDraft: true
@@ -45,7 +55,7 @@ const getLegalPage = async (req, res) => {
     const page = await LegalPage.findOne({ slug }).populate('lastUpdatedBy', 'name email').lean();
     res.status(200).json({
       success: true,
-      page: page || { slug, title: DEFAULT_TITLES[slug], content: '', faqs: [], isActive: false, isDraft: true }
+      page: page || { slug, title: DEFAULT_TITLES[slug], content: '', intro: '', sections: [], showUpdatedDate: true, faqs: [], isActive: false, isDraft: true }
     });
   } catch (error) {
     console.error('Get legal page error:', error);
@@ -64,7 +74,7 @@ const updateLegalPage = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Unknown page' });
     }
 
-    const { title, content, faqs, isActive } = req.body;
+    const { title, content, faqs, isActive, intro, sections, showUpdatedDate } = req.body;
     const update = { lastUpdatedBy: req.user.id };
 
     if (title !== undefined) {
@@ -73,29 +83,59 @@ const updateLegalPage = async (req, res) => {
       update.title = trimmed;
     }
     if (isActive !== undefined) update.isActive = Boolean(isActive);
+    if (showUpdatedDate !== undefined) update.showUpdatedDate = Boolean(showUpdatedDate);
 
-    if (slug === 'faq') {
-      if (faqs !== undefined) {
-        if (!Array.isArray(faqs)) {
-          return res.status(400).json({ success: false, message: 'faqs must be an array' });
+    // FAQs: the FAQ page, and the cancellation policy (which shows them under the timeline)
+    if (faqs !== undefined && (FAQ_SLUGS.includes(slug) || POLICY_SLUGS.includes(slug))) {
+      if (!Array.isArray(faqs)) {
+        return res.status(400).json({ success: false, message: 'faqs must be an array' });
+      }
+      for (const item of faqs) {
+        if (!item?.question?.trim() || !item?.answer?.trim()) {
+          return res.status(400).json({ success: false, message: 'Every FAQ needs a question and an answer' });
         }
-        for (const item of faqs) {
-          if (!item?.question?.trim() || !item?.answer?.trim()) {
-            return res.status(400).json({ success: false, message: 'Every FAQ needs a question and an answer' });
+      }
+      update.faqs = faqs.map((f, i) => ({
+        question: String(f.question).trim(),
+        answer: String(f.answer).trim(),
+        order: f.order ?? i
+      }));
+    }
+
+    if (!FAQ_SLUGS.includes(slug)) {
+      if (intro !== undefined) {
+        if (String(intro).length > 2000) {
+          return res.status(400).json({ success: false, message: 'The summary is too long (2000 characters at most)' });
+        }
+        update.intro = String(intro).trim();
+      }
+
+      if (sections !== undefined) {
+        if (!Array.isArray(sections) || sections.length > 60) {
+          return res.status(400).json({ success: false, message: 'A page can have up to 60 sections' });
+        }
+        for (const item of sections) {
+          if (!item?.title?.trim()) {
+            return res.status(400).json({ success: false, message: 'Every section needs a heading' });
+          }
+          if (String(item.body || '').length > 20000) {
+            return res.status(400).json({ success: false, message: `The text of "${item.title}" is too long` });
           }
         }
-        update.faqs = faqs.map((f, i) => ({
-          question: String(f.question).trim(),
-          answer: String(f.answer).trim(),
-          order: f.order ?? i
+        update.sections = sections.map((item) => ({
+          title: String(item.title).trim().slice(0, 150),
+          body: String(item.body || '').replace(/\r\n/g, '\n').trim(),
+          isVisible: item.isVisible !== false
         }));
       }
-    } else if (content !== undefined) {
-      // A generous but finite cap — this is a legal document, not unbounded storage.
-      if (String(content).length > 200000) {
-        return res.status(400).json({ success: false, message: 'Content is too long' });
+
+      // Older pages are one block of HTML; kept so they can be converted into sections
+      if (content !== undefined) {
+        if (String(content).length > 200000) {
+          return res.status(400).json({ success: false, message: 'Content is too long' });
+        }
+        update.content = content;
       }
-      update.content = content;
     }
 
     // title can come from either $set (admin provided one) or $setOnInsert

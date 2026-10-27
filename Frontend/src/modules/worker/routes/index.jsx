@@ -63,6 +63,7 @@ const SettlementHistory = lazyLoad(() => import('../pages/Wallet/SettlementHisto
 const MyRatings = lazyLoad(() => import('../pages/MyRatings'));
 const AboutHelpU = lazyLoad(() => import('../pages/AboutHelpU'));
 const Terms = lazyLoad(() => import('../pages/Terms'));
+const CancellationPolicy = lazyLoad(() => import('../pages/CancellationPolicy'));
 const PrivacyPolicy = lazyLoad(() => import('../pages/PrivacyPolicy'));
 const Faq = lazyLoad(() => import('../pages/Faq'));
 const BillingPage = lazyLoad(() => import('../pages/BillingPage'));
@@ -182,6 +183,7 @@ const WorkerRoutes = () => {
               <Route path="/my-ratings" element={<ProtectedRoute userType="worker"><MyRatings /></ProtectedRoute>} />
               <Route path="/about-helpu" element={<ProtectedRoute userType="worker"><AboutHelpU /></ProtectedRoute>} />
               {/* Public — must be reachable before login (e.g. linked from signup) */}
+              <Route path="/cancellation-policy" element={<CancellationPolicy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/faq" element={<Faq />} />

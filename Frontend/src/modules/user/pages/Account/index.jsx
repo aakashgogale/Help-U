@@ -290,6 +290,7 @@ const Account = () => {
             items={[
               { icon: FiHeadphones, label: 'Help & Support', onClick: () => navigate('/user/help-support') },
               { icon: FiHelpCircle, label: 'FAQ', onClick: () => navigate('/user/faq') },
+              { icon: FiFileText, label: 'Cancellation Policy', onClick: () => navigate('/user/cancellation-policy') },
               { icon: FiFileText, label: 'Terms & Conditions', onClick: () => navigate('/user/terms') },
               { icon: FiShield, label: 'Privacy Policy', onClick: () => navigate('/user/privacy-policy') },
               { icon: FiInfo, label: 'About Help U', onClick: () => navigate('/user/about-helpu') },
