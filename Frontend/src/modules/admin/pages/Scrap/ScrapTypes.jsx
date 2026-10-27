@@ -177,6 +177,14 @@ const ScrapTypes = () => {
     }
   };
 
+  // A new type goes after the existing ones, in `group` when adding from a group's own button
+  const startNew = (group = '') => {
+    const inGroup = types.filter((t) => (t.group || 'Other') === group);
+    const pool = group && inGroup.length ? inGroup : types;
+    const nextOrder = pool.reduce((max, t) => Math.max(max, Number(t.order) || 0), -1) + 1;
+    setEditing({ id: null, form: { ...emptyForm(), group, order: nextOrder } });
+  };
+
   const setForm = (patchObj) => setEditing((prev) => ({ ...prev, form: { ...prev.form, ...patchObj } }));
 
   if (loading) {
@@ -197,7 +205,7 @@ const ScrapTypes = () => {
         </div>
         <button
           type="button"
-          onClick={() => setEditing({ id: null, form: emptyForm() })}
+          onClick={() => startNew()}
           className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-blue-700"
         >
           <FiPlus /> Add type
@@ -215,7 +223,16 @@ const ScrapTypes = () => {
 
       {groups.map(([group, rows]) => (
         <div key={group} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-gray-600">{group}</div>
+          <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-2">
+            <span className="text-xs font-black uppercase tracking-wider text-gray-600">{group}</span>
+            <button
+              type="button"
+              onClick={() => startNew(group)}
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+            >
+              <FiPlus className="h-3.5 w-3.5" /> Add to {group}
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left">
               <tbody className="divide-y divide-gray-100">
@@ -260,14 +277,14 @@ const ScrapTypes = () => {
       {/* Add / edit */}
       <Modal isOpen={!!editing} onClose={() => !saving && setEditing(null)} title={editing?.id ? 'Edit scrap type' : 'Add scrap type'} size="lg">
         {form && (
-          <form onSubmit={saveForm} className="space-y-4 overflow-y-auto p-5">
+          <form onSubmit={saveForm} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Name</label>
                 <input className={inputClass} value={form.name} maxLength={80} onChange={(e) => setForm({ name: e.target.value })} placeholder="e.g. Aluminium" required />
               </div>
               <div>
-                <label className={labelClass}>Group</label>
+                <label className={labelClass}>Group <span className="font-normal text-gray-400">(pick one or type a new one)</span></label>
                 <input
                   className={inputClass}
                   list="scrap-groups"
@@ -313,6 +330,7 @@ const ScrapTypes = () => {
               <div>
                 <label className={labelClass}>Display order</label>
                 <input type="number" min="0" className={inputClass} value={form.order} onChange={(e) => setForm({ order: e.target.value })} />
+                <p className="mt-1 text-[11px] text-gray-500">Lower numbers show first. A group is shown where its first type is.</p>
               </div>
             </div>
 
@@ -354,7 +372,8 @@ const ScrapTypes = () => {
               <DetailFieldsEditor value={form.detailFields} onChange={(detailFields) => setForm({ detailFields })} />
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            {/* Always visible: pinned to the bottom of the modal while the form scrolls */}
+            <div className="sticky -bottom-5 -mx-5 -mb-5 flex justify-end gap-2 border-t border-gray-100 bg-white px-5 py-3">
               <button type="button" onClick={() => setEditing(null)} disabled={saving} className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-50">Cancel</button>
               <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-blue-700 disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save'}
@@ -366,7 +385,7 @@ const ScrapTypes = () => {
 
       {/* Rate history */}
       <Modal isOpen={!!history} onClose={() => setHistory(null)} title={history ? `${history.type.name}: rate history` : ''} size="sm">
-        <div className="overflow-y-auto p-5">
+        <div>
           {!history?.rows ? (
             <div className="flex justify-center py-6"><FiLoader className="h-5 w-5 animate-spin text-gray-400" /></div>
           ) : history.rows.length === 0 ? (

@@ -31,10 +31,10 @@ const toPublic = (t) => ({
   rateUpdatedAt: t.rateUpdatedAt
 });
 
-/** GET /scrap/types: what customers can sell, in the order the admin set */
+/** GET /scrap/types: what customers can sell, in the order the admin set (a group sits where its first type is) */
 exports.listScrapTypes = async (req, res) => {
   try {
-    const types = await ScrapType.find({ isActive: true }).sort({ group: 1, order: 1, name: 1 }).lean();
+    const types = await ScrapType.find({ isActive: true }).sort({ order: 1, name: 1 }).lean();
     res.json({ success: true, data: types.map(toPublic) });
   } catch (error) {
     console.error('List scrap types error:', error);
@@ -45,7 +45,7 @@ exports.listScrapTypes = async (req, res) => {
 /** GET /scrap/admin/types: every type, including switched-off ones */
 exports.adminListTypes = async (req, res) => {
   try {
-    const types = await ScrapType.find({}).sort({ group: 1, order: 1, name: 1 }).lean();
+    const types = await ScrapType.find({}).sort({ order: 1, name: 1 }).lean();
     res.json({ success: true, data: types });
   } catch (error) {
     console.error('Admin list scrap types error:', error);
