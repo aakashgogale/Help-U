@@ -46,6 +46,14 @@ exports.updateConfig = async (req, res) => {
       }
     }
 
+    // A percentage fee cannot be more than 100%.
+    if (merged.userLateCancelFeeType === 'percentage' && merged.userLateCancelFeeValue > 100) {
+      return res.status(400).json({ success: false, message: 'The customer cancellation fee cannot be more than 100% of the booking amount' });
+    }
+    if (merged.workerLateCancelPenaltyType === 'percentage' && merged.workerLateCancelPenaltyValue > 100) {
+      return res.status(400).json({ success: false, message: 'The professional cancellation penalty cannot be more than 100% of the booking amount' });
+    }
+
     let settings = await Settings.findOne({ type: 'global' });
     if (!settings) settings = new Settings({ type: 'global' });
     Object.assign(settings, updates);

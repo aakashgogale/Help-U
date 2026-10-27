@@ -9,6 +9,7 @@ const { createNotification } = require('../notificationControllers/notificationC
 const cloudinaryService = require('../../services/cloudinaryService');
 const { placeBooking } = require('../../services/bookingCreationService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
+const { evaluateCancellation } = require('../../utils/cancellationPolicy');
 
 /**
  * Create a new booking
@@ -166,6 +167,56 @@ const getBookingById = async (req, res) => {
 };
 
 /**
+ * What cancelling costs the customer right now.
+ * Once the professional is on the way the admin's flat cancellation penalty applies (the
+ * booking's own visiting charge once they have arrived); before that, the cancellation policy
+ * (free window, then the late fee) decides.
+ */
+const resolveUserCancellation = async (booking) => {
+  const config = await getBookingConfig();
+
+  if (booking.journeyStartedAt) {
+    let journeyPenalty = 49;
+    try {
+      const globalSettings = await Settings.findOne({ type: 'global' });
+      if (globalSettings && globalSettings.cancellationPenalty !== undefined) {
+        journeyPenalty = globalSettings.cancellationPenalty;
+      }
+    } catch (err) {
+      console.error('Error fetching settings for cancellation penalty:', err);
+    }
+
+    const hasReached = !!booking.visitedAt || booking.status === 'visited';
+    const fee = hasReached && booking.visitingCharges > 0 ? booking.visitingCharges : journeyPenalty;
+    return { fee, isFree: fee === 0, stage: hasReached ? 'arrived' : 'journey', freeUntil: null, windowHours: config.userFreeCancelHours };
+  }
+
+  const policy = evaluateCancellation(booking, 'user', config);
+  return { fee: policy.fee, isFree: policy.isFree, stage: policy.reason, freeUntil: policy.freeUntil, windowHours: policy.windowHours };
+};
+
+/**
+ * Preview what cancelling this booking would cost, so the app can show it before the customer confirms.
+ */
+const getCancellationPreview = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    if ([BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: `This booking is already ${booking.status}` });
+    }
+
+    const { fee, isFree, stage, freeUntil, windowHours } = await resolveUserCancellation(booking);
+    res.status(200).json({ success: true, data: { fee, isFree, stage, freeUntil, windowHours } });
+  } catch (error) {
+    console.error('Cancellation preview error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load cancellation details' });
+  }
+};
+
+/**
  * Cancel booking
  */
 const cancelBooking = async (req, res) => {
@@ -209,62 +260,31 @@ const cancelBooking = async (req, res) => {
 
     // --- REFUND & CANCELLATION FEE LOGIC ---
     let refundAmount = 0;
-    let cancellationFee = 0;
+    const { fee: cancellationFee, stage } = await resolveUserCancellation(booking);
     let refundMessage = '';
 
-    // Fetch dynamic cancellation penalty from Settings
-    let settingsPenalty = 49; // Default
-    try {
-      const globalSettings = await Settings.findOne({ type: 'global' });
-      if (globalSettings && globalSettings.cancellationPenalty !== undefined) {
-        settingsPenalty = globalSettings.cancellationPenalty;
-      }
-    } catch (err) {
-      console.error('Error fetching settings for cancellation penalty:', err);
-    }
-
-    const hasStartedJourney = !!booking.journeyStartedAt;
     const isPaid = booking.paymentStatus === PAYMENT_STATUS.SUCCESS;
     const isWalletOrOnline = ['wallet', 'razorpay', 'upi', 'card'].includes(booking.paymentMethod);
-    const isCash = booking.paymentMethod === 'cash';
+    const stageLabel = { journey: 'journey start', arrived: 'professional arrival', late: 'the free cancellation period ended' }[stage];
 
-    if (hasStartedJourney) {
-      // SCENARIO: Worker already started journey
-
-      const hasReached = !!booking.visitedAt || booking.status === 'visited';
-
-      if (hasReached) {
-        // Professional Reached -> Full Visiting Charges
-        // The booking's own visiting charge; when it had none, the admin's cancellation penalty
-        cancellationFee = booking.visitingCharges > 0 ? booking.visitingCharges : settingsPenalty;
-      } else {
-        // Before Arrival (Journey Started) -> Dynamic Penalty
-        cancellationFee = settingsPenalty;
-      }
-
+    if (cancellationFee > 0) {
       if (isPaid && isWalletOrOnline) {
         // User paid upfront -> Refund (Total - Fee)
         refundAmount = Math.max(0, booking.finalAmount - cancellationFee);
-        refundMessage = `Booking cancelled after ${hasReached ? 'professional arrival' : 'journey start'}. Refund of ₹${refundAmount} initiated (Cancellation Fee: ₹${cancellationFee} deducted).`;
+        refundMessage = `Booking cancelled after ${stageLabel}. Refund of ₹${refundAmount} initiated (Cancellation Fee: ₹${cancellationFee} deducted).`;
       } else {
         // User hasn't paid (e.g. COD or pending) -> Add Penalty to Wallet for Next Booking
         refundAmount = 0;
-        refundMessage = `Booking cancelled after ${hasReached ? 'professional arrival' : 'journey start'}. A cancellation fee of ₹${cancellationFee} has been added to your account and will be charged on your next booking.`;
+        refundMessage = `Booking cancelled after ${stageLabel}. A cancellation fee of ₹${cancellationFee} has been added to your account and will be charged on your next booking.`;
 
         // We will add this to user.wallet.penalty below
       }
+    } else if (isPaid && isWalletOrOnline) {
+      refundAmount = booking.finalAmount;
+      refundMessage = `Booking cancelled successfully. Full refund of ₹${refundAmount} initiated to your wallet.`;
     } else {
-      // SCENARIO: Cancelled before journey start
-      // Policy: Full Refund
-      cancellationFee = 0;
-
-      if (isPaid && isWalletOrOnline) {
-        refundAmount = booking.finalAmount;
-        refundMessage = `Booking cancelled successfully. Full refund of ₹${refundAmount} initiated to your wallet.`;
-      } else {
-        refundAmount = 0;
-        refundMessage = 'Booking cancelled successfully.';
-      }
+      refundAmount = 0;
+      refundMessage = 'Booking cancelled successfully.';
     }
 
     // Update User Wallet
@@ -312,6 +332,7 @@ const cancelBooking = async (req, res) => {
     booking.status = BOOKING_STATUS.CANCELLED;
     booking.cancelledAt = new Date();
     booking.cancelledBy = 'user';
+    booking.cancellationFee = cancellationFee;
     booking.$locals.actor = 'user';
     booking.cancellationReason = cancellationReason || 'Cancelled by user';
 
@@ -767,6 +788,7 @@ module.exports = {
   getUserBookings,
   getBookingById,
   cancelBooking,
+  getCancellationPreview,
   rescheduleBooking,
   addReview,
   getUserRatings

@@ -1367,7 +1367,17 @@ export default function BookingDetails() {
           {['confirmed', 'accepted', 'assigned', 'journey_started'].includes(booking.status) && (
             <button
               type="button"
-              onClick={() => setCancelModal({ open: true, reason: '', submitting: false })}
+              onClick={async () => {
+                // The server works out any penalty so it can be shown before the worker confirms
+                let preview = null;
+                try {
+                  const res = await bookingFeaturesService.getCancelJobPreview(id);
+                  if (res?.success) preview = res.data;
+                } catch {
+                  // The dialog still opens; the penalty (if any) is applied on the server either way
+                }
+                setCancelModal({ open: true, reason: '', submitting: false, preview });
+              }}
               className="w-full py-3 rounded-xl text-sm font-bold text-rose-600 bg-rose-50 border border-rose-100 active:scale-95 transition-all"
             >
               Can't make it? Cancel job
@@ -1388,6 +1398,16 @@ export default function BookingDetails() {
           <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900">Cancel this job?</h3>
             <p className="text-sm text-gray-500 mt-1">The customer will be matched with another professional. Frequent cancellations lower your ranking for new jobs.</p>
+            {cancelModal.preview && !cancelModal.preview.isFree && (
+              <p className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-sm font-semibold text-rose-700">
+                Cancelling now costs a penalty of ₹{cancelModal.preview.fee}, deducted from your earnings.
+              </p>
+            )}
+            {cancelModal.preview?.isFree && cancelModal.preview.freeUntil && (
+              <p className="mt-3 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-700">
+                Free to cancel until {new Date(cancelModal.preview.freeUntil).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               {['Vehicle breakdown', 'Personal emergency', 'Location too far', 'Missing tools or parts'].map((r) => (
                 <button

@@ -542,6 +542,8 @@ const bookingSchema = new mongoose.Schema({
   cancelledAt: { type: Date, default: null },
   cancellationReason: { type: String, default: null },
   cancelledBy: { type: String, default: null },
+  // What the customer was charged for cancelling (0 when it was free)
+  cancellationFee: { type: Number, default: 0, min: 0 },
 
   // ==========================================
   // 11. REVIEW & RATING

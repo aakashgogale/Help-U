@@ -11,6 +11,7 @@ const {
   getUserBookings,
   getBookingById,
   cancelBooking,
+  getCancellationPreview,
   rescheduleBooking,
   addReview,
   getUserRatings
@@ -99,6 +100,7 @@ router.post('/:id/chat/read', authenticate, isUser, markChatRead);
 // Repair services the customer adds after the professional's inspection
 router.get('/:id/extra-services', authenticate, isUser, getExtraServices);
 router.put('/:id/extra-services', authenticate, isUser, updateExtraServices);
+router.get('/:id/cancellation-preview', authenticate, isUser, getCancellationPreview);
 router.post('/:id/cancel', authenticate, isUser, cancelBookingValidation, cancelBooking);
 router.put('/:id/reschedule', authenticate, isUser, rescheduleBookingValidation, rescheduleBooking);
 router.post('/:id/review', authenticate, isUser, addReviewValidation, addReview);

@@ -50,6 +50,12 @@ export const bookingService = {
     return response.data;
   },
 
+  // What cancelling would cost right now ({ fee, isFree, stage, freeUntil })
+  getCancellationPreview: async (id) => {
+    const response = await api.get(`/users/bookings/${id}/cancellation-preview`);
+    return response.data;
+  },
+
   // Cancel booking
   cancel: async (id, cancellationReason) => {
     const response = await api.post(`/users/bookings/${id}/cancel`, { cancellationReason });

@@ -11,7 +11,9 @@ const Booking = require('../models/Booking');
 const Worker = require('../models/Worker');
 const BookingRequest = require('../models/BookingRequest');
 const { BOOKING_STATUS } = require('../utils/constants');
+const Transaction = require('../models/Transaction');
 const { getBookingConfig } = require('../utils/bookingConfig');
+const { evaluateCancellation } = require('../utils/cancellationPolicy');
 const { createNotification } = require('../controllers/notificationControllers/notificationController');
 
 // A worker can drop a job until they have arrived; after that the customer
@@ -78,13 +80,32 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
     && (booking.reassignmentCount || 0) < config.maxReassignments
     && candidates.length > 0;
 
+  // Dropping a job late costs the professional the admin's penalty, taken from their earnings
+  // (which may go negative; settlements already handle that).
+  const { fee: penalty } = evaluateCancellation(booking, 'worker', config);
+  const workerUpdate = { availability: 'AVAILABLE', $inc: { cancelledJobs: 1 } };
+  if (penalty > 0) workerUpdate.$inc['wallet.earnings'] = -penalty;
+
   await Promise.all([
-    Worker.findByIdAndUpdate(workerId, { availability: 'AVAILABLE', $inc: { cancelledJobs: 1 } }),
+    Worker.findByIdAndUpdate(workerId, workerUpdate),
     BookingRequest.updateOne(
       { bookingId: booking._id, vendorId: workerId },
       { status: 'CANCELLED', respondedAt: new Date(), rejectReason: cleanReason }
     )
   ]);
+
+  if (penalty > 0) {
+    await Transaction.create({
+      vendorId: workerId,
+      bookingId: booking._id,
+      type: 'penalty',
+      amount: penalty,
+      status: 'completed',
+      paymentMethod: 'system',
+      description: `Late cancellation penalty for booking #${booking.bookingNumber}`,
+      metadata: { reason: 'late_cancellation' }
+    });
+  }
 
   if (canReassign) {
     const maxSearchMins = booking.isEmergency ? config.emergencyMaxSearchTime : config.maxSearchTime;
@@ -143,7 +164,7 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
       }
     });
 
-    return { reassigned: true, booking };
+    return { reassigned: true, booking, penalty };
   }
 
   booking.status = BOOKING_STATUS.CANCELLED;
@@ -174,7 +195,7 @@ const handleWorkerCancellation = async (bookingId, workerId, reason = '') => {
     }
   });
 
-  return { reassigned: false, booking };
+  return { reassigned: false, booking, penalty };
 };
 
 module.exports = {

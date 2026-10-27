@@ -93,7 +93,24 @@ const CONFIG_SCHEMA = {
   scheduledJobDurationMinutes: [90, 'number', 15, 600],
   scheduledTravelBufferMinutes: [30, 'number', 0, 240],
   allowBusyWorkersForScheduled: [true, 'boolean'],
-  excludeBusyWorkersForInstant: [true, 'boolean']
+  excludeBusyWorkersForInstant: [true, 'boolean'],
+
+  // Cancellation policy, applied once a professional has been allotted (before that, cancelling
+  // is always free). Free if cancelled at least `FreeCancelHours` before the slot, or within
+  // `FreeCancelGraceMinutes` of the allotment (this also covers instant bookings, which have no
+  // later slot); otherwise the fee below applies. 0 hours means no free window beyond the grace.
+  userFreeCancelHours: [2, 'number', 0, 168],
+  userFreeCancelGraceMinutes: [5, 'number', 0, 120],
+  userLateCancelFeeType: ['fixed', 'enum', ['fixed', 'percentage']],
+  userLateCancelFeeValue: [49, 'number', 0, 100000],
+  userLateCancelFeeMax: [0, 'number', 0, 100000], // 0 = no cap
+
+  // The worker's penalty is taken from their earnings. 0 (the default) means no penalty.
+  workerFreeCancelHours: [2, 'number', 0, 168],
+  workerFreeCancelGraceMinutes: [5, 'number', 0, 120],
+  workerLateCancelPenaltyType: ['fixed', 'enum', ['fixed', 'percentage']],
+  workerLateCancelPenaltyValue: [0, 'number', 0, 100000],
+  workerLateCancelPenaltyMax: [0, 'number', 0, 100000] // 0 = no cap
 };
 
 // Existing settings the booking flow also needs; read here so callers have one
@@ -196,7 +213,19 @@ const getPublicBookingConfig = async () => {
     slotEndHour: c.slotEndHour,
     slotDurationMinutes: c.slotDurationMinutes,
     slotMaxDaysAhead: c.slotMaxDaysAhead,
-    slotMinLeadMinutes: c.slotMinLeadMinutes
+    slotMinLeadMinutes: c.slotMinLeadMinutes,
+
+    // Shown in the cancel dialogs and the policy page.
+    userFreeCancelHours: c.userFreeCancelHours,
+    userFreeCancelGraceMinutes: c.userFreeCancelGraceMinutes,
+    userLateCancelFeeType: c.userLateCancelFeeType,
+    userLateCancelFeeValue: c.userLateCancelFeeValue,
+    userLateCancelFeeMax: c.userLateCancelFeeMax,
+    workerFreeCancelHours: c.workerFreeCancelHours,
+    workerFreeCancelGraceMinutes: c.workerFreeCancelGraceMinutes,
+    workerLateCancelPenaltyType: c.workerLateCancelPenaltyType,
+    workerLateCancelPenaltyValue: c.workerLateCancelPenaltyValue,
+    workerLateCancelPenaltyMax: c.workerLateCancelPenaltyMax
   };
 };
 

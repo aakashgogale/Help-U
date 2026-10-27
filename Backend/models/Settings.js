@@ -318,6 +318,18 @@ const settingsSchema = new mongoose.Schema({
   emergencyFirstWaveSize: { type: Number, default: 10, min: 1, max: 50 },
   emergencyMaxSearchTime: { type: Number, default: 3, min: 1 },
 
+  // Cancellation policy (see utils/bookingConfig.js)
+  userFreeCancelHours: { type: Number, default: 2, min: 0, max: 168 },
+  userFreeCancelGraceMinutes: { type: Number, default: 5, min: 0, max: 120 },
+  userLateCancelFeeType: { type: String, enum: ['fixed', 'percentage'], default: 'fixed' },
+  userLateCancelFeeValue: { type: Number, default: 49, min: 0 },
+  userLateCancelFeeMax: { type: Number, default: 0, min: 0 },
+  workerFreeCancelHours: { type: Number, default: 2, min: 0, max: 168 },
+  workerFreeCancelGraceMinutes: { type: Number, default: 5, min: 0, max: 120 },
+  workerLateCancelPenaltyType: { type: String, enum: ['fixed', 'percentage'], default: 'fixed' },
+  workerLateCancelPenaltyValue: { type: Number, default: 0, min: 0 },
+  workerLateCancelPenaltyMax: { type: Number, default: 0, min: 0 },
+
   // ==========================================
   // CUSTOMER <-> WORKER CHAT
   // ==========================================

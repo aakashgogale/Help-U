@@ -532,6 +532,32 @@ const rejectBooking = async (req, res) => {
 };
 
 /**
+ * What dropping this job would cost the professional right now, shown before they confirm.
+ */
+const getCancelJobPreview = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, vendorId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    if (!WORKER_CANCELLABLE_STATUSES.includes(booking.status)) {
+      return res.status(400).json({ success: false, message: 'This job can no longer be cancelled from the app' });
+    }
+
+    const { getBookingConfig } = require('../../utils/bookingConfig');
+    const { evaluateCancellation } = require('../../utils/cancellationPolicy');
+    const policy = evaluateCancellation(booking, 'worker', await getBookingConfig());
+    res.status(200).json({
+      success: true,
+      data: { fee: policy.fee, isFree: policy.isFree, stage: policy.reason, freeUntil: policy.freeUntil, windowHours: policy.windowHours }
+    });
+  } catch (error) {
+    console.error('Cancel job preview error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load cancellation details' });
+  }
+};
+
+/**
  * Worker cancels a job they accepted.
  * The booking is handed to another worker when the booking configuration
  * allows it, otherwise it is cancelled for the customer.
@@ -549,12 +575,14 @@ const cancelJob = async (req, res) => {
       io.to(`vendor_${vendorId}`).emit('removeWorkerBooking', { id: String(id) });
     }
 
+    const base = result.reassigned
+      ? 'Job cancelled. The customer is being matched with another professional.'
+      : 'Job cancelled.';
     res.status(200).json({
       success: true,
       reassigned: result.reassigned,
-      message: result.reassigned
-        ? 'Job cancelled. The customer is being matched with another professional.'
-        : 'Job cancelled.'
+      penalty: result.penalty || 0,
+      message: result.penalty > 0 ? `${base} A penalty of ₹${result.penalty} was deducted from your earnings.` : base
     });
   } catch (error) {
     if (error.statusCode) {
@@ -1602,6 +1630,7 @@ module.exports = {
   acceptBooking,
   rejectBooking,
   cancelJob,
+  getCancelJobPreview,
   updateBookingStatus,
   addWorkerNotes,
   startSelfJob,

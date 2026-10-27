@@ -89,6 +89,10 @@ export const bookingFeaturesService = {
   },
 
   // ── Worker job cancellation ─────────────────────────────
+  getCancelJobPreview: async (bookingId) => {
+    const response = await api.get(`/workers/bookings/${bookingId}/cancel-preview`);
+    return response.data;
+  },
   cancelJob: async (bookingId, reason) => {
     const response = await api.post(`/workers/bookings/${bookingId}/cancel`, { reason });
     return response.data;

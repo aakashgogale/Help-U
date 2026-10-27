@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FiSliders, FiLoader, FiFileText, FiImage, FiPlusCircle, FiAlertTriangle, FiMessageCircle,
-  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus, FiCalendar, FiClock
+  FiAlertOctagon, FiTarget, FiPercent, FiDollarSign, FiRepeat, FiSave, FiX, FiPlus, FiCalendar, FiClock, FiXCircle
 } from 'react-icons/fi';
 import bookingFeaturesAdminService from '../../services/bookingFeaturesAdminService';
 import { PageHeader, Card, Toggle, Field, Button } from '../../components/adminUi';
@@ -382,6 +382,65 @@ const BookingConfig = () => {
             </Field>
             <ToggleRow label="Scheduled bookings reach busy workers" description="Workers who are on a job right now still get alerts for future bookings (overlapping slots are always skipped)." checked={config.allowBusyWorkersForScheduled} onChange={set('allowBusyWorkersForScheduled')} />
             <ToggleRow label="Instant bookings skip busy workers" description="A worker who is at work right now does not get instant booking alerts." checked={config.excludeBusyWorkersForInstant} onChange={set('excludeBusyWorkersForInstant')} />
+          </div>
+        </Card>
+
+        {/* Cancellation policy */}
+        <Card title="Cancellation Policy" icon={FiXCircle}>
+          <p className="mb-4 text-xs text-gray-600">
+            Applies once a professional has been allotted; before that, cancelling is always free.
+            Cancelling is free if the slot is at least the free-cancellation time away, or for a short grace time after the
+            professional accepts (this is what lets customers undo an instant booking). After that the fee below applies.
+            Once the professional is on the way, the flat “Cancellation penalty” from Settings applies instead.
+          </p>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {[
+              { title: 'Customer', prefix: 'user', feeLabel: 'Cancellation fee', note: 'Collected from the refund, or added to the next booking if unpaid.' },
+              { title: 'Professional', prefix: 'worker', feeLabel: 'Cancellation penalty', note: 'Deducted from the professional’s earnings. 0 means no penalty.' }
+            ].map(({ title, prefix, feeLabel, note }) => {
+              const type = prefix === 'user' ? config.userLateCancelFeeType : config.workerLateCancelPenaltyType;
+              const valueKey = prefix === 'user' ? 'userLateCancelFeeValue' : 'workerLateCancelPenaltyValue';
+              const typeKey = prefix === 'user' ? 'userLateCancelFeeType' : 'workerLateCancelPenaltyType';
+              const maxKey = prefix === 'user' ? 'userLateCancelFeeMax' : 'workerLateCancelPenaltyMax';
+              const hours = config[`${prefix}FreeCancelHours`];
+              const grace = config[`${prefix}FreeCancelGraceMinutes`];
+              const value = config[valueKey];
+              const amount = type === 'percentage' ? `${value}% of the booking amount` : `₹${value}`;
+              const cap = Number(config[maxKey]) > 0 && type === 'percentage' ? ` (at most ₹${config[maxKey]})` : '';
+              return (
+                <div key={prefix} className="rounded-lg border border-gray-200 p-4">
+                  <h4 className="mb-3 text-sm font-bold text-gray-800">{title}</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Free cancellation until" hint="Before the slot starts. 0 = no free window beyond the grace time.">
+                      <NumberInput value={hours} onChange={set(`${prefix}FreeCancelHours`)} min={0} max={168} suffix="hours before" />
+                    </Field>
+                    <Field label="Grace after accepting" hint="Always free for this long after the professional accepts.">
+                      <NumberInput value={grace} onChange={set(`${prefix}FreeCancelGraceMinutes`)} min={0} max={120} suffix="min" />
+                    </Field>
+                    <Field label={`${feeLabel} type`}>
+                      <select value={type} onChange={(e) => set(typeKey)(e.target.value)} className={inputClass}>
+                        <option value="fixed">Fixed amount (₹)</option>
+                        <option value="percentage">Percentage of booking</option>
+                      </select>
+                    </Field>
+                    <Field label={type === 'percentage' ? `${feeLabel} (%)` : `${feeLabel} (₹)`} hint={note}>
+                      <NumberInput value={value} onChange={set(valueKey)} min={0} max={type === 'percentage' ? 100 : undefined} suffix={type === 'percentage' ? '%' : '₹'} />
+                    </Field>
+                    {type === 'percentage' && (
+                      <Field label="Maximum" hint="Caps the percentage fee. 0 = no cap.">
+                        <NumberInput value={config[maxKey]} onChange={set(maxKey)} min={0} suffix="₹" />
+                      </Field>
+                    )}
+                  </div>
+                  <p className="mt-3 rounded bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                    {title === 'Customer' ? 'A customer' : 'A professional'} who cancels{' '}
+                    {Number(hours) > 0 ? `at least ${hours} hour${Number(hours) === 1 ? '' : 's'} before the slot` : 'before the job'}
+                    {Number(grace) > 0 ? `, or within ${grace} min of acceptance,` : ''} pays nothing.
+                    {' '}Otherwise: {Number(value) > 0 ? `${amount}${cap}` : 'nothing'}.
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </Card>
 

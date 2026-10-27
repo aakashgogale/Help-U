@@ -10,6 +10,7 @@ const {
   acceptBooking,
   rejectBooking,
   cancelJob,
+  getCancelJobPreview,
   updateBookingStatus,
   addWorkerNotes,
   startSelfJob,
@@ -51,6 +52,7 @@ router.get('/', authenticate, isWorker, getWorkerBookings);
 router.get('/:id', authenticate, isWorker, getBookingById);
 router.post('/:id/accept', authenticate, isWorker, acceptBooking);
 router.post('/:id/reject', authenticate, isWorker, rejectBookingValidation, rejectBooking);
+router.get('/:id/cancel-preview', authenticate, isWorker, getCancelJobPreview);
 router.post('/:id/cancel', authenticate, isWorker, body('reason').optional().isString().isLength({ max: 300 }), cancelJob);
 router.put('/:id/status', authenticate, isWorker, updateStatusValidation, updateBookingStatus);
 router.post('/:id/notes', authenticate, isWorker, addNotesValidation, addWorkerNotes);

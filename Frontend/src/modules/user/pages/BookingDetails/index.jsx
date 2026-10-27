@@ -289,14 +289,29 @@ const BookingDetails = () => {
   // ... (keep handle methods same) ...
 
   const handleCancelBooking = async () => {
-    // Check if journey has started to determine if a fee applies
-    const journeyStarted = ['journey_started', 'visited', 'in_progress'].includes(booking.status?.toLowerCase());
-    const cancellationFee = booking.visitingCharges || 49;
+    // The server decides what cancelling costs (free window, late fee, or the on-the-way fee)
+    let modalTitle = 'Cancel Booking';
+    let modalMessage = 'Are you sure you want to cancel this booking? You will receive a full refund if applicable. This action cannot be undone.';
 
-    const modalTitle = journeyStarted ? 'Cancellation Fee Applies' : 'Cancel Booking';
-    const modalMessage = journeyStarted
-      ? `The service agent has already started their journey. Cancelling now will incur a fee of ₹${cancellationFee}, which will be deducted from your wallet or refund amount. Do you want to proceed?`
-      : 'Are you sure you want to cancel this booking? You will receive a full refund if applicable. This action cannot be undone.';
+    try {
+      const preview = await bookingService.getCancellationPreview(booking._id || booking.id);
+      const data = preview?.success ? preview.data : null;
+      if (data && !data.isFree) {
+        const reasons = {
+          journey: 'The service agent has already started their journey.',
+          arrived: 'The service agent has already arrived.',
+          late: 'Your professional is assigned and the free cancellation period has ended.'
+        };
+        modalTitle = 'Cancellation Fee Applies';
+        modalMessage = `${reasons[data.stage] || ''} Cancelling now will cost ₹${data.fee}, which will be deducted from your refund or added to your next booking. Do you want to proceed?`.trim();
+      } else if (data?.freeUntil) {
+        const until = new Date(data.freeUntil).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+        modalMessage = `You can cancel for free until ${until}. After that a cancellation fee applies. Cancel this booking?`;
+      }
+    } catch {
+      // Never show a made-up amount; the server still applies the real fee when cancelling
+      modalMessage = 'A cancellation fee may apply if your professional is already assigned. Do you want to cancel this booking?';
+    }
 
     setConfirmDialog({
       isOpen: true,
@@ -307,7 +322,7 @@ const BookingDetails = () => {
         try {
           const response = await bookingService.cancel(booking._id || booking.id, 'Cancelled by user');
           if (response.success) {
-            toast.success('Booking cancelled successfully');
+            toast.success(response.message || 'Booking cancelled successfully');
             loadBooking();
           } else {
             toast.error(response.message || 'Failed to cancel booking');
