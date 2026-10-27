@@ -4,6 +4,7 @@ const Admin = require('../models/Admin');
 const Settings = require('../models/Settings');
 const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationControllers/notificationController');
+const { priceScrapItems, summarise } = require('../services/scrapPricing');
 
 // Create a new scrap item (User)
 exports.createScrap = async (req, res) => {
@@ -22,14 +23,48 @@ exports.createScrap = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { title, description, images, address } = req.body;
+    const { title, description, images, address, items: rawItems, preferredDate, preferredSlot } = req.body;
+
+    let scrapFields;
+    if (Array.isArray(rawItems) && rawItems.length > 0) {
+      // Picked from the scrap types: the server prices it, nothing about price comes from the app
+      const priced = await priceScrapItems(rawItems);
+      if (priced.error) return res.status(400).json({ success: false, message: priced.error });
+      if (priced.requiresPhoto && !(Array.isArray(images) && images.length > 0)) {
+        return res.status(400).json({ success: false, message: 'Please add a photo of your scrap.' });
+      }
+
+      let pickupOn = null;
+      if (preferredDate) {
+        pickupOn = new Date(preferredDate);
+        if (Number.isNaN(pickupOn.getTime())) {
+          return res.status(400).json({ success: false, message: 'Choose a valid pickup date.' });
+        }
+      }
+
+      scrapFields = {
+        title: summarise(priced.items),
+        description: String(description || '').trim().slice(0, 1000),
+        items: priced.items,
+        estimatedTotal: priced.estimatedTotal,
+        hasQuoteItems: priced.hasQuoteItems,
+        expectedPrice: priced.estimatedTotal,
+        preferredDate: pickupOn,
+        preferredSlot: String(preferredSlot || '').trim().slice(0, 40)
+      };
+    } else {
+      // Free-text listing, as before scrap types existed
+      if (!String(title || '').trim()) {
+        return res.status(400).json({ success: false, message: 'Tell us what you are selling.' });
+      }
+      scrapFields = { title, description };
+    }
 
     const scrap = new Scrap({
       userId: req.user.id,
-      title,
-      description,
       images,
-      address
+      address,
+      ...scrapFields
     });
 
     await scrap.save();

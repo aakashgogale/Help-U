@@ -4,11 +4,13 @@ import api from '../../../../services/api';
 import { getSettings, updateSettings } from '../../services/settingsService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import { toast } from 'react-hot-toast';
+import ScrapTypes from './ScrapTypes';
 
 const AdminScrapPage = () => {
   const [scraps, setScraps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [tab, setTab] = useState('requests'); // requests | types
   const [isScrapEnabled, setIsScrapEnabled] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -224,6 +226,22 @@ const AdminScrapPage = () => {
         </button>
       </div>
 
+      <div className="flex gap-2">
+        {[{ key: 'requests', label: 'Requests' }, { key: 'types', label: 'Types & rates' }].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider ${tab === t.key ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'types' && <ScrapTypes />}
+
+      {tab === 'requests' && (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Filters */}
         <div className="p-3 border-b border-gray-100 flex gap-2 overflow-x-auto bg-gray-50/50">
@@ -383,6 +401,7 @@ const AdminScrapPage = () => {
           </table>
         </div>
       </div>
+      )}
 
       {/* Price Offer Modal Popup */}
       {offerModalOpen && selectedItem && (
@@ -423,6 +442,33 @@ const AdminScrapPage = () => {
                 </div>
               </div>
             </div>
+
+            {selectedItem.items?.length > 0 && (
+              <div className="mb-4 rounded-xl border border-gray-100 p-3">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">What they are selling</p>
+                <ul className="space-y-1.5">
+                  {selectedItem.items.map((it) => (
+                    <li key={it._id || it.name} className="text-xs text-gray-800">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold">{it.name} · {it.quantity} {it.unit}</span>
+                        <span className="font-semibold text-gray-600">
+                          {it.pricingMode === 'quote' ? 'Needs a quote' : `₹${it.estimatedAmount} (₹${it.rate}/${it.unit})`}
+                        </span>
+                      </div>
+                      {it.details?.length > 0 && (
+                        <p className="text-[11px] text-gray-500">{it.details.map((d) => `${d.label}: ${d.value}`).join(' · ')}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {selectedItem.estimatedTotal > 0 && (
+                  <p className="mt-2 border-t border-gray-100 pt-2 text-xs font-bold text-gray-900">
+                    Estimate: ₹{selectedItem.estimatedTotal}
+                    {selectedItem.hasQuoteItems ? <span className="font-normal text-gray-500"> (without the items that need a quote)</span> : null}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Offer Form */}
             <form onSubmit={handleSendOffer} className="space-y-4">
