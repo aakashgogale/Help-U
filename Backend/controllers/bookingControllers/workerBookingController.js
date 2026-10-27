@@ -4,6 +4,7 @@ const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { normalizeWorkPhotos, persistWorkPhotos } = require('../../utils/workPhotos');
 const otpGuard = require('../../utils/otpGuard');
+const { summariseBookedDetails } = require('../../utils/detailFields');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToWorker } = require('../../services/firebaseAdmin');
 const { resolveCommission, computeWorkerEarnings, toPayoutConfig, describeCommission } = require('../../services/commissionService');
@@ -128,6 +129,9 @@ const getWorkerBookings = async (req, res) => {
                 acceptedAt: 1,
                 assignedAt: 1,
                 brandName: 1,
+                'bookedItems.details': 1,
+                'bookedItems.quantity': 1,
+                'bookedItems.card.title': 1,
                 brandIcon: 1,
                 issuePhotos: 1,
                 issueVideos: 1,
@@ -1666,6 +1670,7 @@ const getPendingBookings = async (req, res) => {
       issuePhotos: req.bookingId.issuePhotos || [],
       issueVideos: req.bookingId.issueVideos || [],
       customerNotes: req.bookingId.customerNotes || null,
+      bookedDetails: summariseBookedDetails(req.bookingId),
       addOns: (req.bookingId.addOns || []).map(a => ({ title: a.title, quantity: a.quantity })),
       isEmergency: !!req.bookingId.isEmergency,
       bookingType: req.bookingId.bookingType,

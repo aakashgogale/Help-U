@@ -32,6 +32,7 @@ const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs } = require('./wo
 const { nextOccurrenceDate } = require('../utils/recurrence');
 const { resolveCheckoutAmount } = require('../utils/servicePricing');
 const { resolveBookedItemDetails } = require('./bookingDetailsService');
+const { summariseBookedDetails } = require('../utils/detailFields');
 
 const fail = (statusCode, message, extra = {}) => ({
   statusCode,
@@ -988,6 +989,7 @@ const buildWorkerAlertPayload = (booking, user, service) => ({
   issuePhotos: booking.issuePhotos || [],
   issueVideos: booking.issueVideos || [],
   customerNotes: booking.customerNotes || null,
+  bookedDetails: summariseBookedDetails(booking),
   addOns: (booking.addOns || []).map((a) => ({ title: a.title, quantity: a.quantity })),
   isEmergency: !!booking.isEmergency,
   bookingType: booking.bookingType,

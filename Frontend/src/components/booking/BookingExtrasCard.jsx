@@ -1,6 +1,8 @@
 import React from 'react';
-import { FiAlertTriangle, FiFileText, FiPlusCircle, FiRepeat } from 'react-icons/fi';
+import { FiAlertTriangle, FiFileText, FiList, FiPlusCircle, FiRepeat } from 'react-icons/fi';
 import IssueMediaGallery from './IssueMediaGallery';
+import DetailChips from '../common/DetailChips';
+import { bookedDetailsOf } from '../../utils/bookedDetails';
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -11,12 +13,13 @@ const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
  *
  * showPrices: show add-on and surcharge amounts (customer and admin views).
  */
-const BookingExtrasCard = ({ booking, showPrices = true, title = 'Booking Details', className = '' }) => {
+const BookingExtrasCard = ({ booking, showPrices = true, showDetails = true, title = 'Booking Details', className = '' }) => {
   if (!booking) return null;
 
   const addOns = booking.addOns || [];
   const hasMedia = (booking.issuePhotos?.length || 0) + (booking.issueVideos?.length || 0) > 0;
-  const hasAnything = booking.isEmergency || booking.customerNotes || addOns.length > 0 || hasMedia || booking.recurringBookingId;
+  const answered = showDetails ? bookedDetailsOf(booking) : [];
+  const hasAnything = answered.length > 0 || booking.isEmergency || booking.customerNotes || addOns.length > 0 || hasMedia || booking.recurringBookingId;
   if (!hasAnything) return null;
 
   return (
@@ -44,6 +47,23 @@ const BookingExtrasCard = ({ booking, showPrices = true, title = 'Booking Detail
         {booking.recurringBookingId && (
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
             <FiRepeat className="w-4 h-4" /> Part of a recurring booking plan
+          </div>
+        )}
+
+        {answered.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <FiList className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Service details</span>
+            </div>
+            <div className="space-y-2">
+              {answered.map((item, i) => (
+                <div key={`${item.title}-${i}`} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                  {answered.length > 1 && <p className="text-xs font-semibold text-gray-700 mb-1.5">{item.title}</p>}
+                  <DetailChips details={item.details} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

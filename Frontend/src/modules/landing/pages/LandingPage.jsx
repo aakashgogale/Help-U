@@ -292,12 +292,55 @@ const LandingPage = () => {
   });
   const [contactSubmitting, setContactSubmitting] = useState(false);
 
-  // Reset scroll on load if not anchored
+  // Reset scroll on load if not anchored, or smoothly scroll to anchored section
   useEffect(() => {
-    if (!window.location.hash) {
+    if (window.location.hash) {
+      const targetId = window.location.hash.replace('#', '').trim();
+      setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          const headerHeight = 72;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
+          window.scrollTo({ top: Math.max(0, offsetPosition), behavior: 'smooth' });
+        }
+      }, 250);
+    } else {
       window.scrollTo(0, 0);
     }
   }, []);
+
+  // Programmatic smooth scroll handler with fixed header offset compensation
+  const scrollToSection = (e, targetHref) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+
+    setIsMobileMenuOpen(false);
+
+    const targetId = (targetHref || '').replace('#', '').trim();
+    if (!targetId) return;
+
+    // Small delay ensures mobile menu closing animation doesn't disrupt scroll calculation
+    setTimeout(() => {
+      const element = document.getElementById(targetId);
+      if (element) {
+        const headerHeight = 72;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth'
+        });
+
+        if (window.history && window.history.pushState) {
+          window.history.pushState(null, '', `#${targetId}`);
+        }
+      }
+    }, 60);
+  };
 
   // Fetch live landing configuration from API
   useEffect(() => {
@@ -504,24 +547,26 @@ const LandingPage = () => {
           {/* Desktop Nav Links */}
           <nav className="hidden lg:flex items-center gap-6 xl:gap-7 text-xs font-semibold text-gray-700">
             {navMenuItems.map((item) => (
-              <a
+              <button
                 key={item.label}
-                href={item.href}
-                className="hover:text-brand transition-colors duration-200 relative py-1"
+                type="button"
+                onClick={(e) => scrollToSection(e, item.href)}
+                className="hover:text-brand transition-colors duration-200 relative py-1 cursor-pointer focus:outline-none"
               >
                 {item.label}
-              </a>
+              </button>
             ))}
           </nav>
 
           {/* Header Action Button (Play Store Link) */}
           <div className="hidden sm:flex items-center gap-3">
-            <a
-              href="#partner"
-              className="text-xs font-semibold text-gray-700 hover:text-brand px-2 py-1.5 transition-colors"
+            <button
+              type="button"
+              onClick={(e) => scrollToSection(e, '#partner')}
+              className="text-xs font-semibold text-gray-700 hover:text-brand px-2 py-1.5 transition-colors cursor-pointer focus:outline-none"
             >
               Earn with Us
-            </a>
+            </button>
             <a
               href={playStoreLink}
               target="_blank"
@@ -544,7 +589,7 @@ const LandingPage = () => {
             </a>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-1.5 text-gray-800 text-lg focus:outline-none"
+              className="p-1.5 text-gray-800 text-lg focus:outline-none cursor-pointer"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
@@ -559,18 +604,21 @@ const LandingPage = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden bg-white border-b border-gray-200 px-5 py-4 space-y-3 shadow-xl"
+              className="lg:hidden bg-white border-b border-gray-200 px-4 py-4 space-y-3 shadow-xl"
             >
-              <div className="grid grid-cols-2 gap-2 pb-2 border-b border-gray-100">
-                {navMenuItems.map((item) => (
-                  <a
+              <div className="grid grid-cols-2 gap-2 pb-3 border-b border-gray-100">
+                {navMenuItems.map((item, idx) => (
+                  <button
                     key={item.label}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-xs font-semibold text-gray-800 hover:text-brand py-1.5"
+                    type="button"
+                    onClick={(e) => scrollToSection(e, item.href)}
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gray-50 hover:bg-brand/10 hover:text-brand active:bg-brand/20 active:scale-[0.98] text-xs font-semibold text-gray-800 transition-all text-left shadow-xs cursor-pointer ${
+                      idx === navMenuItems.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+                    }`}
                   >
-                    {item.label}
-                  </a>
+                    <span>{item.label}</span>
+                    <FaChevronRight className="text-[10px] text-gray-400" />
+                  </button>
                 ))}
               </div>
               <div className="flex flex-col gap-2 pt-1">
@@ -578,17 +626,17 @@ const LandingPage = () => {
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-bold"
+                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-xs font-bold shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
                 >
-                  <FaGooglePlay /> Download on Google Play Store
+                  <FaGooglePlay className="text-sm" /> Download on Google Play Store
                 </a>
-                <a
-                  href="#partner"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-center bg-brand/10 text-brand py-2 rounded-xl text-xs font-bold"
+                <button
+                  type="button"
+                  onClick={(e) => scrollToSection(e, '#partner')}
+                  className="w-full text-center bg-brand/10 text-brand py-2.5 rounded-xl text-xs font-bold hover:bg-brand/20 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   🛠️ Register as a Service Partner
-                </a>
+                </button>
               </div>
             </motion.div>
           )}
@@ -600,20 +648,21 @@ const LandingPage = () => {
       {/* ============================================================ */}
       <section
         id="hero"
-        className="relative pt-20 sm:pt-32 pb-8 sm:pb-20 bg-gradient-to-b from-gray-50/80 via-white to-white overflow-hidden"
+        className="relative pt-20 sm:pt-32 pb-8 sm:pb-20 bg-gradient-to-b from-gray-50/80 via-white to-white overflow-hidden scroll-mt-24"
       >
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
             {/* Left Column: Headlines & CTA */}
             <div className="flex-1 text-center lg:text-left">
               {/* Partner Banner Pill */}
-              <a
-                href="#partner"
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full mb-4 text-[11px] sm:text-xs font-bold hover:bg-brand/20 transition-colors"
+              <button
+                type="button"
+                onClick={(e) => scrollToSection(e, '#partner')}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full mb-4 text-[11px] sm:text-xs font-bold hover:bg-brand/20 transition-colors cursor-pointer"
               >
                 <span>🛠️ Skilled Technician?</span>
                 <span className="underline">Register as Partner &rarr;</span>
-              </a>
+              </button>
 
               <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.2] mb-3 sm:mb-5">
                 {config.hero?.title}
@@ -725,7 +774,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 4. ABOUT US & TRUST PILLARS (COMPACT 2-COL MOBILE GRID) */}
       {/* ============================================================ */}
-      <section id="about-us" className="py-10 sm:py-20 bg-white border-b border-gray-100">
+      <section id="about-us" className="py-10 sm:py-20 bg-white border-b border-gray-100 scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-14">
             <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
@@ -769,7 +818,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 5. POPULAR SERVICES GRID (COMPACT TOUCH CAROUSEL) */}
       {/* ============================================================ */}
-      <section id="services" className="py-10 sm:py-20 bg-gray-50/70">
+      <section id="services" className="py-10 sm:py-20 bg-gray-50/70 scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
@@ -855,7 +904,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 6. HOW IT WORKS (TABBED: CUSTOMERS VS PARTNERS) */}
       {/* ============================================================ */}
-      <section id="how-it-works" className="py-10 sm:py-20 bg-white border-b border-gray-100">
+      <section id="how-it-works" className="py-10 sm:py-20 bg-white border-b border-gray-100 scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
             <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
@@ -924,7 +973,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 7. APP SHOWCASE & PLAY STORE DOWNLOAD STRIP */}
       {/* ============================================================ */}
-      <section id="why-us" className="py-10 sm:py-20 bg-gray-900 text-white overflow-hidden relative">
+      <section id="why-us" className="py-10 sm:py-20 bg-gray-900 text-white overflow-hidden relative scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
             <div className="max-w-xl text-center lg:text-left">
@@ -995,7 +1044,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 8. DEDICATED PARTNER SECTION & REGISTRATION FORM */}
       {/* ============================================================ */}
-      <section id="partner" className="py-10 sm:py-24 bg-gray-50 relative">
+      <section id="partner" className="py-10 sm:py-24 bg-gray-50 relative scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-14">
             <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
@@ -1218,7 +1267,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 9. FREQUENTLY ASKED QUESTIONS (CUSTOMER & PARTNER ACCORDION) */}
       {/* ============================================================ */}
-      <section id="faq" className="py-10 sm:py-20 bg-white border-b border-gray-100">
+      <section id="faq" className="py-10 sm:py-20 bg-white border-b border-gray-100 scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-3xl">
           <div className="text-center mb-8 sm:mb-12">
             <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
@@ -1303,7 +1352,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 10. CONTACT US & DIRECT SUPPORT CHANNELS (COMPACT 2-COL MOBILE) */}
       {/* ============================================================ */}
-      <section id="contact" className="py-10 sm:py-20 bg-gray-50/70">
+      <section id="contact" className="py-10 sm:py-20 bg-gray-50/70 scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
             <span className="text-brand font-bold text-[10px] sm:text-xs uppercase tracking-widest block mb-1">
@@ -1474,11 +1523,60 @@ const LandingPage = () => {
                 Explore
               </h4>
               <ul className="space-y-1.5 text-xs text-gray-400">
-                <li><a href="#about-us" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
-                <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-                <li><a href="#partner" className="hover:text-white transition-colors">For Partners</a></li>
-                <li><a href="#faq" className="hover:text-white transition-colors">FAQs</a></li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#about-us')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    About Us
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#services')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    Services
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#how-it-works')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    How It Works
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#partner')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    For Partners
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#faq')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    FAQs
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection(e, '#contact')}
+                    className="hover:text-white transition-colors cursor-pointer text-left"
+                  >
+                    Contact
+                  </button>
+                </li>
               </ul>
             </div>
 

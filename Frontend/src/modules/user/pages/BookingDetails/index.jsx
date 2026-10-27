@@ -29,6 +29,8 @@ import {
   FiAlertCircle
 } from 'react-icons/fi';
 import { bookingService } from '../../../../services/bookingService';
+import DetailChips from '../../../../components/common/DetailChips';
+import ServiceOptionsSheet from '../Home/components/ServiceOptionsSheet';
 import RepairServicesCard from './RepairServicesCard';
 import { paymentService } from '../../../../services/paymentService';
 import { walletService } from '../../../../services/walletService';
@@ -292,6 +294,32 @@ const BookingDetails = () => {
   };
 
   // ... (keep handle methods same) ...
+
+  // Change the answers (brand, type...) until the professional is on the way
+  const [editRequest, setEditRequest] = useState(null);
+  const openEditDetails = (item) => {
+    setEditRequest({
+      title: item.card?.title || 'Service',
+      heading: 'Service details',
+      confirmLabel: 'Save changes',
+      fields: booking.detailFields || [],
+      initialAnswers: Object.fromEntries((item.details || []).map((d) => [d.key, d.value])),
+      onConfirm: async (answers) => {
+        try {
+          const res = await bookingService.updateDetails(booking._id || booking.id, [{ itemId: item._id, details: answers }]);
+          if (res.success) {
+            toast.success(res.message || 'Details updated');
+            setEditRequest(null);
+            loadBooking();
+          } else {
+            toast.error(res.message || 'Could not update the details');
+          }
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'Could not update the details');
+        }
+      }
+    });
+  };
 
   const handleCancelBooking = async () => {
     // The server decides what cancelling costs (free window, late fee, or the on-the-way fee)
@@ -1282,6 +1310,16 @@ const BookingDetails = () => {
                         </div>
                         {item.card?.subtitle && <p className="text-xs text-gray-400 mt-0.5 ml-8 line-clamp-1">{item.card.subtitle}</p>}
                         {item.card?.duration && <p className="text-xs text-gray-400 mt-0.5 ml-8">⏱ {item.card.duration}</p>}
+                        <DetailChips details={item.details} className="mt-2 ml-8" />
+                        {booking.canEditDetails && (
+                          <button
+                            type="button"
+                            onClick={() => openEditDetails(item)}
+                            className="mt-2 ml-8 text-xs font-semibold text-teal-700 underline underline-offset-2"
+                          >
+                            {(item.details || []).length > 0 ? 'Change details' : 'Add details'}
+                          </button>
+                        )}
                       </div>
                       <span className="text-sm font-bold text-gray-900 ml-3 shrink-0">₹{((item.card?.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
                     </div>
@@ -1292,7 +1330,7 @@ const BookingDetails = () => {
           </section>
 
           {/* Emergency, instructions, add-ons and problem photos/videos */}
-          <BookingExtrasCard booking={booking} title="Your Requests" />
+          <BookingExtrasCard booking={booking} showDetails={false} title="Your Requests" />
 
           {/* Payment Summary - Only show if payment is completed/collected OR if a payment request is active (Work Done) */}
           {(['work_done', 'completed'].includes(booking.status?.toLowerCase()) || booking.paymentStatus === 'success' || booking.cashCollected) && (
@@ -1688,6 +1726,8 @@ const BookingDetails = () => {
           onPayOnline={handleOnlinePayment}
           onPayWallet={handleWalletPayment}
         />
+
+        <ServiceOptionsSheet request={editRequest} onClose={() => setEditRequest(null)} />
 
         <ConfirmDialog
           isOpen={confirmDialog.isOpen}

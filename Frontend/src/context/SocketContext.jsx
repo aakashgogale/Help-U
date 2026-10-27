@@ -362,6 +362,7 @@ export const SocketProvider = ({ children }) => {
           issuePhotos: data.issuePhotos || [],
           issueVideos: data.issueVideos || [],
           customerNotes: data.customerNotes || null,
+          bookedDetails: data.bookedDetails || [],
           addOns: data.addOns || [],
           isEmergency: !!data.isEmergency,
           scheduledDate: data.scheduledDate,

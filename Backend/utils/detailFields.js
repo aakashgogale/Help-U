@@ -164,6 +164,19 @@ const missingRequiredKeys = (fields, details) => {
   return (fields || []).filter((f) => f.required && !answered.has(f.key)).map((f) => f.key);
 };
 
+/**
+ * What the professional needs to see on an alert: for each booked item its title, quantity and the
+ * customer's answers. Items with no answers are left out.
+ */
+const summariseBookedDetails = (booking) =>
+  (booking?.bookedItems || [])
+    .filter((item) => (item.details || []).length > 0)
+    .map((item) => ({
+      title: item.card?.title || item.serviceName || '',
+      quantity: item.quantity || 1,
+      details: item.details.map((d) => ({ key: d.key, label: d.label, value: d.value }))
+    }));
+
 const idOf = (ref) => (ref && ref._id ? ref._id : ref);
 
 /**
@@ -193,5 +206,6 @@ module.exports = {
   validateDetailAnswers,
   missingRequiredKeys,
   enrichCartItems,
+  summariseBookedDetails,
   idOf
 };

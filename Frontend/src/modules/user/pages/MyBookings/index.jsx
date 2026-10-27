@@ -78,6 +78,8 @@ const BookingCard = ({ booking, onOpen }) => {
   const serviceName = booking.serviceName || booking.serviceId?.title || 'Service Request';
   const illustration = getCategoryIllustration(category) || getCategoryIllustration(serviceName);
   const items = [...new Set((booking.bookedItems || []).map(item => item.card?.title || item.title).filter(Boolean))];
+  // e.g. "Bajaj · Split": the answers the customer gave, shown under the service
+  const answers = [...new Set((booking.bookedItems || []).flatMap(item => (item.details || []).map(d => d.value)).filter(Boolean))];
   const professional = booking.vendorId?.businessName || booking.vendorId?.name;
   const amount = booking.finalAmount || booking.totalAmount || 0;
   const time = booking.scheduledTime || booking.timeSlot?.start;
@@ -118,6 +120,9 @@ const BookingCard = ({ booking, onOpen }) => {
           <h3 className="mt-0.5 text-[16px] font-bold text-ink leading-snug line-clamp-2">{serviceName}</h3>
           {items.length > 0 && (
             <p className="mt-0.5 text-[13px] text-gray-500 line-clamp-1">{items.join(', ')}</p>
+          )}
+          {answers.length > 0 && (
+            <p className="text-[12px] font-medium text-accent line-clamp-1">{answers.join(' · ')}</p>
           )}
         </div>
       </div>

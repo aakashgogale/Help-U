@@ -10,6 +10,14 @@ const cloudinaryService = require('../../services/cloudinaryService');
 const { placeBooking } = require('../../services/bookingCreationService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
 const { evaluateCancellation } = require('../../utils/cancellationPolicy');
+const { resolveFieldsForCategories, validateDetailAnswers } = require('../../utils/detailFields');
+
+// The customer can change their answers (brand, vehicle type...) until the professional is on the way
+const DETAILS_EDITABLE_STATUSES = [
+  BOOKING_STATUS.PENDING, BOOKING_STATUS.REQUESTED, BOOKING_STATUS.SEARCHING, BOOKING_STATUS.CONFIRMED,
+  BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ASSIGNED
+];
+const canEditDetails = (booking) => !booking.journeyStartedAt && DETAILS_EDITABLE_STATUSES.includes(booking.status);
 
 /**
  * Create a new booking
@@ -148,6 +156,12 @@ const getBookingById = async (req, res) => {
       bookingData.bill = bill;
     }
 
+    // The questions behind the booked items, so the app can offer to change an answer
+    const catId = booking.categoryId?._id || booking.categoryId;
+    const fieldsByCategory = await resolveFieldsForCategories([catId]);
+    bookingData.detailFields = fieldsByCategory.get(String(catId)) || [];
+    bookingData.canEditDetails = canEditDetails(booking) && bookingData.detailFields.length > 0;
+
     // Ensure OTP consistency for user display
     bookingData.customerConfirmationOTP = booking.customerConfirmationOTP || booking.paymentOtp;
     bookingData.paymentOtp = bookingData.customerConfirmationOTP;
@@ -163,6 +177,78 @@ const getBookingById = async (req, res) => {
       success: false,
       message: 'Failed to fetch booking. Please try again.'
     });
+  }
+};
+
+/**
+ * Change the answers on a booking's items (PUT /:id/details, body { items: [{ itemId, details }] }).
+ * Allowed until the professional starts travelling; the assigned professional is told.
+ */
+const updateBookingDetails = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    if (!canEditDetails(booking)) {
+      return res.status(400).json({
+        success: false,
+        message: booking.journeyStartedAt
+          ? 'Your professional is already on the way, so the details can no longer be changed. Please tell them directly.'
+          : `Details cannot be changed on a ${booking.status} booking.`
+      });
+    }
+
+    const requested = Array.isArray(req.body.items) ? req.body.items : [];
+    if (requested.length === 0) return res.status(400).json({ success: false, message: 'Nothing to update' });
+
+    const fieldsByCategory = await resolveFieldsForCategories([booking.categoryId]);
+    const fields = fieldsByCategory.get(String(booking.categoryId)) || [];
+    if (fields.length === 0) return res.status(400).json({ success: false, message: 'This service has no details to change.' });
+
+    const changes = [];
+    for (const entry of requested) {
+      const item = booking.bookedItems.id(entry?.itemId);
+      if (!item) return res.status(404).json({ success: false, message: 'That item is not part of this booking' });
+
+      const { details, errors, missing } = validateDetailAnswers(fields, entry.details);
+      if (errors.length) return res.status(400).json({ success: false, message: errors[0] });
+      if (missing.length) {
+        const label = fields.find((f) => f.key === missing[0])?.label || 'a required detail';
+        return res.status(400).json({ success: false, message: `Please answer "${label}".` });
+      }
+
+      const before = (item.details || []).map((d) => `${d.label}: ${d.value}`).join(', ');
+      const after = details.map((d) => `${d.label}: ${d.value}`).join(', ');
+      if (before !== after) changes.push({ title: item.card?.title || item.serviceName || 'Service', after });
+      item.details = details;
+    }
+
+    if (changes.length === 0) return res.status(200).json({ success: true, message: 'No changes', data: booking });
+
+    booking.markModified('bookedItems');
+    booking.$locals.actor = 'user';
+    booking.$locals.timelineNote = 'Customer updated the service details';
+    await booking.save();
+
+    if (booking.vendorId) {
+      const summary = changes.map((c) => `${c.title}: ${c.after || 'cleared'}`).join(' | ');
+      await createNotification({
+        vendorId: booking.vendorId,
+        type: 'booking_created', // keeping the type used for booking changes (see reschedule)
+        title: 'Service details updated',
+        message: `The customer updated the details for booking ${booking.bookingNumber}. ${summary}`,
+        relatedId: booking._id,
+        relatedType: 'booking',
+        pushData: { type: 'booking_updated', bookingId: booking._id.toString(), link: `/worker/booking/${booking._id}` }
+      });
+      const io = req.app.get('io');
+      if (io) io.to(`vendor_${booking.vendorId}`).emit('booking_updated', { bookingId: booking._id.toString(), detailsUpdated: true });
+    }
+
+    res.status(200).json({ success: true, message: 'Details updated', data: booking });
+  } catch (error) {
+    console.error('Update booking details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update the details. Please try again.' });
   }
 };
 
@@ -815,6 +901,7 @@ module.exports = {
   getBookingById,
   cancelBooking,
   getCancellationPreview,
+  updateBookingDetails,
   rescheduleBooking,
   addReview,
   getUserRatings

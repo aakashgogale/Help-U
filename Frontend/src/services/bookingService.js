@@ -50,6 +50,12 @@ export const bookingService = {
     return response.data;
   },
 
+  // Change the answers on a booking's items: [{ itemId, details: { key: value } }]
+  updateDetails: async (id, items) => {
+    const response = await api.put(`/users/bookings/${id}/details`, { items });
+    return response.data;
+  },
+
   // What cancelling would cost right now ({ fee, isFree, stage, freeUntil })
   getCancellationPreview: async (id) => {
     const response = await api.get(`/users/bookings/${id}/cancellation-preview`);

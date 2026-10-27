@@ -12,7 +12,7 @@ const isBlank = (v) => v === undefined || v === null || String(v).trim() === '';
  * admin's category settings. `request` is { title, price, fields, onConfirm(answers) } or null.
  */
 const SheetBody = ({ request, onClose }) => {
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState(request.initialAnswers || {});
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const SheetBody = ({ request, onClose }) => {
         <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-gray-200" />
         <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-3">
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400">Choose options</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400">{request.heading || 'Choose options'}</p>
             <h3 className="mt-0.5 text-[18px] font-bold leading-snug text-gray-900">{request.title}</h3>
             {request.price ? <p className="mt-0.5 text-[14px] font-semibold text-gray-600">₹{Number(request.price).toLocaleString('en-IN')}</p> : null}
           </div>
@@ -96,7 +96,7 @@ const SheetBody = ({ request, onClose }) => {
             className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#6B38FB] text-[15px] font-bold text-white transition-all active:scale-[0.99] disabled:bg-gray-200 disabled:text-gray-500"
           >
             {busy && <FiLoader className="h-4 w-4 animate-spin" />}
-            {missing.length > 0 ? `Select ${missing[0].label.toLowerCase()} to continue` : 'Add to cart'}
+            {missing.length > 0 ? `Select ${missing[0].label.toLowerCase()} to continue` : (request.confirmLabel || 'Add to cart')}
           </button>
         </div>
       </motion.div>
