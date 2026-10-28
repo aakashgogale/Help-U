@@ -539,11 +539,14 @@ const rescheduleBooking = async (req, res) => {
 
     // The new slot must respect the same admin rules as a new booking, and must not collide with
     // another job of the professional already assigned to this one.
-    const { slotStartMs, getConflictingWorkerIds } = require('../../services/workerAvailabilityService');
+    const { slotStartMs, isOfferedSlot, getConflictingWorkerIds } = require('../../services/workerAvailabilityService');
     const config = await getBookingConfig();
     const newStart = slotStartMs({ scheduledDate, timeSlot });
     if (!Number.isFinite(newStart)) {
       return res.status(400).json({ success: false, message: 'Please choose a valid date and time slot.' });
+    }
+    if (!isOfferedSlot({ timeSlot }, config)) {
+      return res.status(400).json({ success: false, message: 'That time is not one of the available slots. Please pick a slot from the list.' });
     }
     const earliest = Date.now() + (config.slotMinLeadMinutes || 0) * 60 * 1000 - 2 * 60 * 1000;
     const latest = Date.now() + (config.slotMaxDaysAhead + 1) * 24 * 60 * 60 * 1000;

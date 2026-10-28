@@ -227,8 +227,8 @@ const BillingPage = () => {
             setPayoutSettings({
               serviceGstPct: g.serviceGstPercentage ?? 18,
               partsGstPct: g.partsGstPercentage ?? 18,
-              servicePayoutPct: g.servicePayoutPercentage ?? 70,
-              partsPayoutPct: g.partsPayoutPercentage ?? 10
+              servicePayoutPct: g.servicePayoutPercentage ?? 90,
+              partsPayoutPct: g.partsPayoutPercentage ?? 100
             });
           }
         } catch (e) {

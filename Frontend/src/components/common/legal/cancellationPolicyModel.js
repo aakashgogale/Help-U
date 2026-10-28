@@ -22,11 +22,9 @@ export const userPolicy = (config, settings) => {
   const hours = Number(config.userFreeCancelHours) || 0;
   const grace = Number(config.userFreeCancelGraceMinutes) || 0;
   const lateFee = feeText(config.userLateCancelFeeType, config.userLateCancelFeeValue, config.userLateCancelFeeMax);
-  // Mirrors the server: a flat fee, never lower than a fixed late fee
-  const flat = Number(config.cancellationPenalty ?? settings.cancellationPenalty) || 0;
-  const lateFixed = config.userLateCancelFeeType === 'fixed' ? Number(config.userLateCancelFeeValue) || 0 : 0;
-  const onTheWay = Math.max(flat, lateFixed);
-  const visiting = Math.max(Number(settings.visitedCharges) > 0 ? Number(settings.visitedCharges) : onTheWay, lateFixed);
+  // Mirrors the server: the flat fee exactly as the admin set it
+  const onTheWay = Number(config.cancellationPenalty ?? settings.cancellationPenalty) || 0;
+  const visiting = Number(settings.visitedCharges) > 0 ? Number(settings.visitedCharges) : onTheWay;
 
   const stages = [
     {
@@ -50,9 +48,7 @@ export const userPolicy = (config, settings) => {
     onTheWay > 0 && {
       key: 'way', tone: 'orange', icon: 'navigation', title: 'Professional on the way',
       when: 'After they start travelling to you', result: rupees(onTheWay),
-      detail: config.userLateCancelFeeType === 'percentage'
-        ? 'A flat fee for the travel already under way, or the late fee if that is higher.'
-        : 'A flat cancellation fee for the travel already under way.'
+      detail: 'A flat cancellation fee for the travel already under way.'
     },
     {
       key: 'arrived', tone: 'red', icon: 'pin', title: 'Professional arrived',

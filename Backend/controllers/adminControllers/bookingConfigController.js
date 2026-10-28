@@ -35,12 +35,12 @@ exports.updateConfig = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No valid settings were provided' });
     }
 
-    // The smart strategy divides by the weight total, so all four cannot be 0.
+    // The smart strategy divides by the weight total, so all five cannot be 0.
     const current = await getBookingConfig();
     const merged = { ...current, ...updates };
     if (merged.assignmentStrategy === 'smart') {
       const total = merged.assignmentDistanceWeight + merged.assignmentRatingWeight
-        + merged.assignmentAcceptanceWeight + merged.assignmentCompletionWeight;
+        + merged.assignmentAcceptanceWeight + merged.assignmentCompletionWeight + merged.assignmentResponseTimeWeight;
       if (total <= 0) {
         return res.status(400).json({ success: false, message: 'At least one assignment weight must be above zero' });
       }

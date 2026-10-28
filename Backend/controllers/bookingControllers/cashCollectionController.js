@@ -7,7 +7,7 @@ const { PAYMENT_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
 const { createQRCode, getQRCodePayments, closeQRCode } = require('../../services/razorpayService');
 const { billLockReason } = require('../../utils/billLock');
-const { getBookingConfig } = require('../../utils/bookingConfig');
+const { getBookingConfig, PASSTHROUGH_DEFAULTS } = require('../../utils/bookingConfig');
 
 const getRemainingPayableAmount = (booking) => {
   const advancePaid = booking.advancePayment?.status === 'paid'
@@ -24,7 +24,7 @@ const getRemainingPayableAmount = (booking) => {
 // booking has no WorkerBill yet, instead of a hardcoded 20/80 split.
 const getDefaultWorkerShare = async () => {
   const config = await getBookingConfig();
-  return (config.servicePayoutPercentage ?? 80) / 100;
+  return (config.servicePayoutPercentage ?? PASSTHROUGH_DEFAULTS.servicePayoutPercentage) / 100;
 };
 
 /**

@@ -6,7 +6,7 @@ const User = require('../../models/User');
 const Settings = require('../../models/Settings');
 const PlatformEarning = require('../../models/PlatformEarning');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
-const { getBookingConfig } = require('../../utils/bookingConfig');
+const { getBookingConfig, PASSTHROUGH_DEFAULTS } = require('../../utils/bookingConfig');
 
 /**
  * Get Financial Dashboard Overview
@@ -169,7 +169,7 @@ const getPaymentTransactions = async (req, res) => {
     // Falls back to the admin-configured default commission rate when a
     // booking has no WorkerBill yet, instead of a hardcoded 20/80 split.
     const bookingConfig = await getBookingConfig();
-    const defaultWorkerShare = (bookingConfig.servicePayoutPercentage ?? 80) / 100;
+    const defaultWorkerShare = (bookingConfig.servicePayoutPercentage ?? PASSTHROUGH_DEFAULTS.servicePayoutPercentage) / 100;
 
     const reportData = bookings.map(b => {
       const bill = billMap[b._id.toString()];

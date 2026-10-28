@@ -55,6 +55,22 @@ const slotStartMs = (booking) => {
   return utc - BUSINESS_UTC_OFFSET_MIN * MIN;
 };
 
+/**
+ * Is this one of the time slots the admin's slot settings offer? The customer app builds its list the
+ * same way (from slotStartHour to slotEndHour, a new slot every slotDurationMinutes, the last one
+ * allowed to start exactly at slotEndHour), and the server applies the same rule so a request sent
+ * outside the app cannot book, say, 3 AM.
+ */
+const isOfferedSlot = (booking, config) => {
+  const match = typeof booking?.timeSlot?.start === 'string' && booking.timeSlot.start.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return false;
+  const minutes = Number(match[1]) * 60 + Number(match[2]);
+  const first = Math.max(0, Number(config.slotStartHour) || 0) * 60;
+  const last = Math.max(1, Number(config.slotEndHour) || 20) * 60;
+  const step = Math.max(15, Number(config.slotDurationMinutes) || 60);
+  return minutes >= first && minutes <= last && (minutes - first) % step === 0;
+};
+
 const toIds = (workers) => (workers || []).map((w) => String(w._id || w));
 
 /** Set of worker ids who are at work right now. */
@@ -110,6 +126,7 @@ module.exports = {
   OPEN_STATUSES,
   UNDERWAY_STATUSES,
   slotStartMs,
+  isOfferedSlot,
   getBusyWorkerIds,
   getConflictingWorkerIds
 };

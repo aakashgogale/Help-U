@@ -59,6 +59,8 @@ const CONFIG_SCHEMA = {
   assignmentRatingWeight: [25, 'number', 0, 100],
   assignmentAcceptanceWeight: [20, 'number', 0, 100],
   assignmentCompletionWeight: [15, 'number', 0, 100],
+  // How fast the professional usually accepts. 0 = not part of the ranking (the original behaviour).
+  assignmentResponseTimeWeight: [0, 'number', 0, 100],
   assignmentMinRating: [0, 'number', 0, 5],
   assignmentStatsWindowDays: [90, 'number', 7, 365],
   wave1Size: [3, 'number', 1, 50],
@@ -317,6 +319,7 @@ const sanitizeConfigUpdate = (payload = {}) => {
 
 module.exports = {
   CONFIG_SCHEMA,
+  PASSTHROUGH_DEFAULTS,
   getBookingConfig,
   getPublicBookingConfig,
   invalidateBookingConfigCache,

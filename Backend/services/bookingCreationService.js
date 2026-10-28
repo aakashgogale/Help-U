@@ -28,7 +28,7 @@ const { createNotification } = require('../controllers/notificationControllers/n
 const { validateCoupon, redeemCoupon } = require('./couponService');
 const { rankWorkers } = require('./workerScoringService');
 const { findNearbyWorkers, geocodeAddress } = require('./locationService');
-const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs } = require('./workerAvailabilityService');
+const { getBusyWorkerIds, getConflictingWorkerIds, slotStartMs, isOfferedSlot } = require('./workerAvailabilityService');
 const { nextOccurrenceDate } = require('../utils/recurrence');
 const { resolveCheckoutAmount } = require('../utils/servicePricing');
 const { resolveBookedItemDetails } = require('./bookingDetailsService');
@@ -270,6 +270,9 @@ const placeBooking = async (userId, payload, options = {}) => {
     const graceMs = 2 * 60 * 1000;
     const earliest = Date.now() + (config.slotMinLeadMinutes || 0) * 60 * 1000 - graceMs;
     const latest = Date.now() + (config.slotMaxDaysAhead + 1) * 24 * 60 * 60 * 1000;
+    if (!isOfferedSlot({ timeSlot }, config)) {
+      return fail(400, 'That time is not one of the available slots. Please pick a slot from the list.', { code: 'SLOT_NOT_OFFERED' });
+    }
     if (scheduledSlotStart < earliest) {
       return fail(400, 'That time slot is too soon. Please choose a later slot.', { code: 'SLOT_TOO_SOON' });
     }

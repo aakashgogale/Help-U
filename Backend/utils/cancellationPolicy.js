@@ -93,15 +93,16 @@ const lateFeeAmount = (booking, party, config) => {
 };
 
 /**
- * Fee once the professional is on the way (or has arrived). A flat admin fee (`cancellationPenalty`,
- * or the booking's own visiting charge after arrival), but never less than the late fee: cancelling
- * later must not cost less than cancelling a little earlier. Never more than the booking amount.
+ * Fee once the professional is on the way (or has arrived): exactly what the admin set. That is the
+ * flat `cancellationPenalty`, or the booking's own visiting charge once they have arrived. It is not
+ * adjusted by the late fee (the admin screen warns when it is set lower than the late fee), and it is
+ * never more than the booking amount.
  */
 const onTheWayFee = (booking, config, { arrived = false } = {}) => {
   const flat = Number(config.cancellationPenalty) || 0;
   const base = arrived && Number(booking.visitingCharges) > 0 ? Number(booking.visitingCharges) : flat;
   const total = Math.max(0, Number(booking.finalAmount) || 0);
-  return round2(Math.min(Math.max(base, lateFeeAmount(booking, 'user', config)), total));
+  return round2(Math.min(base, total));
 };
 
 module.exports = { evaluateCancellation, lateFeeAmount, onTheWayFee };

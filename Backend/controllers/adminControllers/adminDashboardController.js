@@ -7,7 +7,7 @@ const Scrap = require('../../models/Scrap');
 const WorkerBill = require('../../models/WorkerBill');
 const Transaction = require('../../models/Transaction');
 const { BOOKING_STATUS, PAYMENT_STATUS, WORKER_STATUS } = require('../../utils/constants');
-const { getBookingConfig } = require('../../utils/bookingConfig');
+const { getBookingConfig, PASSTHROUGH_DEFAULTS } = require('../../utils/bookingConfig');
 
 /**
  * Get overall dashboard stats
@@ -135,7 +135,7 @@ const getDashboardStats = async (req, res) => {
     // Falls back to the admin-configured default commission rate when no
     // WorkerBill exists yet, instead of a hardcoded 20% split.
     const bookingConfig = await getBookingConfig();
-    const defaultCommissionRate = (100 - (bookingConfig.servicePayoutPercentage ?? 80)) / 100;
+    const defaultCommissionRate = (100 - (bookingConfig.servicePayoutPercentage ?? PASSTHROUGH_DEFAULTS.servicePayoutPercentage)) / 100;
     const platformCommission = workerBillRevenue.totalPlatformFeeCollected || (revenue.totalRevenue * defaultCommissionRate);
 
     const recentBookings = recentActivityDocs.map(b => ({

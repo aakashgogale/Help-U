@@ -150,11 +150,12 @@ const rankWorkers = async (workers, config, { radiusKm = 10, isEmergency = false
   } else {
     const stats = await loadWorkerStats(ids, config.assignmentStatsWindowDays);
     const weights = {
-      distance: config.assignmentDistanceWeight || 0.35,
-      rating: config.assignmentRatingWeight || 0.20,
-      acceptance: config.assignmentAcceptanceWeight || 0.15,
-      completion: config.assignmentCompletionWeight || 0.15,
-      responseTime: config.assignmentResponseTimeWeight || 0.15
+      // All five are the admin's relative weights (0 = leave that factor out of the ranking)
+      distance: Number(config.assignmentDistanceWeight) || 0,
+      rating: Number(config.assignmentRatingWeight) || 0,
+      acceptance: Number(config.assignmentAcceptanceWeight) || 0,
+      completion: Number(config.assignmentCompletionWeight) || 0,
+      responseTime: Number(config.assignmentResponseTimeWeight) || 0
     };
     const weightSum = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
     const maxDistance = Math.max(radiusKm, ...candidates.map((w) => w.distance || 0), 1);

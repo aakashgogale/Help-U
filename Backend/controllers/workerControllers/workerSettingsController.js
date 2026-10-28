@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
  * Get worker settings
  */
 const Settings = require('../../models/Settings');
+const { PASSTHROUGH_DEFAULTS } = require('../../utils/bookingConfig');
 
 /**
  * Get worker settings
@@ -30,8 +31,8 @@ const getSettings = async (req, res) => {
         global: {
           serviceGstPercentage: globalSettings?.serviceGstPercentage ?? 18,
           partsGstPercentage: globalSettings?.partsGstPercentage ?? 18,
-          servicePayoutPercentage: globalSettings?.servicePayoutPercentage ?? 70,
-          partsPayoutPercentage: globalSettings?.partsPayoutPercentage ?? 10
+          servicePayoutPercentage: globalSettings?.servicePayoutPercentage ?? PASSTHROUGH_DEFAULTS.servicePayoutPercentage,
+          partsPayoutPercentage: globalSettings?.partsPayoutPercentage ?? PASSTHROUGH_DEFAULTS.partsPayoutPercentage
         }
       }
     });

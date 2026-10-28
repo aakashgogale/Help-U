@@ -7,14 +7,14 @@ const { PAYMENT_STATUS, BOOKING_STATUS, ADMIN_ROLES } = require('../../utils/con
 const { createOrder, verifyPayment, refundPayment } = require('../../services/razorpayService');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { recordBookingEarning } = require('../../services/earningTrackerService');
-const { getBookingConfig } = require('../../utils/bookingConfig');
+const { getBookingConfig, PASSTHROUGH_DEFAULTS } = require('../../utils/bookingConfig');
 const mongoose = require('mongoose');
 
 // Falls back to the admin-configured default commission rate when a
 // booking has no WorkerBill yet, instead of a hardcoded 20/80 split.
 const getDefaultWorkerShare = async () => {
   const config = await getBookingConfig();
-  return (config.servicePayoutPercentage ?? 80) / 100;
+  return (config.servicePayoutPercentage ?? PASSTHROUGH_DEFAULTS.servicePayoutPercentage) / 100;
 };
 
 const getFinalPaymentAmount = (booking) => {

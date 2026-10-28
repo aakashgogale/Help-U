@@ -88,6 +88,7 @@ const BookingConfig = () => {
   const weightTotal = config
     ? (Number(config.assignmentDistanceWeight) || 0) + (Number(config.assignmentRatingWeight) || 0)
       + (Number(config.assignmentAcceptanceWeight) || 0) + (Number(config.assignmentCompletionWeight) || 0)
+      + (Number(config.assignmentResponseTimeWeight) || 0)
     : 0;
 
   const save = async () => {
@@ -295,11 +296,12 @@ const BookingConfig = () => {
                 <span className="text-xs font-semibold text-gray-700">Ranking weights</span>
                 <span className={`text-xs font-semibold ${weightTotal > 0 ? 'text-gray-500' : 'text-red-600'}`}>Total {weightTotal} (relative, need not add to 100)</span>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <Field label="Distance"><NumberInput value={config.assignmentDistanceWeight} onChange={set('assignmentDistanceWeight')} min={0} max={100} /></Field>
                 <Field label="Rating"><NumberInput value={config.assignmentRatingWeight} onChange={set('assignmentRatingWeight')} min={0} max={100} /></Field>
                 <Field label="Acceptance rate"><NumberInput value={config.assignmentAcceptanceWeight} onChange={set('assignmentAcceptanceWeight')} min={0} max={100} /></Field>
                 <Field label="Completion rate"><NumberInput value={config.assignmentCompletionWeight} onChange={set('assignmentCompletionWeight')} min={0} max={100} /></Field>
+                <Field label="Response speed" hint="How fast they usually accept. 0 leaves it out."><NumberInput value={config.assignmentResponseTimeWeight} onChange={set('assignmentResponseTimeWeight')} min={0} max={100} /></Field>
               </div>
             </div>
           )}
@@ -432,8 +434,11 @@ const BookingConfig = () => {
                       </Field>
                     )}
                     {prefix === 'user' && (
-                      <Field label="Fee once the professional is on the way (₹)" hint="Charged after they start travelling. If the late fee above is higher, the higher of the two is charged, so cancelling later never costs less.">
+                      <Field label="Fee once the professional is on the way (₹)" hint="Charged exactly as set once they start travelling.">
                         <NumberInput value={config.cancellationPenalty} onChange={set('cancellationPenalty')} min={0} suffix="₹" />
+                        {config.userLateCancelFeeType === 'fixed' && Number(config.cancellationPenalty) < Number(config.userLateCancelFeeValue) && (
+                          <p className="mt-1 text-xs text-amber-700">This is lower than the late fee above (₹{Number(config.userLateCancelFeeValue)}), so cancelling after the professional leaves will cost the customer less than cancelling just before.</p>
+                        )}
                       </Field>
                     )}
                   </div>

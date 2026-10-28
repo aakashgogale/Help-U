@@ -104,6 +104,15 @@ exports.updateSettings = async (req, res, next) => {
       });
     } else {
       if (!settings.type) settings.type = 'global';
+      // Same rule as the Customization page: switching online payments off must not leave checkout
+      // with no way to pay (cash and wallet both off too).
+      if (isOnlinePaymentEnabled !== undefined && !Boolean(isOnlinePaymentEnabled)
+        && settings.isCashEnabled === false && settings.isWalletPaymentEnabled === false) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one payment method must stay enabled. Turn cash or wallet payment on first.'
+        });
+      }
       // Update fields if provided
       if (visitedCharges !== undefined) settings.visitedCharges = visitedCharges;
       if (serviceGstPercentage !== undefined) settings.serviceGstPercentage = serviceGstPercentage;

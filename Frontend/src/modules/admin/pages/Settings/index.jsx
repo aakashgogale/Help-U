@@ -371,7 +371,7 @@ const AdminSettings = () => {
     } catch (err) {
       console.error('Failed to update online payment state:', err);
       setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: currentEnabled }));
-      toast.error('Failed to update online payment state');
+      toast.error(err?.response?.data?.message || 'Failed to update online payment state');
     }
   };
 
