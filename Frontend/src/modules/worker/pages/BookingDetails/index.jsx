@@ -1395,7 +1395,7 @@ export default function BookingDetails() {
       {/* Cancel job (before arrival) */}
       {cancelModal.open && (
         <div className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center" onClick={() => !cancelModal.submitting && setCancelModal({ open: false, reason: '', submitting: false })}>
-          <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,var(--safe-bottom))]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900">Cancel this job?</h3>
             <p className="text-sm text-gray-500 mt-1">The customer will be matched with another professional. Frequent cancellations lower your ranking for new jobs.</p>
             {cancelModal.preview && !cancelModal.preview.isFree && (

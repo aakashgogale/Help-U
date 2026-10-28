@@ -420,7 +420,7 @@ const PlanDetails = () => {
         )}
 
         {/* Action Button */}
-        <div className="fixed bottom-6 left-0 right-0 px-6 backdrop-blur-sm bg-white/30 py-4 border-t border-gray-100 sm:relative sm:border-0 sm:p-0 sm:bg-transparent sm:bottom-0">
+        <div className="fixed bottom-[calc(1.5rem+var(--safe-bottom))] left-0 right-0 px-6 backdrop-blur-sm bg-white/30 py-4 border-t border-gray-100 sm:relative sm:border-0 sm:p-0 sm:bg-transparent sm:bottom-0">
           {!isCurrent && !isDowngradeOrSame ? (
             <button
               onClick={() => {

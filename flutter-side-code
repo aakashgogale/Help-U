@@ -73,3 +73,58 @@ InAppWebView(
   },
 )
 This bridge allows you to add any future native features (GPS, Contacts, Storage) simply by adding a new addJavaScriptHandler in Dart and calling flutterBridge.callHandler('name') in React.
+
+C. Bottom safe space (tabs and buttons stay above the phone's buttons / gesture bar)
+The page keeps all its bottom bars, sheets and buttons above ONE value, the CSS variable --native-safe-bottom.
+Send it from Flutter and the page adapts to whatever navigation the phone uses (3 buttons, gestures, or none).
+If you never send it, the page falls back to the value the browser reports, so nothing breaks.
+
+dart
+class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
+  InAppWebViewController? _c;
+  double _bottom = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Rotation, switching between buttons and gestures, keyboard, etc.
+  @override
+  void didChangeMetrics() => _push();
+
+  Future<void> _push() async {
+    await _c?.evaluateJavascript(source:
+      "document.documentElement.style.setProperty('--native-safe-bottom', '${_bottom}px');");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // padding.bottom is the part of the bottom system area this view still overlaps:
+    //   - the full navigation bar / gesture area height when the app draws edge to edge
+    //   - 0 when the view is already inside a SafeArea(bottom: true)
+    // Flutter logical pixels are the same unit as CSS pixels, so it is sent as-is.
+    // Put this widget INSIDE any SafeArea that wraps the web view, never outside it.
+    _bottom = MediaQuery.paddingOf(context).bottom;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _push());
+
+    return InAppWebView(
+      onWebViewCreated: (c) {
+        _c = c;
+        setupJavaScriptHandlers(c);
+      },
+      onLoadStop: (c, url) async {
+        await c.evaluateJavascript(source:
+          "window.dispatchEvent(new Event('flutterInAppWebViewPlatformReady'));");
+        await _push();
+      },
+    );
+  }
+}

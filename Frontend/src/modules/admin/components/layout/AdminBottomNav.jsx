@@ -46,10 +46,10 @@ const AdminBottomNav = () => {
       data-bottom-nav
       className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: 'var(--safe-bottom)',
       }}
     >
-      <div className="flex items-center justify-around h-16 px-1" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex items-center justify-around h-16 px-1" style={{ paddingBottom: 'var(--safe-bottom)' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);

@@ -53,7 +53,7 @@ const ServicesPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-white pb-[max(1.5rem,var(--safe-bottom))]">
       <PageHeader title="All services" onBack={() => navigate('/user')} />
 
       <div className="max-w-2xl mx-auto px-5 py-5 space-y-7">

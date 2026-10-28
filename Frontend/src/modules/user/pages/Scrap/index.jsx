@@ -588,7 +588,7 @@ const UserScrapPage = () => {
                   </p>
                 </div>
 
-                <div className="px-5 pt-3 pb-5 border-t border-gray-100 flex gap-2" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+                <div className="px-5 pt-3 pb-5 border-t border-gray-100 flex gap-2" style={{ paddingBottom: 'max(20px, var(--safe-bottom))' }}>
                   <button
                     type="button"
                     onClick={() => setSelectedScrap(null)}

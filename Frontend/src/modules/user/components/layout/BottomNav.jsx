@@ -66,7 +66,7 @@ const BottomNav = React.memo(() => {
         backdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackfaceVisibility: 'hidden',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        paddingBottom: 'max(8px, var(--safe-bottom))',
       }}
     >
       <div

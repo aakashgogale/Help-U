@@ -289,7 +289,7 @@ const RepairServicesCard = ({ booking, onSaved }) => {
                   </div>
                 </div>
 
-                <div className="px-5 pt-3 border-t border-gray-100" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                <div className="px-5 pt-3 border-t border-gray-100" style={{ paddingBottom: 'max(16px, var(--safe-bottom))' }}>
                   <div className="flex items-baseline justify-between mb-3">
                     <span className="text-[13px] text-gray-500">
                       {selectedCount} selected{draftEstimate.base > 0 ? ` · incl. ${gstPct}% GST` : ''}

@@ -42,7 +42,7 @@ const RatingModal = ({ isOpen, onClose, onSubmit, bookingName, providerName }) =
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+          className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92dvh] overflow-y-auto pb-[var(--safe-bottom)]"
         >
           {/* Top Bar (Mobile Drag Handle) */}
           <div className="flex justify-center py-3 sm:hidden">

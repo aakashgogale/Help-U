@@ -415,7 +415,7 @@ const AddScrap = () => {
         </section>
 
         {/* Submit */}
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, var(--safe-bottom))' }}>
           <div className="max-w-2xl mx-auto">
             {typesMode && chosenTypes.length > 0 && (
               <div className="mb-2 flex items-baseline justify-between">

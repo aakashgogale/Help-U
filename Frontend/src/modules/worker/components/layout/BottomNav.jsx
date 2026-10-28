@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, memo, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiHome, FiBriefcase, FiUsers, FiUser } from 'react-icons/fi';
 import { HiHome, HiBriefcase, HiUsers, HiUser } from 'react-icons/hi';
@@ -9,6 +9,7 @@ const BottomNav = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingJobsCount, setPendingJobsCount] = useState(0);
+  const navRef = useRef(null);
 
   // Load pending jobs count from localStorage
   useEffect(() => {
@@ -65,17 +66,36 @@ const BottomNav = memo(() => {
     (location.pathname.includes('/map') || location.pathname.includes('/alert/'))
   );
 
+  // Publish the nav's real height (the page layout pads the bottom by exactly this much, so content
+  // is never under the nav and there is no guessed gap). Same approach as the customer app's nav.
+  useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--bottom-nav-height', `${el.getBoundingClientRect().height}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--bottom-nav-height');
+    };
+  }, [shouldHideNav]);
+
   if (shouldHideNav) {
     return null;
   }
 
   return (
     <nav
+      ref={navRef}
       data-bottom-nav
       className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
       style={{
         zIndex: 40,
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        // The phone's full bottom inset: on phones where the system buttons are drawn over the app, this
+        // keeps the tabs above them.
+        paddingBottom: 'var(--safe-bottom)',
         willChange: 'transform',
         transform: 'translateZ(0)',
       }}

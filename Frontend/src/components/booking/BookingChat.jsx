@@ -256,7 +256,7 @@ const BookingChat = ({ role, bookingId, isOpen, onClose }) => {
           <FiLock className="w-4 h-4 shrink-0" /> {chat.reason}
         </div>
       ) : (
-        <form onSubmit={handleSendText} className="bg-white border-t border-gray-100 px-3 py-3 flex items-end gap-2" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <form onSubmit={handleSendText} className="bg-white border-t border-gray-100 px-3 py-3 flex items-end gap-2" style={{ paddingBottom: 'max(12px, var(--safe-bottom))' }}>
           {chat?.imageEnabled && (
             <>
               <button

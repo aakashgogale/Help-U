@@ -210,7 +210,8 @@ const ManagePaymentMethods = () => {
               style={{
                 maxHeight: '90vh',
                 transform: 'translateY(100%)',
-                opacity: 0
+                opacity: 0,
+                paddingBottom: 'var(--safe-bottom)' // keep the last button clear of the phone's bottom buttons
               }}
               onClick={(e) => e.stopPropagation()}
             >

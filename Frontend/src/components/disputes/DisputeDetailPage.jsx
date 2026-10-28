@@ -210,7 +210,7 @@ const DisputeDetailPage = ({ role }) => {
       </main>
 
       {isActive ? (
-        <form onSubmit={send} className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 px-3 py-3 space-y-2" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <form onSubmit={send} className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 px-3 py-3 space-y-2" style={{ paddingBottom: 'max(12px, var(--safe-bottom))' }}>
           {showAttach && (
             <EvidencePicker role={role} items={attachments} setItems={setAttachments} max={config.maxDisputeEvidence || 5} />
           )}

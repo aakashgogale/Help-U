@@ -1199,7 +1199,7 @@ const ServiceCatalogModal = React.memo(({
           <div
             ref={catalogScrollRef}
             className={`flex-1 overflow-y-auto overscroll-contain ${
-              totalCartCount > 0 ? 'pb-32' : 'pb-16'
+              totalCartCount > 0 ? 'pb-32' : 'pb-[calc(5rem+var(--safe-bottom))]'
             }`}
           >
             {/* HERO PROMOTIONAL BANNER */}
@@ -1692,7 +1692,12 @@ const ServiceCatalogModal = React.memo(({
           {/* ========================================================================= */}
           {combinedSections.length > 0 && (
             <div className="relative h-0 z-40 shrink-0">
-              <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
+              {/* With the cart bar showing, the bar already clears the phone's bottom buttons. Without it, lift the
+                  button by the phone's bottom inset so the system buttons are not drawn over it. */}
+              <div
+                className="absolute inset-x-0 flex justify-center pointer-events-none"
+                style={{ bottom: totalCartCount > 0 ? '1rem' : 'calc(1rem + var(--safe-bottom))' }}
+              >
               <button
                 type="button"
                 onClick={() => setIsMenuOpen(true)}
@@ -1729,7 +1734,7 @@ const ServiceCatalogModal = React.memo(({
                 </div>
 
                 {/* Cart summary and View Cart Button */}
-                <div className="px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 bg-white">
+                <div className="px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))] flex items-center justify-between gap-3 bg-white">
                   <div className="min-w-0">
                     <p className="text-[14px] font-extrabold text-gray-900 leading-tight">
                       {totalCartCount} item{totalCartCount > 1 ? 's' : ''} added
@@ -1772,7 +1777,7 @@ const ServiceCatalogModal = React.memo(({
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] max-w-lg mx-auto shadow-2xl max-h-[70vh] flex flex-col"
+                  className="fixed inset-x-0 bottom-0 z-[10020] bg-white rounded-t-3xl p-5 pb-[max(1.25rem,var(--safe-bottom))] max-w-lg mx-auto shadow-2xl max-h-[70vh] flex flex-col"
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h3 className="text-[18px] font-bold text-gray-900">

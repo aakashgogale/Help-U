@@ -868,7 +868,7 @@ const BillingPage = () => {
             );
           })}
         </div>
-        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,var(--safe-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
           <button onClick={() => setViewMode('timeline')} className="flex-1 py-3.5 bg-white text-gray-700 font-bold rounded-xl border border-gray-200">
             Save & Exit
           </button>
@@ -926,7 +926,7 @@ const BillingPage = () => {
             );
           })}
         </div>
-        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,var(--safe-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
           <button onClick={() => setViewMode('timeline')} className="flex-1 py-3.5 bg-white text-gray-700 font-bold rounded-xl border border-gray-200">
             Save & Exit
           </button>
@@ -987,7 +987,7 @@ const BillingPage = () => {
       </div>
 
       {/* Bottom padding only clears the fixed action bar, so short steps (e.g. Review) fit without scrolling */}
-      <div className="p-4 space-y-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+      <div className="p-4 space-y-6 pb-[calc(6.5rem+var(--safe-bottom))]">
         {(booking.customerAddedServices || []).length > 0 && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
             <p className="text-sm font-bold text-emerald-900">Customer added after inspection</p>
@@ -1507,7 +1507,7 @@ const BillingPage = () => {
       </div>
 
       {/* Fixed Bottom Navigation for Timeline View */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,var(--safe-bottom))] bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex gap-3">
         {currentStep === 1 && (
           <button onClick={() => setCurrentStep(2)} className="w-full py-3.5 bg-gray-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg">
             Next: Services <FiArrowRight />

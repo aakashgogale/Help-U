@@ -88,7 +88,7 @@ const SheetBody = ({ request, onClose }) => {
           ))}
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 px-5 pt-3" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+        <div className="shrink-0 border-t border-gray-100 px-5 pt-3" style={{ paddingBottom: 'max(16px, var(--safe-bottom))' }}>
           <button
             type="button"
             onClick={confirm}

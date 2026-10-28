@@ -515,7 +515,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
               )}
 
               {categoryCartItems.length > 0 && !isRedirecting && (
-                <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-gray-100 px-4 pt-3" style={{ paddingBottom: 'max(14px, var(--safe-bottom))' }}>
                   <button
                     type="button"
                     onClick={() => { onClose?.(); navigate('/user/cart'); }}
@@ -550,7 +550,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                   onClick={(e) => e.stopPropagation()}
                   onSubmit={confirmOtherBrand}
                   className="bg-white w-full sm:max-w-sm rounded-t-[28px] sm:rounded-3xl px-5 pt-5"
-                  style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                  style={{ paddingBottom: 'max(20px, var(--safe-bottom))' }}
                 >
                   <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
                   <h3 className="text-[18px] font-bold text-ink">Which brand is your {category?.title?.toLowerCase() || 'appliance'}?</h3>

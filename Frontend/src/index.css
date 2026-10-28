@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* The space the phone's bottom system area (buttons or gesture bar) takes up over the app. Every fixed
+   bottom bar, sheet and button uses this one value. The Flutter app sets --native-safe-bottom (it knows
+   the real navigation bar); in a plain browser nothing sets it, so the browser's own value is used. */
+:root {
+  --safe-bottom: var(--native-safe-bottom, env(safe-area-inset-bottom, 0px));
+}
+
 @theme {
   --color-brand: #163B66;
   --color-brand-light: #f0f6fc;
@@ -264,7 +271,7 @@ body {
 
 /* Safe area for bottom navigation */
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-bottom);
 }
 
 /* Active state for touch devices (Apple feel) */
@@ -389,5 +396,5 @@ html.has-modal [data-bottom-nav] {
   min-height: calc(100svh - var(--bottom-nav-height, 96px) - 1rem - 2px);
 }
 .with-worker-nav :where(.min-h-screen) {
-  min-height: calc(100svh - 6rem - env(safe-area-inset-bottom) - 2px);
+  min-height: calc(100svh - var(--bottom-nav-height, 5.25rem) - 1rem - 2px);
 }

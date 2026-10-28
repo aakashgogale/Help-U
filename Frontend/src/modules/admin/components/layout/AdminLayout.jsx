@@ -33,7 +33,7 @@ const AdminLayout = () => {
             // Mobile: Use calculated heights with safe area support
             // Desktop: Tailwind classes override these (lg:pt-24, lg:pb-6)
             paddingTop: `${Math.max(topPadding, 80)}px`,
-            paddingBottom: `calc(${Math.max(bottomPadding, 80)}px + env(safe-area-inset-bottom, 0px))`,
+            paddingBottom: `calc(${Math.max(bottomPadding, 80)}px + var(--safe-bottom))`,
           }}
         >
           <div className="w-full max-w-full overflow-x-hidden min-w-0">

@@ -76,7 +76,7 @@ const WorkerDisputeDetail = lazyLoad(() => import('../pages/Disputes/DisputeDeta
 import LogoLoader from '../../../components/common/LogoLoader';
 import DashboardSkeleton from '../components/common/DashboardSkeleton';
 
-// Fills exactly the visible area (the page wrapper adds 6rem of bottom padding when the nav shows),
+// Fills exactly the visible area (the page wrapper adds the nav's measured height + 1rem of bottom padding when the nav shows),
 // so the logo is dead-centre and the page can't scroll while loading.
 // Pages that open with the shared header: show that header (with its real title) right away,
 // so it doesn't pop in only after the page's code has downloaded.
@@ -104,7 +104,7 @@ const headerTitleFor = (pathname = '') => {
 
 const LoadingFallback = ({ withNav, isDashboard, pathname }) => {
   const headerTitle = headerTitleFor(pathname);
-  const height = withNav ? 'h-[calc(100dvh-6rem)]' : 'h-dvh';
+  const height = withNav ? 'h-[calc(100dvh-var(--bottom-nav-height,5.25rem)-1rem)]' : 'h-dvh';
 
   if (isDashboard) {
     return <div className={`overflow-hidden ${height}`}><DashboardSkeleton /></div>;
@@ -150,7 +150,7 @@ const WorkerRoutes = () => {
   return (
     <ErrorBoundary>
       {/* Main content area - leaves space for bottom nav when needed */}
-      <div className={shouldShowBottomNav ? "with-worker-nav pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}>
+      <div className={shouldShowBottomNav ? "with-worker-nav pb-[calc(var(--bottom-nav-height,5.25rem)+1rem)]" : ""}>
         <Suspense fallback={<LoadingFallback withNav={shouldShowBottomNav} isDashboard={location.pathname.endsWith('/dashboard')} pathname={location.pathname} />}>
           <PageTransition>
             <Routes>
