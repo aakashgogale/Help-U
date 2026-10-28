@@ -45,6 +45,8 @@ const createLoginBanner = async (req, res) => {
       subtitle = '',
       badge = '',
       imageUrl = '',
+      videoUrl = '',
+      mediaType = 'gradient',
       icon = 'sparkles',
       gradient = 'navy',
       offerCode = '',
@@ -66,6 +68,8 @@ const createLoginBanner = async (req, res) => {
       subtitle: subtitle.trim(),
       badge: badge.trim(),
       imageUrl: imageUrl.trim(),
+      videoUrl: videoUrl.trim(),
+      mediaType: mediaType || (videoUrl ? 'video' : imageUrl ? 'image' : 'gradient'),
       icon: icon.trim(),
       gradient: gradient.trim(),
       offerCode: offerCode.trim().toUpperCase(),
@@ -101,6 +105,8 @@ const updateLoginBanner = async (req, res) => {
       subtitle,
       badge,
       imageUrl,
+      videoUrl,
+      mediaType,
       icon,
       gradient,
       offerCode,
@@ -122,6 +128,12 @@ const updateLoginBanner = async (req, res) => {
     if (subtitle !== undefined) banner.subtitle = subtitle.trim();
     if (badge !== undefined) banner.badge = badge.trim();
     if (imageUrl !== undefined) banner.imageUrl = imageUrl.trim();
+    if (videoUrl !== undefined) banner.videoUrl = videoUrl.trim();
+    if (mediaType !== undefined) {
+      banner.mediaType = mediaType;
+    } else if (videoUrl !== undefined) {
+      banner.mediaType = videoUrl ? 'video' : (banner.imageUrl ? 'image' : 'gradient');
+    }
     if (icon !== undefined) banner.icon = icon.trim();
     if (gradient !== undefined) banner.gradient = gradient.trim();
     if (offerCode !== undefined) banner.offerCode = offerCode.trim().toUpperCase();

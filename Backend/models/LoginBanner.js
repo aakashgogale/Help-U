@@ -39,6 +39,18 @@ const loginBannerSchema = new mongoose.Schema(
       default: '',
       trim: true
     },
+    // Optional banner short video URL (Cloudinary MP4/WebM or remote URL)
+    videoUrl: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    // Media type: 'gradient' | 'image' | 'video'
+    mediaType: {
+      type: String,
+      enum: ['gradient', 'image', 'video'],
+      default: 'gradient'
+    },
     // Icon name: 'sparkles' | 'gift' | 'zap' | 'percent' | 'shield' | 'star' | 'trending' | 'award' | 'clock' | 'check'
     icon: {
       type: String,

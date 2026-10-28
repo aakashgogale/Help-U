@@ -24,6 +24,29 @@ const Login = () => {
   const [otpToken, setOtpToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  // Mobile virtual keyboard detection to ensure layout stays 100% intact
+  useEffect(() => {
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height;
+        setIsKeyboardOpen(heightDiff > 140);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
+    };
+  }, []);
 
   // Timer countdown effect
   useEffect(() => {
@@ -177,37 +200,45 @@ const Login = () => {
   const brandColor = themeColors.brand?.navy || '#163B66';
 
   return (
-    <div className="min-h-[100dvh] bg-white flex flex-col justify-between py-6 px-4 sm:py-10 sm:px-6 lg:px-8 relative overflow-x-hidden selection:bg-[#163B66]/10 selection:text-[#163B66]">
+    <div className="min-h-[100dvh] bg-white flex flex-col justify-between py-4 px-4 sm:py-8 sm:px-6 lg:px-8 relative overflow-x-hidden selection:bg-[#163B66]/10 selection:text-[#163B66]">
       {/* Ultra-subtle Apple Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-[#163B66]/[0.025] rounded-full blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[#D68F35]/[0.025] rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md mx-auto text-center relative z-10 pt-2 sm:pt-3 animate-fade-in">
-        <div className="flex justify-center mb-2">
-          <Logo className="h-16 sm:h-20 w-auto object-contain transition-transform duration-300 hover:scale-105" />
+      {/* Main Unified Content Column (Centered as one cohesive unit) */}
+      <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto flex flex-col items-center relative z-10 py-1 animate-fade-in">
+        {/* 1. Help U Brand Logo */}
+        <div className="flex justify-center mb-2.5">
+          <Logo className="h-14 sm:h-16 w-auto object-contain transition-transform duration-300 hover:scale-105" />
         </div>
-        {/* Dynamic Floating Banners & Offers */}
-        <FloatingLoginBanners app="user" />
-        <h1 className="text-[24px] sm:text-[28px] font-bold text-slate-900 tracking-[-0.025em] mt-1.5">
-          {step === 'phone' ? 'Sign in to account' : 'Verify your phone'}
-        </h1>
-        <p className="mt-1 text-[13px] sm:text-[14px] text-slate-500 font-normal leading-relaxed animate-stagger-1 animate-fade-in">
-          {step === 'phone'
-            ? 'Enter your mobile number to get started'
-            : `We've sent a 6-digit code to +91 ${phoneNumber}`
-          }
-        </p>
-      </div>
 
-      <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto relative z-10 py-3">
-        <div className="bg-white rounded-3xl border border-slate-100/90 shadow-[0_10px_35px_-5px_rgba(22,59,102,0.06),0_1px_3px_rgba(0,0,0,0.02)] p-6 sm:p-8 relative overflow-hidden animate-slide-in-bottom">
+        {/* 2. Dynamic Floating Banners & Offers (Short Video / Image / Carousel) */}
+        <div className="w-full mb-3">
+          <FloatingLoginBanners app="user" />
+        </div>
+
+        {/* 3. Heading & Subtitle */}
+        <div className="text-center mb-3.5 sm:mb-4">
+          <h1 className="text-[22px] sm:text-[25px] font-bold text-slate-900 tracking-[-0.025em]">
+            {step === 'phone' ? 'Sign in to account' : 'Verify your phone'}
+          </h1>
+          <p className="mt-0.5 text-[13px] sm:text-[14px] text-slate-500 font-normal leading-relaxed">
+            {step === 'phone'
+              ? 'Enter your mobile number to get started'
+              : `We've sent a 6-digit code to +91 ${phoneNumber}`
+            }
+          </p>
+        </div>
+
+        {/* 4. Form Card */}
+        <div className="w-full bg-white rounded-3xl border border-slate-100/90 shadow-[0_10px_35px_-5px_rgba(22,59,102,0.06),0_1px_3px_rgba(0,0,0,0.02)] p-5 sm:p-7 relative overflow-hidden animate-slide-in-bottom">
           {/* Refined Brand Gradient Accent Line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#163B66] via-[#D68F35] to-[#BB5F36]" />
 
           {step === 'phone' ? (
-            <form className="space-y-5" onSubmit={handlePhoneSubmit}>
+            <form className="space-y-4 sm:space-y-5" onSubmit={handlePhoneSubmit}>
               <div className="animate-stagger-1 animate-fade-in">
                 <label htmlFor="phone" className="block text-[13px] font-semibold text-slate-700 mb-2 tracking-tight">
                   Mobile Number
@@ -353,7 +384,9 @@ const Login = () => {
         </div>
       </div>
 
-      <div className="w-full text-center py-4 relative z-10 animate-fade-in animate-stagger-4">
+      <div className={`w-full text-center py-3 sm:py-4 relative z-10 animate-fade-in animate-stagger-4 transition-all duration-200 ${
+        isKeyboardOpen ? 'hidden' : 'block'
+      }`}>
         <p className="text-xs text-slate-400 font-normal tracking-wide">
           &copy; {new Date().getFullYear()} Help U. All rights reserved.
         </p>

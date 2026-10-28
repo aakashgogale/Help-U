@@ -22,7 +22,9 @@ import {
   FiEye,
   FiTag,
   FiX,
-  FiHelpCircle
+  FiVideo,
+  FiVolume2,
+  FiVolumeX,
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi2';
 import { toast } from 'react-hot-toast';
@@ -59,12 +61,20 @@ const renderIcon = (iconName, className = 'w-4 h-4') => {
   return <Comp className={className} />;
 };
 
+const isVideoBanner = (banner) => {
+  if (!banner) return false;
+  if (banner.mediaType === 'video' || Boolean(banner.videoUrl)) return true;
+  return /\.(mp4|webm|mov|ogg|m4v)($|\?)/i.test(banner.imageUrl || '') || (banner.imageUrl || '').includes('/video/upload/');
+};
+
 const EMPTY_FORM = {
   app: 'user',
   title: '',
   subtitle: '',
   badge: '',
+  mediaType: 'gradient', // 'gradient' | 'image' | 'video'
   imageUrl: '',
+  videoUrl: '',
   icon: 'sparkles',
   gradient: 'navy',
   offerCode: '',
@@ -85,8 +95,11 @@ const LoginBannersAdmin = () => {
   const [editingBanner, setEditingBanner] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [previewApp, setPreviewApp] = useState('user'); // for mobile preview
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [simulatedKeyboard, setSimulatedKeyboard] = useState(false); // interactive testing for keyboard
+  const [previewMuted, setPreviewMuted] = useState(true);
 
   // Fetch banner master config
   const fetchConfig = useCallback(async () => {
@@ -159,7 +172,7 @@ const LoginBannersAdmin = () => {
     }
     const timer = setInterval(() => {
       setPreviewIndex((prev) => (prev + 1) % previewBanners.length);
-    }, 3500);
+    }, 4500);
     return () => clearInterval(timer);
   }, [previewBanners.length]);
 
@@ -182,7 +195,9 @@ const LoginBannersAdmin = () => {
       title: banner.title || '',
       subtitle: banner.subtitle || '',
       badge: banner.badge || '',
+      mediaType: banner.mediaType || (banner.videoUrl ? 'video' : banner.imageUrl ? 'image' : 'gradient'),
       imageUrl: banner.imageUrl || '',
+      videoUrl: banner.videoUrl || '',
       icon: banner.icon || 'sparkles',
       gradient: banner.gradient || 'navy',
       offerCode: banner.offerCode || '',
@@ -193,22 +208,40 @@ const LoginBannersAdmin = () => {
     setIsModalOpen(true);
   };
 
-  // Handle image upload
-  const handleImageUpload = async (file) => {
+  // Handle media upload (image or short video)
+  const handleMediaUpload = async (file) => {
     if (!file) return;
     setIsUploading(true);
+    setUploadProgress(15);
+    const isVideo = file.type.startsWith('video/');
     try {
-      const res = await serviceService.uploadImage(file, 'banners');
+      const res = await serviceService.uploadImage(file, 'banners', (progress) => {
+        setUploadProgress(progress);
+      });
       if (res?.imageUrl) {
-        setFormData((prev) => ({ ...prev, imageUrl: res.imageUrl }));
-        toast.success('Banner image uploaded!');
+        if (isVideo) {
+          setFormData((prev) => ({
+            ...prev,
+            videoUrl: res.imageUrl,
+            mediaType: 'video'
+          }));
+          toast.success('Short video uploaded successfully!');
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            imageUrl: res.imageUrl,
+            mediaType: 'image'
+          }));
+          toast.success('Banner image uploaded!');
+        }
       } else {
         toast.error('Upload failed. Check file size/format.');
       }
     } catch (err) {
-      toast.error('Image upload failed');
+      toast.error('Media upload failed');
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -316,7 +349,7 @@ const LoginBannersAdmin = () => {
             Login Screen Banners & Offers
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Control the floating banners and promotional offers shown above the sign-in form on User and Partner login screens.
+            Control large floating banners, short videos, and promotional offers displayed above the login form.
           </p>
         </div>
 
@@ -347,7 +380,7 @@ const LoginBannersAdmin = () => {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#163B66] hover:bg-[#0F2B48] text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95"
           >
             <FiPlus className="w-4 h-4" />
-            Add New Banner
+            Add New Banner / Video
           </button>
         </div>
       </div>
@@ -410,8 +443,8 @@ const LoginBannersAdmin = () => {
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {config.isUserLoginBannersEnabled
-                    ? 'Floating banners are active and shown on customer login screen'
-                    : 'Banners are turned OFF completely on customer login screen'}
+                    ? 'Floating banners and videos are active on customer login'
+                    : 'Banners are turned OFF completely on customer login'}
                 </p>
               </div>
             </div>
@@ -461,8 +494,8 @@ const LoginBannersAdmin = () => {
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {config.isPartnerLoginBannersEnabled
-                    ? 'Moving partner banners are active and shown on worker login'
-                    : 'Banners are turned OFF completely on worker login screen'}
+                    ? 'Moving partner banners are active on worker login'
+                    : 'Banners are turned OFF completely on worker login'}
                 </p>
               </div>
             </div>
@@ -566,6 +599,7 @@ const LoginBannersAdmin = () => {
             <div className="space-y-3">
               {filteredBanners.map((banner, index) => {
                 const gradientClass = getGradientClass(banner.gradient);
+                const isVideo = isVideoBanner(banner);
                 return (
                   <motion.div
                     key={banner._id}
@@ -583,16 +617,30 @@ const LoginBannersAdmin = () => {
                         {/* Mini live banner */}
                         <div
                           className={`relative rounded-xl overflow-hidden shadow-sm p-3 border border-white/20 ${
-                            banner.imageUrl ? 'bg-slate-900 text-white min-h-[72px]' : `bg-gradient-to-r ${gradientClass}`
+                            isVideo
+                              ? 'bg-slate-950 text-white min-h-[84px]'
+                              : banner.imageUrl
+                              ? 'bg-slate-900 text-white min-h-[84px]'
+                              : `bg-gradient-to-r ${gradientClass}`
                           }`}
                         >
-                          {banner.imageUrl && (
+                          {isVideo ? (
+                            <video
+                              src={banner.videoUrl || banner.imageUrl}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="absolute inset-0 w-full h-full object-cover opacity-75"
+                            />
+                          ) : banner.imageUrl ? (
                             <img
                               src={banner.imageUrl}
                               alt={banner.title}
                               className="absolute inset-0 w-full h-full object-cover opacity-80"
                             />
-                          )}
+                          ) : null}
+
                           <div className="relative z-10">
                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                               {banner.badge && (
@@ -607,11 +655,11 @@ const LoginBannersAdmin = () => {
                                 </span>
                               )}
                             </div>
-                            <h4 className="text-white text-xs sm:text-sm font-bold line-clamp-1">
+                            <h4 className="text-white text-xs sm:text-sm font-bold line-clamp-1 drop-shadow-sm">
                               {banner.title}
                             </h4>
                             {banner.subtitle && (
-                              <p className="text-white/85 text-[11px] line-clamp-1">
+                              <p className="text-white/85 text-[11px] line-clamp-1 drop-shadow-sm">
                                 {banner.subtitle}
                               </p>
                             )}
@@ -632,10 +680,14 @@ const LoginBannersAdmin = () => {
                             {banner.app === 'user' ? 'User App' : banner.app === 'partner' ? 'Partner App' : 'Both Apps'}
                           </span>
                           <span className="text-slate-400">Order: #{banner.order}</span>
-                          {banner.imageUrl ? (
-                            <span className="text-emerald-600 font-medium">Image Banner</span>
+                          {isVideo ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-700 font-bold rounded-md border border-rose-200 text-[11px]">
+                              <FiVideo className="w-3 h-3" /> Short Video
+                            </span>
+                          ) : banner.imageUrl ? (
+                            <span className="text-emerald-600 font-medium text-[11px]">Image Banner</span>
                           ) : (
-                            <span className="text-slate-500 capitalize">{banner.gradient} Theme</span>
+                            <span className="text-slate-500 capitalize text-[11px]">{banner.gradient} Theme</span>
                           )}
                         </div>
                       </div>
@@ -712,33 +764,50 @@ const LoginBannersAdmin = () => {
         <div className="lg:col-span-5 sticky top-6">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-4 sm:p-5">
             {/* Header of simulator */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-1.5">
                 <FiEye className="w-4 h-4 text-[#163B66]" />
                 <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                   Live Mobile Simulator
                 </span>
               </div>
-              {/* App selector for preview */}
-              <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xl text-xs">
+
+              {/* App selector & Keyboard Toggle */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Keyboard Simulator Toggle */}
                 <button
                   type="button"
-                  onClick={() => setPreviewApp('user')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
-                    previewApp === 'user' ? 'bg-[#163B66] text-white shadow-sm' : 'text-slate-600'
+                  onClick={() => setSimulatedKeyboard((prev) => !prev)}
+                  className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all border ${
+                    simulatedKeyboard
+                      ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-sm'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                   }`}
+                  title="Test how the UI stays intact when mobile keyboard opens"
                 >
-                  User App
+                  <span>⌨️ Keyboard {simulatedKeyboard ? 'Open' : 'Closed'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewApp('partner')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
-                    previewApp === 'partner' ? 'bg-purple-700 text-white shadow-sm' : 'text-slate-600'
-                  }`}
-                >
-                  Partner App
-                </button>
+
+                <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xl text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewApp('user')}
+                    className={`px-2 py-1 rounded-lg font-bold transition-all ${
+                      previewApp === 'user' ? 'bg-[#163B66] text-white shadow-sm' : 'text-slate-600'
+                    }`}
+                  >
+                    User
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewApp('partner')}
+                    className={`px-2 py-1 rounded-lg font-bold transition-all ${
+                      previewApp === 'partner' ? 'bg-purple-700 text-white shadow-sm' : 'text-slate-600'
+                    }`}
+                  >
+                    Partner
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -762,8 +831,8 @@ const LoginBannersAdmin = () => {
 
                 <div className="relative z-10 text-center">
                   {/* 1. Help U Logo */}
-                  <div className="flex justify-center mb-2">
-                    <Logo className="h-12 w-auto object-contain" />
+                  <div className={`flex justify-center transition-all duration-300 ${simulatedKeyboard ? 'mb-1' : 'mb-2'}`}>
+                    <Logo className={`w-auto object-contain transition-all duration-300 ${simulatedKeyboard ? 'h-9' : 'h-12'}`} />
                   </div>
 
                   {/* 2. Floating Banners & Offers Carousel */}
@@ -772,22 +841,55 @@ const LoginBannersAdmin = () => {
                       🚫 Banners are currently <span className="font-bold text-red-500">Disabled</span> for {previewApp === 'user' ? 'User' : 'Partner'} App
                     </div>
                   ) : activePreviewBanner ? (
-                    <div className="my-2 text-left">
+                    <div className="my-2 text-left transition-all duration-300">
                       <div
-                        className={`rounded-2xl p-2.5 shadow-md border border-white/20 transition-all duration-500 overflow-hidden relative ${
-                          activePreviewBanner.imageUrl
-                            ? 'bg-slate-900 min-h-[80px]'
-                            : `bg-gradient-to-r ${getGradientClass(activePreviewBanner.gradient)}`
+                        className={`rounded-2xl shadow-md border border-white/20 transition-all duration-500 overflow-hidden relative ${
+                          isVideoBanner(activePreviewBanner)
+                            ? 'bg-slate-950 h-32 sm:h-36'
+                            : activePreviewBanner.imageUrl
+                            ? 'bg-slate-900 h-32 sm:h-36'
+                            : `bg-gradient-to-r p-3 ${getGradientClass(activePreviewBanner.gradient)} min-h-[96px]`
                         }`}
                       >
-                        {activePreviewBanner.imageUrl && (
+                        {isVideoBanner(activePreviewBanner) ? (
+                          <>
+                            <video
+                              src={activePreviewBanner.videoUrl || activePreviewBanner.imageUrl}
+                              autoPlay
+                              loop
+                              muted={previewMuted}
+                              playsInline
+                              webkit-playsinline="true"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewMuted((p) => !p);
+                              }}
+                              className="absolute top-2 right-2 z-30 p-1 rounded-full bg-black/60 text-white shadow-sm"
+                              title={previewMuted ? 'Unmute' : 'Muted'}
+                            >
+                              {previewMuted ? <FiVolumeX className="w-3 h-3" /> : <FiVolume2 className="w-3 h-3 text-amber-300" />}
+                            </button>
+                          </>
+                        ) : activePreviewBanner.imageUrl ? (
                           <img
                             src={activePreviewBanner.imageUrl}
                             alt="preview"
-                            className="absolute inset-0 w-full h-full object-cover opacity-80"
+                            className="absolute inset-0 w-full h-full object-cover opacity-90"
                           />
-                        )}
-                        <div className="relative z-10 flex flex-col justify-between min-h-[70px]">
+                        ) : null}
+
+                        {/* Overlay text */}
+                        <div
+                          className={`relative z-10 flex flex-col justify-end ${
+                            isVideoBanner(activePreviewBanner) || activePreviewBanner.imageUrl
+                              ? 'absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-3'
+                              : 'h-full justify-between'
+                          }`}
+                        >
                           <div className="flex items-center justify-between gap-1 mb-1">
                             {activePreviewBanner.badge && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/25 text-[9px] font-bold text-white uppercase tracking-wider backdrop-blur-sm">
@@ -802,11 +904,11 @@ const LoginBannersAdmin = () => {
                             )}
                           </div>
                           <div>
-                            <h4 className="text-white text-xs font-bold leading-tight line-clamp-1">
+                            <h4 className="text-white text-xs font-bold leading-tight line-clamp-1 drop-shadow-sm">
                               {activePreviewBanner.title}
                             </h4>
                             {activePreviewBanner.subtitle && (
-                              <p className="text-white/80 text-[10px] leading-tight line-clamp-1 mt-0.5">
+                              <p className="text-white/80 text-[10px] leading-tight line-clamp-1 mt-0.5 drop-shadow-sm">
                                 {activePreviewBanner.subtitle}
                               </p>
                             )}
@@ -815,12 +917,12 @@ const LoginBannersAdmin = () => {
 
                         {/* Dots inside preview */}
                         {previewBanners.length > 1 && (
-                          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1">
+                          <div className="absolute bottom-1.5 left-0 right-0 flex justify-center gap-1 z-20 pointer-events-none">
                             {previewBanners.map((_, i) => (
                               <span
                                 key={i}
                                 className={`h-1 rounded-full transition-all ${
-                                  i === previewIndex ? 'w-3 bg-white' : 'w-1 bg-white/40'
+                                  i === previewIndex ? 'w-3.5 bg-white shadow' : 'w-1 bg-white/40'
                                 }`}
                               />
                             ))}
@@ -835,7 +937,9 @@ const LoginBannersAdmin = () => {
                   )}
 
                   {/* 3. Heading (Below floating banners) */}
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight mt-2">
+                  <h3 className={`font-extrabold text-slate-900 tracking-tight transition-all ${
+                    simulatedKeyboard ? 'text-sm mt-1' : 'text-base mt-2'
+                  }`}>
                     {previewApp === 'user' ? 'Sign in to account' : 'Service Partner Sign In'}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-0.5">
@@ -844,23 +948,47 @@ const LoginBannersAdmin = () => {
                 </div>
 
                 {/* 4. Mock Phone Card */}
-                <div className="relative z-10 bg-white rounded-2xl border border-slate-100 shadow-md p-3.5 my-2">
+                <div className={`relative z-10 bg-white rounded-2xl border border-slate-100 shadow-md p-3.5 transition-all ${
+                  simulatedKeyboard ? 'my-1' : 'my-2'
+                }`}>
                   <div className="text-left">
                     <span className="text-[11px] font-semibold text-slate-600 block mb-1">Mobile Number</span>
-                    <div className="flex items-center px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <div className="flex items-center px-2.5 py-2 rounded-xl bg-slate-50 border border-[#163B66] text-xs">
                       <span className="font-bold text-slate-700 pr-2 border-r border-slate-200 mr-2">+91</span>
-                      <span className="text-slate-400">98765 43210</span>
+                      <span className="text-slate-900 font-medium">98765 43210</span>
+                      <span className="ml-1 w-0.5 h-3.5 bg-[#163B66] animate-pulse" />
                     </div>
                   </div>
-                  <div className="mt-3 py-2 bg-[#163B66] text-white rounded-xl text-center text-xs font-bold shadow-sm">
+                  <div className="mt-2.5 py-2 bg-[#163B66] text-white rounded-xl text-center text-xs font-bold shadow-sm">
                     Get OTP &rarr;
                   </div>
                 </div>
 
-                {/* 5. Mock Footer */}
-                <div className="text-center text-[9px] text-slate-400 pb-2">
-                  &copy; {new Date().getFullYear()} Help U. All rights reserved.
-                </div>
+                {/* 5. Mock Virtual Keyboard (shown when simulated keyboard is ON) */}
+                {simulatedKeyboard ? (
+                  <div className="bg-slate-200/90 backdrop-blur-md p-1.5 rounded-t-2xl border-t border-slate-300 space-y-1 animate-slide-in-bottom">
+                    <div className="flex justify-center gap-1">
+                      {['1','2','3','4','5','6','7','8','9','0'].map((k) => (
+                        <span key={k} className="flex-1 py-1 bg-white rounded shadow-sm text-center text-[9px] font-bold text-slate-700">{k}</span>
+                      ))}
+                    </div>
+                    <div className="flex justify-center gap-1">
+                      {['q','w','e','r','t','y','u','i','o','p'].map((k) => (
+                        <span key={k} className="flex-1 py-1 bg-white rounded shadow-sm text-center text-[9px] font-medium text-slate-600 uppercase">{k}</span>
+                      ))}
+                    </div>
+                    <div className="flex justify-center gap-1 px-2">
+                      {['a','s','d','f','g','h','j','k','l'].map((k) => (
+                        <span key={k} className="flex-1 py-1 bg-white rounded shadow-sm text-center text-[9px] font-medium text-slate-600 uppercase">{k}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* 5. Mock Footer (hidden when keyboard is open) */
+                  <div className="text-center text-[9px] text-slate-400 pb-2">
+                    &copy; {new Date().getFullYear()} Help U. All rights reserved.
+                  </div>
+                )}
               </div>
 
               {/* Bottom Home Indicator */}
@@ -871,7 +999,7 @@ const LoginBannersAdmin = () => {
 
             <div className="mt-3 text-center">
               <span className="text-[11px] text-slate-400 font-medium">
-                Live preview auto-updates with changes in real-time.
+                Toggle "Keyboard Open" above to test how UI remains intact.
               </span>
             </div>
           </div>
@@ -892,10 +1020,10 @@ const LoginBannersAdmin = () => {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
-                    {editingBanner ? 'Edit Login Banner' : 'Create Login Banner'}
+                    {editingBanner ? 'Edit Login Banner / Video' : 'Create Login Banner / Video'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Add or customize moving banners and offers on the login screen.
+                    Add short promotional videos, high-res images, or styled offer cards.
                   </p>
                 </div>
                 <button
@@ -936,6 +1064,33 @@ const LoginBannersAdmin = () => {
                   </div>
                 </div>
 
+                {/* Banner Media Type */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Banner Content Type
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'gradient', label: '✨ Offer Card' },
+                      { id: 'image', label: '🖼️ Image Banner' },
+                      { id: 'video', label: '🎬 Short Video' },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setFormData((p) => ({ ...p, mediaType: m.id }))}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                          formData.mediaType === m.id
+                            ? 'bg-[#163B66] text-white border-[#163B66] shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Banner Title */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -946,7 +1101,7 @@ const LoginBannersAdmin = () => {
                     required
                     value={formData.title}
                     onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                    placeholder="e.g. Flat ₹150 OFF on First Service"
+                    placeholder="e.g. Flat ₹150 OFF on First Service or Earn ₹50,000/mo"
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#163B66] focus:ring-2 focus:ring-[#163B66]/10 outline-none transition-all"
                   />
                 </div>
@@ -975,7 +1130,7 @@ const LoginBannersAdmin = () => {
                       type="text"
                       value={formData.badge}
                       onChange={(e) => setFormData((p) => ({ ...p, badge: e.target.value }))}
-                      placeholder="e.g. WELCOME OFFER"
+                      placeholder="e.g. SPECIAL OFFER"
                       className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#163B66] outline-none transition-all"
                     />
                   </div>
@@ -993,103 +1148,179 @@ const LoginBannersAdmin = () => {
                   </div>
                 </div>
 
-                {/* Icon Selector */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Badge Icon
-                  </label>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {ICONS.map((item) => {
-                      const IconComp = item.icon;
-                      return (
+                {/* If Video: Video upload & URL */}
+                {formData.mediaType === 'video' && (
+                  <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <FiVideo className="w-4 h-4 text-rose-500" />
+                        Short Video (MP4 / WebM / Cloudinary)
+                      </label>
+                      {formData.videoUrl && (
                         <button
-                          key={item.id}
                           type="button"
-                          onClick={() => setFormData((p) => ({ ...p, icon: item.id }))}
-                          className={`p-2 rounded-xl border flex items-center gap-1 text-xs font-medium transition-all ${
-                            formData.icon === item.id
-                              ? 'bg-[#163B66] text-white border-[#163B66] shadow-sm'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                          title={item.label}
+                          onClick={() => setFormData((p) => ({ ...p, videoUrl: '' }))}
+                          className="text-[11px] text-red-500 hover:underline"
                         >
-                          <IconComp className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">{item.label}</span>
+                          Remove Video
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                      )}
+                    </div>
 
-                {/* Gradient Theme Selector */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Color Theme Gradient
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {GRADIENTS.map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => setFormData((p) => ({ ...p, gradient: g.id }))}
-                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                          formData.gradient === g.id
-                            ? 'ring-2 ring-[#163B66] border-[#163B66] shadow-sm'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <span
-                          className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
-                          style={{ backgroundColor: g.color }}
+                    {formData.videoUrl ? (
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-36 bg-black flex items-center justify-center">
+                        <video
+                          src={formData.videoUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover"
                         />
-                        <span className="text-xs font-medium text-slate-800 line-clamp-1">{g.label.split(' ')[0]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Image Upload Option */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      Banner Image (Optional)
-                    </label>
-                    {formData.imageUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData((p) => ({ ...p, imageUrl: '' }))}
-                        className="text-[11px] text-red-500 hover:underline"
-                      >
-                        Remove Image
-                      </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl cursor-pointer bg-white transition-colors">
+                        <FiUploadCloud className="w-6 h-6 text-slate-400 mb-1" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          {isUploading ? `Uploading Video (${uploadProgress}%)...` : 'Click to upload Short Video'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">MP4, WebM, MOV (recommended &lt; 20MB)</span>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          disabled={isUploading}
+                          onChange={(e) => handleMediaUpload(e.target.files?.[0])}
+                          className="hidden"
+                        />
+                      </label>
                     )}
-                  </div>
 
-                  {formData.imageUrl ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-24 bg-slate-900">
-                      <img
-                        src={formData.imageUrl}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
+                    <div>
+                      <span className="text-[11px] text-slate-500 block mb-1">Or paste Direct Video URL:</span>
+                      <input
+                        type="url"
+                        value={formData.videoUrl}
+                        onChange={(e) => setFormData((p) => ({ ...p, videoUrl: e.target.value, mediaType: 'video' }))}
+                        placeholder="https://res.cloudinary.com/.../video.mp4"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:border-[#163B66] outline-none"
                       />
                     </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                      <FiUploadCloud className="w-6 h-6 text-slate-400 mb-1" />
-                      <span className="text-xs font-semibold text-slate-700">
-                        {isUploading ? 'Uploading to Cloudinary...' : 'Click to upload banner image'}
-                      </span>
-                      <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, WebP (recommended ratio 3:1)</span>
+                  </div>
+                )}
+
+                {/* If Image: Image upload & URL */}
+                {formData.mediaType === 'image' && (
+                  <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        Banner Image
+                      </label>
+                      {formData.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((p) => ({ ...p, imageUrl: '' }))}
+                          className="text-[11px] text-red-500 hover:underline"
+                        >
+                          Remove Image
+                        </button>
+                      )}
+                    </div>
+
+                    {formData.imageUrl ? (
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-32 bg-slate-900">
+                        <img
+                          src={formData.imageUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl cursor-pointer bg-white transition-colors">
+                        <FiUploadCloud className="w-6 h-6 text-slate-400 mb-1" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          {isUploading ? 'Uploading Image...' : 'Click to upload banner image'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, WebP (recommended 16:9 ratio)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploading}
+                          onChange={(e) => handleMediaUpload(e.target.files?.[0])}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+
+                    <div>
+                      <span className="text-[11px] text-slate-500 block mb-1">Or paste Direct Image URL:</span>
                       <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploading}
-                        onChange={(e) => handleImageUpload(e.target.files?.[0])}
-                        className="hidden"
+                        type="url"
+                        value={formData.imageUrl}
+                        onChange={(e) => setFormData((p) => ({ ...p, imageUrl: e.target.value, mediaType: 'image' }))}
+                        placeholder="https://.../banner.jpg"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:border-[#163B66] outline-none"
                       />
-                    </label>
-                  )}
-                </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* If Gradient Offer Card: Icon & Theme */}
+                {formData.mediaType === 'gradient' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Badge Icon
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {ICONS.map((item) => {
+                          const IconComp = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setFormData((p) => ({ ...p, icon: item.id }))}
+                              className={`p-2 rounded-xl border flex items-center gap-1 text-xs font-medium transition-all ${
+                                formData.icon === item.id
+                                  ? 'bg-[#163B66] text-white border-[#163B66] shadow-sm'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                              title={item.label}
+                            >
+                              <IconComp className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Color Theme Gradient
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {GRADIENTS.map((g) => (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => setFormData((p) => ({ ...p, gradient: g.id }))}
+                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                              formData.gradient === g.id
+                                ? 'ring-2 ring-[#163B66] border-[#163B66] shadow-sm'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <span
+                              className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
+                              style={{ backgroundColor: g.color }}
+                            />
+                            <span className="text-xs font-medium text-slate-800 line-clamp-1">{g.label.split(' ')[0]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Order & Active Status */}
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
@@ -1131,7 +1362,7 @@ const LoginBannersAdmin = () => {
                     disabled={isUploading}
                     className="px-5 py-2 text-xs font-bold text-white bg-[#163B66] hover:bg-[#0F2B48] rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
                   >
-                    {editingBanner ? 'Save Changes' : 'Create Banner'}
+                    {editingBanner ? 'Save Changes' : 'Create Banner / Video'}
                   </button>
                 </div>
               </form>
@@ -1144,4 +1375,3 @@ const LoginBannersAdmin = () => {
 };
 
 export default LoginBannersAdmin;
-
