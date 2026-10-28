@@ -1303,7 +1303,10 @@ const handleRazorpayWebhook = async (req, res) => {
       .update(payload)
       .digest('hex');
 
-    if (expectedSignature !== webhookSignature) {
+    const sigOk = typeof webhookSignature === 'string'
+      && webhookSignature.length === expectedSignature.length
+      && crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(webhookSignature));
+    if (!sigOk) {
       console.error('[Razorpay Webhook] Invalid webhook signature');
       return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
     }
@@ -1326,45 +1329,27 @@ const handleRazorpayWebhook = async (req, res) => {
       if (notes.type === 'wallet_topup' || receipt.startsWith('WALLET_')) {
         const targetUserId = notes.userId || (receipt ? receipt.split('_')[1] : null);
         if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId)) {
-          const existingTxn = await Transaction.findOne({ referenceId: paymentId });
-          if (!existingTxn) {
-            const user = await User.findById(targetUserId);
-            if (user) {
-              const previousBalance = user.wallet?.balance || 0;
-              const updatedUser = await User.findByIdAndUpdate(
-                targetUserId,
-                { $inc: { 'wallet.balance': amountInRupees } },
-                { new: true }
-              );
-              const newBalance = updatedUser?.wallet?.balance || (previousBalance + amountInRupees);
+          const { creditWalletTopup } = require('../../services/walletTopupService');
+          const result = await creditWalletTopup({
+            userId: targetUserId,
+            paymentId,
+            orderId,
+            amount: amountInRupees,
+            source: 'webhook'
+          });
+          // A payment already credited by the app (or by the other webhook event) is a no-op
+          if (!result.duplicate) {
+            const io = req.app.get('io');
+            if (io) io.to(`user_${targetUserId}`).emit('wallet_updated', { balance: result.balance });
 
-              await Transaction.create({
-                userId: targetUserId,
-                type: 'credit',
-                amount: amountInRupees,
-                status: 'completed',
-                paymentMethod: 'razorpay',
-                description: 'Wallet Top-up (via Webhook)',
-                balanceBefore: previousBalance,
-                balanceAfter: newBalance,
-                referenceId: paymentId,
-                metadata: { orderId }
-              });
-
-              const io = req.app.get('io');
-              if (io) {
-                io.to(`user_${targetUserId}`).emit('wallet_updated', { balance: newBalance });
-              }
-
-              await createNotification({
-                userId: targetUserId,
-                type: 'payment_success',
-                title: 'Wallet Top-up Successful',
-                message: `₹${amountInRupees} credited to your Help-U wallet via Razorpay.`,
-                relatedType: 'wallet'
-              });
-              console.log(`[Razorpay Webhook] Credited ₹${amountInRupees} to user wallet ${targetUserId}`);
-            }
+            await createNotification({
+              userId: targetUserId,
+              type: 'payment_success',
+              title: 'Wallet Top-up Successful',
+              message: `₹${amountInRupees} credited to your Help-U wallet via Razorpay.`,
+              relatedType: 'wallet'
+            });
+            console.log(`[Razorpay Webhook] Credited ₹${amountInRupees} to user wallet ${targetUserId}`);
           }
         }
         return res.status(200).json({ received: true });

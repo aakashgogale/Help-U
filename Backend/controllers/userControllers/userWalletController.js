@@ -1,6 +1,7 @@
 const User = require('../../models/User');
 const { validationResult } = require('express-validator');
 const { createOrder } = require('../../services/razorpayService');
+const { getBookingConfig } = require('../../utils/bookingConfig');
 
 /**
  * Get wallet balance
@@ -60,12 +61,13 @@ const addMoneyToWallet = async (req, res) => {
     const userId = req.user.id;
     const { amount } = req.body;
 
-    // Validate amount
-    if (amount < 100) {
-      return res.status(400).json({
-        success: false,
-        message: 'Minimum amount to add is ₹100'
-      });
+    // Validate amount against the admin's top-up limits
+    const { walletMinTopup, walletMaxTopup } = await getBookingConfig();
+    if (!(Number(amount) >= walletMinTopup)) {
+      return res.status(400).json({ success: false, message: `Minimum amount to add is ₹${walletMinTopup}` });
+    }
+    if (Number(amount) > walletMaxTopup) {
+      return res.status(400).json({ success: false, message: `Maximum amount to add at once is ₹${walletMaxTopup}` });
     }
 
     // Create Razorpay order for wallet top-up
@@ -138,86 +140,57 @@ const verifyWalletTopup = async (req, res) => {
       });
     }
 
-    // Check if this payment ID was already processed (prevent duplicate credit on replay)
-    const Transaction = require('../../models/Transaction');
-    const existingTxn = await Transaction.findOne({ referenceId: razorpay_payment_id });
-    if (existingTxn) {
-      return res.status(200).json({
-        success: true,
-        message: 'Payment already processed',
-        data: {
-          balance: existingTxn.balanceAfter
-        }
-      });
-    }
-
-    // Get user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
     const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount < 100) {
+    const { walletMinTopup } = await getBookingConfig();
+    if (isNaN(numAmount) || numAmount < walletMinTopup) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid amount. Minimum amount is ₹100'
+        message: `Invalid amount. Minimum amount is ₹${walletMinTopup}`
       });
     }
 
-    // Verify amount with Razorpay to prevent client-side amount tampering
+    // The amount to credit is what the payment gateway actually captured, never what the app sent.
+    // If the gateway cannot be asked right now, nothing is credited here: the money is safe and
+    // Razorpay's webhook adds it as soon as the payment is confirmed.
     const { getPaymentDetails } = require('../../services/razorpayService');
-    let creditedAmount = numAmount;
-    try {
-      const pDetails = await getPaymentDetails(razorpay_payment_id);
-      if (pDetails && pDetails.success && pDetails.payment) {
-        const gatewayRupees = (pDetails.payment.amount || 0) / 100;
-        if (gatewayRupees > 0) {
-          if (gatewayRupees < numAmount) {
-            return res.status(400).json({
-              success: false,
-              message: `Payment amount mismatch: captured ₹${gatewayRupees} but requested ₹${numAmount}`
-            });
-          }
-          creditedAmount = gatewayRupees;
-        }
-      }
-    } catch (fetchErr) {
-      console.warn('[WalletTopup] Could not verify amount with Razorpay directly:', fetchErr.message);
+    const pDetails = await getPaymentDetails(razorpay_payment_id);
+    const gatewayPayment = pDetails && pDetails.success ? pDetails.payment : null;
+    if (!gatewayPayment) {
+      return res.status(503).json({
+        success: false,
+        message: 'We could not confirm your payment with the payment provider just yet. Your money is safe and will be added to your wallet automatically in a few minutes.'
+      });
+    }
+    if (gatewayPayment.status === 'authorized') {
+      return res.status(503).json({ success: false, message: 'Your payment is still being confirmed. It will be added to your wallet automatically in a few minutes.' });
+    }
+    if (gatewayPayment.status !== 'captured') {
+      return res.status(400).json({ success: false, message: `The payment is ${gatewayPayment.status}, so nothing was added to your wallet.` });
+    }
+    // The order was created for one customer; a valid payment cannot be claimed by someone else
+    if (gatewayPayment.notes?.userId && String(gatewayPayment.notes.userId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: 'This payment belongs to a different account.' });
+    }
+    const gatewayRupees = (gatewayPayment.amount || 0) / 100;
+    if (gatewayRupees < numAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment amount mismatch: captured ₹${gatewayRupees} but requested ₹${numAmount}`
+      });
     }
 
-    if (!user.wallet) {
-      user.wallet = { balance: 0, penalty: 0, promoBalance: 0, cashbackBalance: 0 };
-    }
-
-    // Add money to wallet atomically to prevent race conditions
-    const previousBalance = user.wallet.balance || 0;
-    const updatedUser = await User.findByIdAndUpdate(
+    const { creditWalletTopup } = require('../../services/walletTopupService');
+    const result = await creditWalletTopup({
       userId,
-      { $inc: { 'wallet.balance': creditedAmount } },
-      { new: true }
-    );
-    const newBalance = updatedUser?.wallet?.balance || (previousBalance + creditedAmount);
-
-    // Create Transaction Record
-    await Transaction.create({
-      userId: user._id,
-      type: 'credit',
-      amount: creditedAmount,
-      status: 'completed',
-      paymentMethod: 'razorpay',
-      description: 'Wallet Top-up',
-      balanceBefore: previousBalance,
-      balanceAfter: newBalance,
-      referenceId: razorpay_payment_id,
-      metadata: {
-        orderId: razorpay_order_id,
-        signature: razorpay_signature
-      }
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      amount: gatewayRupees,
+      source: 'verify'
     });
+    if (result.duplicate) {
+      return res.status(200).json({ success: true, message: 'Payment already processed', data: { balance: result.balance } });
+    }
+    const newBalance = result.balance;
 
     res.status(200).json({
       success: true,

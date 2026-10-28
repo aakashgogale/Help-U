@@ -13,6 +13,7 @@ import Login from '../pages/login';
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Settings = lazy(() => import('../pages/Settings'));
 const LandingPageAdmin = lazy(() => import('../pages/LandingPageAdmin'));
+const SupportMessages = lazy(() => import('../pages/SupportMessages'));
 const Customization = lazy(() => import('../pages/Customization'));
 const LegalPages = lazy(() => import('../pages/LegalPages'));
 const UserCategories = lazy(() => import('../pages/UserCategories'));
@@ -86,6 +87,7 @@ const AdminRoutes = () => {
           <Route path="landing-page" element={<LandingPageAdmin />} />
           <Route path="customization" element={<Customization />} />
           <Route path="legal-pages" element={<LegalPages />} />
+          <Route path="support-messages" element={<SupportMessages />} />
           <Route path="booking-config" element={<BookingConfig />} />
           <Route path="addons" element={<AddOns />} />
           <Route path="commission" element={<Commission />} />

@@ -118,6 +118,10 @@ const CONFIG_SCHEMA = {
   // from the professional at pickup (Help U then reimburses the professional).
   scrapAllowCashPayout: [false, 'boolean'],
 
+  // Customer wallet top-up limits (₹)
+  walletMinTopup: [100, 'number', 1, 100000],
+  walletMaxTopup: [50000, 'number', 1, 1000000],
+
   // What the professional earns for completing a scrap pickup. Off by default: nothing is paid
   // until an admin switches it on. Fixed = a flat amount per pickup; percentage = a share of the
   // final amount paid for the scrap (capped by ...Max when that is above 0).
@@ -242,6 +246,8 @@ const getPublicBookingConfig = async () => {
     workerLateCancelPenaltyValue: c.workerLateCancelPenaltyValue,
     workerLateCancelPenaltyMax: c.workerLateCancelPenaltyMax,
     scrapAllowCashPayout: c.scrapAllowCashPayout,
+    walletMinTopup: c.walletMinTopup,
+    walletMaxTopup: c.walletMaxTopup,
     scrapWorkerPayoutEnabled: c.scrapWorkerPayoutEnabled,
     scrapWorkerPayoutType: c.scrapWorkerPayoutType,
     scrapWorkerPayoutValue: c.scrapWorkerPayoutValue,

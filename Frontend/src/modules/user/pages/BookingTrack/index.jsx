@@ -910,7 +910,7 @@ const BookingTrack = () => {
                   <div className="mt-6 flex flex-col items-center w-full">
                     <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em] mb-3">Payment Verification OTP</p>
                     <div className="flex justify-center gap-2.5">
-                      {String(booking?.customerConfirmationOTP || booking?.paymentOtp || '0000').split('').map((digit, idx) => (
+                      {String(booking?.customerConfirmationOTP || booking?.paymentOtp || '••••').split('').map((digit, idx) => (
                         <div
                           key={idx}
                           className="w-10 h-12 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 shadow-md"

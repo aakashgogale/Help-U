@@ -234,9 +234,11 @@ const landingPageConfigSchema = new mongoose.Schema(
 
     // App Download Links
     appLinks: {
+      // Only a real store listing is shown (https://play.google.com/store/apps/details?id=...).
+      // Empty until the admin pastes it; the page then points to the web app instead of a search.
       playStoreUrl: {
         type: String,
-        default: 'https://play.google.com/store/search?q=Help-U%20Services&c=apps'
+        default: ''
       },
       appStoreUrl: {
         type: String,
@@ -274,7 +276,15 @@ const landingPageConfigSchema = new mongoose.Schema(
       }
     },
 
-    // Statistics Counter
+    // 'auto' (default): the numbers are counted from the live database. 'manual': the admin's own
+    // `stats` below are shown as typed.
+    statsMode: {
+      type: String,
+      enum: ['auto', 'manual'],
+      default: 'auto'
+    },
+
+    // Statistics Counter (used when statsMode is 'manual')
     stats: {
       type: Array,
       default: () => DEFAULT_STATS

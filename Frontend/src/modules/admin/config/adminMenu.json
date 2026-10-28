@@ -120,7 +120,6 @@
     ],
     "children": [
       "Service Management",
-      "Manage Categories",
       "Manage Brands",
       "Home"
     ]
@@ -224,6 +223,16 @@
     "route": "/admin/customization",
     "allowedRoles": [
       "super_admin"
+    ],
+    "children": []
+  },
+  {
+    "title": "Support Messages",
+    "route": "/admin/support-messages",
+    "allowedRoles": [
+      "super_admin",
+      "admin",
+      "content_manager"
     ],
     "children": []
   },

@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ensureIds, loadCatalog } from "./utils";
 import HomePage from "./pages/HomePage";
-import CategoriesPage from "./pages/CategoriesPage";
 import BrandsPage from "./pages/BrandsPage";
 import WorkerServicesPage from "./pages/WorkerServicesPage";
 import WorkerPartsPage from "./pages/WorkerPartsPage";
@@ -96,7 +95,8 @@ const UserCategories = () => {
             <Route path="home" element={<HomePage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
             <Route path="service-management" element={<ServiceManagementPage selectedCity={selectedCity} />} />
             <Route path="services" element={<Navigate to="service-management" replace />} />
-            <Route path="categories" element={<CategoriesPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
+            {/* The old stand-alone categories editor was replaced by the one inside Service Management */}
+            <Route path="categories" element={<Navigate to="service-management" replace />} />
             <Route path="sections" element={<HomeSectionsManagerPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />
             <Route path="catalog" element={<ServiceManagementPage selectedCity={selectedCity} />} />
             <Route path="brands" element={<BrandsPage catalog={catalog} setCatalog={setCatalog} selectedCity={selectedCity} />} />

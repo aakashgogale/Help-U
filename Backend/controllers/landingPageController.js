@@ -3,9 +3,36 @@ const PartnerLead = require('../models/PartnerLead');
 const Category = require('../models/Category');
 const Settings = require('../models/Settings');
 const Worker = require('../models/Worker');
-const Booking = require('../models/Booking');
-const Service = require('../models/Service');
 const Review = require('../models/Review');
+
+// A real store listing, not a search page or a placeholder
+const PLAY_LISTING_RE = /^https:\/\/play\.google\.com\/store\/apps\/details\?id=[\w.]+/;
+const APP_STORE_RE = /^https:\/\/apps\.apple\.com\/.+/;
+
+const formatCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n));
+
+/** Real numbers counted from the database, so the page never claims more than is true. */
+const liveStats = async () => {
+  const User = require('../models/User');
+  const UserService = require('../models/UserService');
+
+  const [pros, customers, services, rating] = await Promise.all([
+    Worker.countDocuments({ approvalStatus: 'approved' }),
+    User.countDocuments({}),
+    UserService.countDocuments({ status: 'active', publishStatus: { $ne: 'draft' } }),
+    Review.aggregate([{ $group: { _id: null, avg: { $avg: '$rating' }, n: { $sum: 1 } } }])
+  ]);
+
+  const stats = [
+    { label: 'Verified Professionals', value: String(pros), color: 'text-brand' },
+    { label: 'Customers', value: String(customers), color: 'text-white' },
+    { label: 'Services Available', value: String(services), color: 'text-brand' }
+  ];
+  if (rating[0] && rating[0].n >= 5) {
+    stats.push({ label: `Average Rating (${formatCount(rating[0].n)} reviews)`, value: `${rating[0].avg.toFixed(1)}★`, color: 'text-white' });
+  }
+  return stats.filter((s) => s.value !== '0');
+};
 
 /**
  * Public: Get complete landing page configuration
@@ -29,48 +56,13 @@ exports.getPublicLandingConfig = async (req, res) => {
     // Optionally get company settings as fallback
     const globalSettings = await Settings.findOne({ type: 'global' }).lean();
 
-    // Clean Play Store link: remove placeholder URLs if present
-    const rawPlayUrl = config.appLinks?.playStoreUrl;
-    const playStoreUrl = (rawPlayUrl && !rawPlayUrl.includes('homestr') && !rawPlayUrl.includes('homster'))
-      ? rawPlayUrl
-      : 'https://play.google.com/store/search?q=Help-U%20Services&c=apps';
+    // Only a real store listing is passed on; a search page or placeholder becomes empty and the
+    // page then sends visitors to the web app instead
+    const playStoreUrl = PLAY_LISTING_RE.test(config.appLinks?.playStoreUrl || '') ? config.appLinks.playStoreUrl : '';
+    const appStoreUrl = APP_STORE_RE.test(config.appLinks?.appStoreUrl || '') ? config.appLinks.appStoreUrl : '';
 
-    // Compute live stats from DB if admin stats are missing or left as old placeholder strings
-    let stats = config.stats || [];
-    const isPlaceholderStats = stats.length === 0 || stats.some((s) =>
-      String(s.label || '').toLowerCase().includes('indore families') ||
-      String(s.value || '').includes('450+') ||
-      String(s.value || '').includes('12k+')
-    );
-
-    if (isPlaceholderStats) {
-      try {
-        const [workerCount, bookingCount, serviceCount, reviewStats] = await Promise.all([
-          Worker.countDocuments({ approvalStatus: 'approved' }).catch(() => 0),
-          Booking.countDocuments({ status: { $in: ['completed', 'WORK_DONE'] } }).catch(() => 0),
-          Service.countDocuments({ status: 'active' }).catch(() => 0),
-          Review.aggregate([
-            { $group: { _id: null, avgRating: { $avg: '$rating' } } }
-          ]).catch(() => [])
-        ]);
-
-        const avgRating = reviewStats[0]?.avgRating ? Number(reviewStats[0].avgRating.toFixed(1)) : 4.9;
-        const formatCount = (n, floor = 50) => {
-          const val = Math.max(n || 0, floor);
-          if (val >= 1000) return `${(val / 1000).toFixed(1).replace(/\.0$/, '')}k+`;
-          return `${val}+`;
-        };
-
-        stats = [
-          { label: 'Verified Experts', value: formatCount(workerCount, 150), color: 'text-brand' },
-          { label: 'Happy Customers', value: formatCount(bookingCount, 500), color: 'text-white' },
-          { label: 'Services Available', value: formatCount(serviceCount, 50), color: 'text-brand' },
-          { label: 'Customer Satisfaction', value: `${avgRating}★`, color: 'text-white' }
-        ];
-      } catch (err) {
-        console.error('Error calculating live platform stats:', err);
-      }
-    }
+    // Real numbers counted from the database unless the admin chose to type their own
+    const stats = config.statsMode === 'manual' ? (config.stats || []) : await liveStats();
 
     res.status(200).json({
       success: true,
@@ -78,10 +70,12 @@ exports.getPublicLandingConfig = async (req, res) => {
         hero: config.hero,
         appLinks: {
           ...config.appLinks,
-          playStoreUrl
+          playStoreUrl,
+          appStoreUrl
         },
         aboutUs: config.aboutUs,
         stats,
+        statsMode: config.statsMode || 'auto',
         howItWorks: config.howItWorks,
         partnerSection: config.partnerSection,
         faqs: (config.faqs || []).filter(f => f.isActive !== false).sort((a, b) => a.order - b.order),
@@ -198,6 +192,7 @@ exports.updateAdminLandingConfig = async (req, res) => {
       'appLinks',
       'aboutUs',
       'stats',
+      'statsMode',
       'howItWorks',
       'partnerSection',
       'faqs',

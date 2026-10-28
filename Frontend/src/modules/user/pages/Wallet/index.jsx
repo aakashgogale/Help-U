@@ -22,6 +22,7 @@ import { MdAccountBalanceWallet, MdVerified, MdLockOutline } from 'react-icons/m
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { walletService } from '../../../../services/walletService';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import NotificationBell from '../../components/common/NotificationBell';
 import { themeColors } from '../../../../theme';
@@ -51,10 +52,12 @@ const loadRazorpayScript = () => {
   });
 };
 
+// Quick-pick amounts; only those inside the admin's top-up limits are offered
 const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 
 const Wallet = () => {
   const navigate = useNavigate();
+  const { walletMinTopup, walletMaxTopup } = useBookingConfig(); // set by the admin in Booking Configuration
   const [walletData, setWalletData] = useState({
     balance: 0,
     penalty: 0,
@@ -123,8 +126,8 @@ const Wallet = () => {
   const openAddMoneyModal = (preset = null) => {
     if (preset) {
       setTopupAmount(String(preset));
-    } else if (!topupAmount || Number(topupAmount) < 100) {
-      setTopupAmount('500');
+    } else if (!topupAmount || Number(topupAmount) < walletMinTopup) {
+      setTopupAmount(String(Math.min(Math.max(500, walletMinTopup), walletMaxTopup)));
     }
     setShowAddMoneyModal(true);
   };
@@ -133,13 +136,13 @@ const Wallet = () => {
   const handleProceedTopup = async () => {
     const numericAmount = parseFloat(topupAmount);
 
-    if (isNaN(numericAmount) || numericAmount < 100) {
-      toast.error('Minimum top-up amount is ₹100');
+    if (isNaN(numericAmount) || numericAmount < walletMinTopup) {
+      toast.error(`Minimum top-up amount is ₹${walletMinTopup.toLocaleString('en-IN')}`);
       return;
     }
 
-    if (numericAmount > 50000) {
-      toast.error('Maximum top-up amount is ₹50,000 per transaction');
+    if (numericAmount > walletMaxTopup) {
+      toast.error(`Maximum top-up amount is ₹${walletMaxTopup.toLocaleString('en-IN')} per transaction`);
       return;
     }
 
@@ -854,8 +857,8 @@ const Wallet = () => {
                   </span>
                   <input
                     type="number"
-                    min="100"
-                    max="50000"
+                    min={walletMinTopup}
+                    max={walletMaxTopup}
                     step="50"
                     value={topupAmount}
                     onChange={(e) => setTopupAmount(e.target.value)}
@@ -874,9 +877,9 @@ const Wallet = () => {
                   )}
                 </div>
                 <div className="flex items-center justify-between text-[10px] px-0.5">
-                  <span className="text-slate-400">Min: ₹100 • Max: ₹50,000</span>
-                  {Number(topupAmount) < 100 && topupAmount !== '' && (
-                    <span className="text-rose-500 font-semibold">Min deposit is ₹100</span>
+                  <span className="text-slate-400">Min: ₹{walletMinTopup.toLocaleString('en-IN')} • Max: ₹{walletMaxTopup.toLocaleString('en-IN')}</span>
+                  {Number(topupAmount) < walletMinTopup && topupAmount !== '' && (
+                    <span className="text-rose-500 font-semibold">Min deposit is ₹{walletMinTopup.toLocaleString('en-IN')}</span>
                   )}
                 </div>
               </div>
@@ -887,7 +890,7 @@ const Wallet = () => {
                   Popular Amounts
                 </p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {PRESET_AMOUNTS.map((amt) => {
+                  {PRESET_AMOUNTS.filter((amt) => amt >= walletMinTopup && amt <= walletMaxTopup).map((amt) => {
                     const isSelected = String(amt) === String(topupAmount);
                     return (
                       <button
@@ -924,10 +927,10 @@ const Wallet = () => {
               <div className="mt-3.5">
                 <button
                   type="button"
-                  disabled={processingPayment || !topupAmount || Number(topupAmount) < 100}
+                  disabled={processingPayment || !topupAmount || Number(topupAmount) < walletMinTopup || Number(topupAmount) > walletMaxTopup}
                   onClick={handleProceedTopup}
                   className={`w-full py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer ${
-                    processingPayment || !topupAmount || Number(topupAmount) < 100
+                    processingPayment || !topupAmount || Number(topupAmount) < walletMinTopup || Number(topupAmount) > walletMaxTopup
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                       : 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-teal-600/20 active:scale-[0.99]'
                   }`}

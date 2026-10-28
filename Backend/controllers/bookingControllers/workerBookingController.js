@@ -4,6 +4,7 @@ const { validationResult } = require('express-validator');
 const { BOOKING_STATUS, PAYMENT_STATUS } = require('../../utils/constants');
 const { normalizeWorkPhotos, persistWorkPhotos } = require('../../utils/workPhotos');
 const otpGuard = require('../../utils/otpGuard');
+const { expectedPaymentCode, issuePaymentCode, clearPaymentCode, CODE_NOT_ISSUED } = require('../../utils/paymentCode');
 const { summariseBookedDetails } = require('../../utils/detailFields');
 const { createNotification } = require('../notificationControllers/notificationController');
 const { sendNotificationToUser, sendNotificationToWorker } = require('../../services/firebaseAdmin');
@@ -1195,9 +1196,7 @@ const completeSelfJob = async (req, res) => {
     booking.vendorBillId = bill._id;
 
     // Reuse existing Payment OTP for cash collection or generate new one
-    const payOtp = booking.customerConfirmationOTP || booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
-    booking.paymentOtp = payOtp;
-    booking.customerConfirmationOTP = payOtp;
+    issuePaymentCode(booking);
 
     // Accepts either the new { url, type } objects or legacy URL strings.
     if (workPhotos) {
@@ -1295,10 +1294,11 @@ const collectSelfCash = async (req, res) => {
     const booking = await Booking.findOne({ _id: id, vendorId }).select('+paymentOtp +customerConfirmationOTP');
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     if (booking.status !== BOOKING_STATUS.WORK_DONE) return res.status(400).json({ success: false, message: 'Work not done yet' });
-    const expectedOtp = booking.customerConfirmationOTP || booking.paymentOtp;
+    const expectedOtp = expectedPaymentCode(booking);
+    if (!expectedOtp) return res.status(CODE_NOT_ISSUED.statusCode).json(CODE_NOT_ISSUED.body);
     const payLock = otpGuard.lockedMinutes(booking, 'payment');
     if (payLock) { const r = otpGuard.lockedResponse(payLock); return res.status(r.statusCode).json(r.body); }
-    if (expectedOtp && expectedOtp !== String(otp ?? '').trim()) {
+    if (expectedOtp !== String(otp ?? '').trim()) {
       const failure = await otpGuard.registerFailure(booking._id, 'payment');
       return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please check the code with the customer.', failure) });
     }
@@ -1327,8 +1327,7 @@ const collectSelfCash = async (req, res) => {
     booking.cashCollectorId = vendorId;
     booking.cashCollectedAt = new Date();
     booking.completedAt = new Date();
-    booking.paymentOtp = undefined;
-    booking.customerConfirmationOTP = undefined;
+    clearPaymentCode(booking);
     await booking.save();
 
     // Clear user penalty now that booking is completed

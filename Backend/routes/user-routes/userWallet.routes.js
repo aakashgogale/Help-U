@@ -12,14 +12,15 @@ const {
 
 // Validation rules
 const addMoneyValidation = [
-  body('amount').isFloat({ min: 100 }).withMessage('Minimum amount is ₹100')
+  // The minimum and maximum are the admin's (Booking Configuration); the controller checks them
+  body('amount').isFloat({ gt: 0 }).withMessage('Enter a valid amount')
 ];
 
 const verifyTopupValidation = [
   body('razorpay_order_id').trim().notEmpty().withMessage('Order ID is required'),
   body('razorpay_payment_id').trim().notEmpty().withMessage('Payment ID is required'),
   body('razorpay_signature').trim().notEmpty().withMessage('Signature is required'),
-  body('amount').isFloat({ min: 100 }).withMessage('Amount must be at least ₹100')
+  body('amount').isFloat({ gt: 0 }).withMessage('Enter a valid amount')
 ];
 
 // Routes

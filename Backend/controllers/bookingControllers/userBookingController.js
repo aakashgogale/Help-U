@@ -9,6 +9,7 @@ const cloudinaryService = require('../../services/cloudinaryService');
 const { placeBooking } = require('../../services/bookingCreationService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
 const { evaluateCancellation, onTheWayFee } = require('../../utils/cancellationPolicy');
+const { expectedPaymentCode, clearPaymentCode } = require('../../utils/paymentCode');
 const { resolveFieldsForCategories, validateDetailAnswers } = require('../../utils/detailFields');
 
 // The customer can change their answers (brand, vehicle type...) until the professional is on the way
@@ -54,8 +55,8 @@ const createBooking = async (req, res) => {
  */
 const hideUnsentBill = (booking) => {
   if (booking && booking.status === BOOKING_STATUS.WORK_DONE && !booking.billFinalizedAt) {
+    clearPaymentCode(booking);
     booking.customerConfirmationOTP = null;
-    booking.paymentOtp = undefined;
     booking.qrPaymentInitiated = false;
   }
   return booking;
@@ -162,7 +163,7 @@ const getBookingById = async (req, res) => {
     bookingData.canEditDetails = canEditDetails(booking) && bookingData.detailFields.length > 0;
 
     // Ensure OTP consistency for user display
-    bookingData.customerConfirmationOTP = booking.customerConfirmationOTP || booking.paymentOtp;
+    bookingData.customerConfirmationOTP = expectedPaymentCode(booking) || null;
     bookingData.paymentOtp = bookingData.customerConfirmationOTP;
     hideUnsentBill(bookingData);
 

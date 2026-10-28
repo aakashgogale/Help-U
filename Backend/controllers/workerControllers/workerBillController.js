@@ -5,6 +5,7 @@ const WorkerPartsCatalog = require('../../models/WorkerPartsCatalog');
 const Settings = require('../../models/Settings');
 const { BILL_STATUS, BOOKING_STATUS } = require('../../utils/constants');
 const { billLockReason } = require('../../utils/billLock');
+const { issuePaymentCode } = require('../../utils/paymentCode');
 const { resolveCommission, computeWorkerEarnings, toPayoutConfig } = require('../../services/commissionService');
 
 /**
@@ -319,9 +320,7 @@ const createOrUpdateBill = async (req, res) => {
     booking.billFinalizedAt = sendNow ? (booking.billFinalizedAt || new Date()) : null;
 
     if (sendNow) {
-      const payOtp = booking.customerConfirmationOTP || booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
-      booking.paymentOtp = payOtp;
-      booking.customerConfirmationOTP = payOtp;
+      issuePaymentCode(booking);
     }
     await booking.save();
 
@@ -335,7 +334,7 @@ const createOrUpdateBill = async (req, res) => {
           userPayableAmount: booking.userPayableAmount,
           billFinalizedAt: booking.billFinalizedAt,
           customerConfirmationOTP: booking.customerConfirmationOTP,
-          paymentOtp: booking.paymentOtp
+          paymentOtp: booking.customerConfirmationOTP // old name, kept for app builds that still read it
         });
       }
       try {

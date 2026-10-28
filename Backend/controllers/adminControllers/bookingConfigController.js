@@ -54,6 +54,9 @@ exports.updateConfig = async (req, res) => {
       return res.status(400).json({ success: false, message: 'The professional cancellation penalty cannot be more than 100% of the booking amount' });
     }
 
+    if (merged.walletMinTopup > merged.walletMaxTopup) {
+      return res.status(400).json({ success: false, message: 'The minimum top-up cannot be more than the maximum' });
+    }
     if (merged.scrapWorkerPayoutType === 'percentage' && merged.scrapWorkerPayoutValue > 100) {
       return res.status(400).json({ success: false, message: 'The professional’s scrap share cannot be more than 100%' });
     }

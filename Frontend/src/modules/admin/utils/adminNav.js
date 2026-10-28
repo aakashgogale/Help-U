@@ -30,7 +30,6 @@ const CHILD_ROUTES = {
     'Home': '/admin/user-categories/home',
     'Service Management': '/admin/user-categories/service-management',
     'Home Sections': '/admin/user-categories/sections',
-    'Manage Categories': '/admin/user-categories/categories',
     'Manage Brands': '/admin/user-categories/brands',
   },
   '/admin/payments': {
@@ -124,6 +123,7 @@ export const canAccessItem = (item, adminUser) => {
     // Legacy / alias permissions
     if (item.route.startsWith('/admin/user-categories') && (perms.includes('services') || perms.includes('user-categories'))) return true;
     if (item.route === '/admin/customization' && (perms.includes('content') || perms.includes('customization'))) return true;
+    if (item.route === '/admin/support-messages' && perms.includes('content')) return true;
     if (item.route === '/admin/settlements' && (perms.includes('payments') || perms.includes('settlements'))) return true;
     if (item.route === '/admin/recurring-bookings' && (perms.includes('bookings') || perms.includes('recurring-bookings'))) return true;
 
@@ -146,7 +146,7 @@ export const NAV_GROUPS = [
   { label: 'Finance', titles: ['Payments', 'Settlements', 'Commission', 'Plans', 'Coupons'] },
   { label: 'Catalog', titles: ['User Catalog', 'Worker Services', 'Worker Parts', 'Add-ons', 'Zones'] },
   { label: 'Insights', titles: ['Reports'] },
-  { label: 'System', titles: ['Landing Page', 'Settings', 'Booking Config', 'Customization', 'Legal & Help Pages'] },
+  { label: 'System', titles: ['Landing Page', 'Settings', 'Booking Config', 'Customization', 'Legal & Help Pages', 'Support Messages'] },
 ];
 
 /** Splits the visible menu into the labelled sections above (empty sections are dropped). */

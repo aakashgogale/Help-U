@@ -23,13 +23,22 @@ export const BOOKING_CONFIG_DEFAULTS = {
   isAddOnsEnabled: true,
   isEmergencyEnabled: false,
   emergencySurchargeType: 'fixed',
-  emergencySurchargeValue: 0,
+  emergencySurchargeValue: 199,
   isChatEnabled: true,
   isChatImageEnabled: true,
   isDisputeEnabled: true,
   disputeWindowDays: 7,
   maxDisputeEvidence: 5,
-  disputeReasons: [],
+  disputeReasons: [
+    'Service not completed',
+    'Poor quality of work',
+    'Overcharged / billing issue',
+    'Professional misbehaved',
+    'Damage to property',
+    'Professional did not arrive',
+    'Payment issue',
+    'Other'
+  ],
   minWithdrawalAmount: 100,
   isRecurringEnabled: true,
   recurringFrequencies: ['weekly', 'biweekly', 'monthly'],
@@ -54,7 +63,15 @@ export const BOOKING_CONFIG_DEFAULTS = {
   workerLateCancelPenaltyValue: 0,
   workerLateCancelPenaltyMax: 0,
   // Scrap payout: wallet by default; the customer may choose cash when this is on
-  scrapAllowCashPayout: false
+  scrapAllowCashPayout: false,
+  // What a professional earns for a scrap pickup (off by default)
+  scrapWorkerPayoutEnabled: false,
+  scrapWorkerPayoutType: 'fixed',
+  scrapWorkerPayoutValue: 0,
+  scrapWorkerPayoutMax: 0,
+  // Customer wallet top-up limits (₹)
+  walletMinTopup: 100,
+  walletMaxTopup: 50000
 };
 
 let cached = null;

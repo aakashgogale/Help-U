@@ -150,7 +150,9 @@ const HelpSupport = () => {
 
     try {
       setSubmitting(true);
-      const res = await api.post('/users/support-requests', formData);
+      // A signed-in customer's message is linked to their account; a visitor's goes through the public form
+      const signedIn = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      const res = await api.post(signedIn ? '/users/support-messages' : '/public/support-message', formData);
       if (res.data?.success) {
         toast.success(res.data.message || 'Your message has been sent! We will get back to you soon.');
         setShowContactForm(false);

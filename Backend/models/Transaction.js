@@ -48,6 +48,13 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Set only where the same payment must never be applied twice (wallet top-ups). A unique, sparse
+  // index on it makes "claim the payment, then credit" atomic even when the app's verify call and
+  // Razorpay's webhook arrive at the same moment.
+  idempotencyKey: {
+    type: String,
+    default: undefined
+  },
   referenceId: {
     type: String,  // Payment gateway reference
     default: null
@@ -68,10 +75,12 @@ const transactionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
+// Indexes for faster queries
 transactionSchema.index({ userId: 1, createdAt: -1 });
 transactionSchema.index({ vendorId: 1, createdAt: -1 });
 transactionSchema.index({ bookingId: 1 });
 transactionSchema.index({ type: 1, status: 1 });
+// A wallet top-up is applied once per payment: the unique idempotencyKey below makes that atomic
+transactionSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

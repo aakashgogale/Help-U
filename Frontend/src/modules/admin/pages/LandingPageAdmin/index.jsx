@@ -281,11 +281,11 @@ const LandingPageAdmin = () => {
           <Card title="App Download Links">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <Field label="Google Play Store URL" hint="Direct link to your app on Google Play">
+                <Field label="Google Play Store URL" hint="Paste the real listing link (play.google.com/store/apps/details?id=...). Until then the landing buttons open the web app. A search link or placeholder is not shown.">
                   <input
                     type="url"
                     placeholder="https://play.google.com/store/apps/details?id=in.helpu.customer"
-                    value={(config.appLinks?.playStoreUrl?.includes('homestr') || config.appLinks?.playStoreUrl?.includes('homster')) ? '' : (config.appLinks?.playStoreUrl || '')}
+                    value={config.appLinks?.playStoreUrl || ''}
                     onChange={(e) =>
                       setConfig({ ...config, appLinks: { ...config.appLinks, playStoreUrl: e.target.value } })
                     }
@@ -321,29 +321,31 @@ const LandingPageAdmin = () => {
             </div>
           </Card>
 
-          <Card
-            title="Platform Metrics & Stats Counters"
-            actions={
-              <button
-                type="button"
-                onClick={() => {
-                  setConfig({
-                    ...config,
-                    stats: [
-                      { label: 'Verified Experts', value: '150+', color: 'text-brand' },
-                      { label: 'Happy Customers', value: '500+', color: 'text-white' },
-                      { label: 'Services Available', value: '50+', color: 'text-brand' },
-                      { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
-                    ]
-                  });
-                  toast.success('Stats reset to platform standards');
-                }}
-                className="text-xs font-semibold text-[#00a6a6] hover:underline"
-              >
-                Reset to Standard Stats
-              </button>
-            }
-          >
+          <Card title="Platform Metrics & Stats Counters">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {[
+                { key: 'auto', label: 'Automatic (real numbers)' },
+                { key: 'manual', label: 'Type my own' }
+              ].map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setConfig({ ...config, statsMode: m.key })}
+                  className={`rounded-full border px-4 py-1.5 text-xs font-semibold ${(config.statsMode || 'auto') === m.key ? 'border-[#163B66] bg-[#163B66] text-white' : 'border-gray-300 bg-white text-gray-600'}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {(config.statsMode || 'auto') === 'auto' ? (
+              <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
+                The landing page counts these from your live data: approved professionals, customers, active services and the average review rating
+                (shown once there are at least 5 reviews). A number that is 0 is hidden. Switch to “Type my own” to enter figures by hand.
+              </p>
+            ) : (
+              <p className="mb-3 text-xs text-amber-800">These figures are shown exactly as typed. Make sure they are true.</p>
+            )}
+            {(config.statsMode || 'auto') === 'manual' && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {(config.stats || []).map((stat, idx) => (
                 <div key={idx} className="rounded-lg border border-gray-200 p-4 space-y-2">
@@ -374,6 +376,7 @@ const LandingPageAdmin = () => {
                 </div>
               ))}
             </div>
+            )}
           </Card>
         </div>
       )}

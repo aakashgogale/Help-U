@@ -461,6 +461,8 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     select: false
   },
+  // Old name of customerConfirmationOTP. Nothing writes it any more; kept so bookings made before the
+  // change still read correctly (utils/paymentCode.js) and so scripts/mergePaymentCodeFields.js can move them.
   paymentOtp: {
     type: String,
     select: false

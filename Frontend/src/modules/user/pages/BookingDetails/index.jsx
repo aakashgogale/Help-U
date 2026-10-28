@@ -1121,7 +1121,7 @@ const BookingDetails = () => {
                     <div className="flex flex-col items-center mb-6">
                       <p className="text-[10px] font-bold text-orange-100 uppercase tracking-[0.2em] mb-3 opacity-90">Verification Code</p>
                       <div className="flex justify-center gap-2">
-                        {String(booking.customerConfirmationOTP || booking.paymentOtp || '0000').split('').map((digit, idx) => (
+                        {String(booking.customerConfirmationOTP || booking.paymentOtp || '••••').split('').map((digit, idx) => (
                           <div
                             key={idx}
                             className="w-12 h-14 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 shadow-lg"

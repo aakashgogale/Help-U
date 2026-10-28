@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheckCircle, FiUsers, FiShield, FiClock, FiAward, FiHeart, FiGlobe, FiSmile, FiSmartphone } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import Logo from '../../../../components/common/Logo';
+import landingService from '../../../../services/landingService';
 
 const AboutHelpU = () => {
   const navigate = useNavigate();
@@ -61,11 +62,17 @@ const AboutHelpU = () => {
     }
   ];
 
-  const stats = [
-    { number: '10K+', label: 'Happy Customers' },
-    { number: '500+', label: 'Service Partners' },
-    { number: '4.8', label: 'App Rating' },
-  ];
+  // Real numbers counted by the server (the same ones the landing page shows); nothing is invented here
+  const [stats, setStats] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    landingService.getLandingConfig().then((data) => {
+      if (alive && data?.success && Array.isArray(data.config?.stats)) {
+        setStats(data.config.stats.map((s) => ({ number: s.value, label: s.label })));
+      }
+    });
+    return () => { alive = false; };
+  }, []);
 
   return (
     <motion.div
@@ -123,7 +130,7 @@ const AboutHelpU = () => {
         </motion.div>
 
         {/* Stats Row */}
-        <motion.div variants={itemVariants} className="flex justify-between bg-white rounded-2xl p-6 shadow-sm border border-gray-100 divide-x divide-gray-100">
+        {stats.length > 0 && <motion.div variants={itemVariants} className="flex justify-between bg-white rounded-2xl p-6 shadow-sm border border-gray-100 divide-x divide-gray-100">
           {stats.map((stat, idx) => (
             <div key={idx} className="flex-1 text-center px-2">
               <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#347989] to-[#BB5F36]">
@@ -134,7 +141,7 @@ const AboutHelpU = () => {
               </div>
             </div>
           ))}
-        </motion.div>
+        </motion.div>}
 
         {/* Mission Statement */}
         <motion.div variants={itemVariants}>

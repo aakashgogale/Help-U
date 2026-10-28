@@ -1,4 +1,5 @@
 const otpGuard = require('../../utils/otpGuard');
+const { expectedPaymentCode, issuePaymentCode, clearPaymentCode, CODE_NOT_ISSUED } = require('../../utils/paymentCode');
 const Booking = require('../../models/Booking');
 const Worker = require('../../models/Worker');
 const Transaction = require('../../models/Transaction');
@@ -162,9 +163,7 @@ exports.initiateOnlineCollection = async (req, res) => {
     }
 
     // Reuse existing OTP or generate new one
-    const otp = booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
-    booking.customerConfirmationOTP = otp;
-    booking.paymentOtp = otp;
+    const otp = issuePaymentCode(booking);
 
     // Store QR ID to track later
     booking.razorpayQrId = qrResult.qrCodeId;
@@ -302,9 +301,7 @@ exports.initiateCashCollection = async (req, res) => {
     }
 
     // Reuse existing OTP or generate new one
-    const otp = booking.paymentOtp || Math.floor(1000 + Math.random() * 9000).toString();
-    booking.customerConfirmationOTP = otp;
-    booking.paymentOtp = otp;
+    const otp = issuePaymentCode(booking);
     booking.billFinalizedAt = new Date();
     await booking.save();
 
@@ -322,7 +319,7 @@ exports.initiateCashCollection = async (req, res) => {
         finalAmount: booking.finalAmount,
         userPayableAmount: getRemainingPayableAmount(booking),
         customerConfirmationOTP: booking.customerConfirmationOTP,
-        paymentOtp: booking.paymentOtp,
+        paymentOtp: booking.customerConfirmationOTP, // old name, kept for app builds that still read it
         workDoneDetails: booking.workDoneDetails,
         qrPaymentInitiated: false
       });
@@ -380,25 +377,30 @@ exports.confirmCashCollection = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
     }
 
+    // A retry after the cash was already confirmed (the code is cleared on completion) is answered
+    // here, before any code check, so it never looks like a wrong or missing code.
+    if (booking.cashCollected) {
+      return res.status(200).json({ success: true, message: 'Cash collection already confirmed', data: { bookingId: booking._id } });
+    }
+
     // OTP Verification
     const isPlanBenefitNoExtras = booking.paymentMethod === 'plan_benefit' && (booking.userPayableAmount === 0 || booking.finalAmount === 0);
-    const expectedOtp = (booking.customerConfirmationOTP || booking.paymentOtp || '').trim();
+    const expectedOtp = expectedPaymentCode(booking);
     const providedOtp = (otp != null) ? String(otp).trim() : '';
 
     if (!isPlanBenefitNoExtras) {
       if (!providedOtp) {
         return res.status(400).json({ success: false, message: 'OTP is required to confirm cash collection.' });
       }
+      if (!expectedOtp) return res.status(CODE_NOT_ISSUED.statusCode).json(CODE_NOT_ISSUED.body);
       const payLock = otpGuard.lockedMinutes(booking, 'payment');
       if (payLock) { const r = otpGuard.lockedResponse(payLock); return res.status(r.statusCode).json(r.body); }
-      if (expectedOtp && providedOtp !== expectedOtp) {
-        if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
-          // The expected code is never written to the logs
-          const failure = await otpGuard.registerFailure(booking._id, 'payment');
-          return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the correct code shared by the customer.', failure) });
-        }
+      if (providedOtp !== expectedOtp) {
+        // The expected code is never written to the logs
+        const failure = await otpGuard.registerFailure(booking._id, 'payment');
+        return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the correct code shared by the customer.', failure) });
       }
-      if (expectedOtp) await otpGuard.clearFailures(booking._id, 'payment');
+      await otpGuard.clearFailures(booking._id, 'payment');
     }
 
     // --- ATOMIC LOCK AGAINST RACE CONDITIONS ---
@@ -486,8 +488,7 @@ exports.confirmCashCollection = async (req, res) => {
     }
 
     // Clear OTPs on completion
-    booking.paymentOtp = undefined;
-    booking.customerConfirmationOTP = undefined;
+    clearPaymentCode(booking);
 
     await booking.save();
 
@@ -719,8 +720,7 @@ exports.verifyOnlinePayment = async (req, res) => {
         }
 
         // Clear OTPs on completion
-        booking.paymentOtp = undefined;
-        booking.customerConfirmationOTP = undefined;
+        clearPaymentCode(booking);
 
         await booking.save();
 
@@ -859,21 +859,20 @@ exports.confirmManualOnlinePayment = async (req, res) => {
     }
 
     // OTP Verification (Mandatory for manual confirmation to prevent accidents)
-    const expectedOtp = (booking.customerConfirmationOTP || booking.paymentOtp || '').trim();
+    const expectedOtp = expectedPaymentCode(booking);
     const providedOtp = (otp != null) ? String(otp).trim() : '';
 
     if (!providedOtp) {
       return res.status(400).json({ success: false, message: 'OTP is required for manual confirmation.' });
     }
+    if (!expectedOtp) return res.status(CODE_NOT_ISSUED.statusCode).json(CODE_NOT_ISSUED.body);
     const payLock2 = otpGuard.lockedMinutes(booking, 'payment');
     if (payLock2) { const r = otpGuard.lockedResponse(payLock2); return res.status(r.statusCode).json(r.body); }
-    if (expectedOtp && providedOtp !== expectedOtp) {
-      if (process.env.NODE_ENV !== 'development' || providedOtp !== '0000') {
-        const failure = await otpGuard.registerFailure(booking._id, 'payment');
-        return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the code sent to the customer.', failure) });
-      }
+    if (providedOtp !== expectedOtp) {
+      const failure = await otpGuard.registerFailure(booking._id, 'payment');
+      return res.status(failure.locked ? 429 : 400).json({ success: false, message: otpGuard.wrongCodeMessage('Invalid OTP. Please enter the code sent to the customer.', failure) });
     }
-    if (expectedOtp) await otpGuard.clearFailures(booking._id, 'payment');
+    await otpGuard.clearFailures(booking._id, 'payment');
 
     // prevent race conditions
     if (booking.status === BOOKING_STATUS.COMPLETED) {

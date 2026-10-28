@@ -33,6 +33,7 @@ const { nextOccurrenceDate } = require('../utils/recurrence');
 const { resolveCheckoutAmount } = require('../utils/servicePricing');
 const { resolveBookedItemDetails } = require('./bookingDetailsService');
 const { summariseBookedDetails } = require('../utils/detailFields');
+const { expandZoneCategories } = require('../utils/zoneCategories');
 
 const fail = (statusCode, message, extra = {}) => ({
   statusCode,
@@ -316,9 +317,10 @@ const placeBooking = async (userId, payload, options = {}) => {
 
   if (matchedZone) {
     // Check if category is allowed in this zone
-    if (Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
+    const zoneCategorySet = await expandZoneCategories(matchedZone.allowedCategories);
+    if (zoneCategorySet) {
       const bookedCatId = String(category?._id || categoryId || service?.categoryId || '');
-      const isCategoryAllowed = matchedZone.allowedCategories.some(cat => String(cat._id || cat) === bookedCatId);
+      const isCategoryAllowed = zoneCategorySet.has(bookedCatId);
       if (!isCategoryAllowed) {
         return fail(400, `The requested service category is not available in ${matchedZone.name}. Please select an operational zone.`);
       }

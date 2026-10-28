@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiKey, FiEye, FiEyeOff, FiCheck, FiRefreshCw, FiCompass, FiAlertCircle } from 'react-icons/fi';
-import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus, testGoogleMapsApiKey } from '../../services/settingsService';
+import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass } from 'react-icons/fi';
+import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus } from '../../services/settingsService';
 import { ALL_AVAILABLE_LANGUAGES } from '../../../../context/LanguageContext';
 import { cityService } from '../../services/cityService';
 import { publicCatalogService } from '../../../../services/catalogService';
@@ -90,9 +90,6 @@ const AdminSettings = () => {
     supportedLanguages: ['en', 'hi'],
     autoDetectLanguageFromMap: false
   });
-  const [showMapKey, setShowMapKey] = useState(false);
-  const [mapTesting, setMapTesting] = useState(false);
-  const [mapTestResult, setMapTestResult] = useState(null);
   const [mapLanguageLoading, setMapLanguageLoading] = useState(false);
 
   const [profile, setProfile] = useState(() => {
@@ -492,9 +489,6 @@ const AdminSettings = () => {
     setMapLanguageLoading(true);
     try {
       const res = await updateSettings({
-        googleMapsApiKey: mapAndLanguageSettings.googleMapsApiKey ? mapAndLanguageSettings.googleMapsApiKey.trim() : null,
-        googleMapsLanguage: mapAndLanguageSettings.googleMapsLanguage,
-        mapRegion: mapAndLanguageSettings.mapRegion,
         defaultAppLanguage: mapAndLanguageSettings.defaultAppLanguage,
         supportedLanguages: mapAndLanguageSettings.supportedLanguages,
         autoDetectLanguageFromMap: mapAndLanguageSettings.autoDetectLanguageFromMap
@@ -511,37 +505,6 @@ const AdminSettings = () => {
       toast.error(error?.response?.data?.message || 'Failed to update settings');
     } finally {
       setMapLanguageLoading(false);
-    }
-  };
-
-  // Test Google Maps API key
-  const handleTestMapKey = async () => {
-    setMapTesting(true);
-    setMapTestResult(null);
-    try {
-      const res = await testGoogleMapsApiKey(mapAndLanguageSettings.googleMapsApiKey);
-      if (res.success) {
-        setMapTestResult({
-          success: true,
-          message: res.message || 'API key verified successfully and connected to Google Maps API!'
-        });
-        toast.success('Google Maps API key verified!');
-      } else {
-        setMapTestResult({
-          success: false,
-          message: res.message || 'API key test failed'
-        });
-        toast.error(res.message || 'Verification failed');
-      }
-    } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Failed to test Google Maps API key';
-      setMapTestResult({
-        success: false,
-        message: msg
-      });
-      toast.error(msg);
-    } finally {
-      setMapTesting(false);
     }
   };
 
@@ -1279,157 +1242,16 @@ const AdminSettings = () => {
                     <span className="p-2.5 bg-white/20 backdrop-blur-md rounded-xl text-white">
                       <FiGlobe className="w-6 h-6" />
                     </span>
-                    <h1 className="text-2xl font-black">Google Maps API & App Language</h1>
+                    <h1 className="text-2xl font-black">App Language</h1>
                   </div>
                   <p className="text-sky-100 text-sm max-w-2xl leading-relaxed">
-                    Configure Google Maps API keys, dynamic map language localization, default platform language, and active languages across User and Partner apps.
+                    Configure the default platform language, location-based language detection, and the active languages across User and Partner apps.
                   </p>
                 </div>
                 <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
               </div>
 
               <form onSubmit={handleMapAndLanguageSave} className="space-y-6">
-
-                {/* Section 1: Google Maps API Configuration */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl">
-                        <FiKey className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-bold text-gray-900">Google Maps API Credentials</h2>
-                        <p className="text-xs text-gray-500">Controls map rendering, places autocomplete, geocoding & live tracking</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {mapAndLanguageSettings.googleMapsApiKey ? (
-                        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full flex items-center gap-1.5">
-                          <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                          Custom Key Active
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-full flex items-center gap-1.5">
-                          <FiAlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                          Using Environment Key Fallback
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Google Maps API Key
-                        </label>
-                        {mapAndLanguageSettings.googleMapsApiKey && (
-                          <button
-                            type="button"
-                            onClick={() => setMapAndLanguageSettings(prev => ({ ...prev, googleMapsApiKey: '' }))}
-                            className="text-xs text-red-600 hover:text-red-700 hover:underline font-medium cursor-pointer"
-                          >
-                            Reset to Environment Default
-                          </button>
-                        )}
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={showMapKey ? "text" : "password"}
-                          value={mapAndLanguageSettings.googleMapsApiKey}
-                          onChange={(e) => setMapAndLanguageSettings(prev => ({ ...prev, googleMapsApiKey: e.target.value }))}
-                          placeholder="AIzaSy... (Leave empty to use environment fallback)"
-                          className="w-full pl-4 pr-32 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm outline-none focus:border-sky-500 focus:bg-white transition-all"
-                        />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setShowMapKey(!showMapKey)}
-                            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                            title={showMapKey ? "Hide API key" : "Show API key"}
-                          >
-                            {showMapKey ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleTestMapKey}
-                            disabled={mapTesting}
-                            className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors cursor-pointer"
-                          >
-                            {mapTesting ? (
-                              <div className="w-3.5 h-3.5 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <FiRefreshCw className="w-3.5 h-3.5" />
-                            )}
-                            Test Key
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1.5">
-                        Maps JavaScript API, Places API, Geocoding API, and Distance Matrix API must be enabled for this key in Google Cloud Console.
-                      </p>
-
-                      {mapTestResult && (
-                        <div className={`mt-3 p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
-                          mapTestResult.success
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-red-50 border-red-200 text-red-800'
-                        }`}>
-                          {mapTestResult.success ? (
-                            <FiCheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                          ) : (
-                            <FiAlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
-                          )}
-                          <div>
-                            <span className="font-bold">{mapTestResult.success ? 'Success: ' : 'Error: '}</span>
-                            <span>{mapTestResult.message}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                          Map Region Code
-                        </label>
-                        <input
-                          type="text"
-                          value={mapAndLanguageSettings.mapRegion}
-                          onChange={(e) => setMapAndLanguageSettings(prev => ({ ...prev, mapRegion: e.target.value.toUpperCase() }))}
-                          placeholder="IN"
-                          maxLength={3}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-sky-500 transition-all font-mono"
-                        />
-                        <p className="text-[11px] text-gray-400 mt-1">ccTLD region biasing (e.g. IN for India, US, etc.)</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                          Map API Language Mode
-                        </label>
-                        <select
-                          value={mapAndLanguageSettings.googleMapsLanguage}
-                          onChange={(e) => setMapAndLanguageSettings(prev => ({ ...prev, googleMapsLanguage: e.target.value }))}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-sky-500 transition-all cursor-pointer font-medium"
-                        >
-                          <option value="auto">Auto-sync with App Language (Recommended)</option>
-                          <option value="en">Always English (en)</option>
-                          <option value="hi">Always Hindi / हिन्दी (hi)</option>
-                          <option value="gu">Always Gujarati / ગુજરાતી (gu)</option>
-                          <option value="mr">Always Marathi / मराठी (mr)</option>
-                          <option value="bn">Always Bengali / বাংলা (bn)</option>
-                          <option value="ta">Always Tamil / தமிழ் (ta)</option>
-                          <option value="te">Always Telugu / తెలుగు (te)</option>
-                          <option value="kn">Always Kannada / ಕನ್ನಡ (kn)</option>
-                          <option value="pa">Always Punjabi / ਪੰਜਾਬੀ (pa)</option>
-                        </select>
-                        <p className="text-[11px] text-gray-400 mt-1">When auto-sync is on, Google Maps renders street & city names in the user's selected language.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Section 2: Platform Language Settings */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

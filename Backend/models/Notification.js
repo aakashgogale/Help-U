@@ -66,7 +66,6 @@ const notificationSchema = new mongoose.Schema({
       'scrap_weighed',
       'scrap_weight_disputed',
       'support_message',
-      'support_request',
       'vendor_withdrawal_request',
       'vendor_referral_success',
       'vendor_referral_rewarded',

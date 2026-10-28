@@ -211,7 +211,7 @@ app.use('/api/public/zones', require('./routes/public-routes/zone.routes.js'));
 
 // User routes
 app.use('/api/users/auth', require('./routes/user-routes/auth.routes'));
-app.use('/api/users/support-requests', require('./routes/user-routes/supportRequest.routes'));
+app.use('/api/users/support-messages', require('./routes/user-routes/supportMessage.routes'));
 app.use('/api/users', require('./routes/user-routes/profile.routes'));
 app.use('/api/user/wallet', require('./routes/user-routes/userWallet.routes'));
 app.use('/api/users/bookings', require('./routes/user-routes/booking.routes'));
@@ -244,7 +244,6 @@ app.use('/api/workers/disputes', require('./routes/dispute.routes').workerDisput
 // Admin routes
 app.use('/api/admin/auth', require('./routes/admin-routes/adminAuth.routes'));
 app.use('/api/admin', require('./routes/admin-routes/cityManagement.routes.js'));
-app.use('/api/admin', require('./routes/admin-routes/supportRequest.routes'));
 app.use('/api/admin', require('./routes/admin-routes/dashboard.routes'));
 app.use('/api/admin', require('./routes/admin-routes/userManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/workerManagement.routes'));

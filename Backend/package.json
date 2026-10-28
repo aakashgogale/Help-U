@@ -28,7 +28,8 @@
     "migrate:has-brands:apply": "node scripts/migrateCategoryHasBrands.js --apply",
     "upload:icons": "node scripts/uploadIcons.js",
     "upload:home": "node scripts/uploadHomeImages.js",
-    "upload:services": "node scripts/uploadServiceImages.js"
+    "upload:services": "node scripts/uploadServiceImages.js",
+    "test:config-defaults": "node tests/configDefaults.test.js"
   },
   "keywords": [
     "Help-U",

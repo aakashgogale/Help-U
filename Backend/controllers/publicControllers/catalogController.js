@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const { getRedis, isRedisConnected } = require('../../services/redisService');
 const { getServiceRatings, combineRatings, toDisplayRating } = require('../../services/serviceRatingService');
 const { resolveFieldsForCategories } = require('../../utils/detailFields');
+const { expandZoneCategories } = require('../../utils/zoneCategories');
 
 /**
  * Helper to resolve zone from query (zoneId, lat, lng, cityId)
@@ -81,9 +82,9 @@ const getPublicCategories = async (req, res) => {
 
     // Zone category restriction
     const matchedZone = await resolveZone({ zoneId, lat, lng, cityId });
-    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
-      const allowedCatIds = matchedZone.allowedCategories.map(c => c._id || c);
-      query._id = { $in: allowedCatIds };
+    const zoneCategorySet = matchedZone ? await expandZoneCategories(matchedZone.allowedCategories) : null;
+    if (zoneCategorySet) {
+      query._id = { $in: [...zoneCategorySet] };
     }
 
     const categories = await Category.find(query)
@@ -759,8 +760,9 @@ const getPublicHomeData = async (req, res) => {
         { cityIds: { $exists: false } }
       ];
     }
-    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
-      catQuery._id = { $in: matchedZone.allowedCategories.map(c => c._id || c) };
+    const homeZoneSet = matchedZone ? await expandZoneCategories(matchedZone.allowedCategories) : null;
+    if (homeZoneSet) {
+      catQuery._id = { $in: [...homeZoneSet] };
     }
 
     const allCatQuery = { status: 'active', publishStatus: { $ne: 'draft' } };
@@ -1104,8 +1106,9 @@ const getPublicCategoryCatalog = async (req, res) => {
     }
 
     // Check if category is allowed in the matched zone
-    if (matchedZone && Array.isArray(matchedZone.allowedCategories) && matchedZone.allowedCategories.length > 0) {
-      const isAllowed = matchedZone.allowedCategories.some(c => String(c._id || c) === String(category._id));
+    const pageZoneSet = matchedZone ? await expandZoneCategories(matchedZone.allowedCategories) : null;
+    if (pageZoneSet) {
+      const isAllowed = pageZoneSet.has(String(category._id));
       if (!isAllowed) {
         return res.status(200).json({
           success: true,

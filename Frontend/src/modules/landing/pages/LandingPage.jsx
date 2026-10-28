@@ -68,7 +68,7 @@ const DEFAULT_CONFIG = {
     heroImageUrl: '/hero-image.png'
   },
   appLinks: {
-    playStoreUrl: 'https://play.google.com/store/search?q=Help-U%20Services&c=apps',
+    playStoreUrl: '', // set by the admin in Landing Page > App links; empty links to the web app
     appStoreUrl: '',
     isQrCodeVisible: true
   },
@@ -102,12 +102,7 @@ const DEFAULT_CONFIG = {
       }
     ]
   },
-  stats: [
-    { label: 'Verified Experts', value: '150+', color: 'text-amber-400' },
-    { label: 'Happy Customers', value: '500+', color: 'text-white' },
-    { label: 'Services Available', value: '50+', color: 'text-amber-400' },
-    { label: 'Customer Satisfaction', value: '4.9★', color: 'text-white' }
-  ],
+  stats: [], // counted live by the server; none are invented here
   howItWorks: {
     userSteps: [
       {
@@ -157,7 +152,7 @@ const DEFAULT_CONFIG = {
   partnerSection: {
     title: 'Grow Your Business with Help-U',
     subtitle:
-      'Join 450+ skilled technicians & service partners earning ₹30,000 to ₹70,000+ monthly with guaranteed leads and zero joining fees.',
+      'Join our network of skilled technicians & service partners with guaranteed leads and zero joining fees.',
     isRegistrationEnabled: true,
     perks: [
       {
@@ -329,10 +324,7 @@ const LandingPage = () => {
                   ? data.config.aboutUs.pillars
                   : prev.aboutUs.pillars
             },
-            stats:
-              data.config.stats && data.config.stats.length > 0
-                ? data.config.stats
-                : prev.stats,
+            stats: data.config.stats || [],
             howItWorks: {
               ...prev.howItWorks,
               ...data.config.howItWorks,
@@ -428,10 +420,13 @@ const LandingPage = () => {
     }
   };
 
-  const rawPlayUrl = config.appLinks?.playStoreUrl;
-  const playStoreLink = (rawPlayUrl && !rawPlayUrl.includes('homestr') && !rawPlayUrl.includes('homster'))
-    ? rawPlayUrl
-    : 'https://play.google.com/store/search?q=Help-U%20Services&c=apps';
+  // The server only passes on a real Play Store listing. Until the admin pastes one, the buttons
+  // open the web app rather than a store search page.
+  const hasStore = Boolean(config.appLinks?.playStoreUrl);
+  const playStoreLink = hasStore ? config.appLinks.playStoreUrl : '/user';
+  const storeName = hasStore ? 'Google Play Store' : 'Help-U Web App';
+  const StoreIcon = hasStore ? FaGooglePlay : FaArrowRight;
+  const qrTarget = hasStore ? playStoreLink : `${window.location.origin}/user`;
 
   // Safeguarded arrays
   const pillars =
@@ -439,10 +434,7 @@ const LandingPage = () => {
       ? config.aboutUs.pillars
       : DEFAULT_CONFIG.aboutUs.pillars;
 
-  const stats =
-    config.stats && config.stats.length > 0
-      ? config.stats
-      : DEFAULT_CONFIG.stats;
+  const stats = config.stats || [];
 
   const userSteps =
     config.howItWorks?.userSteps && config.howItWorks.userSteps.length > 0
@@ -527,7 +519,7 @@ const LandingPage = () => {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95"
             >
-              <FaGooglePlay className="text-sm" /> Get the App
+              <StoreIcon className="text-sm" /> Get the App
             </a>
           </div>
 
@@ -539,7 +531,7 @@ const LandingPage = () => {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm"
             >
-              <FaGooglePlay className="text-[10px]" /> App
+              <StoreIcon className="text-[10px]" /> App
             </a>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -582,7 +574,7 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-xs font-bold shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
                 >
-                  <FaGooglePlay className="text-sm" /> Download on Google Play Store
+                  <StoreIcon className="text-sm" /> {hasStore ? 'Download on Google Play Store' : 'Open the Help-U Web App'}
                 </a>
                 <button
                   type="button"
@@ -634,10 +626,10 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-brand transition-all shadow-md active:scale-95 group"
                 >
-                  <FaGooglePlay className="text-lg group-hover:scale-110 transition-transform" />
+                  <StoreIcon className="text-lg group-hover:scale-110 transition-transform" />
                   <div className="text-left">
                     <div className="text-[9px] text-gray-400 font-normal leading-none">FREE ON</div>
-                    <div className="text-xs sm:text-sm font-bold leading-tight">Google Play Store</div>
+                    <div className="text-xs sm:text-sm font-bold leading-tight">{storeName}</div>
                   </div>
                 </a>
 
@@ -647,7 +639,7 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95"
                 >
-                  {config.hero?.ctaUserText || 'Book on Play Store'} <FaArrowRight className="text-[10px]" />
+                  {config.hero?.ctaUserText || 'Book a Service'} <FaArrowRight className="text-[10px]" />
                 </a>
               </div>
 
@@ -707,6 +699,7 @@ const LandingPage = () => {
       {/* ============================================================ */}
       {/* 3. PLATFORM STATS STRIP */}
       {/* ============================================================ */}
+      {stats.length > 0 && (
       <section className="py-6 sm:py-10 bg-gray-900 text-white relative overflow-hidden">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -724,6 +717,7 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ============================================================ */}
       {/* 4. ABOUT US & TRUST PILLARS (COMPACT 2-COL MOBILE GRID) */}
@@ -783,7 +777,7 @@ const LandingPage = () => {
                 Explore Expert Services
               </h2>
               <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-                Tap any category to install or book via Google Play Store
+                {hasStore ? 'Tap any category to install or book via Google Play Store' : 'Tap any category to start booking in the web app'}
               </p>
             </div>
             <div className="hidden sm:flex items-center gap-2">
@@ -845,7 +839,7 @@ const LandingPage = () => {
                       {cat.title}
                     </h3>
                     <span className="text-[10px] sm:text-[11px] text-brand mt-1.5 flex items-center gap-1 font-semibold group-hover:translate-x-0.5 transition-transform">
-                      Play Store <FaArrowRight className="text-[8px]" />
+                      {hasStore ? 'Play Store' : 'Open'} <FaArrowRight className="text-[8px]" />
                     </span>
                   </a>
                 );
@@ -950,10 +944,10 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95"
                 >
-                  <FaGooglePlay className="text-xl text-gray-900 group-hover:text-white" />
+                  <StoreIcon className="text-xl text-gray-900 group-hover:text-white" />
                   <div className="text-left">
                     <div className="text-[9px] text-gray-500 leading-none">FREE ON</div>
-                    <div className="text-xs sm:text-sm font-extrabold">Google Play Store</div>
+                    <div className="text-xs sm:text-sm font-extrabold">{storeName}</div>
                   </div>
                 </a>
 
@@ -961,14 +955,14 @@ const LandingPage = () => {
                   <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 p-2.5 rounded-xl">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(
-                        playStoreLink
+                        qrTarget
                       )}`}
                       alt="Scan to Download Help-U"
                       className="w-12 h-12 rounded-lg bg-white p-1"
                     />
                     <div className="text-left text-xs">
                       <div className="font-bold text-white text-[11px]">Scan with Camera</div>
-                      <div className="text-gray-400 text-[9px]">Direct Play Store install</div>
+                      <div className="text-gray-400 text-[9px]">{hasStore ? 'Direct Play Store install' : 'Opens the web app'}</div>
                     </div>
                   </div>
                 )}
@@ -1611,7 +1605,7 @@ const LandingPage = () => {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95"
         >
-          <FaGooglePlay className="text-[11px]" /> Install App
+          <StoreIcon className="text-[11px]" /> {hasStore ? 'Install App' : 'Open App'}
         </a>
       </div>
     </div>
