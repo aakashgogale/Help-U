@@ -30,6 +30,8 @@ const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
 const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
 import SearchOverlay from './components/SearchOverlay';
+import VoiceSearchSheet from './components/VoiceSearchSheet';
+import useVoiceSearch from '../../../../hooks/useVoiceSearch';
 import HomeSkeleton from './components/HomeSkeleton';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
 import ScrapPromotionCard from './components/ScrapPromotionCard';
@@ -113,6 +115,14 @@ const Home = () => {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [houseNumber, setHouseNumber] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Voice search: what was heard opens the search screen with the words filled in
+  const [voiceQuery, setVoiceQuery] = useState(null);
+  const voice = useVoiceSearch({
+    onResult: (text) => {
+      setVoiceQuery({ text, id: Date.now() });
+      setIsSearchOpen(true);
+    }
+  });
   const [detectedCityName, setDetectedCityName] = useState(localStorage.getItem('currentCity') || null);
 
 
@@ -595,7 +605,7 @@ const Home = () => {
               showNotifications
             />
             <div className="px-4 sm:px-5 pb-2 pt-0 max-w-2xl mx-auto w-full min-w-0 max-w-full">
-              <SearchBar onInputClick={() => setIsSearchOpen(true)} />
+              <SearchBar onInputClick={() => setIsSearchOpen(true)} onVoiceClick={voice.start} voiceSupported={voice.supported} />
             </div>
           </div>
         </motion.div>
@@ -967,10 +977,16 @@ const Home = () => {
       {/* Search Overlay */}
       <SearchOverlay
         isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
+        onClose={() => { setIsSearchOpen(false); setVoiceQuery(null); }}
         categories={categories}
         onCategoryClick={handleCategoryClick}
+        voiceQuery={voiceQuery}
+        voiceSupported={voice.supported}
+        onVoiceClick={voice.start}
       />
+
+      {/* Voice search: the "Listening…" sheet */}
+      <VoiceSearchSheet voice={voice} onTypeInstead={() => setIsSearchOpen(true)} />
 
       {/* Address Selection Modal */}
       <AddressSelectionModal

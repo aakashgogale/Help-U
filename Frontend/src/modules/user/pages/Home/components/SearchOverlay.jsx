@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiArrowLeft, FiClock, FiTrendingUp, FiX, FiLayers, FiChevronRight } from 'react-icons/fi';
+import { FiSearch, FiArrowLeft, FiClock, FiTrendingUp, FiX, FiLayers, FiChevronRight, FiMic } from 'react-icons/fi';
 import { publicCatalogService } from '../../../../../services/catalogService';
 import { useCity } from '../../../../../context/CityContext';
 import { themeColors } from '../../../../../theme';
@@ -15,7 +15,7 @@ const toAssetUrl = (url) => {
   return `${base}${clean.startsWith('/') ? '' : '/'}${clean}`;
 };
 
-const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) => {
+const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick, voiceQuery = null, voiceSupported = false, onVoiceClick }) => {
   const navigate = useNavigate();
   const { currentCity } = useCity();
   const [query, setQuery] = useState('');
@@ -89,6 +89,12 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
       setResults([]);
     }
   }, [isOpen]);
+
+  // Words from voice search fill the box and search straight away. `voiceQuery.id` changes on every
+  // dictation, so saying the same thing twice still works.
+  useEffect(() => {
+    if (isOpen && voiceQuery && voiceQuery.text) setQuery(voiceQuery.text);
+  }, [isOpen, voiceQuery]);
 
   // Debounced search
   useEffect(() => {
@@ -228,12 +234,23 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick }) =>
                 className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 transition-all border-none outline-none text-base font-medium text-gray-900"
                 style={{ '--tw-ring-color': `${themeColors.primary}33` }}
               />
-              {query && (
+              {query ? (
                 <button
                   onClick={() => setQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full"
+                  aria-label="Clear search"
                 >
                   <FiX className="w-3 h-3 text-gray-600" />
+                </button>
+              ) : voiceSupported && (
+                <button
+                  type="button"
+                  onClick={onVoiceClick}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent active:scale-90 transition-transform"
+                  aria-label="Search by voice"
+                  title="Search by voice"
+                >
+                  <FiMic className="w-5 h-5" />
                 </button>
               )}
             </div>

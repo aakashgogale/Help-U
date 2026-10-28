@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiMic } from 'react-icons/fi';
 
-const SearchBar = ({ onInputClick }) => {
+const SearchBar = ({ onInputClick, onVoiceClick, voiceSupported = false }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
@@ -65,9 +65,23 @@ const SearchBar = ({ onInputClick }) => {
           />
         </div>
 
+        {/* Voice search: only shown where the phone or browser can listen */}
+        {voiceSupported && (
+          <button
+            type="button"
+            aria-label="Search by voice"
+            title="Search by voice"
+            onClick={(e) => { e.stopPropagation(); onVoiceClick?.(); }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="absolute right-1.5 top-1/2 z-20 flex h-8 w-8 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full bg-accent-soft text-accent transition-transform active:scale-90"
+          >
+            <FiMic className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+          </button>
+        )}
+
         {/* Simulated Input Pill */}
         <div
-          className="w-full max-w-full min-w-0 pl-11 sm:pl-13 pr-4 sm:pr-5 rounded-full bg-white border border-gray-200/90 flex items-center h-11 sm:h-13 shadow-[0_2px_12px_rgba(15,27,45,0.06)] transition-all duration-300 group-hover:shadow-[0_6px_20px_rgba(15,27,45,0.1)] group-hover:border-gray-300/90 overflow-hidden"
+          className={`w-full max-w-full min-w-0 pl-11 sm:pl-13 ${voiceSupported ? 'pr-11 sm:pr-14' : 'pr-4 sm:pr-5'} rounded-full bg-white border border-gray-200/90 flex items-center h-11 sm:h-13 shadow-[0_2px_12px_rgba(15,27,45,0.06)] transition-all duration-300 group-hover:shadow-[0_6px_20px_rgba(15,27,45,0.1)] group-hover:border-gray-300/90 overflow-hidden`}
         >
           {/* Placeholder text with typing animation */}
           <span className="block w-full min-w-0 text-[13.5px] sm:text-[14.5px] text-gray-400 truncate select-none leading-none">

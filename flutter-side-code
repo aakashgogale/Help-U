@@ -128,3 +128,105 @@ class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
     );
   }
 }
+
+
+D. Voice search (the mic on the customer Home search bar)
+The page cannot use the browser's speech recognition inside the web view, so it asks Flutter to listen.
+It calls two handlers:
+  voiceSearch        -> { success: true, text: 'washing machine repair' }   when the user stops talking
+                        { success: false, error: 'PERMISSION_DENIED' | 'NO_SPEECH' | 'NETWORK' | 'NOT_AVAILABLE' }
+  voiceSearchCancel  -> stops listening (the user pressed Cancel)
+Until the app has this handler, the page shows "Voice search needs the latest version of the Help U app".
+
+pubspec.yaml:   speech_to_text: ^7.0.0
+
+Android, android/app/src/main/AndroidManifest.xml (inside <manifest>):
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <queries>
+    <intent><action android:name="android.speech.RecognitionService"/></intent>
+  </queries>
+
+iOS, ios/Runner/Info.plist:
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Help U uses the microphone so you can search for services by voice.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Help U turns your voice into a search for services.</string>
+
+dart
+import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart';
+
+class VoiceSearchBridge {
+  final SpeechToText _speech = SpeechToText();
+  bool _ready = false;
+  Completer<Map<String, dynamic>>? _done;
+  String _heard = '';
+
+  Map<String, dynamic> _result() => _heard.trim().isEmpty
+      ? {'success': false, 'error': 'NO_SPEECH'}
+      : {'success': true, 'text': _heard.trim()};
+
+  void _finish(Map<String, dynamic> r) {
+    if (_done != null && !_done!.isCompleted) _done!.complete(r);
+  }
+
+  Future<Map<String, dynamic>> listen(String locale) async {
+    if (!_ready) {
+      // Asks for the microphone permission the first time
+      _ready = await _speech.initialize(
+        onStatus: (s) {
+          if (s == 'done' || s == 'notListening') _finish(_result());
+        },
+        onError: (e) {
+          final m = e.errorMsg;
+          if (m == 'error_no_match' || m == 'error_speech_timeout') {
+            _finish({'success': false, 'error': 'NO_SPEECH'});
+          } else if (m == 'error_network' || m == 'error_network_timeout') {
+            _finish({'success': false, 'error': 'NETWORK'});
+          } else if (m == 'error_permission') {
+            _finish({'success': false, 'error': 'PERMISSION_DENIED'});
+          } else {
+            _finish({'success': false, 'error': 'NOT_AVAILABLE'});
+          }
+        },
+      );
+    }
+    if (!_ready) {
+      return {'success': false, 'error': (await _speech.hasPermission) ? 'NOT_AVAILABLE' : 'PERMISSION_DENIED'};
+    }
+
+    _heard = '';
+    _done = Completer<Map<String, dynamic>>();
+    await _speech.listen(
+      localeId: locale, // the page sends 'en_IN' (service names are in English)
+      listenFor: const Duration(seconds: 15),
+      pauseFor: const Duration(seconds: 3), // stops by itself after 3 seconds of silence
+      listenOptions: SpeechListenOptions(partialResults: true, cancelOnError: true),
+      onResult: (r) => _heard = r.recognizedWords,
+    );
+    return _done!.future.timeout(const Duration(seconds: 20), onTimeout: () {
+      _speech.stop();
+      return _result();
+    });
+  }
+
+  Future<void> cancel() async {
+    await _speech.cancel();
+    _finish({'success': false, 'error': 'USER_CANCELLED'});
+  }
+}
+
+// inside setupJavaScriptHandlers(controller), next to openCamera and haptic:
+final voice = VoiceSearchBridge();   // create ONE and keep it for the life of the web view
+
+controller.addJavaScriptHandler(handlerName: 'voiceSearch', callback: (args) {
+  final locale = (args.isNotEmpty && args[0] is Map && args[0]['locale'] != null)
+      ? args[0]['locale'] as String
+      : 'en_IN';
+  return voice.listen(locale);
+});
+
+controller.addJavaScriptHandler(handlerName: 'voiceSearchCancel', callback: (args) async {
+  await voice.cancel();
+  return {'success': true};
+});
