@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUser, FiPhone, FiMail, FiMapPin, FiCheckCircle, FiSlash, FiCheck, FiTrash2, FiCreditCard, FiPlus, FiMinus, FiX, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { adminUserService } from '../../../../services/adminUserService';
+import DataExportButton from '../../components/common/DataExportButton';
 
 const formatSavedAddress = (addresses = []) => {
   if (!Array.isArray(addresses) || addresses.length === 0) return 'No saved address';
@@ -199,6 +200,13 @@ const AllUsers = () => {
             <option value="active">Active Only</option>
             <option value="inactive">Blocked Only</option>
           </select>
+
+          <DataExportButton
+            entity="users"
+            label="customers"
+            params={{ search: search.trim(), isActive: statusFilter === 'all' ? undefined : statusFilter === 'active' }}
+            filterText={[search.trim() && `search "${search.trim()}"`, statusFilter === 'active' && 'active only', statusFilter === 'inactive' && 'blocked only'].filter(Boolean).join(', ')}
+          />
 
           <div className="px-3 py-2 bg-green-50 rounded-lg border border-green-100">
             <span className="text-xs font-bold text-green-700">{totalUsers} Users</span>

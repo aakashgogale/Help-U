@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import CardShell from '../UserCategories/components/CardShell';
 import Modal from '../UserCategories/components/Modal';
 import adminWorkerService from '../../../../services/adminWorkerService';
+import DataExportButton from '../../components/common/DataExportButton';
 
 const AllWorkers = () => {
   const [workers, setWorkers] = useState([]);
@@ -225,6 +226,12 @@ const AllWorkers = () => {
                 {status}
               </button>
             ))}
+            <DataExportButton
+              entity="workers"
+              label="professionals"
+              params={{ search: searchQuery.trim(), approvalStatus: filterStatus === 'all' ? undefined : filterStatus }}
+              filterText={[searchQuery.trim() && `search "${searchQuery.trim()}"`, filterStatus !== 'all' && `${filterStatus} only`].filter(Boolean).join(', ')}
+            />
           </div>
         </div>
 

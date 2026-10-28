@@ -46,6 +46,7 @@ const ADMIN_MODULE_PERMISSIONS = [
   { key: 'plans', label: 'Plans', description: 'Manage subscription plans and packages' },
   { key: 'coupons', label: 'Coupons', description: 'Create and control coupon codes & discounts' },
   { key: 'settings', label: 'Settings', description: 'Configure system preferences & staff' },
+  { key: 'data-export', label: 'Data Export', description: 'Download customer and professional data as Excel or PDF (also needs Users / Workers)' },
   { key: 'customization', label: 'Customization', description: 'Update home page banners and UI layout' },
   { key: 'booking-config', label: 'Booking Config', description: 'Change radius, search waves and algorithms' }
 ];

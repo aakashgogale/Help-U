@@ -29,6 +29,7 @@ const AVAILABLE_PERMISSIONS = [
   { key: 'plans', label: 'Plans', desc: 'Subscription plans & benefits' },
   { key: 'coupons', label: 'Coupons', desc: 'Discount vouchers & promo rules' },
   { key: 'settings', label: 'Settings', desc: 'System configuration & admin staff' },
+  { key: 'data-export', label: 'Data Export', desc: 'Download customer & worker data (Excel/PDF); also needs Users / Workers' },
   { key: 'customization', label: 'Customization', desc: 'Hero banners & home content' },
   { key: 'booking-config', label: 'Booking Config', desc: 'Search radius, waves & ranking' }
 ];

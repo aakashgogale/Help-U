@@ -13,6 +13,8 @@ const {
   adjustUserWallet,
   getAllUserBookings
 } = require('../../controllers/adminControllers/adminUserController');
+const { exportUsers } = require('../../controllers/adminControllers/dataExportController');
+const exportRateLimiter = require('../../middleware/exportRateLimiter');
 
 // Validation rules
 const toggleStatusValidation = [
@@ -23,6 +25,8 @@ const toggleStatusValidation = [
 // sub-admin not granted 'users') cannot read or edit customer data just
 // because they can reach the admin panel at all.
 router.get('/users', authenticate, isAdmin, requirePermission('users'), getAllUsers);
+// Bulk data export: needs 'users' AND the separate 'data-export' permission (only the super admin has it by default)
+router.get('/users/export', authenticate, isAdmin, requirePermission('users'), requirePermission('data-export'), exportRateLimiter, exportUsers);
 router.get('/users/bookings', authenticate, isAdmin, requirePermission('users'), getAllUserBookings);
 router.get('/users/:id', authenticate, isAdmin, requirePermission('users'), getUserDetails);
 router.put('/users/:id/status', authenticate, isAdmin, requirePermission('users'), toggleStatusValidation, toggleUserStatus);

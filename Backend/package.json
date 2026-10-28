@@ -30,7 +30,8 @@
     "upload:home": "node scripts/uploadHomeImages.js",
     "upload:services": "node scripts/uploadServiceImages.js",
     "test:config-defaults": "node tests/configDefaults.test.js",
-    "test:settings-conflicts": "node tests/settingsConflicts.test.js"
+    "test:settings-conflicts": "node tests/settingsConflicts.test.js",
+    "test:data-export": "node tests/dataExport.test.js"
   },
   "keywords": [
     "Help-U",
@@ -48,6 +49,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
+    "exceljs": "^4.4.0",
     "express": "^4.22.1",
     "express-rate-limit": "^7.4.0",
     "express-validator": "^7.3.1",

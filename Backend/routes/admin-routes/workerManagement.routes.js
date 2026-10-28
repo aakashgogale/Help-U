@@ -16,6 +16,8 @@ const {
   toggleWorkerStatus,
   deleteWorker
 } = require('../../controllers/adminControllers/adminWorkerController');
+const { exportWorkers } = require('../../controllers/adminControllers/dataExportController');
+const exportRateLimiter = require('../../middleware/exportRateLimiter');
 
 // Validation rules
 const rejectWorkerValidation = [
@@ -24,6 +26,8 @@ const rejectWorkerValidation = [
 
 // Routes
 router.get('/workers', authenticate, isAdmin, requirePermission('workers'), getAllWorkers);
+// Bulk data export: needs 'workers' AND the separate 'data-export' permission (only the super admin has it by default)
+router.get('/workers/export', authenticate, isAdmin, requirePermission('workers'), requirePermission('data-export'), exportRateLimiter, exportWorkers);
 router.get('/workers/bookings', authenticate, isAdmin, requirePermission('workers'), getAllWorkerBookings);
 router.get('/workers/payments', authenticate, isAdmin, requirePermission('workers'), getWorkerPaymentsSummary);
 router.get('/workers/:id', authenticate, isAdmin, requirePermission('workers'), getWorkerDetails);
