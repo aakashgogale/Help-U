@@ -3,6 +3,7 @@ import { GoogleMap, Marker, MarkerF } from '@react-google-maps/api';
 import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 import { FiCrosshair } from 'react-icons/fi';
 import flutterBridge from '../../../../../utils/flutterBridge';
+import { reverseGeocodeCoords } from '../../../../../utils/reverseGeocode';
 import { toast } from 'react-hot-toast';
 
 const MarkerComponent = MarkerF || Marker;
@@ -48,26 +49,24 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
     }
   }, [isLoaded]);
 
-  // Reverse geocode to get address from coordinates
+  // Reverse geocode to get address from coordinates with resilient fallbacks
   const reverseGeocode = async (position) => {
-    if (!window.google) return;
-
     setLoading(true);
-    const geocoder = new window.google.maps.Geocoder();
-
-    geocoder.geocode({ location: position }, (results, status) => {
-      setLoading(false);
-      if (status === 'OK' && results[0]) {
-        if (onLocationSelect) {
-          onLocationSelect({
-            lat: position.lat,
-            lng: position.lng,
-            address: results[0].formatted_address,
-            components: results[0].address_components
-          });
-        }
+    try {
+      const result = await reverseGeocodeCoords(position.lat, position.lng);
+      if (result && onLocationSelect) {
+        onLocationSelect({
+          lat: position.lat,
+          lng: position.lng,
+          address: result.formattedAddress || result.shortLabel,
+          components: result.components || []
+        });
       }
-    });
+    } catch (err) {
+      console.warn('Reverse geocode error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle map click

@@ -6,6 +6,8 @@ import { workerTheme as themeColors } from '../../../../theme';
 import Logo from '../../../../components/common/Logo';
 import api from '../../../../services/api';
 import workerService from '../../../../services/workerService';
+import flutterBridge from '../../../../utils/flutterBridge';
+import { reverseGeocodeCoords } from '../../../../utils/reverseGeocode';
 
 const LOCATION_CACHE_KEY = 'workerLocationLabel';
 
@@ -31,20 +33,71 @@ const Header = memo(({
   const [locationLabel, setLocationLabel] = useState(() => {
     try { return localStorage.getItem(LOCATION_CACHE_KEY) || ''; } catch { return ''; }
   });
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
-  // Worker's saved service address (cached so the pill is there instantly on the next visit)
+  // Worker's saved service address with automatic fallback detection
   useEffect(() => {
     if (!showLocation) return undefined;
     let active = true;
-    const fetchWorkerLocation = () => {
-      workerService.getProfile()
-        .then((res) => {
-          const label = toLocationLabel(res?.worker?.address);
-          if (!active) return;
+
+    const autoDetectDeviceLocation = async () => {
+      if (!active) return;
+      setIsDetectingLocation(true);
+      try {
+        const pos = await flutterBridge.getCurrentLocation();
+        if (!active) return;
+
+        const geocoded = await reverseGeocodeCoords(pos.latitude, pos.longitude);
+        if (!active) return;
+
+        const label = geocoded.shortLabel || geocoded.city || geocoded.formattedAddress;
+        if (label) {
           setLocationLabel(label);
-          try { label ? localStorage.setItem(LOCATION_CACHE_KEY, label) : localStorage.removeItem(LOCATION_CACHE_KEY); } catch { /* ignore */ }
-        })
-        .catch(() => { /* keep cached label */ });
+          try { localStorage.setItem(LOCATION_CACHE_KEY, label); } catch { /* ignore */ }
+
+          // Auto-persist detected address so worker profile in database has base coordinates & address
+          try {
+            const addrPayload = {
+              fullAddress: geocoded.formattedAddress || label,
+              addressLine1: geocoded.area || label,
+              city: geocoded.city || '',
+              state: geocoded.state || '',
+              pincode: geocoded.pincode || '',
+              lat: pos.latitude,
+              lng: pos.longitude
+            };
+            await workerService.updateProfile({ address: addrPayload });
+            await workerService.updateLocation(pos.latitude, pos.longitude);
+          } catch (saveErr) {
+            console.warn('Silent auto-update worker location failed:', saveErr);
+          }
+        }
+      } catch (err) {
+        console.warn('Auto-detect worker location error:', err);
+      } finally {
+        if (active) setIsDetectingLocation(false);
+      }
+    };
+
+    const fetchWorkerLocation = async () => {
+      try {
+        const res = await workerService.getProfile();
+        if (!active) return;
+
+        const savedLabel = toLocationLabel(res?.worker?.address);
+        if (savedLabel) {
+          setLocationLabel(savedLabel);
+          try { localStorage.setItem(LOCATION_CACHE_KEY, savedLabel); } catch { /* ignore */ }
+        } else {
+          // If no address is configured in profile, automatically detect device location
+          autoDetectDeviceLocation();
+        }
+      } catch (e) {
+        // If profile fetch fails and there is no cached label, attempt auto-detect
+        if (!locationLabel) {
+          autoDetectDeviceLocation();
+        }
+      }
     };
 
     fetchWorkerLocation();
@@ -137,9 +190,11 @@ const Header = memo(({
             onClick={() => navigate('/worker/address-management')}
             className="flex-1 min-w-0 mx-3 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 active:scale-[0.97] transition-all"
           >
-            <FiMapPin className="w-4 h-4 shrink-0 text-emerald-600" />
+            <FiMapPin className={`w-4 h-4 shrink-0 text-emerald-600 ${isDetectingLocation ? 'animate-bounce text-emerald-500' : ''}`} />
             <span className="text-[12.5px] font-bold text-slate-800 truncate">
-              {locationLabel || 'Set your location'}
+              {isDetectingLocation
+                ? 'Detecting location...'
+                : (locationLabel || 'Set your location')}
             </span>
             <FiChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-500" />
           </button>

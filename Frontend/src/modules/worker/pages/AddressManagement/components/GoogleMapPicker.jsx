@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
+import flutterBridge from '../../../../../utils/flutterBridge';
+import { reverseGeocodeCoords } from '../../../../../utils/reverseGeocode';
 
 const libraries = ['places', 'geometry'];
 
@@ -36,45 +38,28 @@ const GoogleMapPicker = ({ onLocationSelect, initialPosition = null }) => {
 
   // Get user's current location on mount
   useEffect(() => {
-    if (!initialPosition && navigator.geolocation && isLoaded) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newPos = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          setMarker(newPos);
-          if (map) {
-            map.panTo(newPos);
-          }
-          reverseGeocode(newPos);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-        }
-      );
+    if (!initialPosition && isLoaded) {
+      handleCurrentLocation();
     }
   }, [isLoaded, map]);
 
-  // Reverse geocode to get address from coordinates
+  // Reverse geocode to get address from coordinates with resilient fallbacks
   const reverseGeocode = async (position) => {
-    if (!window.google) return;
-
     setLoading(true);
-    const geocoder = new window.google.maps.Geocoder();
-
-    geocoder.geocode({ location: position }, (results, status) => {
-      setLoading(false);
-      if (status === 'OK' && results[0]) {
-        if (onLocationSelect) {
-          onLocationSelect({
-            lat: position.lat,
-            lng: position.lng,
-            address: results[0].formatted_address
-          });
-        }
+    try {
+      const result = await reverseGeocodeCoords(position.lat, position.lng);
+      if (result && onLocationSelect) {
+        onLocationSelect({
+          lat: position.lat,
+          lng: position.lng,
+          address: result.formattedAddress || result.shortLabel
+        });
       }
-    });
+    } catch (err) {
+      console.warn('Reverse geocode error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle map click
@@ -88,26 +73,24 @@ const GoogleMapPicker = ({ onLocationSelect, initialPosition = null }) => {
   }, []);
 
   // Handle current location button
-  const handleCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newPos = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          setMarker(newPos);
-          if (map) {
-            map.panTo(newPos);
-            map.setZoom(15);
-          }
-          reverseGeocode(newPos);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          alert('Unable to get your current location. Please select manually on the map.');
-        }
-      );
+  const handleCurrentLocation = async () => {
+    setLoading(true);
+    try {
+      const pos = await flutterBridge.getCurrentLocation();
+      const newPos = {
+        lat: pos.latitude,
+        lng: pos.longitude
+      };
+      setMarker(newPos);
+      if (map) {
+        map.panTo(newPos);
+        map.setZoom(15);
+      }
+      reverseGeocode(newPos);
+    } catch (error) {
+      console.error('Error getting location:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

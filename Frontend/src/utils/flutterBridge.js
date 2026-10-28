@@ -2,6 +2,8 @@
  * Production-Ready Flutter JS Bridge
  * Handles secure and optimized communication with native mobile features.
  */
+import api from '../services/api';
+
 class FlutterBridge {
   constructor() {
     this.isFlutter =
@@ -81,29 +83,28 @@ class FlutterBridge {
         LOCATION (NATIVE + FALLBACK)
   ================================== */
   async getCurrentLocation() {
+    // Tier 1: Flutter Native Handler (fastest, bypasses WebView permission prompts)
     try {
       const result = await this.callHandler("getLocation");
 
-      if (result && result.success) {
+      if (result && result.success && typeof result.latitude === 'number' && typeof result.longitude === 'number') {
         return {
           latitude: result.latitude,
           longitude: result.longitude,
           source: 'flutter_native'
         };
       }
-
-      // If native bridge result is failure, throw to trigger fallback
-      throw new Error("Native location failed");
-    } catch (error) {
+    } catch (flutterErr) {
       if (this.isFlutter) {
-        console.warn("[FlutterBridge] Flutter Location Error, falling back to browser GPS:", error);
+        console.warn("[FlutterBridge] Flutter native getLocation not responding:", flutterErr);
       }
+    }
 
-      // Browser fallback (Web Geolocation API)
+    // Helper for browser GPS attempts
+    const getBrowserPosition = (enableHighAccuracy, timeout = 7000) => {
       return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Geolocation not supported by browser"));
-          return;
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          return reject(new Error("Geolocation not supported by browser"));
         }
 
         navigator.geolocation.getCurrentPosition(
@@ -115,20 +116,66 @@ class FlutterBridge {
               source: 'browser_gps'
             });
           },
-          (err) => {
-            if (this.isFlutter) {
-              console.error("[FlutterBridge] Browser fallback also failed:", err.message);
-            }
-            reject(err);
-          },
+          (err) => reject(err),
           {
-            enableHighAccuracy: false, // Turned false to reduce timeout chances on weaker network/GPS
-            timeout: 15000, // Increased timeout to 15 seconds
-            maximumAge: 10000 // Allow up to 10 seconds old cached locations to further prevent timeouts
+            enableHighAccuracy,
+            timeout,
+            maximumAge: 30000
           }
         );
       });
+    };
+
+    // Tier 2A: Browser High-Accuracy GPS
+    try {
+      const gpsResult = await getBrowserPosition(true, 6000);
+      return gpsResult;
+    } catch (gpsHighErr) {
+      // Tier 2B: Browser Low-Accuracy (Cellular / Wi-Fi) fallback
+      try {
+        const gpsCoarseResult = await getBrowserPosition(false, 6000);
+        return gpsCoarseResult;
+      } catch (gpsCoarseErr) {
+        console.warn("[FlutterBridge] Browser GPS failed, attempting IP fallback:", gpsCoarseErr);
+      }
     }
+
+    // Tier 3: IP-Based Geolocation Fallback (ensures user always gets city/locality)
+    try {
+      const ipRes = await api.get('/public/ip-location');
+      if (ipRes.data?.success && ipRes.data?.latitude && ipRes.data?.longitude) {
+        return {
+          latitude: parseFloat(ipRes.data.latitude),
+          longitude: parseFloat(ipRes.data.longitude),
+          city: ipRes.data.city || '',
+          region: ipRes.data.region || '',
+          pincode: ipRes.data.pincode || '',
+          source: 'ip_fallback'
+        };
+      }
+    } catch (ipErr) {
+      console.warn("[FlutterBridge] Backend IP lookup failed:", ipErr.message);
+    }
+
+    // Tier 4: Direct client IP lookup fallback
+    try {
+      const directIpRes = await fetch('http://ip-api.com/json/?fields=status,country,regionName,city,zip,lat,lon');
+      const directIpData = await directIpRes.json();
+      if (directIpData && directIpData.status === 'success' && directIpData.lat && directIpData.lon) {
+        return {
+          latitude: directIpData.lat,
+          longitude: directIpData.lon,
+          city: directIpData.city || '',
+          region: directIpData.regionName || '',
+          pincode: directIpData.zip || '',
+          source: 'ip_fallback'
+        };
+      }
+    } catch (directErr) {
+      // Ignore
+    }
+
+    throw new Error("Unable to retrieve location via GPS or network");
   }
 
   /**

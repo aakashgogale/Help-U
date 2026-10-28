@@ -7,6 +7,8 @@ import { workerTheme as themeColors } from '../../../../theme';
 import workerService from '../../../../services/workerService';
 import Header from '../../components/layout/Header';
 import LocationPicker from '../../../user/pages/Checkout/components/LocationPicker';
+import flutterBridge from '../../../../utils/flutterBridge';
+import { reverseGeocodeCoords } from '../../../../utils/reverseGeocode';
 
 const libraries = ['places', 'geometry'];
 
@@ -77,6 +79,29 @@ const AddressManagement = () => {
           setHouseNumber(houseNum);
           if (location) {
             setSelectedLocation(location);
+          }
+        } else {
+          // If no address saved in worker profile, auto-detect device location immediately
+          try {
+            const pos = await flutterBridge.getCurrentLocation();
+            if (active && pos?.latitude && pos?.longitude) {
+              const geocoded = await reverseGeocodeCoords(pos.latitude, pos.longitude);
+              if (active) {
+                const autoAddr = geocoded.formattedAddress || geocoded.shortLabel || '';
+                const locObj = {
+                  lat: pos.latitude,
+                  lng: pos.longitude,
+                  address: autoAddr,
+                  components: geocoded.components
+                };
+                setSelectedLocation(locObj);
+                setAddress(autoAddr);
+                setSearchQuery(autoAddr);
+                if (geocoded.area) setHouseNumber(geocoded.area);
+              }
+            }
+          } catch (autoLocErr) {
+            console.warn('Auto-detect in AddressManagement error:', autoLocErr);
           }
         }
       } catch (error) {

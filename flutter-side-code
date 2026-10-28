@@ -56,12 +56,60 @@ void setupJavaScriptHandlers(InAppWebViewController controller) {
     HapticFeedback.mediumImpact();
     return {'success': true};
   });
+
+  // 3. Location Handler (High-Accuracy Native GPS)
+  // Requires: pubspec.yaml -> geolocator: ^12.0.0
+  controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return {'success': false, 'error': 'LOCATION_SERVICES_DISABLED'};
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return {'success': false, 'error': 'PERMISSION_DENIED'};
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return {'success': false, 'error': 'PERMISSION_DENIED_FOREVER'};
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      return {
+        'success': true,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  });
 }
-B. WebView Lifecycle (Critical)
-Ensure you dispatch the "Ready" event so React knows the bridge is active:
+B. WebView Lifecycle & Geolocation Permissions (Critical)
+Ensure you handle geolocation prompts so HTML5 geolocation also works in the WebView:
 
 dart
 InAppWebView(
+  initialSettings: InAppWebViewSettings(
+    geolocationEnabled: true, // Enables HTML5 geolocation in WebView
+  ),
+  onGeolocationPermissionsShowPrompt: (controller, origin) async {
+    // Allows web app to access device location
+    return GeolocationPermissionShowPromptResponse(
+      origin: origin,
+      allow: true,
+      retain: true,
+    );
+  },
   onLoadStop: (controller, url) async {
     // Tell React the bridge is ready
     await controller.evaluateJavascript(source: """
@@ -72,6 +120,14 @@ InAppWebView(
     setupJavaScriptHandlers(controller);
   },
 )
+
+Android Permissions (android/app/src/main/AndroidManifest.xml):
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+iOS Permissions (ios/Runner/Info.plist):
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>Help U needs your location to show available services and nearby orders.</string>
 This bridge allows you to add any future native features (GPS, Contacts, Storage) simply by adding a new addJavaScriptHandler in Dart and calling flutterBridge.callHandler('name') in React.
 
 C. Bottom safe space (tabs and buttons stay above the phone's buttons / gesture bar)

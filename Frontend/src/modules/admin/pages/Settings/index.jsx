@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass, FiClock } from 'react-icons/fi';
 import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus } from '../../services/settingsService';
 import { ALL_AVAILABLE_LANGUAGES } from '../../../../context/LanguageContext';
 import { cityService } from '../../services/cityService';
@@ -548,12 +548,13 @@ const AdminSettings = () => {
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     const isEdit = !!newAdmin.id;
+    const isSuper = newAdmin.role === 'super_admin';
 
     if (!newAdmin.name?.trim() || !newAdmin.email?.trim()) {
-      return toast.error('Sub-Admin Name and Email are required');
+      return toast.error(`${isSuper ? 'Super Admin' : 'Admin'} Name and Email are required`);
     }
     if (!isEdit && !newAdmin.password?.trim()) {
-      return toast.error('Password is required for new sub-admin');
+      return toast.error('Password is required for new admin');
     }
 
     setAdminLoading(true);
@@ -562,7 +563,7 @@ const AdminSettings = () => {
         name: newAdmin.name.trim(),
         email: newAdmin.email.trim(),
         role: newAdmin.role || 'sub_admin',
-        permissions: Array.isArray(newAdmin.permissions) ? newAdmin.permissions : []
+        permissions: isSuper ? ['*'] : (Array.isArray(newAdmin.permissions) ? newAdmin.permissions : [])
       };
       if (newAdmin.password?.trim()) {
         payload.password = newAdmin.password.trim();
@@ -570,7 +571,25 @@ const AdminSettings = () => {
 
       if (isEdit) {
         await updateAdminDetails(newAdmin.id, payload);
-        toast.success('Sub-Admin access updated successfully');
+        toast.success(isSuper ? 'Super Admin details updated successfully' : 'Sub-Admin access updated successfully');
+
+        // If editing current logged-in admin, sync local profile state & storage
+        const currentAdminId = profile.id || profile._id;
+        if (newAdmin.id === currentAdminId || newAdmin.email.toLowerCase() === (profile.email || '').toLowerCase()) {
+          setProfile(prev => ({
+            ...prev,
+            name: payload.name,
+            email: payload.email
+          }));
+          try {
+            const adminData = JSON.parse(localStorage.getItem('adminData') || sessionStorage.getItem('adminData') || '{}');
+            const updated = { ...adminData, name: payload.name, email: payload.email };
+            localStorage.setItem('adminData', JSON.stringify(updated));
+            sessionStorage.setItem('adminData', JSON.stringify(updated));
+          } catch (e) {
+            console.error('Failed to sync updated admin storage', e);
+          }
+        }
       } else {
         await createAdmin(payload);
         toast.success('Sub-Admin created successfully');
@@ -1361,15 +1380,19 @@ const AdminSettings = () => {
                               <span className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">
                                 {newAdmin.id ? <FiEdit /> : <FiPlus />}
                               </span>
-                              {newAdmin.id ? 'Edit Sub-Admin & Access Rights' : 'Create New Sub-Admin'}
+                              {newAdmin.id
+                                ? (newAdmin.role === 'super_admin' ? 'Edit Super Admin Details' : 'Edit Sub-Admin & Access Rights')
+                                : 'Create New Sub-Admin'}
                             </h3>
                             <p className="text-xs text-gray-500 mt-1">
-                              Sub-admin ka name, login email aur password dalein, aur niche select karein ki use panel me kya kya access dena hai
+                              {newAdmin.role === 'super_admin'
+                                ? 'Super Admin name, login email and password update karein'
+                                : 'Sub-admin ka name, login email aur password dalein, aur niche select karein ki use panel me kya kya access dena hai'}
                             </p>
                           </div>
                           {newAdmin.id && (
                             <span className="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full w-fit">
-                              Editing Account
+                              {newAdmin.role === 'super_admin' ? 'Super Admin Account' : 'Editing Account'}
                             </span>
                           )}
                         </div>
@@ -1378,13 +1401,13 @@ const AdminSettings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                              Admin Name <span className="text-red-500">*</span>
+                              {newAdmin.role === 'super_admin' ? 'Super Admin Name' : 'Admin Name'} <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                               <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                               <input
                                 type="text"
-                                placeholder="Sub-Admin Name"
+                                placeholder={newAdmin.role === 'super_admin' ? "Super Admin Name" : "Sub-Admin Name"}
                                 value={newAdmin.name}
                                 onChange={e => setNewAdmin(p => ({ ...p, name: e.target.value }))}
                                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all font-medium text-gray-800"
@@ -1429,78 +1452,90 @@ const AdminSettings = () => {
                         </div>
 
                         {/* Granular Module Rights / Permissions Checkboxes */}
-                        <div className="mt-6 pt-5 border-t border-amber-200/60">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        {newAdmin.role === 'super_admin' ? (
+                          <div className="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                            <FiShield className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                             <div>
-                              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                <FiShield className="text-amber-600" /> Kya Kya Access Dena Hai (Select Permissions)
-                              </h4>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                Jo jo modules select karenge, login karne par sub-admin ko panel me sirf vahi sections show honge
+                              <h4 className="text-sm font-bold text-amber-900">⭐ Full System Access (Super Admin)</h4>
+                              <p className="text-xs text-amber-700 mt-0.5">
+                                Super Administrators have unrestricted master privileges across all platform modules, system configurations, financial controls, and administrator management.
                               </p>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-md">
-                                {newAdmin.permissions?.length || 0} / {AVAILABLE_PERMISSIONS.length} Modules Selected
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  selectAllPermissions();
-                                }}
-                                className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer"
-                              >
-                                Select All
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  clearAllPermissions();
-                                }}
-                                className="px-2.5 py-1 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
-                              >
-                                Clear All
-                              </button>
-                            </div>
                           </div>
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-                            {AVAILABLE_PERMISSIONS.map(p => {
-                              const isChecked = (newAdmin.permissions || []).includes(p.key);
-                              return (
+                        ) : (
+                          <div className="mt-6 pt-5 border-t border-amber-200/60">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                              <div>
+                                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                  <FiShield className="text-amber-600" /> Kya Kya Access Dena Hai (Select Permissions)
+                                </h4>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  Jo jo modules select karenge, login karne par sub-admin ko panel me sirf vahi sections show honge
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-md">
+                                  {newAdmin.permissions?.length || 0} / {AVAILABLE_PERMISSIONS.length} Modules Selected
+                                </span>
                                 <button
                                   type="button"
-                                  key={p.key}
                                   onClick={(e) => {
                                     e.preventDefault();
-                                    togglePermission(p.key);
+                                    selectAllPermissions();
                                   }}
-                                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs cursor-pointer select-none transition-all ${
-                                    isChecked
-                                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm font-semibold ring-2 ring-amber-300 ring-offset-1'
-                                      : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50/40'
-                                  }`}
+                                  className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer"
                                 >
-                                  <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border transition-all ${
-                                    isChecked ? 'bg-white text-amber-600 border-white' : 'border-gray-300 bg-gray-50'
-                                  }`}>
-                                    {isChecked ? <FiCheckCircle className="w-3.5 h-3.5" /> : null}
-                                  </div>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="leading-tight font-medium">
-                                      {p.label}
-                                    </span>
-                                    <span className={`text-[10px] mt-0.5 leading-tight ${isChecked ? 'text-amber-100' : 'text-gray-400'}`}>
-                                      {p.desc}
-                                    </span>
-                                  </div>
+                                  Select All
                                 </button>
-                              );
-                            })}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    clearAllPermissions();
+                                  }}
+                                  className="px-2.5 py-1 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                                >
+                                  Clear All
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                              {AVAILABLE_PERMISSIONS.map(p => {
+                                const isChecked = (newAdmin.permissions || []).includes(p.key);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={p.key}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      togglePermission(p.key);
+                                    }}
+                                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs cursor-pointer select-none transition-all ${
+                                      isChecked
+                                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm font-semibold ring-2 ring-amber-300 ring-offset-1'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50/40'
+                                    }`}
+                                  >
+                                    <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border transition-all ${
+                                      isChecked ? 'bg-white text-amber-600 border-white' : 'border-gray-300 bg-gray-50'
+                                    }`}>
+                                      {isChecked ? <FiCheckCircle className="w-3.5 h-3.5" /> : null}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="leading-tight font-medium">
+                                        {p.label}
+                                      </span>
+                                      <span className={`text-[10px] mt-0.5 leading-tight ${isChecked ? 'text-amber-100' : 'text-gray-400'}`}>
+                                        {p.desc}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-amber-200/60">
                           <button
@@ -1518,7 +1553,9 @@ const AdminSettings = () => {
                             {adminLoading ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              newAdmin.id ? 'Save & Update Access Rights' : 'Create Sub-Admin with Selected Access'
+                              newAdmin.id
+                                ? (newAdmin.role === 'super_admin' ? 'Save & Update Super Admin' : 'Save & Update Access Rights')
+                                : 'Create Sub-Admin with Selected Access'
                             )}
                           </button>
                         </div>
@@ -1550,6 +1587,12 @@ const AdminSettings = () => {
                                 )}
                               </p>
                               <p className="text-xs text-gray-500 truncate">{admin.email}</p>
+                              {admin.lastLogin && (
+                                <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                                  <FiClock className="w-3 h-3 text-amber-500" />
+                                  Last login: {new Date(admin.lastLogin).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -1579,32 +1622,35 @@ const AdminSettings = () => {
                             <span className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
                               ⭐ You (Current Account)
                             </span>
-                          ) : (
-                            <div className="flex items-center gap-2 ml-auto">
-                              <button
-                                onClick={() => handleEditClick(admin)}
-                                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
-                              >
-                                <FiEdit className="w-3.5 h-3.5" /> Edit Access
-                              </button>
-                              {!isPrimarySuperAdmin && (
-                                <>
-                                  <button
-                                    onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
-                                    className={`p-1.5 rounded-lg transition-colors ${admin.isActive !== false ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50'}`}
-                                  >
-                                    {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteAdmin(admin._id, admin.name)}
-                                    className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                                  >
-                                    <FiTrash2 className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
+                          ) : <div />}
+
+                          <div className="flex items-center gap-2 ml-auto">
+                            <button
+                              onClick={() => handleEditClick(admin)}
+                              className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                              title={isCurrentAdmin ? "Edit Your Account Details" : "Edit Access Rights"}
+                            >
+                              <FiEdit className="w-3.5 h-3.5" /> {isCurrentAdmin ? 'Edit Profile' : 'Edit Access'}
+                            </button>
+                            {!isCurrentAdmin && !isPrimarySuperAdmin && (
+                              <>
+                                <button
+                                  onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
+                                  className={`p-1.5 rounded-lg transition-colors ${admin.isActive !== false ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50'}`}
+                                  title={admin.isActive !== false ? "Block Admin" : "Unblock Admin"}
+                                >
+                                  {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAdmin(admin._id, admin.name)}
+                                  className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                  title="Delete Admin"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1644,6 +1690,12 @@ const AdminSettings = () => {
                                     )}
                                   </p>
                                   <p className="text-xs text-gray-500">{admin.email}</p>
+                                  {admin.lastLogin && (
+                                    <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                                      <FiClock className="w-3 h-3 text-amber-500" />
+                                      Last login: {new Date(admin.lastLogin).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -1674,36 +1726,36 @@ const AdminSettings = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              {isCurrentAdmin ? (
-                                <span className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
-                                  ⭐ Logged-in
-                                </span>
-                              ) : (
-                                <div className="flex justify-end gap-2">
-                                  <button onClick={() => handleEditClick(admin)}
-                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                    title="Edit Access Rights">
-                                    <FiEdit className="w-4 h-4" />
-                                  </button>
+                              <div className="flex items-center justify-end gap-2">
+                                {isCurrentAdmin && (
+                                  <span className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                                    ⭐ Logged-in
+                                  </span>
+                                )}
 
-                                  {!isPrimarySuperAdmin && (
-                                    <>
-                                      <button onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
-                                        className={`p-2 text-gray-400 rounded-lg transition-all ${admin.isActive !== false ? 'hover:text-amber-600 hover:bg-amber-50' : 'hover:text-green-600 hover:bg-green-50'
-                                          }`}
-                                        title={admin.isActive !== false ? "Block Admin" : "Unblock Admin"}>
-                                        {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
-                                      </button>
+                                <button onClick={() => handleEditClick(admin)}
+                                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  title={isCurrentAdmin ? "Edit Your Account Details & Password" : "Edit Access Rights"}>
+                                  <FiEdit className="w-4 h-4" />
+                                </button>
 
-                                      <button onClick={() => handleDeleteAdmin(admin._id, admin.name)}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                        title="Delete Admin">
-                                        <FiTrash2 className="w-4 h-4" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
+                                {!isCurrentAdmin && !isPrimarySuperAdmin && (
+                                  <>
+                                    <button onClick={() => handleBlockAdmin(admin._id, admin.isActive !== false)}
+                                      className={`p-2 text-gray-400 rounded-lg transition-all ${admin.isActive !== false ? 'hover:text-amber-600 hover:bg-amber-50' : 'hover:text-green-600 hover:bg-green-50'
+                                        }`}
+                                      title={admin.isActive !== false ? "Block Admin" : "Unblock Admin"}>
+                                      {admin.isActive !== false ? <FiLock className="w-4 h-4" /> : <FiUnlock className="w-4 h-4" />}
+                                    </button>
+
+                                    <button onClick={() => handleDeleteAdmin(admin._id, admin.name)}
+                                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                      title="Delete Admin">
+                                      <FiTrash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
