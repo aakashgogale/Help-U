@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import legalPageService from '../../../services/legalPageService';
 import {
   FaGooglePlay,
+  FaApple,
   FaArrowRight,
   FaChevronDown,
   FaChevronLeft,
@@ -420,13 +421,30 @@ const LandingPage = () => {
     }
   };
 
-  // The server only passes on a real Play Store listing. Until the admin pastes one, the buttons
-  // open the web app rather than a store search page.
-  const hasStore = Boolean(config.appLinks?.playStoreUrl);
-  const playStoreLink = hasStore ? config.appLinks.playStoreUrl : '/user';
-  const storeName = hasStore ? 'Google Play Store' : 'Help-U Web App';
-  const StoreIcon = hasStore ? FaGooglePlay : FaArrowRight;
-  const qrTarget = hasStore ? playStoreLink : `${window.location.origin}/user`;
+  // Store links: fallback to the web app (/user) until the admin pastes the real store listings
+  const hasPlayStore = Boolean(config.appLinks?.playStoreUrl);
+  const playStoreLink = hasPlayStore ? config.appLinks.playStoreUrl : '/user';
+
+  const hasAppStore = Boolean(config.appLinks?.appStoreUrl);
+  const appStoreLink = hasAppStore ? config.appLinks.appStoreUrl : '/user';
+
+  const hasAnyStore = hasPlayStore || hasAppStore;
+
+  // OS detection for smart mobile download routing
+  const [isIosDevice, setIsIosDevice] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      setIsIosDevice(/iPhone|iPad|iPod/i.test(ua));
+    }
+  }, []);
+
+  // QR Code active target selector ('android' | 'ios')
+  const [qrPlatform, setQrPlatform] = useState('android');
+  const qrTarget =
+    qrPlatform === 'ios'
+      ? (hasAppStore ? appStoreLink : `${window.location.origin}/user`)
+      : (hasPlayStore ? playStoreLink : `${window.location.origin}/user`);
 
   // Safeguarded arrays
   const pillars =
@@ -504,7 +522,7 @@ const LandingPage = () => {
             ))}
           </nav>
 
-          {/* Header Action Button (Play Store Link) */}
+          {/* Header Action Button (Play Store & App Store links) */}
           <div className="hidden sm:flex items-center gap-3">
             <button
               type="button"
@@ -513,25 +531,62 @@ const LandingPage = () => {
             >
               Earn with Us
             </button>
-            <a
-              href={playStoreLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95"
-            >
-              <StoreIcon className="text-sm" /> Get the App
-            </a>
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={(e) => scrollToSection(e, '#why-us')}
+                className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs font-bold hover:bg-brand transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <span>Get the App</span>
+                <FaChevronDown className="text-[10px] transition-transform duration-200 group-hover:rotate-180" />
+              </button>
+
+              {/* Dropdown Menu on hover */}
+              <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 space-y-1">
+                  <a
+                    href={playStoreLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-800 hover:bg-gray-50 hover:text-brand transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-900 shrink-0">
+                      <FaGooglePlay className="text-xs" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 leading-tight">Google Play</div>
+                      <div className="text-[10px] text-gray-400 font-normal">{hasPlayStore ? 'Android App' : 'Help-U Web App'}</div>
+                    </div>
+                  </a>
+
+                  <a
+                    href={appStoreLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-800 hover:bg-gray-50 hover:text-brand transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-900 shrink-0">
+                      <FaApple className="text-sm" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 leading-tight">App Store</div>
+                      <div className="text-[10px] text-gray-400 font-normal">{hasAppStore ? 'iOS App' : 'Help-U Web App'}</div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Mobile Right Bar: App Pill + Menu Hamburger */}
           <div className="flex items-center gap-2 lg:hidden">
             <a
-              href={playStoreLink}
+              href={isIosDevice ? (hasAppStore ? appStoreLink : playStoreLink) : (hasPlayStore ? playStoreLink : appStoreLink)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm"
             >
-              <StoreIcon className="text-[10px]" /> App
+              {isIosDevice ? <FaApple className="text-[11px]" /> : <FaGooglePlay className="text-[10px]" />} App
             </a>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -574,7 +629,15 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-xs font-bold shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
                 >
-                  <StoreIcon className="text-sm" /> {hasStore ? 'Download on Google Play Store' : 'Open the Help-U Web App'}
+                  <FaGooglePlay className="text-sm text-green-400" /> {hasPlayStore ? 'Download on Google Play Store' : 'Open the Help-U Web App'}
+                </a>
+                <a
+                  href={appStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-xs font-bold shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                >
+                  <FaApple className="text-base" /> {hasAppStore ? 'Download on Apple App Store' : 'Open on iOS (Web App)'}
                 </a>
                 <button
                   type="button"
@@ -619,28 +682,39 @@ const LandingPage = () => {
               </p>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start items-center mb-6">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center lg:justify-start items-center mb-6">
                 <a
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-brand transition-all shadow-md active:scale-95 group"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gray-900 text-white px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-brand transition-all shadow-md active:scale-95 group"
                 >
-                  <StoreIcon className="text-lg group-hover:scale-110 transition-transform" />
+                  <FaGooglePlay className="text-base sm:text-lg group-hover:scale-110 transition-transform text-white" />
                   <div className="text-left">
-                    <div className="text-[9px] text-gray-400 font-normal leading-none">FREE ON</div>
-                    <div className="text-xs sm:text-sm font-bold leading-tight">{storeName}</div>
+                    <div className="text-[8px] sm:text-[9px] text-gray-400 font-normal leading-none">GET IT ON</div>
+                    <div className="text-xs sm:text-sm font-bold leading-tight">Google Play</div>
                   </div>
                 </a>
 
                 <a
-                  href={playStoreLink}
+                  href={appStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gray-900 text-white px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-brand transition-all shadow-md active:scale-95 group"
+                >
+                  <FaApple className="text-lg sm:text-xl group-hover:scale-110 transition-transform text-white" />
+                  <div className="text-left">
+                    <div className="text-[8px] sm:text-[9px] text-gray-400 font-normal leading-none">DOWNLOAD ON</div>
+                    <div className="text-xs sm:text-sm font-bold leading-tight">App Store</div>
+                  </div>
+                </a>
+
+                <Link
+                  to="/user"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95"
                 >
                   {config.hero?.ctaUserText || 'Book a Service'} <FaArrowRight className="text-[10px]" />
-                </a>
+                </Link>
               </div>
 
               {/* Quick Trust Highlights */}
@@ -777,7 +851,7 @@ const LandingPage = () => {
                 Explore Expert Services
               </h2>
               <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-                {hasStore ? 'Tap any category to install or book via Google Play Store' : 'Tap any category to start booking in the web app'}
+                {hasAnyStore ? 'Tap any category to book in the mobile app or web' : 'Tap any category to start booking in the web app'}
               </p>
             </div>
             <div className="hidden sm:flex items-center gap-2">
@@ -809,7 +883,7 @@ const LandingPage = () => {
                 return (
                   <a
                     key={cat.id || idx}
-                    href={playStoreLink}
+                    href={isIosDevice ? (hasAppStore ? appStoreLink : playStoreLink) : (hasPlayStore ? playStoreLink : appStoreLink)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-36 sm:w-52 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 hover:border-brand/40 hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center group cursor-pointer snap-start"
@@ -839,7 +913,7 @@ const LandingPage = () => {
                       {cat.title}
                     </h3>
                     <span className="text-[10px] sm:text-[11px] text-brand mt-1.5 flex items-center gap-1 font-semibold group-hover:translate-x-0.5 transition-transform">
-                      {hasStore ? 'Play Store' : 'Open'} <FaArrowRight className="text-[8px]" />
+                      Book Now <FaArrowRight className="text-[8px]" />
                     </span>
                   </a>
                 );
@@ -919,7 +993,7 @@ const LandingPage = () => {
       </section>
 
       {/* ============================================================ */}
-      {/* 7. APP SHOWCASE & PLAY STORE DOWNLOAD STRIP */}
+      {/* 7. APP SHOWCASE & APP STORE DOWNLOAD STRIP */}
       {/* ============================================================ */}
       <section id="why-us" className="py-10 sm:py-20 bg-gray-900 text-white overflow-hidden relative scroll-mt-20 sm:scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
@@ -933,36 +1007,76 @@ const LandingPage = () => {
                 <span className="text-amber-400">Just a Tap Away.</span>
               </h2>
               <p className="text-gray-400 text-xs sm:text-base leading-relaxed mb-6">
-                Download the official Help-U Android app for instant emergency bookings, live technician map tracking, digital receipts, and hassle-free wallet payments.
+                Download the official Help-U app for Android & iOS for instant emergency bookings, live technician map tracking, digital receipts, and hassle-free wallet payments.
               </p>
 
-              {/* Download badge & QR code */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 justify-center lg:justify-start">
+              {/* Download badges & QR code */}
+              <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 sm:gap-4 justify-center lg:justify-start">
                 <a
                   href={playStoreLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95 group"
                 >
-                  <StoreIcon className="text-xl text-gray-900 group-hover:text-white" />
+                  <FaGooglePlay className="text-lg sm:text-xl text-gray-900 group-hover:text-white transition-colors" />
                   <div className="text-left">
-                    <div className="text-[9px] text-gray-500 leading-none">FREE ON</div>
-                    <div className="text-xs sm:text-sm font-extrabold">{storeName}</div>
+                    <div className="text-[9px] text-gray-500 group-hover:text-white/80 leading-none">GET IT ON</div>
+                    <div className="text-xs sm:text-sm font-extrabold">Google Play</div>
+                  </div>
+                </a>
+
+                <a
+                  href={appStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-brand hover:text-white transition-all shadow-xl active:scale-95 group"
+                >
+                  <FaApple className="text-xl sm:text-2xl text-gray-900 group-hover:text-white transition-colors" />
+                  <div className="text-left">
+                    <div className="text-[9px] text-gray-500 group-hover:text-white/80 leading-none">DOWNLOAD ON THE</div>
+                    <div className="text-xs sm:text-sm font-extrabold">App Store</div>
                   </div>
                 </a>
 
                 {config.appLinks?.isQrCodeVisible !== false && (
-                  <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 p-2.5 rounded-xl">
+                  <div className="hidden xl:flex items-center gap-3 bg-white/5 border border-white/10 p-2.5 rounded-xl">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(
                         qrTarget
                       )}`}
                       alt="Scan to Download Help-U"
-                      className="w-12 h-12 rounded-lg bg-white p-1"
+                      className="w-12 h-12 rounded-lg bg-white p-1 shrink-0"
                     />
                     <div className="text-left text-xs">
-                      <div className="font-bold text-white text-[11px]">Scan with Camera</div>
-                      <div className="text-gray-400 text-[9px]">{hasStore ? 'Direct Play Store install' : 'Opens the web app'}</div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <button
+                          type="button"
+                          onClick={() => setQrPlatform('android')}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                            qrPlatform === 'android'
+                              ? 'bg-amber-400 text-gray-950'
+                              : 'bg-white/10 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          Android
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQrPlatform('ios')}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                            qrPlatform === 'ios'
+                              ? 'bg-amber-400 text-gray-950'
+                              : 'bg-white/10 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          iOS
+                        </button>
+                      </div>
+                      <div className="text-gray-400 text-[9px] leading-tight">
+                        {qrPlatform === 'ios'
+                          ? (hasAppStore ? 'Scan for App Store' : 'Scan for Web App')
+                          : (hasPlayStore ? 'Scan for Google Play' : 'Scan for Web App')}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1474,6 +1588,24 @@ const LandingPage = () => {
               <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
                 Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.
               </p>
+              <div className="flex items-center gap-2 pt-2">
+                <a
+                  href={playStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+                >
+                  <FaGooglePlay className="text-xs text-brand" /> Google Play
+                </a>
+                <a
+                  href={appStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+                >
+                  <FaApple className="text-xs text-white" /> App Store
+                </a>
+              </div>
             </div>
 
             {/* Quick Links */}
@@ -1599,14 +1731,40 @@ const LandingPage = () => {
           </div>
         </div>
 
-        <a
-          href={playStoreLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95"
-        >
-          <StoreIcon className="text-[11px]" /> {hasStore ? 'Install App' : 'Open App'}
-        </a>
+        <div className="flex items-center gap-1.5">
+          {isIosDevice ? (
+            <a
+              href={appStoreLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95"
+            >
+              <FaApple className="text-xs" /> {hasAppStore ? 'App Store' : 'Open App'}
+            </a>
+          ) : (
+            <>
+              <a
+                href={playStoreLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95"
+              >
+                <FaGooglePlay className="text-[11px]" /> {hasPlayStore ? 'Google Play' : 'Open App'}
+              </a>
+              {hasAppStore && (
+                <a
+                  href={appStoreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-900 w-8 h-8 rounded-xl text-xs font-bold active:scale-95"
+                  title="Apple App Store"
+                >
+                  <FaApple className="text-sm" />
+                </a>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

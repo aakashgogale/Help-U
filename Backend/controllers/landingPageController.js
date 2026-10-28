@@ -6,8 +6,8 @@ const Worker = require('../models/Worker');
 const Review = require('../models/Review');
 
 // A real store listing, not a search page or a placeholder
-const PLAY_LISTING_RE = /^https:\/\/play\.google\.com\/store\/apps\/details\?id=[\w.]+/;
-const APP_STORE_RE = /^https:\/\/apps\.apple\.com\/.+/;
+const PLAY_LISTING_RE = /^https?:\/\/play\.google\.com\/store\/apps\/details\?id=[\w.]+/i;
+const APP_STORE_RE = /^https?:\/\/(?:apps|itunes)\.apple\.com\/.+/i;
 
 const formatCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n));
 
@@ -58,8 +58,10 @@ exports.getPublicLandingConfig = async (req, res) => {
 
     // Only a real store listing is passed on; a search page or placeholder becomes empty and the
     // page then sends visitors to the web app instead
-    const playStoreUrl = PLAY_LISTING_RE.test(config.appLinks?.playStoreUrl || '') ? config.appLinks.playStoreUrl : '';
-    const appStoreUrl = APP_STORE_RE.test(config.appLinks?.appStoreUrl || '') ? config.appLinks.appStoreUrl : '';
+    const rawPlayUrl = (config.appLinks?.playStoreUrl || '').trim();
+    const rawAppUrl = (config.appLinks?.appStoreUrl || '').trim();
+    const playStoreUrl = PLAY_LISTING_RE.test(rawPlayUrl) ? rawPlayUrl : '';
+    const appStoreUrl = APP_STORE_RE.test(rawAppUrl) ? rawAppUrl : '';
 
     // Real numbers counted from the database unless the admin chose to type their own
     const stats = config.statsMode === 'manual' ? (config.stats || []) : await liveStats();
@@ -200,6 +202,15 @@ exports.updateAdminLandingConfig = async (req, res) => {
       'socialLinks',
       'testimonials'
     ];
+
+    if (updateData.appLinks && typeof updateData.appLinks === 'object') {
+      if (typeof updateData.appLinks.playStoreUrl === 'string') {
+        updateData.appLinks.playStoreUrl = updateData.appLinks.playStoreUrl.trim();
+      }
+      if (typeof updateData.appLinks.appStoreUrl === 'string') {
+        updateData.appLinks.appStoreUrl = updateData.appLinks.appStoreUrl.trim();
+      }
+    }
 
     allowedFields.forEach((field) => {
       if (updateData[field] !== undefined) {

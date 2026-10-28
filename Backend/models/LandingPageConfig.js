@@ -103,7 +103,7 @@ const DEFAULT_FAQS = [
   {
     question: 'How do I book a service on Help-U?',
     answer:
-      'You can book directly by downloading our Android app from the Google Play Store or using our web booking portal. Simply select your required repair service, pick a time slot, and enter your address.',
+      'You can book directly by downloading our app from the Google Play Store or Apple App Store, or using our web booking portal. Simply select your required repair service, pick a time slot, and enter your address.',
     audience: 'user',
     order: 1,
     isActive: true

@@ -280,8 +280,11 @@ const LandingPageAdmin = () => {
 
           <Card title="App Download Links">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Field label="Google Play Store URL" hint="Paste the real listing link (play.google.com/store/apps/details?id=...). Until then the landing buttons open the web app. A search link or placeholder is not shown.">
+              <Field
+                label="Google Play Store URL"
+                hint="Paste the Android listing URL (e.g. https://play.google.com/store/apps/details?id=...). Until set, landing buttons direct visitors to the web app."
+              >
+                <div className="relative">
                   <input
                     type="url"
                     placeholder="https://play.google.com/store/apps/details?id=in.helpu.customer"
@@ -289,27 +292,52 @@ const LandingPageAdmin = () => {
                     onChange={(e) =>
                       setConfig({ ...config, appLinks: { ...config.appLinks, playStoreUrl: e.target.value } })
                     }
-                    className={inputClass}
+                    className={`${inputClass} pr-14`}
                   />
-                </Field>
-              </div>
-
-              <Field label="Apple App Store URL (Optional)">
-                <input
-                  type="url"
-                  placeholder="https://apps.apple.com/..."
-                  value={config.appLinks?.appStoreUrl || ''}
-                  onChange={(e) =>
-                    setConfig({ ...config, appLinks: { ...config.appLinks, appStoreUrl: e.target.value } })
-                  }
-                  className={inputClass}
-                />
+                  {config.appLinks?.playStoreUrl && (
+                    <a
+                      href={config.appLinks.playStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#163B66] hover:underline"
+                    >
+                      Test ↗
+                    </a>
+                  )}
+                </div>
               </Field>
 
-              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+              <Field
+                label="Apple App Store URL"
+                hint="Paste the iOS listing URL (e.g. https://apps.apple.com/app/...). Until set, landing buttons direct visitors to the web app."
+              >
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="https://apps.apple.com/in/app/help-u/id1234567890"
+                    value={config.appLinks?.appStoreUrl || ''}
+                    onChange={(e) =>
+                      setConfig({ ...config, appLinks: { ...config.appLinks, appStoreUrl: e.target.value } })
+                    }
+                    className={`${inputClass} pr-14`}
+                  />
+                  {config.appLinks?.appStoreUrl && (
+                    <a
+                      href={config.appLinks.appStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#163B66] hover:underline"
+                    >
+                      Test ↗
+                    </a>
+                  )}
+                </div>
+              </Field>
+
+              <div className="md:col-span-2 flex items-center justify-between rounded-lg border border-gray-200 p-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">Show QR Code</p>
-                  <p className="text-xs text-gray-500">Allow desktop visitors to scan QR code directly with camera</p>
+                  <p className="text-xs text-gray-500">Allow desktop visitors to scan QR code directly with camera to download the app</p>
                 </div>
                 <Toggle
                   checked={config.appLinks?.isQrCodeVisible !== false}
