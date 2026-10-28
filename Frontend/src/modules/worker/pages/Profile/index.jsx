@@ -8,8 +8,11 @@ import { workerTheme as themeColors } from '../../../../theme';
 import { workerAuthService } from '../../../../services/authService';
 import Header from '../../components/layout/Header';
 import LogoLoader from '../../../../components/common/LogoLoader';
+import { useConfig } from '../../../../context/ConfigContext';
 
 const Profile = () => {
+  const { config: appConfig } = useConfig(); // the referral reward the admin set
+  const partnerReward = Number(appConfig?.vendorReferralReward);
   const navigate = useNavigate();
 
   // Helper function to convert hex to rgba
@@ -22,7 +25,7 @@ const Profile = () => {
 
   const menuItems = [
     { id: 2, label: 'Wallet', icon: FaWallet, path: '/worker/wallet' },
-    { id: 3, label: 'Refer & Earn', icon: FiGift, path: '/worker/refer-earn', badge: 'Earn ₹100' },
+    { id: 3, label: 'Refer & Earn', icon: FiGift, path: '/worker/refer-earn', badge: Number.isFinite(partnerReward) && partnerReward > 0 ? `Earn ₹${partnerReward}` : undefined },
     { id: 5, label: 'My Ratings', icon: FiStar, path: '/worker/my-ratings' },
     { id: 15, label: 'Scrap Pickups', icon: FiBriefcase, path: '/worker/scrap-pickups' },
     { id: 10, label: 'Disputes', icon: FiAlertOctagon, path: '/worker/disputes' },

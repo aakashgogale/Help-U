@@ -233,6 +233,7 @@ exports.getPublicSettings = async (req, res, next) => {
     if (!settings) {
       settings = { visitedCharges: 0, serviceGstPercentage: 18, partsGstPercentage: 18, isScrapEnabled: true, isOnlinePaymentEnabled: true };
     }
+    const referral = await require('../../services/userReferralService').getReferralSettings();
 
     res.status(200).json({
       success: true,
@@ -244,7 +245,7 @@ exports.getPublicSettings = async (req, res, next) => {
         supportPhone: settings.supportPhone || '',
         supportWhatsapp: settings.supportWhatsapp || '',
         cancellationPenalty: settings.cancellationPenalty ?? 49,
-        companyName: settings.companyName || 'TodayMyDream',
+        companyName: settings.companyName || 'Help-U',
         companyAddress: settings.companyAddress || '',
         companyCity: settings.companyCity || '',
         companyState: settings.companyState || '',
@@ -253,6 +254,13 @@ exports.getPublicSettings = async (req, res, next) => {
         companyEmail: settings.companyEmail || '',
         isOnlinePaymentEnabled: settings.isOnlinePaymentEnabled !== false,
         isScrapEnabled: settings.isScrapEnabled !== false,
+
+        // Referral rewards, so banners and badges show what the admin actually set
+        userReferralEnabled: referral.userReferralEnabled,
+        userReferralReward: referral.userReferralReward,
+        userRefereeReward: referral.userRefereeReward,
+        vendorReferralEnabled: settings.vendorReferralEnabled !== false,
+        vendorReferralReward: settings.vendorReferralReward ?? 100,
 
         // Map API & Language configuration
         googleMapsApiKey: settings.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || '',

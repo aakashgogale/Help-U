@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiArrowRight, FiGift } from 'react-icons/fi';
+import { useConfig } from '../../../../../context/ConfigContext';
 
 // One gift box, drawn around (cx, cy) at size s
 const Gift = ({ id, cx, cy, s, box, boxDark, lid, ribbon, ribbonDark, bow = ribbon, bowDark = ribbonDark }) => (
@@ -88,6 +89,9 @@ const ReferGiftsIllustration = () => (
 
 // Sizes use container units (cqw) so the card keeps the same proportions at every width
 const ReferEarnSection = ({ onReferClick }) => {
+  const { config } = useConfig(); // the reward the admin set
+  const reward = Number(config?.userReferralReward) || 0;
+  const inviteLine = config?.userReferralEnabled !== false && reward > 0 ? `Invite and get ₹${reward}*` : 'Invite friends to Help-U';
   return (
     <div className="px-4 sm:px-5 w-full lg:max-w-3xl lg:mx-auto">
       <div
@@ -120,7 +124,7 @@ const ReferEarnSection = ({ onReferClick }) => {
             </h2>
 
             <p className="mt-[1.8cqw] text-[max(13px,3.6cqw)] font-semibold text-[#5B6B78]">
-              Invite and get ₹100*
+              {inviteLine}
             </p>
 
             <button

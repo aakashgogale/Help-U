@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { walletService } from '../../../../services/walletService';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
+import { useConfig } from '../../../../context/ConfigContext';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import NotificationBell from '../../components/common/NotificationBell';
 import { themeColors } from '../../../../theme';
@@ -58,6 +59,10 @@ const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const Wallet = () => {
   const navigate = useNavigate();
   const { walletMinTopup, walletMaxTopup } = useBookingConfig(); // set by the admin in Booking Configuration
+  const { config: appConfig } = useConfig(); // referral rewards set by the admin
+  const referralReward = Number(appConfig?.userReferralReward) || 0;
+  const refereeReward = Number(appConfig?.userRefereeReward) || 0;
+  const showReferralBanner = appConfig?.userReferralEnabled !== false && referralReward > 0;
   const [walletData, setWalletData] = useState({
     balance: 0,
     penalty: 0,
@@ -525,6 +530,7 @@ const Wallet = () => {
           {/* ============================================================== */}
           {/* COMPACT REFERRAL BANNER                                        */}
           {/* ============================================================== */}
+          {showReferralBanner && (
           <div
             onClick={() => navigate('/user/rewards')}
             className="group relative overflow-hidden rounded-xl p-2.5 sm:p-3 bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 text-white shadow-xs cursor-pointer transition-all hover:shadow-md active:scale-[0.99] border border-violet-400/20"
@@ -537,14 +543,16 @@ const Wallet = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-xs font-bold text-white tracking-tight truncate">
-                      Refer friends & earn ₹100
+                      Refer friends & earn ₹{referralReward}
                     </h3>
                     <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-yellow-400/20 text-yellow-300 border border-yellow-300/30">
-                      ₹100
+                      ₹{referralReward}
                     </span>
                   </div>
                   <p className="text-[10px] text-violet-100 truncate mt-0.5">
-                    Both get ₹100 on their first completed service
+                    {refereeReward > 0
+                      ? `You get ₹${referralReward} and your friend gets ₹${refereeReward}`
+                      : `You get ₹${referralReward} when a friend completes their first service`}
                   </p>
                 </div>
               </div>
@@ -555,6 +563,7 @@ const Wallet = () => {
               </div>
             </div>
           </div>
+          )}
 
           {/* ============================================================== */}
           {/* COMPACT STATS CARDS                                            */}

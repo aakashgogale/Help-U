@@ -53,7 +53,6 @@ const AdminSettings = () => {
     maxSearchTime: 5,
     waveDuration: 60,
     searchRadius: 10,
-    isOnlinePaymentEnabled: true,
     isScrapEnabled: true
   });
 
@@ -233,7 +232,6 @@ const AdminSettings = () => {
             vendorCashLimit: res.settings.vendorCashLimit || 10000,
             cancellationPenalty: res.settings.cancellationPenalty !== undefined ? res.settings.cancellationPenalty : 49,
             searchRadius: res.settings.searchRadius || 10,
-            isOnlinePaymentEnabled: res.settings.isOnlinePaymentEnabled !== undefined ? res.settings.isOnlinePaymentEnabled : true,
             isScrapEnabled: res.settings.isScrapEnabled !== undefined ? res.settings.isScrapEnabled : true
           });
           // Load billing settings
@@ -355,26 +353,6 @@ const AdminSettings = () => {
     }
   };
 
-  const handleToggleOnlinePayment = async () => {
-    const currentEnabled = financialSettings.isOnlinePaymentEnabled !== false;
-    const nextVal = !currentEnabled;
-    setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: nextVal }));
-    try {
-      await updateSettings({ isOnlinePaymentEnabled: nextVal });
-      try {
-        const currentConfig = JSON.parse(localStorage.getItem('app_public_config') || '{}');
-        localStorage.setItem('app_public_config', JSON.stringify({ ...currentConfig, isOnlinePaymentEnabled: nextVal }));
-      } catch (e) {}
-      toast.success(nextVal ? 'Online payments turned ON' : 'Online payments turned OFF');
-      window.dispatchEvent(new Event('systemConfigUpdated'));
-      window.dispatchEvent(new Event('adminSettingsUpdated'));
-    } catch (err) {
-      console.error('Failed to update online payment state:', err);
-      setFinancialSettings(prev => ({ ...prev, isOnlinePaymentEnabled: currentEnabled }));
-      toast.error(err?.response?.data?.message || 'Failed to update online payment state');
-    }
-  };
-
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfile(prev => ({ ...prev, [name]: value }));
@@ -384,8 +362,10 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // The cancellation fee is edited in Booking Configuration; do not send a stale copy of it from here
-      const { cancellationPenalty, ...financialPayload } = financialSettings; // eslint-disable-line no-unused-vars
+      // Not sent from here: the cancellation fee (Booking Configuration) and the scrap switch (saved the
+      // moment it is toggled), so a stale copy loaded with this page can never overwrite a change made
+      // elsewhere. The online-payments switch lives only on the Customization page.
+      const { cancellationPenalty, isScrapEnabled, ...financialPayload } = financialSettings; // eslint-disable-line no-unused-vars
       await updateSettings(financialPayload);
       toast.success('Financial settings updated');
     } catch (error) {
@@ -707,39 +687,6 @@ const AdminSettings = () => {
               <div
                 className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${
                   financialSettings.isScrapEnabled !== false ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Online Payments Card */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-gray-900">Online Payments</span>
-                <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full border ${
-                  financialSettings.isOnlinePaymentEnabled !== false
-                    ? 'bg-green-100 text-green-800 border-green-200'
-                    : 'bg-red-100 text-red-800 border-red-200'
-                }`}>
-                  {financialSettings.isOnlinePaymentEnabled !== false ? 'ON' : 'OFF'}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500">
-                Accept Razorpay / digital payments at checkout
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleToggleOnlinePayment}
-              className={`relative w-13 h-7 rounded-full transition-all duration-300 shrink-0 ${
-                financialSettings.isOnlinePaymentEnabled !== false ? 'bg-green-600' : 'bg-gray-300'
-              }`}
-            >
-              <div
-                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${
-                  financialSettings.isOnlinePaymentEnabled !== false ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>
@@ -1133,19 +1080,6 @@ const AdminSettings = () => {
                 </div>
 
                 <div className="space-y-4">
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800">Online Payments</p>
-                      <p className="text-xs text-gray-500 mt-1">Enable digital payment methods for users</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleToggleOnlinePayment}
-                      className={`relative w-12 h-7 rounded-full transition-all duration-300 ${financialSettings.isOnlinePaymentEnabled !== false ? 'bg-green-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${financialSettings.isOnlinePaymentEnabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
 
                   {/* Scrap Feature Toggle */}
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">

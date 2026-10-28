@@ -1,7 +1,11 @@
 import React from 'react';
+import { useConfig } from '../../../../../context/ConfigContext';
 import winterBanner from '../../../../../assets/images/pages/Home/Banner/Winter-banner.jpg';
 
 const BannerWithRefer = ({ imageUrl, onBannerClick, onReferClick }) => {
+  const { config } = useConfig(); // the reward the admin set
+  const reward = Number(config?.userReferralReward) || 0;
+  const inviteLine = config?.userReferralEnabled !== false && reward > 0 ? `Invite and get ₹${reward}*` : 'Invite friends to Help-U';
   return (
     <div className="mb-6">
       {/* Main Banner */}
@@ -33,7 +37,7 @@ const BannerWithRefer = ({ imageUrl, onBannerClick, onReferClick }) => {
               Refer and get free services
             </h3>
             <p className="text-sm font-medium text-black">
-              Invite and get ₹100*
+              {inviteLine}
             </p>
           </div>
 

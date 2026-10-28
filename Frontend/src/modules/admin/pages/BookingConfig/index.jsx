@@ -349,6 +349,18 @@ const BookingConfig = () => {
           </div>
         </Card>
 
+        {/* Wallet top-up */}
+        <Card title="Wallet Top-up" icon={FiDollarSign}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Minimum top-up" hint="Smallest amount a customer can add to their wallet at once.">
+              <NumberInput value={config.walletMinTopup} onChange={set('walletMinTopup')} min={1} suffix="₹" />
+            </Field>
+            <Field label="Maximum top-up" hint="Largest amount a customer can add at once. Must not be below the minimum.">
+              <NumberInput value={config.walletMaxTopup} onChange={set('walletMaxTopup')} min={1} suffix="₹" />
+            </Field>
+          </div>
+        </Card>
+
         {/* Time slots */}
         <Card title="Booking Time Slots" icon={FiClock}>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

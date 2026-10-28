@@ -645,7 +645,7 @@ const Dashboard = memo(() => {
                     Refer & Earn
                   </span>
                   <h3 className="text-sm font-bold text-white mt-1">
-                    Invite Service Partners & Earn ₹{globalConfig.referralReward || stats.referralReward || 100}
+                    Invite Service Partners & Earn ₹{globalConfig.referralReward ?? stats.referralReward ?? 0}
                   </h3>
                   <p className="text-[11px] text-blue-100/80 font-medium">Get cash reward directly into your wallet</p>
                 </div>
