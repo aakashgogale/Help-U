@@ -2,6 +2,7 @@ const Settings = require('../../models/Settings');
 const Worker = require('../../models/Worker');
 const { getAllFlags, invalidateFlagCache, FLAG_DEFAULTS } = require('../../utils/featureFlags');
 const { getPublicBookingConfig, invalidateBookingConfigCache } = require('../../utils/bookingConfig');
+const { logAdminAudit } = require('../../utils/adminAuditLogger');
 
 // Get Global Settings
 exports.getSettings = async (req, res, next) => {
@@ -17,6 +18,15 @@ exports.getSettings = async (req, res, next) => {
     } else if (!settings.type) {
       settings.type = 'global';
       await settings.save();
+
+      logAdminAudit({
+        req,
+        module: 'settings',
+        action: 'update',
+        entityType: 'Settings',
+        entityId: settings._id,
+        description: 'Updated global platform & financial settings'
+      });
     }
 
     res.status(200).json({
@@ -164,6 +174,15 @@ exports.updateSettings = async (req, res, next) => {
       if (isScrapEnabled !== undefined) settings.isScrapEnabled = Boolean(isScrapEnabled);
 
       await settings.save();
+
+      logAdminAudit({
+        req,
+        module: 'settings',
+        action: 'update',
+        entityType: 'Settings',
+        entityId: settings._id,
+        description: 'Updated global platform & financial settings'
+      });
     }
 
     // Payout percentages and search limits are also read through the booking

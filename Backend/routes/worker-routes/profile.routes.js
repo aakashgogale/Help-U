@@ -8,7 +8,8 @@ const { getProfile, updateProfile, updateAddress, updateLocation, updateStatus }
 // Validation rules
 const updateProfileValidation = [
   body('name').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
-  body('businessName').optional().trim().isLength({ max: 100 }).withMessage('Business name must be less than 100 characters')
+  body('businessName').optional().trim().isLength({ max: 100 }).withMessage('Business name must be less than 100 characters'),
+  body('alternatePhone').optional({ checkFalsy: true }).trim().matches(/^\+?[0-9]{10,13}$/).withMessage('Invalid alternate phone number')
 ];
 
 const updateAddressValidation = [

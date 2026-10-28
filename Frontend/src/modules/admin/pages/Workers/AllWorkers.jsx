@@ -39,6 +39,7 @@ const AllWorkers = () => {
           name: worker.name,
           email: worker.email,
           phone: worker.phone,
+          alternatePhone: worker.alternatePhone || null,
           businessName: worker.businessName,
           service: worker.service,
           approvalStatus: worker.approvalStatus,
@@ -372,6 +373,12 @@ const AllWorkers = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
                 <div className="text-gray-900">{selectedWorker.phone}</div>
               </div>
+              {selectedWorker.alternatePhone && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Alternate Phone</label>
+                  <div className="text-gray-900">{selectedWorker.alternatePhone}</div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">PAN Number</label>
                 <div className="text-gray-900 font-mono font-medium">{selectedWorker.pan || 'N/A'}</div>

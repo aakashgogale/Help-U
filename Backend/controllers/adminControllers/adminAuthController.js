@@ -2,6 +2,7 @@ const Admin = require('../../models/Admin');
 const { generateTokenPair } = require('../../utils/tokenService');
 const { USER_ROLES } = require('../../utils/constants');
 const { validationResult } = require('express-validator');
+const { logAdminLogin } = require('../../utils/adminAuditLogger');
 
 /**
  * Login admin with email and password
@@ -22,6 +23,7 @@ const login = async (req, res) => {
     // Find admin with password
     const admin = await Admin.findOne({ email }).select('+password');
     if (!admin) {
+      logAdminLogin({ req, email, status: 'failed', failureReason: 'Admin account not found' });
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -30,6 +32,7 @@ const login = async (req, res) => {
 
     // Check if admin is active
     if (!admin.isActive) {
+      logAdminLogin({ req, admin, email, status: 'failed', failureReason: 'Account deactivated' });
       return res.status(403).json({
         success: false,
         message: 'Your account has been deactivated. Please contact support.'
@@ -39,6 +42,7 @@ const login = async (req, res) => {
     // Verify password
     const isPasswordValid = await admin.comparePassword(password);
     if (!isPasswordValid) {
+      logAdminLogin({ req, admin, email, status: 'failed', failureReason: 'Invalid password' });
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -48,6 +52,9 @@ const login = async (req, res) => {
     // Update last login
     admin.lastLogin = new Date();
     await admin.save();
+
+    // Log successful login
+    logAdminLogin({ req, admin, email, status: 'success' });
 
     // Generate JWT tokens
     const tokens = generateTokenPair({

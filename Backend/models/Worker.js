@@ -21,6 +21,11 @@ const workerSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  alternatePhone: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   role: {
     type: String,
     enum: ['vendor'],

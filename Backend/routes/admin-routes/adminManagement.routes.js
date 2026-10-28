@@ -8,7 +8,9 @@ const {
   deleteAdmin,
   updateAdminRole,
   updateAdmin,
-  toggleAdminStatus
+  toggleAdminStatus,
+  getLoginHistory,
+  getAdminAuditLogs
 } = require('../../controllers/adminControllers/adminManagementController');
 const { ADMIN_ROLES } = require('../../utils/constants');
 const { authenticate } = require('../../middleware/authMiddleware');
@@ -28,6 +30,8 @@ router.use(authenticate, isSuperAdmin);
 // Routes
 router.get('/', getAllAdmins);
 router.get('/permissions', getAvailablePermissions);
+router.get('/login-history', getLoginHistory);
+router.get('/audit-logs', getAdminAuditLogs);
 router.post('/', createAdminValidation, createAdmin);
 router.delete('/:id', deleteAdmin);
 router.put('/:id/role', updateAdminRole);

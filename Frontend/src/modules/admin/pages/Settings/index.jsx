@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass, FiClock } from 'react-icons/fi';
-import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus } from '../../services/settingsService';
+import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass, FiClock, FiActivity, FiSearch, FiRefreshCw, FiSmartphone, FiMonitor, FiAlertCircle, FiEye } from 'react-icons/fi';
+import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus, getAdminLoginHistory, getAdminAuditLogs } from '../../services/settingsService';
 import { ALL_AVAILABLE_LANGUAGES } from '../../../../context/LanguageContext';
 import { cityService } from '../../services/cityService';
 import { publicCatalogService } from '../../../../services/catalogService';
@@ -127,6 +127,23 @@ const AdminSettings = () => {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] });
   const [adminLoading, setAdminLoading] = useState(false);
+
+  // Super Admin Tabs: 'admins' | 'logins' | 'audits'
+  const [adminTab, setAdminTab] = useState('admins');
+
+  // Login History State
+  const [loginLogs, setLoginLogs] = useState([]);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginSearch, setLoginSearch] = useState('');
+  const [loginStatusFilter, setLoginStatusFilter] = useState('all');
+  const [selectedAdminForLogins, setSelectedAdminForLogins] = useState(null);
+
+  // Administrative Audit State
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditModuleFilter, setAuditModuleFilter] = useState('all');
+  const [selectedDiff, setSelectedDiff] = useState(null);
 
   const togglePermission = (key) => {
     setNewAdmin(prev => {
@@ -310,6 +327,49 @@ const AdminSettings = () => {
     }
   };
 
+  const loadLoginHistory = async (targetAdminId = selectedAdminForLogins?._id, searchVal = loginSearch, statusVal = loginStatusFilter) => {
+    if (!isSuperAdmin) return;
+    setLoginLoading(true);
+    try {
+      const params = {};
+      if (targetAdminId) params.adminId = targetAdminId;
+      if (statusVal && statusVal !== 'all') params.status = statusVal;
+      if (searchVal && searchVal.trim()) params.search = searchVal.trim();
+      const res = await getAdminLoginHistory(params);
+      if (res.success) {
+        setLoginLogs(res.items || []);
+      }
+    } catch (err) {
+      console.error('Error fetching login history:', err);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const loadAuditLogs = async (moduleVal = auditModuleFilter, searchVal = auditSearch) => {
+    if (!isSuperAdmin) return;
+    setAuditLoading(true);
+    try {
+      const params = {};
+      if (moduleVal && moduleVal !== 'all') params.module = moduleVal;
+      if (searchVal && searchVal.trim()) params.search = searchVal.trim();
+      const res = await getAdminAuditLogs(params);
+      if (res.success) {
+        setAuditLogs(res.items || []);
+      }
+    } catch (err) {
+      console.error('Error fetching audit logs:', err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const handleViewAdminLogins = (admin) => {
+    setSelectedAdminForLogins(admin);
+    setAdminTab('logins');
+    loadLoginHistory(admin._id, '', 'all');
+  };
+
   // Load admins and cities when entering admin view
   useEffect(() => {
     if (isSuperAdmin && (activeView === 'admins' || admins.length === 0)) {
@@ -317,6 +377,17 @@ const AdminSettings = () => {
       loadCities(); // Fetch cities as well
     }
   }, [isSuperAdmin, activeView]);
+
+  // Load login history or audit logs when switching tabs
+  useEffect(() => {
+    if (isSuperAdmin && activeView === 'admins') {
+      if (adminTab === 'logins') {
+        loadLoginHistory(selectedAdminForLogins?._id, loginSearch, loginStatusFilter);
+      } else if (adminTab === 'audits') {
+        loadAuditLogs(auditModuleFilter, auditSearch);
+      }
+    }
+  }, [isSuperAdmin, activeView, adminTab, loginStatusFilter, auditModuleFilter]);
 
   const handleToggle = (key) => {
     const updated = { ...settings, [key]: !settings[key] };
@@ -887,10 +958,10 @@ const AdminSettings = () => {
                 <form onSubmit={handleFinancialSave} className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Convenience Fee</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Visiting Charge / Convenience Fee (₹)</label>
                       <input type="number" name="visitedCharges" value={financialSettings.visitedCharges} onChange={handleFinancialChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 mt-1">This is the convenience fee shown on user checkout</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Visiting charge applied to bookings and displayed on the Cancellation Policy page once the professional arrives (e.g. ₹149)</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Worker Cash Limit (₹)</label>
@@ -1355,23 +1426,91 @@ const AdminSettings = () => {
                 <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-amber-100 rounded-lg shrink-0">
-                      <FiUsers className="w-5 h-5 text-amber-600" />
+                      {adminTab === 'admins' && <FiUsers className="w-5 h-5 text-amber-600" />}
+                      {adminTab === 'logins' && <FiClock className="w-5 h-5 text-amber-600" />}
+                      {adminTab === 'audits' && <FiShield className="w-5 h-5 text-amber-600" />}
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-gray-800">Admin Management</h2>
-                      <p className="text-sm text-gray-500">Total {admins.length} administrators found</p>
+                      <h2 className="text-xl font-bold text-gray-800">
+                        {adminTab === 'admins' && 'Admin Management'}
+                        {adminTab === 'logins' && 'Login History & Security Sessions'}
+                        {adminTab === 'audits' && 'System Audit Trail'}
+                      </h2>
+                      <p className="text-sm text-gray-500">
+                        {adminTab === 'admins' && `Total ${admins.length} administrators found`}
+                        {adminTab === 'logins' && 'Track administrator login activities, IP addresses, and authentication statuses'}
+                        {adminTab === 'audits' && 'Forensic log of settings changes, account edits, and critical actions'}
+                      </p>
                     </div>
                   </div>
-                  <button onClick={() => { setNewAdmin({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] }); setShowAddAdmin(!showAddAdmin); }}
-                    className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-lg transition-all w-full sm:w-auto ${showAddAdmin ? 'bg-gray-100 text-gray-600' : 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-100'}`}>
-                    {showAddAdmin ? <FiX className="w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
-                    {showAddAdmin ? 'Cancel' : 'Add New Sub-Admin'}
+                  {adminTab === 'admins' ? (
+                    <button onClick={() => { setNewAdmin({ name: '', email: '', password: '', role: 'sub_admin', permissions: [] }); setShowAddAdmin(!showAddAdmin); }}
+                      className={`px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-lg transition-all w-full sm:w-auto ${showAddAdmin ? 'bg-gray-100 text-gray-600' : 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-100'}`}>
+                      {showAddAdmin ? <FiX className="w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
+                      {showAddAdmin ? 'Cancel' : 'Add New Sub-Admin'}
+                    </button>
+                  ) : adminTab === 'logins' ? (
+                    <button onClick={() => loadLoginHistory(selectedAdminForLogins?._id, loginSearch, loginStatusFilter)}
+                      disabled={loginLoading}
+                      className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all cursor-pointer">
+                      <FiRefreshCw className={`w-4 h-4 ${loginLoading ? 'animate-spin text-amber-600' : ''}`} />
+                      Refresh Logins
+                    </button>
+                  ) : (
+                    <button onClick={() => loadAuditLogs(auditModuleFilter, auditSearch)}
+                      disabled={auditLoading}
+                      className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all cursor-pointer">
+                      <FiRefreshCw className={`w-4 h-4 ${auditLoading ? 'animate-spin text-amber-600' : ''}`} />
+                      Refresh Audit Logs
+                    </button>
+                  )}
+                </div>
+
+                {/* Super Admin Navigation Tabs */}
+                <div className="flex items-center gap-2 px-4 sm:px-6 pt-3 pb-3 border-b border-gray-100 bg-gray-50/70 overflow-x-auto">
+                  <button
+                    onClick={() => { setAdminTab('admins'); setSelectedAdminForLogins(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                      adminTab === 'admins'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiUsers className="w-4 h-4" />
+                    Administrators ({admins.length})
+                  </button>
+
+                  <button
+                    onClick={() => { setAdminTab('logins'); setSelectedAdminForLogins(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                      adminTab === 'logins'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiClock className="w-4 h-4" />
+                    Login History & Sessions
+                  </button>
+
+                  <button
+                    onClick={() => { setAdminTab('audits'); }}
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                      adminTab === 'audits'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiShield className="w-4 h-4" />
+                    System Audit Trail
                   </button>
                 </div>
 
-                {/* Add/Edit Sub-Admin Form */}
-                <AnimatePresence>
-                  {showAddAdmin && (
+                {/* Sub-Views: Administrators | Login History | System Audit */}
+                {adminTab === 'admins' && (
+                  <>
+                    {/* Add/Edit Sub-Admin Form */}
+                    <AnimatePresence>
+                      {showAddAdmin && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b border-gray-100 bg-gradient-to-b from-amber-50/60 to-white">
                       <form onSubmit={handleCreateAdmin} className="p-4 sm:p-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-5 border-b border-amber-200/60">
@@ -1626,6 +1765,13 @@ const AdminSettings = () => {
 
                           <div className="flex items-center gap-2 ml-auto">
                             <button
+                              onClick={() => handleViewAdminLogins(admin)}
+                              className="px-2.5 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors flex items-center gap-1"
+                              title={`View ${admin.name}'s Login History`}
+                            >
+                              <FiClock className="w-3.5 h-3.5" /> Logins
+                            </button>
+                            <button
                               onClick={() => handleEditClick(admin)}
                               className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
                               title={isCurrentAdmin ? "Edit Your Account Details" : "Edit Access Rights"}
@@ -1733,6 +1879,12 @@ const AdminSettings = () => {
                                   </span>
                                 )}
 
+                                <button onClick={() => handleViewAdminLogins(admin)}
+                                  className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                  title={`View ${admin.name}'s Login History`}>
+                                  <FiClock className="w-4 h-4" />
+                                </button>
+
                                 <button onClick={() => handleEditClick(admin)}
                                   className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                   title={isCurrentAdmin ? "Edit Your Account Details & Password" : "Edit Access Rights"}>
@@ -1771,10 +1923,344 @@ const AdminSettings = () => {
                     </tbody>
                   </table>
                 </div>
+              </>
+            )}
+
+            {/* Login History & Sessions View */}
+            {adminTab === 'logins' && (
+              <div className="p-4 sm:p-6 space-y-4">
+                {/* Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2 flex-1">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search by name, email, IP or browser..."
+                        value={loginSearch}
+                        onChange={(e) => setLoginSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && loadLoginHistory(selectedAdminForLogins?._id, loginSearch, loginStatusFilter)}
+                        className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 font-medium text-gray-800"
+                      />
+                    </div>
+                    <button
+                      onClick={() => loadLoginHistory(selectedAdminForLogins?._id, loginSearch, loginStatusFilter)}
+                      className="px-3 py-2 bg-white border border-gray-200 hover:border-amber-500 rounded-lg text-xs font-semibold text-gray-700 transition-colors cursor-pointer"
+                    >
+                      Search
+                    </button>
+
+                    <select
+                      value={loginStatusFilter}
+                      onChange={(e) => setLoginStatusFilter(e.target.value)}
+                      className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none cursor-pointer"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="success">Success Only</option>
+                      <option value="failed">Failed Attempts Only</option>
+                    </select>
+                  </div>
+
+                  {selectedAdminForLogins && (
+                    <div className="flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                      <span>Filtered: {selectedAdminForLogins.name} ({selectedAdminForLogins.email})</span>
+                      <button
+                        onClick={() => { setSelectedAdminForLogins(null); loadLoginHistory(null, loginSearch, loginStatusFilter); }}
+                        className="text-amber-700 hover:text-amber-950 font-bold ml-1 cursor-pointer"
+                        title="Clear filter"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {loginLoading ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <div className="w-8 h-8 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-sm font-medium">Loading login history...</p>
+                  </div>
+                ) : loginLogs.length === 0 ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <FiClock className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No login attempts recorded yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Every admin login attempt (success and failure) will appear here</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-100">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                          <th className="px-5 py-3.5 font-semibold">Administrator</th>
+                          <th className="px-5 py-3.5 font-semibold">Status & Result</th>
+                          <th className="px-5 py-3.5 font-semibold">Device & Browser</th>
+                          <th className="px-5 py-3.5 font-semibold">IP Address</th>
+                          <th className="px-5 py-3.5 font-semibold text-right">Login Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 text-xs">
+                        {loginLogs.map((log) => (
+                          <tr key={log._id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                  {log.name?.charAt(0)?.toUpperCase() || 'A'}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                                    {log.name || 'Unknown Admin'}
+                                    {log.role === 'super_admin' && (
+                                      <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-1.5 py-0.2 rounded-full">
+                                        Super Admin
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{log.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              {log.status === 'success' ? (
+                                <span className="inline-flex items-center gap-1 font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full">
+                                  <FiCheckCircle className="w-3.5 h-3.5 text-green-600" /> Success
+                                </span>
+                              ) : (
+                                <div>
+                                  <span className="inline-flex items-center gap-1 font-semibold text-red-700 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full">
+                                    <FiAlertCircle className="w-3.5 h-3.5 text-red-600" /> Failed
+                                  </span>
+                                  {log.failureReason && (
+                                    <p className="text-[11px] text-red-500 mt-0.5">{log.failureReason}</p>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2">
+                                {log.device === 'Mobile' ? (
+                                  <FiSmartphone className="w-4 h-4 text-purple-600 shrink-0" />
+                                ) : (
+                                  <FiMonitor className="w-4 h-4 text-blue-600 shrink-0" />
+                                )}
+                                <div>
+                                  <p className="font-medium text-gray-800">{log.browser || 'Unknown'} on {log.os || 'Unknown'}</p>
+                                  <span className="text-[10px] text-gray-400 capitalize">{log.device || 'Desktop'} device</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <code className="text-[11px] font-mono bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
+                                {log.ip || 'N/A'}
+                              </code>
+                            </td>
+                            <td className="px-5 py-3.5 text-right font-medium text-gray-600">
+                              {new Date(log.createdAt).toLocaleString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            </motion.div>
-          )
-        }
+            )}
+
+            {/* System Audit Trail View */}
+            {adminTab === 'audits' && (
+              <div className="p-4 sm:p-6 space-y-4">
+                {/* Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2 flex-1">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search actions, admins or description..."
+                        value={auditSearch}
+                        onChange={(e) => setAuditSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && loadAuditLogs(auditModuleFilter, auditSearch)}
+                        className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-xs outline-none focus:border-amber-500 font-medium text-gray-800"
+                      />
+                    </div>
+                    <button
+                      onClick={() => loadAuditLogs(auditModuleFilter, auditSearch)}
+                      className="px-3 py-2 bg-white border border-gray-200 hover:border-amber-500 rounded-lg text-xs font-semibold text-gray-700 transition-colors cursor-pointer"
+                    >
+                      Search
+                    </button>
+
+                    <select
+                      value={auditModuleFilter}
+                      onChange={(e) => setAuditModuleFilter(e.target.value)}
+                      className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none cursor-pointer"
+                    >
+                      <option value="all">All Modules</option>
+                      <option value="admin_management">Admin Management</option>
+                      <option value="settings">Platform Settings</option>
+                      <option value="financial">Financial</option>
+                    </select>
+                  </div>
+                </div>
+
+                {auditLoading ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <div className="w-8 h-8 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-sm font-medium">Loading audit trail...</p>
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <FiShield className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No audit events recorded yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Actions performed on admins, settings, and permissions will be logged here</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-100">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                          <th className="px-5 py-3.5 font-semibold">Timestamp</th>
+                          <th className="px-5 py-3.5 font-semibold">Admin (Actor)</th>
+                          <th className="px-5 py-3.5 font-semibold">Module & Action</th>
+                          <th className="px-5 py-3.5 font-semibold">Description</th>
+                          <th className="px-5 py-3.5 font-semibold text-right">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 text-xs">
+                        {auditLogs.map((log) => (
+                          <tr key={log._id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-5 py-3.5 whitespace-nowrap font-medium text-gray-500">
+                              {new Date(log.createdAt).toLocaleString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                  {log.adminName?.charAt(0)?.toUpperCase() || 'A'}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800">{log.adminName || 'Admin'}</p>
+                                  <p className="text-[11px] text-gray-400">{log.adminEmail}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] uppercase tracking-wide">
+                                  {log.module}
+                                </span>
+                                <span className="font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded text-[11px]">
+                                  {log.action}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 font-medium text-gray-800 max-w-md">
+                              {log.description}
+                            </td>
+                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                              {(log.before || log.after) ? (
+                                <button
+                                  onClick={() => setSelectedDiff(log)}
+                                  className="px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                  <FiEye className="w-3.5 h-3.5" /> View Diff
+                                </button>
+                              ) : (
+                                <span className="text-gray-400 text-[11px]">No changes</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Diff Inspector Modal */}
+          {selectedDiff && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
+                <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                      <FiShield className="text-amber-600" /> Audit Event Details
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {selectedDiff.description}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedDiff(null)}
+                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-xs bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div>
+                      <span className="text-gray-400 font-medium">Performed By:</span>
+                      <p className="font-bold text-gray-800 mt-0.5">{selectedDiff.adminName} ({selectedDiff.adminEmail})</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 font-medium">Timestamp & IP:</span>
+                      <p className="font-bold text-gray-800 mt-0.5">
+                        {new Date(selectedDiff.createdAt).toLocaleString('en-IN')} • <span className="font-mono">{selectedDiff.ip || 'N/A'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedDiff.before && (
+                    <div>
+                      <span className="text-xs font-bold text-red-600 uppercase tracking-wider block mb-1">
+                        Previous State (Before)
+                      </span>
+                      <pre className="p-3 bg-red-50/70 border border-red-200 rounded-lg text-xs text-red-900 overflow-x-auto font-mono">
+                        {JSON.stringify(selectedDiff.before, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {selectedDiff.after && (
+                    <div>
+                      <span className="text-xs font-bold text-green-600 uppercase tracking-wider block mb-1">
+                        Updated State (After)
+                      </span>
+                      <pre className="p-3 bg-green-50/70 border border-green-200 rounded-lg text-xs text-green-900 overflow-x-auto font-mono">
+                        {JSON.stringify(selectedDiff.after, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
+                  <button
+                    onClick={() => setSelectedDiff(null)}
+                    className="px-5 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )
+    }
       </AnimatePresence >
     </motion.div >
   );

@@ -476,6 +476,14 @@ const BookingConfig = () => {
                         )}
                       </Field>
                     )}
+                    {prefix === 'user' && (
+                      <div className="col-span-full rounded-lg bg-blue-50/70 border border-blue-200/60 p-3 text-xs text-blue-900 flex items-start gap-2.5">
+                        <span className="font-semibold whitespace-nowrap">Professional arrived:</span>
+                        <span>
+                          Once the professional reaches the customer address, the cancellation fee is the <span className="font-semibold">Visiting Charge (₹{config.visitedCharges ?? 0})</span>. You can modify this in <a href="/admin/settings" className="font-semibold underline text-blue-700 hover:text-blue-900">Admin Settings &gt; Financial Configuration</a>.
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <p className="mt-3 rounded bg-gray-50 px-3 py-2 text-xs text-gray-700">
                     {title === 'Customer' ? 'A customer' : 'A professional'} who cancels{' '}

@@ -1,6 +1,9 @@
 const Admin = require('../../models/Admin');
+const AdminLoginLog = require('../../models/AdminLoginLog');
+const AdminAuditLog = require('../../models/AdminAuditLog');
 const { validationResult } = require('express-validator');
 const { ADMIN_ROLES, ADMIN_ROLE_LABELS, ADMIN_MODULE_PERMISSIONS } = require('../../utils/constants');
+const { logAdminAudit } = require('../../utils/adminAuditLogger');
 
 /**
  * Get all admins (Super Admin only)
@@ -81,6 +84,16 @@ const createAdmin = async (req, res) => {
       cityName: cityName || ''
     });
 
+    logAdminAudit({
+      req,
+      module: 'admin_management',
+      action: 'create',
+      entityType: 'Admin',
+      entityId: admin._id,
+      description: `Created new admin account: ${name} (${email}) as ${role || ADMIN_ROLES.SUB_ADMIN}`,
+      after: { name, email, role: role || ADMIN_ROLES.SUB_ADMIN, permissions: assignedPermissions }
+    });
+
     res.status(201).json({
       success: true,
       message: 'Admin account created successfully',
@@ -134,6 +147,16 @@ const deleteAdmin = async (req, res) => {
 
     await Admin.findByIdAndDelete(id);
 
+    logAdminAudit({
+      req,
+      module: 'admin_management',
+      action: 'delete',
+      entityType: 'Admin',
+      entityId: id,
+      description: `Deleted admin account: ${admin.name} (${admin.email})`,
+      before: { name: admin.name, email: admin.email, role: admin.role }
+    });
+
     res.status(200).json({
       success: true,
       message: 'Admin deleted successfully'
@@ -179,6 +202,16 @@ const updateAdminRole = async (req, res) => {
         message: 'Admin not found'
       });
     }
+
+    logAdminAudit({
+      req,
+      module: 'admin_management',
+      action: 'role_change',
+      entityType: 'Admin',
+      entityId: id,
+      description: `Changed role of ${admin.name} (${admin.email}) to ${role}`,
+      after: { role }
+    });
 
     res.status(200).json({
       success: true,
@@ -241,6 +274,15 @@ module.exports = {
 
       await admin.save();
 
+      logAdminAudit({
+        req,
+        module: 'admin_management',
+        action: 'update',
+        entityType: 'Admin',
+        entityId: admin._id,
+        description: `Updated administrator profile for ${admin.name} (${admin.email})`
+      });
+
       // Populate city for response
       await admin.populate('cityId', 'name');
 
@@ -289,6 +331,15 @@ module.exports = {
       admin.isActive = !admin.isActive;
       await admin.save();
 
+      logAdminAudit({
+        req,
+        module: 'admin_management',
+        action: admin.isActive ? 'unblock' : 'block',
+        entityType: 'Admin',
+        entityId: admin._id,
+        description: `${admin.isActive ? 'Unblocked' : 'Blocked'} administrator: ${admin.name} (${admin.email})`
+      });
+
       res.status(200).json({
         success: true,
         message: `Admin ${admin.isActive ? 'unblocked' : 'blocked'} successfully`,
@@ -297,6 +348,115 @@ module.exports = {
     } catch (error) {
       console.error('Toggle status error:', error);
       res.status(500).json({ success: false, message: 'Failed to update status' });
+    }
+  },
+
+  /**
+   * Get Login History (Super Admin only)
+   * GET /api/admin/admins/login-history
+   */
+  getLoginHistory: async (req, res) => {
+    try {
+      const { adminId, status, search } = req.query;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+
+      const query = {};
+
+      if (adminId) {
+        query.adminId = adminId;
+      }
+
+      if (status && ['success', 'failed'].includes(status)) {
+        query.status = status;
+      }
+
+      if (search) {
+        const regex = new RegExp(search.trim(), 'i');
+        query.$or = [
+          { email: regex },
+          { name: regex },
+          { ip: regex },
+          { browser: regex },
+          { os: regex }
+        ];
+      }
+
+      const [items, total] = await Promise.all([
+        AdminLoginLog.find(query)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        AdminLoginLog.countDocuments(query)
+      ]);
+
+      res.status(200).json({
+        success: true,
+        total,
+        page,
+        pages: Math.ceil(total / limit) || 1,
+        items
+      });
+    } catch (error) {
+      console.error('Get login history error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch login history' });
+    }
+  },
+
+  /**
+   * Get Administrative Audit Logs (Super Admin only)
+   * GET /api/admin/admins/audit-logs
+   */
+  getAdminAuditLogs: async (req, res) => {
+    try {
+      const { module: mod, adminId, action, search } = req.query;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+
+      const query = {};
+
+      if (mod) {
+        query.module = mod;
+      }
+
+      if (adminId) {
+        query.adminId = adminId;
+      }
+
+      if (action) {
+        query.action = action;
+      }
+
+      if (search) {
+        const regex = new RegExp(search.trim(), 'i');
+        query.$or = [
+          { adminName: regex },
+          { adminEmail: regex },
+          { description: regex },
+          { ip: regex }
+        ];
+      }
+
+      const [items, total] = await Promise.all([
+        AdminAuditLog.find(query)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        AdminAuditLog.countDocuments(query)
+      ]);
+
+      res.status(200).json({
+        success: true,
+        total,
+        page,
+        pages: Math.ceil(total / limit) || 1,
+        items
+      });
+    } catch (error) {
+      console.error('Get admin audit logs error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch audit logs' });
     }
   }
 };

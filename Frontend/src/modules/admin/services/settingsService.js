@@ -82,6 +82,28 @@ export const toggleAdminStatus = async (id) => {
   }
 };
 
+// Login History (Super Admin only)
+export const getAdminLoginHistory = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const response = await api.get(`/admin/admins/login-history${query ? `?${query}` : ''}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Administrative Audit Logs (Super Admin only)
+export const getAdminAuditLogs = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const response = await api.get(`/admin/admins/audit-logs${query ? `?${query}` : ''}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Customization Toggles
 export const getCustomizationToggles = async () => {
   try {

@@ -40,6 +40,7 @@ const getProfile = async (req, res) => {
         businessName: worker.businessName || null,
         email: worker.email,
         phone: worker.phone,
+        alternatePhone: worker.alternatePhone || '',
         service: worker.service,
         skills: worker.skills || [],
         address: worker.address || null,
@@ -53,6 +54,11 @@ const getProfile = async (req, res) => {
         profilePhoto: worker.profilePhoto || null,
         bankDetails: worker.bankDetails || {},
         aadharDocument: worker.aadhar?.document || null,
+        aadharBackDocument: worker.aadhar?.backDocument || null,
+        panDocument: worker.pan?.document || null,
+        aadharNumber: worker.aadhar?.number || null,
+        panNumber: worker.pan?.number || null,
+        otherDocuments: worker.otherDocuments || [],
         createdAt: worker.createdAt,
         updatedAt: worker.updatedAt
       }
@@ -81,7 +87,23 @@ const updateProfile = async (req, res) => {
     }
 
     const vendorId = req.user.id;
-    const { name, businessName, address, profilePhoto, serviceCategory, skills, aadharNumber, aadharDocument, panNumber, panDocument, serviceRange, bankDetails } = req.body;
+    const { 
+      name, 
+      businessName, 
+      address, 
+      profilePhoto, 
+      serviceCategory, 
+      skills, 
+      aadharNumber, 
+      aadharDocument, 
+      aadharBackDocument,
+      panNumber, 
+      panDocument, 
+      otherDocuments,
+      alternatePhone,
+      serviceRange, 
+      bankDetails 
+    } = req.body;
 
     console.log('Update Worker Profile Body:', JSON.stringify(req.body, null, 2));
 
@@ -97,6 +119,9 @@ const updateProfile = async (req, res) => {
     // Update fields
     if (name) worker.name = name.trim();
     if (businessName !== undefined) worker.businessName = businessName ? businessName.trim() : null;
+    if (alternatePhone !== undefined) {
+      worker.alternatePhone = alternatePhone ? alternatePhone.trim() : '';
+    }
     if (address) {
       if (typeof address === 'string') {
         // If address is coming as string from simple form
@@ -186,21 +211,29 @@ const updateProfile = async (req, res) => {
         qrCodeImage: bankDetails.qrCodeImage !== undefined ? String(bankDetails.qrCodeImage || '').trim() : (existingBankDetails.qrCodeImage || '')
       };
     }
-    // If aadharDocument exists and is not empty, update it
-    if (aadharDocument || aadharNumber) {
+    // If aadharDocument, aadharBackDocument or aadharNumber exists, update it
+    if (aadharDocument || aadharBackDocument || aadharNumber) {
       let aadharUrl = aadharDocument || worker.aadhar?.document;
       if (aadharUrl && aadharUrl.startsWith('data:')) {
         const uploadRes = await cloudinaryService.uploadFile(aadharUrl, { folder: 'vendors/documents' });
         if (uploadRes.success) aadharUrl = uploadRes.url;
       }
 
+      let aadharBackUrl = aadharBackDocument || worker.aadhar?.backDocument;
+      if (aadharBackUrl && aadharBackUrl.startsWith('data:')) {
+        const uploadRes = await cloudinaryService.uploadFile(aadharBackUrl, { folder: 'vendors/documents' });
+        if (uploadRes.success) aadharBackUrl = uploadRes.url;
+      }
+
       if (worker.aadhar) {
         if (aadharNumber) worker.aadhar.number = aadharNumber;
         if (aadharDocument) worker.aadhar.document = aadharUrl;
+        if (aadharBackDocument) worker.aadhar.backDocument = aadharBackUrl;
       } else {
         worker.aadhar = {
           number: aadharNumber || '',
-          document: aadharUrl || ''
+          document: aadharUrl || '',
+          backDocument: aadharBackUrl || ''
         };
       }
     }
@@ -224,6 +257,11 @@ const updateProfile = async (req, res) => {
       }
     }
 
+    // If otherDocuments provided
+    if (otherDocuments !== undefined && Array.isArray(otherDocuments)) {
+      worker.otherDocuments = otherDocuments;
+    }
+
     await worker.save();
 
     res.status(200).json({
@@ -235,6 +273,7 @@ const updateProfile = async (req, res) => {
         businessName: worker.businessName,
         email: worker.email,
         phone: worker.phone,
+        alternatePhone: worker.alternatePhone || '',
         service: worker.service,
         address: worker.address,
         approvalStatus: worker.approvalStatus,
@@ -243,7 +282,11 @@ const updateProfile = async (req, res) => {
         profilePhoto: worker.profilePhoto,
         bankDetails: worker.bankDetails || {},
         skills: worker.skills,
-        settings: worker.settings
+        settings: worker.settings,
+        aadharDocument: worker.aadhar?.document || null,
+        aadharBackDocument: worker.aadhar?.backDocument || null,
+        panDocument: worker.pan?.document || null,
+        otherDocuments: worker.otherDocuments || []
       }
     });
   } catch (error) {

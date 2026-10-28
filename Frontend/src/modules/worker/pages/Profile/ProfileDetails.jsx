@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiEdit2, FiMapPin, FiPhone, FiMail, FiBriefcase } from 'react-icons/fi';
+import { FiUser, FiEdit2, FiMapPin, FiPhone, FiMail, FiBriefcase, FiFileText, FiCheckCircle, FiEye, FiX } from 'react-icons/fi';
 import { workerAuthService } from '../../../../services/authService';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
@@ -20,11 +20,18 @@ const ProfileDetails = () => {
     name: '',
     businessName: '',
     phone: '',
+    alternatePhone: '',
     email: '',
     address: '',
     serviceCategory: '',
     profilePhoto: '',
+    aadharDocument: '',
+    aadharBackDocument: '',
+    panDocument: '',
+    otherDocuments: [],
   });
+
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   useLayoutEffect(() => {
     const html = document.documentElement;
@@ -69,10 +76,15 @@ const ProfileDetails = () => {
             name: storedData.name || 'Service Partner',
             businessName: storedData.businessName || null,
             phone: storedData.phone || '',
+            alternatePhone: storedData.alternatePhone || '',
             email: storedData.email || '',
             address: addressString || 'Not set',
             serviceCategory: storedData.serviceCategory || storedData.service || '',
-            profilePhoto: storedData.profilePhoto || ''
+            profilePhoto: storedData.profilePhoto || '',
+            aadharDocument: storedData.aadharDocument || (storedData.aadhar && storedData.aadhar.document) || '',
+            aadharBackDocument: storedData.aadharBackDocument || (storedData.aadhar && storedData.aadhar.backDocument) || '',
+            panDocument: storedData.panDocument || (storedData.pan && storedData.pan.document) || '',
+            otherDocuments: storedData.otherDocuments || [],
           }));
         }
 
@@ -95,10 +107,15 @@ const ProfileDetails = () => {
             name: apiData.name,
             businessName: apiData.businessName,
             phone: apiData.phone,
+            alternatePhone: apiData.alternatePhone || '',
             email: apiData.email,
             address: formattedAddress,
             serviceCategory: Array.isArray(apiData.service) ? apiData.service.join(', ') : (apiData.service || ''),
-            profilePhoto: apiData.profilePhoto
+            profilePhoto: apiData.profilePhoto,
+            aadharDocument: apiData.aadharDocument || (apiData.aadhar && apiData.aadhar.document) || '',
+            aadharBackDocument: apiData.aadharBackDocument || (apiData.aadhar && apiData.aadhar.backDocument) || '',
+            panDocument: apiData.panDocument || (apiData.pan && apiData.pan.document) || '',
+            otherDocuments: apiData.otherDocuments || [],
           };
 
           setProfile(prev => ({ ...prev, ...newProfile }));
@@ -209,6 +226,21 @@ const ProfileDetails = () => {
                 </div>
               </div>
 
+              {profile.alternatePhone && (
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${themeColors.icon}15` }}>
+                    <FiPhone className="w-5 h-5" style={{ color: themeColors.icon }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-xs text-gray-500 font-medium">Alternate Number</p>
+                      <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-medium">Optional</span>
+                    </div>
+                    <p className="text-gray-900 font-bold text-sm truncate">{profile.alternatePhone}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${themeColors.icon}15` }}>
                   <FiMail className="w-5 h-5" style={{ color: themeColors.icon }} />
@@ -255,8 +287,126 @@ const ProfileDetails = () => {
             </div>
           </div>
 
+          {/* Verification Documents Group */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Verification Documents</h4>
+              <button
+                onClick={() => navigate('/worker/profile/edit')}
+                className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1"
+              >
+                <FiEdit2 className="w-3 h-3" /> Edit Documents
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { label: 'Aadhar Card (Front)', url: profile.aadharDocument },
+                { label: 'Aadhar Card (Back)', url: profile.aadharBackDocument },
+                { label: 'PAN Card', url: profile.panDocument },
+              ].map((doc, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                      <FiFileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-800">{doc.label}</p>
+                      {doc.url ? (
+                        <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                          <FiCheckCircle className="w-3 h-3" /> Uploaded & Verified
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-gray-400">Not uploaded</p>
+                      )}
+                    </div>
+                  </div>
+                  {doc.url && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDoc({ title: doc.label, url: doc.url })}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-gray-200 shadow-sm flex items-center gap-1"
+                    >
+                      <FiEye className="w-3.5 h-3.5" /> View
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {profile.otherDocuments && profile.otherDocuments.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-[11px] font-semibold text-gray-500 mb-2">Additional Documents ({profile.otherDocuments.length})</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {profile.otherDocuments.map((docUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setPreviewDoc({ title: `Document ${idx + 1}`, url: docUrl })}
+                        className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-gray-100 transition-colors flex items-center justify-between"
+                      >
+                        <span className="text-xs font-medium text-gray-700 truncate">Doc {idx + 1}</span>
+                        <FiEye className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </main>
+
+      {/* Full Document Preview Modal */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="font-bold text-gray-800 text-sm">{previewDoc.title}</h3>
+                <p className="text-[11px] text-gray-400">Document Preview</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-colors"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 bg-gray-950 flex items-center justify-center max-h-[70vh] overflow-auto">
+              <img
+                src={previewDoc.url}
+                alt={previewDoc.title}
+                className="max-h-[65vh] w-auto max-w-full rounded-lg object-contain shadow-md"
+              />
+            </div>
+            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                Open in new tab
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-semibold hover:bg-gray-900 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

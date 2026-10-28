@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSave, FiUser, FiBriefcase, FiPhone, FiMail, FiMapPin, FiChevronDown, FiCamera, FiUpload } from 'react-icons/fi';
+import { FiSave, FiUser, FiBriefcase, FiPhone, FiMail, FiMapPin, FiChevronDown, FiCamera, FiUpload, FiFileText, FiCheckCircle, FiEye, FiX, FiShield } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import { publicCatalogService } from '../../../../services/catalogService';
@@ -17,6 +17,7 @@ const workerProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   businessName: z.string().optional(),
   phone: z.string().regex(/^\+?[0-9]{10,13}$/, "Invalid phone number"),
+  alternatePhone: z.string().regex(/^\+?[0-9]{10,13}$/, "Invalid alternate phone number").optional().or(z.literal('')),
   email: z.string().email("Invalid email address").optional().or(z.literal('')),
   address: z.custom((val) => {
     return (typeof val === 'string' && val.trim().length > 0) ||
@@ -42,17 +43,31 @@ const EditProfile = () => {
     name: '',
     businessName: '',
     phone: '',
+    alternatePhone: '',
     email: '',
     address: '',
     serviceCategories: [], // Array for multiple selection
     profilePhoto: '', // URL
-    aadharDocument: '', // URL
+    aadharDocument: '', // URL (Aadhar Front)
+    aadharBackDocument: '', // URL (Aadhar Back)
+    panDocument: '', // URL (PAN Card)
+    otherDocuments: [], // URLs
     serviceRange: '', // optional: empty = use the platform radius
   });
 
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
+
   const [aadharFile, setAadharFile] = useState(null);
+  const [aadharPreview, setAadharPreview] = useState(null);
+
+  const [aadharBackFile, setAadharBackFile] = useState(null);
+  const [aadharBackPreview, setAadharBackPreview] = useState(null);
+
+  const [panFile, setPanFile] = useState(null);
+  const [panPreview, setPanPreview] = useState(null);
+
+  const [previewModalDoc, setPreviewModalDoc] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
@@ -77,6 +92,13 @@ const EditProfile = () => {
         setPhotoPreview(URL.createObjectURL(file));
       } else if (target === 'aadhar') {
         setAadharFile(file);
+        setAadharPreview(URL.createObjectURL(file));
+      } else if (target === 'aadharBack') {
+        setAadharBackFile(file);
+        setAadharBackPreview(URL.createObjectURL(file));
+      } else if (target === 'pan') {
+        setPanFile(file);
+        setPanPreview(URL.createObjectURL(file));
       }
       flutterBridge.hapticFeedback('success');
     }
@@ -88,8 +110,33 @@ const EditProfile = () => {
     } else {
       if (target === 'photo') {
         document.getElementById('photo-upload')?.click();
-      } else {
+      } else if (target === 'aadhar') {
         document.getElementById('aadhar-upload')?.click();
+      } else if (target === 'aadharBack') {
+        document.getElementById('aadhar-back-upload')?.click();
+      } else if (target === 'pan') {
+        document.getElementById('pan-upload')?.click();
+      }
+    }
+  };
+
+  const handleDocChange = (target, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be less than 5MB');
+        return;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      if (target === 'aadhar') {
+        setAadharFile(file);
+        setAadharPreview(previewUrl);
+      } else if (target === 'aadharBack') {
+        setAadharBackFile(file);
+        setAadharBackPreview(previewUrl);
+      } else if (target === 'pan') {
+        setPanFile(file);
+        setPanPreview(previewUrl);
       }
     }
   };
@@ -186,11 +233,15 @@ const EditProfile = () => {
             name: v.name || '',
             businessName: v.businessName || '',
             phone: v.phone || '',
+            alternatePhone: v.alternatePhone || '',
             email: v.email || '',
             address: addressData,
             serviceCategories: Array.isArray(v.service) ? v.service : (v.service ? [v.service] : []),
             profilePhoto: v.profilePhoto || '',
             aadharDocument: v.aadharDocument || (v.aadhar && v.aadhar.document) || '',
+            aadharBackDocument: v.aadharBackDocument || (v.aadhar && v.aadhar.backDocument) || '',
+            panDocument: v.panDocument || (v.pan && v.pan.document) || '',
+            otherDocuments: v.otherDocuments || [],
             serviceRange: v.settings?.serviceRange ?? '',
           });
 
@@ -216,11 +267,16 @@ const EditProfile = () => {
               name: storedData.name || '',
               businessName: storedData.businessName || '',
               phone: storedData.phone || '',
+              alternatePhone: storedData.alternatePhone || '',
               email: storedData.email || '',
               address: addressData,
-              serviceCategory: storedData.service || storedData.serviceCategory || '',
+              serviceCategories: Array.isArray(storedData.service) ? storedData.service : (storedData.service ? [storedData.service] : (storedData.serviceCategory ? [storedData.serviceCategory] : [])),
               profilePhoto: storedData.profilePhoto || '',
               aadharDocument: storedData.aadharDocument || (storedData.aadhar && storedData.aadhar.document) || '',
+              aadharBackDocument: storedData.aadharBackDocument || (storedData.aadhar && storedData.aadhar.backDocument) || '',
+              panDocument: storedData.panDocument || (storedData.pan && storedData.pan.document) || '',
+              otherDocuments: storedData.otherDocuments || [],
+              serviceRange: storedData.settings?.serviceRange ?? storedData.serviceRange ?? '',
             });
           }
         }
@@ -339,10 +395,16 @@ const EditProfile = () => {
       name: formData.name,
       businessName: formData.businessName,
       phone: formData.phone,
+      alternatePhone: formData.alternatePhone,
       email: formData.email,
       address: formData.address,
       serviceCategories: formData.serviceCategories,
     });
+
+    if (formData.alternatePhone && formData.alternatePhone.trim() && formData.alternatePhone.trim() === formData.phone.trim()) {
+      toast.error('Alternate phone number should be different from primary phone number');
+      return;
+    }
 
     if (isWorkerServiceRadiusEnabled && formData.serviceRange !== '' && (Number(formData.serviceRange) < workerServiceRadiusMinKm || Number(formData.serviceRange) > workerServiceRadiusMaxKm)) {
       toast.error(`Service radius must be between ${workerServiceRadiusMinKm} and ${workerServiceRadiusMaxKm} km`);
@@ -360,6 +422,8 @@ const EditProfile = () => {
       setUploading(true);
       let photoUrl = formData.profilePhoto;
       let aadharUrl = formData.aadharDocument;
+      let aadharBackUrl = formData.aadharBackDocument;
+      let panUrl = formData.panDocument;
 
       // Upload new photo if selected
       if (photoFile) {
@@ -367,19 +431,43 @@ const EditProfile = () => {
           photoUrl = await uploadFile(photoFile);
         } catch (err) {
           console.error('Photo upload failed:', err);
-          alert('Failed to upload profile photo');
+          toast.error('Failed to upload profile photo');
           setUploading(false);
           return;
         }
       }
 
-      // Upload Aadhar if selected
+      // Upload Aadhar Front if selected
       if (aadharFile) {
         try {
           aadharUrl = await uploadFile(aadharFile);
         } catch (err) {
-          console.error('Aadhar upload failed:', err);
-          alert('Failed to upload Aadhar document');
+          console.error('Aadhar Front upload failed:', err);
+          toast.error('Failed to upload Aadhar Front document');
+          setUploading(false);
+          return;
+        }
+      }
+
+      // Upload Aadhar Back if selected
+      if (aadharBackFile) {
+        try {
+          aadharBackUrl = await uploadFile(aadharBackFile);
+        } catch (err) {
+          console.error('Aadhar Back upload failed:', err);
+          toast.error('Failed to upload Aadhar Back document');
+          setUploading(false);
+          return;
+        }
+      }
+
+      // Upload PAN if selected
+      if (panFile) {
+        try {
+          panUrl = await uploadFile(panFile);
+        } catch (err) {
+          console.error('PAN card upload failed:', err);
+          toast.error('Failed to upload PAN card document');
           setUploading(false);
           return;
         }
@@ -388,10 +476,13 @@ const EditProfile = () => {
       const payload = {
         name: formData.name,
         businessName: formData.businessName,
+        alternatePhone: formData.alternatePhone ? formData.alternatePhone.trim() : '',
         address: formData.address,
         serviceCategory: formData.serviceCategories,
         profilePhoto: photoUrl,
         aadharDocument: aadharUrl,
+        aadharBackDocument: aadharBackUrl,
+        panDocument: panUrl,
         serviceRange: formData.serviceRange === '' ? null : Number(formData.serviceRange)
       };
 
@@ -544,6 +635,38 @@ const EditProfile = () => {
               style={{ focusRingColor: themeColors.button }}
             />
             {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          </div>
+
+          {/* Alternate Phone (Optional) */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{
+                    background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                  }}
+                >
+                  <FiPhone className="w-4 h-4" style={{ color: themeColors.icon }} />
+                </div>
+                <span>Alternate Number</span>
+              </div>
+              <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">Optional</span>
+            </label>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={formData.alternatePhone}
+              onChange={(e) => handleInputChange('alternatePhone', e.target.value)}
+              placeholder="Enter alternate contact number (optional)"
+              className={`w-full px-4 py-3 bg-white rounded-xl border focus:outline-none focus:ring-2 ${errors.alternatePhone ? 'border-red-500' : 'border-gray-200'
+                }`}
+              style={{ focusRingColor: themeColors.button }}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Secondary contact number in case your primary mobile is unreachable.
+            </p>
+            {errors.alternatePhone && <p className="text-red-500 text-sm mt-1">{errors.alternatePhone}</p>}
           </div>
 
           {/* Email */}
@@ -734,61 +857,290 @@ const EditProfile = () => {
             </div>
           )}
 
-          {/* Aadhar Document Upload */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+          {/* Verification Documents Section */}
+          <div className="space-y-5 pt-2">
+            <div className="flex items-center gap-2">
               <div
                 className="p-2 rounded-lg"
                 style={{
                   background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
                 }}
               >
-                <FiUpload className="w-4 h-4" style={{ color: themeColors.icon }} />
+                <FiShield className="w-4 h-4" style={{ color: themeColors.icon }} />
               </div>
-              <span>Identity Proof (Aadhar) <span className="text-red-500">*</span></span>
-            </label>
-
-            <div
-              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center transition-colors hover:border-blue-300 bg-gray-50 cursor-pointer"
-              onClick={() => handleImageClick('aadhar')}
-            >
-              <input
-                id="aadhar-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAadharChange}
-              />
-              <div className="cursor-pointer flex flex-col items-center">
-                {aadharFile ? (
-                  <div className="flex items-center gap-2 text-green-600 font-medium">
-                    <FiUpload className="w-5 h-5" />
-                    <span className="truncate max-w-[200px]">{aadharFile.name}</span>
-                  </div>
-                ) : formData.aadharDocument ? (
-                  <div className="flex flex-col items-center gap-2 w-full">
-                    <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-2 relative group-hover:opacity-75 transition-opacity">
-                      <img
-                        src={formData.aadharDocument}
-                        alt="Aadhar Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <p className="text-green-600 font-medium text-sm">Document Uploaded</p>
-                      <span className="text-xs text-blue-500 underline mt-1">Click to replace</span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-500 font-medium">Click to upload Aadhar Card</span>
-                    <span className="text-xs text-gray-400 mt-1">First Page Only (Max 5MB)</span>
-                  </>
-                )}
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Verification Documents</h3>
+                <p className="text-[11px] text-gray-500">View or update your uploaded documents</p>
               </div>
             </div>
-            {errors.aadharDocument && <p className="text-red-500 text-sm mt-1">{errors.aadharDocument}</p>}
+
+            {/* 1. Aadhar Front */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                    }}
+                  >
+                    <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
+                  </div>
+                  <span>Aadhar Card (Front) <span className="text-red-500">*</span></span>
+                </div>
+                {(aadharPreview || formData.aadharDocument) && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewModalDoc({ title: 'Aadhar Card (Front)', url: aadharPreview || formData.aadharDocument })}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <FiEye className="w-3.5 h-3.5" /> View Full
+                  </button>
+                )}
+              </label>
+
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center transition-colors hover:border-blue-300 bg-gray-50 cursor-pointer"
+                onClick={() => handleImageClick('aadhar')}
+              >
+                <input
+                  id="aadhar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleDocChange('aadhar', e)}
+                />
+                <div className="cursor-pointer flex flex-col items-center">
+                  {aadharFile ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      {aadharPreview && (
+                        <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1">
+                          <img src={aadharPreview} alt="Aadhar Front Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                        <FiCheckCircle className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{aadharFile.name}</span>
+                      </div>
+                      <span className="text-xs text-blue-500 underline">Click to replace</span>
+                    </div>
+                  ) : formData.aadharDocument ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1 relative group-hover:opacity-75 transition-opacity">
+                        <img
+                          src={formData.aadharDocument}
+                          alt="Aadhar Front Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <p className="text-green-600 font-medium text-sm flex items-center gap-1">
+                          <FiCheckCircle className="w-3.5 h-3.5" /> Document Uploaded
+                        </p>
+                        <span className="text-xs text-blue-500 underline mt-1">Click to replace</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600 font-medium">Click to upload Aadhar Card (Front)</span>
+                      <span className="text-xs text-gray-400 mt-1">First Page / Front Side (Max 5MB)</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              {errors.aadharDocument && <p className="text-red-500 text-sm mt-1">{errors.aadharDocument}</p>}
+            </div>
+
+            {/* 2. Aadhar Back */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                    }}
+                  >
+                    <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
+                  </div>
+                  <span>Aadhar Card (Back) <span className="text-red-500">*</span></span>
+                </div>
+                {(aadharBackPreview || formData.aadharBackDocument) && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewModalDoc({ title: 'Aadhar Card (Back)', url: aadharBackPreview || formData.aadharBackDocument })}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <FiEye className="w-3.5 h-3.5" /> View Full
+                  </button>
+                )}
+              </label>
+
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center transition-colors hover:border-blue-300 bg-gray-50 cursor-pointer"
+                onClick={() => handleImageClick('aadharBack')}
+              >
+                <input
+                  id="aadhar-back-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleDocChange('aadharBack', e)}
+                />
+                <div className="cursor-pointer flex flex-col items-center">
+                  {aadharBackFile ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      {aadharBackPreview && (
+                        <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1">
+                          <img src={aadharBackPreview} alt="Aadhar Back Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                        <FiCheckCircle className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{aadharBackFile.name}</span>
+                      </div>
+                      <span className="text-xs text-blue-500 underline">Click to replace</span>
+                    </div>
+                  ) : formData.aadharBackDocument ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1 relative group-hover:opacity-75 transition-opacity">
+                        <img
+                          src={formData.aadharBackDocument}
+                          alt="Aadhar Back Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <p className="text-green-600 font-medium text-sm flex items-center gap-1">
+                          <FiCheckCircle className="w-3.5 h-3.5" /> Document Uploaded
+                        </p>
+                        <span className="text-xs text-blue-500 underline mt-1">Click to replace</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600 font-medium">Click to upload Aadhar Card (Back)</span>
+                      <span className="text-xs text-gray-400 mt-1">Back Side with Address (Max 5MB)</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. PAN Card */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                    }}
+                  >
+                    <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
+                  </div>
+                  <span>PAN Card <span className="text-red-500">*</span></span>
+                </div>
+                {(panPreview || formData.panDocument) && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewModalDoc({ title: 'PAN Card', url: panPreview || formData.panDocument })}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <FiEye className="w-3.5 h-3.5" /> View Full
+                  </button>
+                )}
+              </label>
+
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center transition-colors hover:border-blue-300 bg-gray-50 cursor-pointer"
+                onClick={() => handleImageClick('pan')}
+              >
+                <input
+                  id="pan-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleDocChange('pan', e)}
+                />
+                <div className="cursor-pointer flex flex-col items-center">
+                  {panFile ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      {panPreview && (
+                        <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1">
+                          <img src={panPreview} alt="PAN Card Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                        <FiCheckCircle className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{panFile.name}</span>
+                      </div>
+                      <span className="text-xs text-blue-500 underline">Click to replace</span>
+                    </div>
+                  ) : formData.panDocument ? (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200 mb-1 relative group-hover:opacity-75 transition-opacity">
+                        <img
+                          src={formData.panDocument}
+                          alt="PAN Card Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <p className="text-green-600 font-medium text-sm flex items-center gap-1">
+                          <FiCheckCircle className="w-3.5 h-3.5" /> Document Uploaded
+                        </p>
+                        <span className="text-xs text-blue-500 underline mt-1">Click to replace</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600 font-medium">Click to upload PAN Card</span>
+                      <span className="text-xs text-gray-400 mt-1">Clear copy of PAN Card (Max 5MB)</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Other Documents (if any exist) */}
+            {formData.otherDocuments && formData.otherDocuments.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                    }}
+                  >
+                    <FiFileText className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
+                  </div>
+                  <span>Additional Documents</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {formData.otherDocuments.map((docUrl, idx) => (
+                    <div key={idx} className="relative group border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                      <div className="w-full h-28 overflow-hidden">
+                        <img src={docUrl} alt={`Other Document ${idx + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-2 bg-white flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-gray-600 truncate">Doc {idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalDoc({ title: `Additional Document ${idx + 1}`, url: docUrl })}
+                          className="text-xs text-blue-600 font-semibold hover:underline"
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -832,6 +1184,57 @@ const EditProfile = () => {
         }}
         onSave={handleAddressSave}
       />
+
+      {/* Full Document Preview Modal */}
+      {previewModalDoc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewModalDoc(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="font-bold text-gray-800 text-sm">{previewModalDoc.title}</h3>
+                <p className="text-[11px] text-gray-400">Document Preview</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModalDoc(null)}
+                className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-colors"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 bg-gray-950 flex items-center justify-center max-h-[70vh] overflow-auto">
+              <img
+                src={previewModalDoc.url}
+                alt={previewModalDoc.title}
+                className="max-h-[65vh] w-auto max-w-full rounded-lg object-contain shadow-md"
+              />
+            </div>
+            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+              <a
+                href={previewModalDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                Open in new tab
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewModalDoc(null)}
+                className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-semibold hover:bg-gray-900 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
