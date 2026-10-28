@@ -14,6 +14,7 @@ import { registerFCMToken } from '../../../../services/pushNotificationService';
 import DashboardSkeleton from '../../components/common/DashboardSkeleton';
 import StatsCards from './components/StatsCards';
 import PendingBookings from './components/PendingBookings';
+import TodayOverview from './components/TodayOverview';
 
 
 const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:5000';
@@ -32,11 +33,15 @@ const Dashboard = memo(() => {
 
   const [stats, setStats] = useState({
     todayEarnings: 0,
+    monthlyEarnings: 0,
+    totalEarnings: 0,
     activeJobs: 0,
     pendingAlerts: 0,
-    totalEarnings: 0,
     completedJobs: 0,
     rating: 0,
+    todayAccepted: 0,
+    todayRejected: 0,
+    todayPending: 0
   });
   const [workerProfile, setWorkerProfile] = useState({
     name: 'Service Partner',
@@ -182,6 +187,9 @@ const Dashboard = memo(() => {
       pendingAlerts: mergedPending.length,
       completedJobs: apiStats.completedJobs || apiStats.completedBookings || 0,
       rating: apiStats.rating || apiStats.averageRating || 0,
+      todayAccepted: apiStats.todayAccepted ?? 0,
+      todayRejected: apiStats.todayRejected ?? 0,
+      todayPending: mergedPending.length || apiStats.todayPending || 0,
     });
 
     // Recent jobs (non-requested)
@@ -515,17 +523,29 @@ const Dashboard = memo(() => {
                 <p className="text-xs text-white/75 truncate font-medium mt-0.5">{workerProfile.businessName}</p>
               </div>
 
-              {/* Online/Offline Toggle */}
+              {/* Online/Offline Duty Status & Toggle (1st Arrow) */}
               <div 
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-full z-20 bg-white/15 backdrop-blur-sm border border-white/10"
+                className="flex flex-col items-center justify-center gap-1 z-20 cursor-pointer"
                 onClick={handleToggleOnline}
+                title={isOnline ? 'Switch to Duty OFF' : 'Switch to Duty ON'}
               >
+                <span className={`text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full transition-all shadow-xs ${
+                  isOnline 
+                    ? 'text-emerald-300 bg-emerald-950/70 border border-emerald-400/40' 
+                    : 'text-slate-300 bg-slate-900/60 border border-slate-700/60'
+                }`}>
+                  {isOnline ? 'Duty ON' : 'Duty OFF'}
+                </span>
                 <div 
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-300 ease-in-out cursor-pointer flex ${isOnline ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                  className="flex items-center px-2 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/10 active:scale-95 transition-transform"
                 >
                   <div 
-                    className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300 ease-in-out ${isOnline ? 'translate-x-4' : 'translate-x-0'}`}
-                  />
+                    className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-300 ease-in-out flex ${isOnline ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                  >
+                    <div 
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300 ease-in-out ${isOnline ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -576,6 +596,17 @@ const Dashboard = memo(() => {
             setPendingBookings={setPendingBookings}
             setActiveAlertBooking={(booking) => {
               // Dispatch to global alert via CustomEvent
+              window.dispatchEvent(new CustomEvent('showDashboardBookingAlert', { detail: booking }));
+            }}
+          />
+
+          {/* Today's Overview & Customer Schedule Confirmation (2nd Arrow) */}
+          <TodayOverview
+            stats={stats}
+            pendingBookings={pendingBookings}
+            onAcceptBooking={handleAcceptAlert}
+            onRejectBooking={handleRejectAlert}
+            onOpenBookingAlert={(booking) => {
               window.dispatchEvent(new CustomEvent('showDashboardBookingAlert', { detail: booking }));
             }}
           />

@@ -1,4 +1,5 @@
 const Booking = require('../../models/Booking');
+const BookingRequest = require('../../models/BookingRequest');
 const WorkerBill = require('../../models/WorkerBill');
 const Service = require('../../models/UserService');
 const Settings = require('../../models/Settings');
@@ -13,8 +14,19 @@ const getDashboardStats = async (req, res) => {
     const mongoose = require('mongoose');
     const vId = new mongoose.Types.ObjectId(vendorId);
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
     // ─── SINGLE PARALLEL BLAST ───────────────────────────────────────────────
-    const [bookingData, earningsResult, bookingEarningsResult] = await Promise.all([
+    const [
+      bookingData, 
+      earningsResult, 
+      bookingEarningsResult,
+      todayAcceptedCount,
+      todayRejectedCount
+    ] = await Promise.all([
       // 1. ALL BOOKING DATA (Counts + Recent List + Rating) in ONE round-trip
       Booking.aggregate([
         {
@@ -93,11 +105,14 @@ const getDashboardStats = async (req, res) => {
                   bookingNumber: 1,
                   status: 1,
                   serviceName: 1,
+                  bookingType: 1,
                   scheduledDate: 1,
                   scheduledTime: 1,
+                  timeSlot: 1,
                   finalAmount: 1,
                   vendorEarnings: 1,
                   'address.addressLine1': 1,
+                  'address.city': 1,
                   userId: 1,
                   serviceId: 1,
                   potentialVendors: 1,
@@ -114,14 +129,13 @@ const getDashboardStats = async (req, res) => {
         }
       ]),
 
-
-      // 3. Total Earnings from WorkerBill
+      // 2. Total Earnings from WorkerBill
       WorkerBill.aggregate([
         { $match: { vendorId: vId, status: 'paid' } },
         { $group: { _id: null, total: { $sum: '$vendorTotalEarning' } } }
       ]),
 
-      // 4. Completed Bookings Earnings breakdown (Total, Monthly, Today)
+      // 3. Completed Bookings Earnings breakdown (Total, Monthly, Today)
       Booking.aggregate([
         {
           $match: {
@@ -138,7 +152,7 @@ const getDashboardStats = async (req, res) => {
             monthlyBookingRevenue: {
               $sum: {
                 $cond: [
-                  { $gte: ['$createdAt', new Date(new Date().getFullYear(), new Date().getMonth(), 1)] },
+                  { $gte: [{ $ifNull: ['$completedAt', '$createdAt'] }, monthStart] },
                   { $ifNull: ['$vendorEarnings', { $multiply: ['$finalAmount', 0.9] }] },
                   0
                 ]
@@ -149,8 +163,8 @@ const getDashboardStats = async (req, res) => {
                 $cond: [
                   {
                     $gte: [
-                      '$createdAt',
-                      new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
+                      { $ifNull: ['$completedAt', '$createdAt'] },
+                      todayStart
                     ]
                   },
                   { $ifNull: ['$vendorEarnings', { $multiply: ['$finalAmount', 0.9] }] },
@@ -160,7 +174,38 @@ const getDashboardStats = async (req, res) => {
             }
           }
         }
-      ])
+      ]),
+
+      // 4. Today's Accepted Bookings count for this worker
+      Booking.countDocuments({
+        vendorId: vId,
+        $or: [
+          { acceptedAt: { $gte: todayStart } },
+          {
+            acceptedAt: null,
+            createdAt: { $gte: todayStart },
+            status: {
+              $in: [
+                BOOKING_STATUS.ACCEPTED,
+                BOOKING_STATUS.CONFIRMED,
+                BOOKING_STATUS.ASSIGNED,
+                BOOKING_STATUS.JOURNEY_STARTED,
+                BOOKING_STATUS.VISITED,
+                BOOKING_STATUS.IN_PROGRESS,
+                BOOKING_STATUS.WORK_DONE,
+                BOOKING_STATUS.COMPLETED
+              ]
+            }
+          }
+        ]
+      }),
+
+      // 5. Today's Rejected Bookings count for this worker
+      BookingRequest.countDocuments({
+        vendorId: vId,
+        status: 'REJECTED',
+        respondedAt: { $gte: todayStart }
+      })
     ]);
 
     // ─── UNPACK & POPULATE ──────────────────────────────────────────────────
@@ -212,6 +257,9 @@ const getDashboardStats = async (req, res) => {
           completedJobs: counts.completed,
           activeJobs: counts.inProgress,
           pendingAlerts: counts.pending,
+          todayAccepted: todayAcceptedCount || 0,
+          todayRejected: todayRejectedCount || 0,
+          todayPending: counts.pending || 0,
           totalRevenue: Math.round(totalEarnings),
           totalEarnings: Math.round(totalEarnings),
           monthlyEarnings: Math.round(monthlyEarnings || (totalEarnings * 0.4)),
