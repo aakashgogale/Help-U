@@ -259,10 +259,8 @@ const Dashboard = memo(() => {
       const bId = String(location.state.openBookingId);
       const booking = pendingBookings.find(b => String(b.id || b._id) === bId);
       if (booking) {
-        setActiveAlertBookings(prev => {
-          if (prev.find(p => String(p.id || p._id) === bId)) return prev;
-          return [...prev, booking];
-        });
+        // Same popup the rest of this page uses (the old local alert list no longer exists)
+        window.dispatchEvent(new CustomEvent('showDashboardBookingAlert', { detail: booking }));
         // Clear state to avoid reopening on refresh
         navigate(location.pathname, { replace: true, state: {} });
       }
