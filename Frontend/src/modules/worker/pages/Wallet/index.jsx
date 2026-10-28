@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiDollarSign, FiArrowUp, FiArrowDown, FiArrowRight, FiClock, FiCheckCircle, FiAlertCircle, FiSend } from 'react-icons/fi';
+import { FiDollarSign, FiArrowUp, FiArrowDown, FiArrowRight, FiClock, FiCheckCircle, FiAlertCircle, FiSend, FiX } from 'react-icons/fi';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import LogoLoader from '../../../../components/common/LogoLoader';
@@ -134,7 +134,12 @@ const Wallet = () => {
 
       <main className="px-4 py-6">
         {/* Earnings Card (Green) */}
-        <div className="rounded-2xl p-6 shadow-xl relative overflow-hidden mb-4 bg-gradient-to-br from-green-600 to-green-800">
+        <div
+          onClick={() => navigate('/worker/wallet/withdraw')}
+          role="button"
+          tabIndex={0}
+          className="rounded-2xl p-6 shadow-xl relative overflow-hidden mb-4 bg-gradient-to-br from-green-600 to-green-800 cursor-pointer active:scale-[0.99] transition-all"
+        >
           <div className="relative z-10 text-white">
             <div className="flex justify-between items-start">
               <div>
@@ -147,16 +152,25 @@ const Wallet = () => {
             </div>
 
             <button
-              onClick={() => navigate('/worker/wallet/withdraw')}
-              className="w-full bg-white text-green-700 py-3 rounded-xl font-bold text-sm hover:bg-green-50 active:scale-95 transition-all shadow-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/worker/wallet/withdraw');
+              }}
+              className="w-full bg-white text-green-700 py-3 rounded-xl font-bold text-sm hover:bg-green-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2"
             >
-              Request Withdrawal
+              <span>Request Withdrawal</span>
+              <FiArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Dues Card (Red) */}
-        <div className="rounded-2xl p-6 shadow-xl relative overflow-hidden mb-6 bg-gradient-to-br from-red-600 to-red-800">
+        <div
+          onClick={() => navigate('/worker/wallet/settle')}
+          role="button"
+          tabIndex={0}
+          className="rounded-2xl p-6 shadow-xl relative overflow-hidden mb-6 bg-gradient-to-br from-red-600 to-red-800 cursor-pointer active:scale-[0.99] transition-all"
+        >
           <div className="relative z-10 text-white">
             <div className="flex justify-between items-start">
               <div>
@@ -167,21 +181,32 @@ const Wallet = () => {
                 <p className="text-3xl font-bold mb-4">₹{wallet.dues?.toLocaleString() || 0}</p>
               </div>
               <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                <FiArrowDown className="w-6 h-6 text-white" />
+                <FiArrowRight className="w-6 h-6 text-white" />
               </div>
             </div>
 
             {wallet.dues > 0 ? (
               <button
-                onClick={() => navigate('/worker/wallet/settle')}
-                className="w-full bg-white text-red-700 py-3 rounded-xl font-bold text-sm hover:bg-red-50 active:scale-95 transition-all shadow-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/worker/wallet/settle');
+                }}
+                className="w-full bg-white text-red-700 py-3 rounded-xl font-bold text-sm hover:bg-red-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2"
               >
-                Pay Now
+                <span>Pay Now</span>
+                <FiArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-full bg-white/10 text-white py-3 rounded-xl font-medium text-sm text-center border border-white/20">
-                No Dues Pending
-              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/worker/wallet/settle');
+                }}
+                className="w-full bg-white/20 hover:bg-white/30 text-white py-3 rounded-xl font-semibold text-sm text-center border border-white/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <FiCheckCircle className="w-4 h-4 text-emerald-300" />
+                <span>No Dues Pending • View Details</span>
+              </button>
             )}
           </div>
         </div>

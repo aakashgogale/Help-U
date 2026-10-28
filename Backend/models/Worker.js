@@ -88,6 +88,38 @@ const workerSchema = new mongoose.Schema({
   otherDocuments: [{
     type: String // Cloudinary URLs
   }],
+  // Dynamic registration text fields & custom inputs
+  customFields: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  // Dynamic verification document uploads
+  customDocuments: [{
+    fieldKey: {
+      type: String,
+      trim: true
+    },
+    label: {
+      type: String,
+      trim: true
+    },
+    url: {
+      type: String,
+      trim: true
+    },
+    fileName: {
+      type: String,
+      default: ''
+    },
+    fileType: {
+      type: String,
+      default: ''
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   approvalStatus: {
     type: String,
     enum: Object.values(WORKER_STATUS),

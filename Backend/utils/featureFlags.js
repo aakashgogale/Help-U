@@ -22,7 +22,9 @@ const FLAG_DEFAULTS = {
   isScheduledBookingEnabled: true,
   useDefaultLocation: false,
   isOnlinePaymentEnabled: true,
-  isScrapEnabled: true
+  isScrapEnabled: true,
+  isUserLoginBannersEnabled: true,
+  isPartnerLoginBannersEnabled: true
 };
 
 // Settings change rarely but are read on nearly every request, so the document

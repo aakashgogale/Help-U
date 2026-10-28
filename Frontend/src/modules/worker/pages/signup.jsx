@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FiUser, FiMail, FiPhone, FiFileText, FiUpload, FiX, FiArrowRight, FiChevronLeft, FiCheckCircle, FiCamera, FiGift, FiBriefcase, FiChevronDown, FiSearch, FiCheck } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../theme';
-import { register, sendOTP as sendWorkerOTP } from '../services/authService';
+import { register, sendOTP as sendWorkerOTP, getPartnerRegistrationFields } from '../services/authService';
 import LogoLoader from '../../../components/common/LogoLoader';
 import Logo from '../../../components/common/Logo';
 import { compressImage } from '../../../utils/imageCompression';
@@ -42,6 +42,14 @@ const WorkerSignup = () => {
   const [documentPreview, setDocumentPreview] = useState({});
   const [uploadingDocs, setUploadingDocs] = useState({});
   const [resendTimer, setResendTimer] = useState(0);
+
+  // Dynamic Registration Fields (configured by Admin Panel)
+  const [dynamicFields, setDynamicFields] = useState([]);
+  const [customFields, setCustomFields] = useState({});
+  const [customDocuments, setCustomDocuments] = useState({});
+  const [customDocPreview, setCustomDocPreview] = useState({});
+  const [uploadingCustomDocs, setUploadingCustomDocs] = useState({});
+  const [customFieldErrors, setCustomFieldErrors] = useState({});
 
   // Available services & categories (dynamic from admin catalog)
   const [availableItems, setAvailableItems] = useState([]);
@@ -167,6 +175,34 @@ const WorkerSignup = () => {
     };
     loadCatalogData();
   }, []);
+
+  // Load dynamic registration fields configured in Admin Panel
+  useEffect(() => {
+    const fetchFields = async () => {
+      try {
+        const res = await getPartnerRegistrationFields();
+        if (res && res.success && Array.isArray(res.fields)) {
+          setDynamicFields(res.fields);
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic registration fields:', err);
+      }
+    };
+    fetchFields();
+  }, []);
+
+  // Split into active text fields and active document upload fields
+  const dynamicTextFields = useMemo(() => {
+    return dynamicFields
+      .filter(f => f.isActive && (f.section === 'profile' || f.type !== 'document'))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [dynamicFields]);
+
+  const dynamicDocFields = useMemo(() => {
+    return dynamicFields
+      .filter(f => f.isActive && (f.section === 'documents' || f.type === 'document'))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [dynamicFields]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -322,6 +358,101 @@ const WorkerSignup = () => {
     });
   };
 
+  const handleCustomFieldChange = (fieldKey, value) => {
+    setCustomFields(prev => ({ ...prev, [fieldKey]: value }));
+    if (customFieldErrors[fieldKey]) {
+      setCustomFieldErrors(prev => ({ ...prev, [fieldKey]: '' }));
+    }
+  };
+
+  const handleCustomDocUpload = async (e, field) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid image or PDF');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File size should be less than 15MB');
+      return;
+    }
+
+    const key = field.fieldKey;
+    setUploadingCustomDocs(prev => ({ ...prev, [key]: true }));
+    const loadingToast = toast.loading(`Processing ${field.label}...`);
+
+    try {
+      let fileToUpload = file;
+      let previewUrl = '';
+
+      if (file.type.startsWith('image/')) {
+        try {
+          const compressedFile = await compressImage(file, {
+            maxWidth: 1280,
+            maxHeight: 1280,
+            quality: 0.8
+          });
+          fileToUpload = compressedFile;
+        } catch (compressionError) {
+          console.error("Compression failed, using original file", compressionError);
+        }
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        previewUrl = reader.result;
+        setCustomDocuments(prev => ({
+          ...prev,
+          [key]: {
+            fieldKey: key,
+            label: field.label,
+            url: previewUrl,
+            file: fileToUpload,
+            fileName: file.name,
+            fileType: file.type
+          }
+        }));
+        setCustomDocPreview(prev => ({
+          ...prev,
+          [key]: previewUrl
+        }));
+        setUploadingCustomDocs(prev => ({ ...prev, [key]: false }));
+        toast.dismiss(loadingToast);
+        toast.success(`${field.label} uploaded`, { duration: 2000 });
+      };
+
+      reader.onerror = () => {
+        console.error("FileReader failed");
+        toast.dismiss(loadingToast);
+        toast.error("Failed to read file");
+        setUploadingCustomDocs(prev => ({ ...prev, [key]: false }));
+      };
+
+      reader.readAsDataURL(fileToUpload);
+    } catch (error) {
+      console.error("Upload processing error", error);
+      toast.dismiss(loadingToast);
+      toast.error("Failed to process file");
+      setUploadingCustomDocs(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const removeCustomDocument = (fieldKey) => {
+    setCustomDocuments(prev => {
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+    setCustomDocPreview(prev => {
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+  };
+
   const handleDetailsSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setFieldErrors({});
@@ -355,6 +486,28 @@ const WorkerSignup = () => {
     if (!hasAadharBackDoc) { toast.error('Please upload Aadhar Back document'); return; }
     if (!hasPanDoc) { toast.error('Please upload PAN document'); return; }
 
+    // Dynamic Text Fields Validation
+    for (const tf of dynamicTextFields) {
+      if (tf.isRequired) {
+        const val = customFields[tf.fieldKey];
+        if (!val || String(val).trim() === '') {
+          setCustomFieldErrors(prev => ({ ...prev, [tf.fieldKey]: `${tf.label} is required` }));
+          toast.error(`Please provide ${tf.label}`);
+          return;
+        }
+      }
+    }
+
+    // Dynamic Documents Validation
+    for (const df of dynamicDocFields) {
+      if (df.isRequired) {
+        if (!customDocuments[df.fieldKey] || !customDocuments[df.fieldKey].url) {
+          toast.error(`Please upload ${df.label}`);
+          return;
+        }
+      }
+    }
+
     // Service Categories Validation
     if (!Array.isArray(formData.service) || formData.service.length === 0) {
       setFieldErrors(prev => ({ ...prev, service: 'Please select at least one service category' }));
@@ -382,6 +535,8 @@ const WorkerSignup = () => {
           aadharBackDocument: aadharBackDoc,
           panDocument: panDoc,
           otherDocuments: otherDocs,
+          customFields,
+          customDocuments: Object.values(customDocuments),
           referralCode: formData.referralCode?.trim() || undefined,
           verificationToken
         };
@@ -480,6 +635,8 @@ const WorkerSignup = () => {
         aadharBackDocument: aadharBackDoc,
         panDocument: panDoc,
         otherDocuments: otherDocs,
+        customFields,
+        customDocuments: Object.values(customDocuments),
         referralCode: formData.referralCode?.trim() || undefined,
         otp: otpValue,
         token: otpToken
@@ -673,6 +830,66 @@ const WorkerSignup = () => {
                     </div>
                   </div>
 
+                  {/* Dynamic Text Boxes Configured in Admin Panel */}
+                  {dynamicTextFields.length > 0 && (
+                    <div className="pt-2 space-y-4">
+                      {dynamicTextFields.map((field) => {
+                        const err = customFieldErrors[field.fieldKey];
+                        return (
+                          <div key={field._id || field.fieldKey} className="animate-fade-in">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {field.label} {field.isRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 text-xs font-normal">(Optional)</span>}
+                            </label>
+                            <div className="relative group">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
+                                <FiFileText className="text-gray-400" />
+                              </div>
+                              {field.type === 'select' ? (
+                                <select
+                                  value={customFields[field.fieldKey] || ''}
+                                  onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                                  className={`block w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-offset-2 transition-all duration-300 outline-none bg-white ${
+                                    err ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
+                                  }`}
+                                  style={{ '--tw-ring-color': err ? '#EF4444' : brandColor }}
+                                >
+                                  <option value="">{field.placeholder || `Select ${field.label}`}</option>
+                                  {Array.isArray(field.options) && field.options.map((opt, i) => (
+                                    <option key={i} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : field.type === 'textarea' ? (
+                                <textarea
+                                  rows={2}
+                                  value={customFields[field.fieldKey] || ''}
+                                  onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                                  placeholder={field.placeholder || `Enter ${field.label}`}
+                                  className={`block w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-offset-2 transition-all duration-300 outline-none ${
+                                    err ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
+                                  }`}
+                                  style={{ '--tw-ring-color': err ? '#EF4444' : brandColor }}
+                                />
+                              ) : (
+                                <input
+                                  type={field.type === 'number' ? 'number' : 'text'}
+                                  value={customFields[field.fieldKey] || ''}
+                                  onChange={(e) => handleCustomFieldChange(field.fieldKey, e.target.value)}
+                                  placeholder={field.placeholder || `Enter ${field.label}`}
+                                  className={`block w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-offset-2 transition-all duration-300 outline-none ${
+                                    err ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
+                                  }`}
+                                  style={{ '--tw-ring-color': err ? '#EF4444' : brandColor }}
+                                />
+                              )}
+                            </div>
+                            {err && <p className="text-xs text-red-500 mt-1 font-medium">{err}</p>}
+                            {field.helpText && <p className="text-[11px] text-gray-400 mt-0.5">{field.helpText}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                 </div>
 
                 {/* Documents Section */}
@@ -770,6 +987,84 @@ const WorkerSignup = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Dynamic Document Uploads from Admin Panel */}
+                    {dynamicDocFields.map((field, idx) => {
+                      const key = field.fieldKey;
+                      const preview = customDocPreview[key];
+                      const isUploading = uploadingCustomDocs[key];
+                      const isPdf = preview && preview.startsWith('data:application/pdf');
+
+                      return (
+                        <div key={field._id || key} className="space-y-2 animate-fade-in" style={{ animationDelay: `${0.35 + idx * 0.05}s` }}>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate flex items-center justify-between">
+                            <span className="truncate">{field.label}</span>
+                            {field.isRequired ? (
+                              <span className="text-[9px] text-red-500 font-bold ml-1">*</span>
+                            ) : (
+                              <span className="text-[9px] text-gray-400 lowercase font-normal ml-1">opt</span>
+                            )}
+                          </p>
+
+                          {preview ? (
+                            <div className="relative group overflow-hidden rounded-xl border border-gray-200">
+                              {isPdf ? (
+                                <div className="w-full h-28 bg-red-50 flex flex-col items-center justify-center p-2 text-center">
+                                  <FiFileText className="w-8 h-8 text-red-500 mb-1" />
+                                  <span className="text-[10px] font-bold text-gray-700 truncate max-w-full">
+                                    {customDocuments[key]?.fileName || 'PDF Document'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <img
+                                  src={preview}
+                                  alt={field.label}
+                                  className="w-full h-28 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                />
+                              )}
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeCustomDocument(key)}
+                                  className="bg-red-500 text-white rounded-full p-2 shadow-xl hover:bg-red-600 transition-colors cursor-pointer"
+                                  title="Remove document"
+                                >
+                                  <FiX size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-xl hover:bg-gray-50 transition-all duration-300 hover:border-[#347989] group bg-white relative">
+                              {isUploading ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10 rounded-xl">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#347989]"></div>
+                                </div>
+                              ) : null}
+                              <label className="flex flex-col items-center cursor-pointer w-full h-full justify-center px-2 text-center">
+                                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-full mb-1 hover:bg-blue-100 transition-colors">
+                                  <FiUpload className="w-5 h-5" />
+                                </div>
+                                <span className="text-[10px] text-gray-500 font-bold truncate max-w-full">
+                                  Upload {field.label}
+                                </span>
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*,application/pdf"
+                                  onChange={(e) => handleCustomDocUpload(e, field)}
+                                  disabled={isUploading}
+                                />
+                              </label>
+                            </div>
+                          )}
+                          {field.helpText && (
+                            <p className="text-[10px] text-gray-400 italic truncate" title={field.helpText}>
+                              {field.helpText}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl mt-4 animate-pulse-subtle">

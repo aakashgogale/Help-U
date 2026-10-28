@@ -33,7 +33,8 @@
       "All Workers",
       "Worker Bookings",
       "Worker Referrals",
-      "Worker Analytics"
+      "Worker Analytics",
+      "Registration Fields"
     ]
   },
   {
@@ -212,6 +213,15 @@
   {
     "title": "Landing Page",
     "route": "/admin/landing-page",
+    "allowedRoles": [
+      "super_admin",
+      "admin"
+    ],
+    "children": []
+  },
+  {
+    "title": "Login Banners",
+    "route": "/admin/login-banners",
     "allowedRoles": [
       "super_admin",
       "admin"

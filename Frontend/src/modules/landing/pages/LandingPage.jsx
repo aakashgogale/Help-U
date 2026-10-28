@@ -155,6 +155,17 @@ const DEFAULT_CONFIG = {
     subtitle:
       'Join our network of skilled technicians & service partners with guaranteed leads and zero joining fees.',
     isRegistrationEnabled: true,
+    defaultCity: 'Bangalore',
+    trades: [
+      'AC & Appliance Repair',
+      'Electrician',
+      'Plumbing',
+      'Electronics & TV',
+      'Cleaning & Pest Control',
+      'Carpenter & Painting'
+    ],
+    partnerPlayStoreUrl: '',
+    partnerAppStoreUrl: '',
     perks: [
       {
         title: 'Guaranteed Daily Orders',
@@ -182,6 +193,12 @@ const DEFAULT_CONFIG = {
     companyAddress: '',
     workingHours: '',
     isContactFormEnabled: true
+  },
+  footer: {
+    brandDescription:
+      'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.',
+    copyrightText: '© {year} Help-U Technologies. All rights reserved.',
+    bottomRightText: 'Built in Indore 🇮🇳 • Speed, Safety & Quality'
   },
   socialLinks: {
     facebook: 'https://facebook.com',
@@ -234,9 +251,10 @@ const LandingPage = () => {
     phone: '',
     email: '',
     trade: 'AC & Appliance Repair',
-    city: 'Indore',
-    experience: '1-3 years',
-    message: ''
+    city: 'Bangalore',
+    experience: '1-2 years',
+    message: '',
+    customTrade: ''
   });
   const [partnerSubmitting, setPartnerSubmitting] = useState(false);
   const [partnerSubmitted, setPartnerSubmitted] = useState(false);
@@ -346,11 +364,19 @@ const LandingPage = () => {
                   ? data.config.partnerSection.perks
                   : prev.partnerSection.perks
             },
-            contact: { ...prev.contact, ...data.config.contact }
+            contact: { ...prev.contact, ...data.config.contact },
+            footer: { ...prev.footer, ...data.config.footer }
           }));
 
           if (data.config.categories && data.config.categories.length > 0) {
             setCategories(data.config.categories);
+          }
+
+          if (data.config.partnerSection?.defaultCity) {
+            setPartnerForm((prev) => ({
+              ...prev,
+              city: prev.city === 'Indore' || prev.city === 'Bangalore' ? data.config.partnerSection.defaultCity : prev.city
+            }));
           }
         }
       } catch (err) {
@@ -379,9 +405,27 @@ const LandingPage = () => {
       return;
     }
 
+    let finalTrade = partnerForm.trade;
+    if (partnerForm.trade === 'Other') {
+      if (!partnerForm.customTrade || !partnerForm.customTrade.trim()) {
+        toast.error('Please write your specific trade or skill.');
+        return;
+      }
+      finalTrade = partnerForm.customTrade.trim();
+    }
+
     try {
       setPartnerSubmitting(true);
-      const res = await landingService.submitPartnerLead(partnerForm);
+      const payload = {
+        name: partnerForm.name.trim(),
+        phone: partnerForm.phone.trim(),
+        email: (partnerForm.email || '').trim(),
+        trade: finalTrade,
+        city: partnerForm.city.trim(),
+        experience: partnerForm.experience || '1-2 years',
+        message: partnerForm.message || ''
+      };
+      const res = await landingService.submitPartnerLead(payload);
       if (res?.success) {
         setPartnerSubmitted(true);
         toast.success('Registration successful! Our onboarding team will call you shortly.');
@@ -429,6 +473,28 @@ const LandingPage = () => {
   const appStoreLink = hasAppStore ? config.appLinks.appStoreUrl : '/user';
 
   const hasAnyStore = hasPlayStore || hasAppStore;
+
+  // Partner app store links: configured specifically for technicians, or fallback to general store links / worker login
+  const rawPartnerPlay = config.partnerSection?.partnerPlayStoreUrl || config.appLinks?.playStoreUrl;
+  const hasPartnerPlayStore = Boolean(rawPartnerPlay && rawPartnerPlay.startsWith('http'));
+  const partnerPlayStoreLink = hasPartnerPlayStore ? rawPartnerPlay : '/worker/login';
+
+  const rawPartnerApp = config.partnerSection?.partnerAppStoreUrl || config.appLinks?.appStoreUrl;
+  const hasPartnerAppStore = Boolean(rawPartnerApp && rawPartnerApp.startsWith('http'));
+  const partnerAppStoreLink = hasPartnerAppStore ? rawPartnerApp : '/worker/login';
+
+  // Configured or default partner skills / trades
+  const partnerTrades =
+    config.partnerSection?.trades && config.partnerSection.trades.length > 0
+      ? config.partnerSection.trades
+      : [
+          'AC & Appliance Repair',
+          'Electrician',
+          'Plumbing',
+          'Electronics & TV',
+          'Cleaning & Pest Control',
+          'Carpenter & Painting'
+        ];
 
   // OS detection for smart mobile download routing
   const [isIosDevice, setIsIosDevice] = useState(false);
@@ -1149,18 +1215,46 @@ const LandingPage = () => {
                 ))}
               </div>
 
-              {/* Partner App prompt */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-between gap-3">
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-gray-900">Have a Partner Account?</h4>
-                  <p className="text-[10px] sm:text-xs text-gray-600">Access your partner job dashboard.</p>
+              {/* Partner App prompt & Store Links */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-brand/10 border border-brand/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-xs sm:text-sm text-gray-900">Have a Partner Account?</h4>
+                    <p className="text-[10px] sm:text-xs text-gray-600">Access your partner job dashboard.</p>
+                  </div>
+                  <Link
+                    to="/worker/login"
+                    className="px-3.5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-colors whitespace-nowrap self-start sm:self-auto shadow-xs"
+                  >
+                    Partner Login
+                  </Link>
                 </div>
-                <Link
-                  to="/worker/login"
-                  className="px-3.5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-colors whitespace-nowrap"
-                >
-                  Partner Login
-                </Link>
+
+                <div className="pt-2.5 border-t border-brand/15 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-gray-600 mr-0.5">
+                    Partner App:
+                  </span>
+                  <a
+                    href={partnerPlayStoreLink}
+                    target={partnerPlayStoreLink.startsWith('http') ? '_blank' : undefined}
+                    rel={partnerPlayStoreLink.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-brand transition-all text-[11px] font-bold shadow-xs active:scale-95"
+                    title="Download Help-U Partner App on Google Play Store"
+                  >
+                    <FaGooglePlay className="text-[11px]" />
+                    <span>Google Play</span>
+                  </a>
+                  <a
+                    href={partnerAppStoreLink}
+                    target={partnerAppStoreLink.startsWith('http') ? '_blank' : undefined}
+                    rel={partnerAppStoreLink.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-brand transition-all text-[11px] font-bold shadow-xs active:scale-95"
+                    title="Download Help-U Partner App on Apple App Store"
+                  >
+                    <FaApple className="text-xs" />
+                    <span>App Store</span>
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -1197,15 +1291,17 @@ const LandingPage = () => {
                           name: '',
                           phone: '',
                           email: '',
-                          trade: 'AC & Appliance Repair',
-                          city: 'Indore',
-                          experience: '1-3 years',
-                          message: ''
+                          trade: partnerTrades[0] || 'AC & Appliance Repair',
+                          city: config.partnerSection?.defaultCity || 'Bangalore',
+                          experience: '1-2 years',
+                          message: '',
+                          customTrade: ''
                         });
                       }}
-                      className="text-xs font-bold text-brand hover:underline"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline"
                     >
-                      Register another partner profile →
+                      <span>Register another partner profile</span>
+                      <FaArrowRight className="text-[10px]" />
                     </button>
                   </motion.div>
                 ) : (
@@ -1251,13 +1347,12 @@ const LandingPage = () => {
                           onChange={(e) => setPartnerForm({ ...partnerForm, trade: e.target.value })}
                           className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none bg-white"
                         >
-                          <option value="AC & Appliance Repair">AC & Appliance Repair</option>
-                          <option value="Electrician">Electrician</option>
-                          <option value="Plumbing">Plumbing</option>
-                          <option value="Electronics & TV">Electronics & TV</option>
-                          <option value="Cleaning & Pest Control">Cleaning & Pest Control</option>
-                          <option value="Carpenter & Painting">Carpenter & Painting</option>
-                          <option value="Other Trade">Other Skilled Trade</option>
+                          {partnerTrades.map((tradeName) => (
+                            <option key={tradeName} value={tradeName}>
+                              {tradeName}
+                            </option>
+                          ))}
+                          <option value="Other">Other Skilled Trade</option>
                         </select>
                       </div>
 
@@ -1270,11 +1365,30 @@ const LandingPage = () => {
                           required
                           value={partnerForm.city}
                           onChange={(e) => setPartnerForm({ ...partnerForm, city: e.target.value })}
-                          placeholder="Indore"
+                          placeholder={config.partnerSection?.defaultCity || 'Bangalore'}
                           className="w-full rounded-xl border border-gray-300 px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
                         />
                       </div>
                     </div>
+
+                    {partnerForm.trade === 'Other' && (
+                      <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-200/80">
+                        <label className="block text-[11px] sm:text-xs font-semibold text-gray-800 mb-1">
+                          Specify Your Skill / Trade *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. CCTV Technician, RO Purifier, Painter, Welder, Mason..."
+                          value={partnerForm.customTrade || ''}
+                          onChange={(e) => setPartnerForm({ ...partnerForm, customTrade: e.target.value })}
+                          className="w-full rounded-xl border border-amber-300 bg-white px-3.5 py-2 sm:py-2.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          Type your specific technical trade or skill so our onboarding team can match your profile.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
@@ -1311,9 +1425,19 @@ const LandingPage = () => {
                     <button
                       type="submit"
                       disabled={partnerSubmitting}
-                      className="w-full py-3 sm:py-3.5 bg-[#163B66] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95 disabled:opacity-50 mt-1"
+                      className="w-full py-3 sm:py-3.5 bg-[#163B66] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-900 transition-all shadow-md active:scale-95 disabled:opacity-50 mt-1 flex items-center justify-center gap-2 group"
                     >
-                      {partnerSubmitting ? 'Submitting...' : 'Register as Partner →'}
+                      {partnerSubmitting ? (
+                        <>
+                          <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          <span>Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Register as Partner</span>
+                          <FaArrowRight className="text-xs transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
                     </button>
                     <p className="text-[10px] text-gray-400 text-center">
                       By registering, you agree to our Partner Guidelines.
@@ -1586,7 +1710,7 @@ const LandingPage = () => {
                 </span>
               </Link>
               <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
-                Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.
+                {config.footer?.brandDescription || 'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.'}
               </p>
               <div className="flex items-center gap-2 pt-2">
                 <a
@@ -1701,9 +1825,14 @@ const LandingPage = () => {
           </div>
 
           <div className="pt-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-[11px] text-gray-500 text-center sm:text-left">
-            <p>© {new Date().getFullYear()} Help-U Technologies. All rights reserved.</p>
+            <p>
+              {(() => {
+                const text = config.footer?.copyrightText?.trim() || '© {year} Help-U Technologies. All rights reserved.';
+                return text.replace(/\{year\}/gi, new Date().getFullYear());
+              })()}
+            </p>
             <p className="flex items-center justify-center gap-1">
-              Built in Indore 🇮🇳 • Speed, Safety & Quality
+              {config.footer?.bottomRightText?.trim() || 'Built in Indore 🇮🇳 • Speed, Safety & Quality'}
             </p>
           </div>
         </div>

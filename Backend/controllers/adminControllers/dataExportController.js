@@ -56,7 +56,11 @@ const WORKER_COLUMNS = [
   { key: 'phone', header: 'Phone', width: 16, pdf: { w: 80 }, value: (w) => w.phone },
   { key: 'email', header: 'Email', width: 30, value: (w) => w.email },
   { key: 'businessName', header: 'Business name', width: 24, pdf: { w: 120 }, value: (w) => w.businessName },
-  { key: 'services', header: 'Services', width: 30, value: (w) => [...new Set([...(w.service || []), ...(w.categories || [])])].join(', ') },
+  { key: 'services', header: 'Services', width: 30, value: (w) => {
+    const s = Array.isArray(w.service) ? w.service : (typeof w.service === 'string' && w.service.trim() ? [w.service.trim()] : []);
+    const c = Array.isArray(w.categories) ? w.categories : (typeof w.categories === 'string' && w.categories.trim() ? [w.categories.trim()] : []);
+    return [...new Set([...s, ...c])].filter(Boolean).join(', ');
+  } },
   { key: 'approval', header: 'Approval', width: 12, pdf: { w: 60 }, value: (w) => w.approvalStatus },
   { key: 'approvedOn', header: 'Approved on', type: 'date', width: 20, value: (w) => w.approvalDate },
   { key: 'account', header: 'Login', width: 10, pdf: { w: 50 }, value: (w) => (w.isActive === false ? 'Disabled' : 'Enabled') },

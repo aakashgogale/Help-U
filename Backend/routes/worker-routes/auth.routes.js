@@ -8,6 +8,7 @@ const {
   logout,
   verifyLogin
 } = require('../../controllers/workerControllers/workerAuthController');
+const { getPublicPartnerFields } = require('../../controllers/adminControllers/partnerFieldController');
 const { authenticate } = require('../../middleware/authMiddleware');
 const { isWorker } = require('../../middleware/roleMiddleware');
 const { requireFlag } = require('../../middleware/featureGuard');
@@ -40,6 +41,7 @@ const loginValidation = [
 ];
 
 // Routes
+router.get('/registration-fields', getPublicPartnerFields);
 router.post('/send-otp', sendOTPValidation, sendOTP);
 router.post('/verify-login', authRateLimiter, verifyLoginValidation, verifyLogin); // New Unified Entry
 router.post(

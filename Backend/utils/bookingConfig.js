@@ -141,7 +141,7 @@ const CONFIG_SCHEMA = {
 // place to look, but they are still edited from the Settings page.
 const PASSTHROUGH_DEFAULTS = {
   // Charged on every paid booking; set by the admin (0 means no visiting charge)
-  visitedCharges: 0,
+  visitedCharges: 149,
   serviceGstPercentage: 18,
   partsGstPercentage: 18,
   servicePayoutPercentage: 90,
@@ -246,6 +246,7 @@ const getPublicBookingConfig = async () => {
     userLateCancelFeeValue: c.userLateCancelFeeValue,
     userLateCancelFeeMax: c.userLateCancelFeeMax,
     cancellationPenalty: c.cancellationPenalty,
+    visitedCharges: c.visitedCharges,
     workerFreeCancelHours: c.workerFreeCancelHours,
     workerFreeCancelGraceMinutes: c.workerFreeCancelGraceMinutes,
     workerLateCancelPenaltyType: c.workerLateCancelPenaltyType,

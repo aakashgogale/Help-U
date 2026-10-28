@@ -190,7 +190,7 @@ const register = async (req, res) => {
     }
 
     // verificationToken handling
-    const { name, email, verificationToken, aadhar, pan, gstin, referralCode, service } = req.body;
+    const { name, email, verificationToken, aadhar, pan, gstin, referralCode, service, customFields, customDocuments } = req.body;
     let phone = req.body.phone;
 
     if (verificationToken) {
@@ -208,6 +208,24 @@ const register = async (req, res) => {
     const existing = await Worker.findOne({ $or: [{ phone }, { email }] });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Worker already exists. Login.' });
+    }
+
+    // Dynamic field validation against active partner fields
+    const PartnerRegistrationField = require('../../models/PartnerRegistrationField');
+    const activeRegistrationFields = await PartnerRegistrationField.find({ isActive: true }).lean();
+
+    // Check required dynamic text fields
+    const textFields = activeRegistrationFields.filter(f => f.section === 'profile' || f.type !== 'document');
+    for (const tf of textFields) {
+      if (tf.isRequired) {
+        const val = customFields ? customFields[tf.fieldKey] : null;
+        if (!val || String(val).trim() === '') {
+          return res.status(400).json({
+            success: false,
+            message: `${tf.label} is required`
+          });
+        }
+      }
     }
 
     // Check referral code if provided
@@ -248,10 +266,57 @@ const register = async (req, res) => {
       otherUrls = uploadedOthers;
     }
 
+    // Process dynamic document uploads
+    const resolvedCustomDocs = [];
+    const incomingDocsList = Array.isArray(customDocuments)
+      ? customDocuments
+      : (customDocuments && typeof customDocuments === 'object' ? Object.values(customDocuments) : []);
+
+    // Check required dynamic documents
+    const docFields = activeRegistrationFields.filter(f => f.section === 'documents' || f.type === 'document');
+    for (const df of docFields) {
+      if (df.isRequired) {
+        const hasDoc = incomingDocsList.some(d => d && d.fieldKey === df.fieldKey && (d.url || d.fileUrl));
+        if (!hasDoc) {
+          return res.status(400).json({
+            success: false,
+            message: `Please upload ${df.label}`
+          });
+        }
+      }
+    }
+
+    // Upload dynamic custom documents
+    for (const doc of incomingDocsList) {
+      if (!doc) continue;
+      let docUrl = doc.url || doc.fileUrl;
+      if (!docUrl) continue;
+
+      if (docUrl.startsWith('data:')) {
+        const up = await cloudinaryService.uploadFile(docUrl, { folder: 'vendors/documents/custom' });
+        if (up.success) docUrl = up.url;
+      }
+
+      resolvedCustomDocs.push({
+        fieldKey: doc.fieldKey,
+        label: doc.label || doc.fieldKey,
+        url: docUrl,
+        fileName: doc.fileName || '',
+        fileType: doc.fileType || '',
+        uploadedAt: new Date()
+      });
+
+      if (!otherUrls.includes(docUrl)) {
+        otherUrls.push(docUrl);
+      }
+    }
+
     // A new worker starts with the admin's current cash limit. Service radius is optional (null = platform radius).
     const Settings = require('../../models/Settings');
     const globalSettings = await Settings.findOne({ type: 'global' }).select('vendorCashLimit').lean();
     const defaultWallet = Number.isFinite(globalSettings?.vendorCashLimit) ? { cashLimit: globalSettings.vendorCashLimit } : undefined;
+
+    const resolvedGstin = gstin ? gstin.trim().toUpperCase() : (customFields?.gstin ? String(customFields.gstin).trim().toUpperCase() : '');
 
     const worker = await Worker.create({
       name, email, phone,
@@ -263,8 +328,10 @@ const register = async (req, res) => {
         backDocument: aadharBackUrl
       },
       pan: { number: pan, document: panUrl },
-      gstin: gstin ? gstin.trim().toUpperCase() : '',
+      gstin: resolvedGstin,
       otherDocuments: otherUrls,
+      customFields: customFields || {},
+      customDocuments: resolvedCustomDocs,
       approvalStatus: WORKER_STATUS.PENDING,
       isPhoneVerified: true,
       referredBy: referrer ? referrer._id : null

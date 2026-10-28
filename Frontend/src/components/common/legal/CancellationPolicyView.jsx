@@ -97,7 +97,7 @@ const CancellationPolicyView = ({ audience = 'user' }) => {
   const { pathname } = useLocation();
   const theme = themeFor(pathname);
   const config = useBookingConfig();
-  const [settings, setSettings] = useState({ cancellationPenalty: 0, visitedCharges: 0 });
+  const [settings, setSettings] = useState({ cancellationPenalty: 49, visitedCharges: 149 });
   const [page, setPage] = useState(null); // the admin-written page, if published
   const isUser = audience === 'user';
 
@@ -108,8 +108,8 @@ const CancellationPolicyView = ({ audience = 'user' }) => {
     configService.getSettings().then((res) => {
       if (active && res?.success && res.settings) {
         setSettings({
-          cancellationPenalty: res.settings.cancellationPenalty ?? 0,
-          visitedCharges: res.settings.visitedCharges ?? 0
+          cancellationPenalty: res.settings.cancellationPenalty ?? 49,
+          visitedCharges: res.settings.visitedCharges ?? 149
         });
       }
     });

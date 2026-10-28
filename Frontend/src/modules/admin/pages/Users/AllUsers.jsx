@@ -203,7 +203,7 @@ const AllUsers = () => {
 
           <DataExportButton
             entity="users"
-            label="customers"
+            label="users"
             params={{ search: search.trim(), isActive: statusFilter === 'all' ? undefined : statusFilter === 'active' }}
             filterText={[search.trim() && `search "${search.trim()}"`, statusFilter === 'active' && 'active only', statusFilter === 'inactive' && 'blocked only'].filter(Boolean).join(', ')}
           />

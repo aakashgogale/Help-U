@@ -524,13 +524,13 @@ const rescheduleBooking = async (req, res) => {
       });
     }
 
-    // Only a scheduled booking that has not started yet can move. Once the professional is on the
-    // way the visit is under way, and an instant booking has no slot to change.
+    // Only a scheduled or pending booking that has not started yet can move. Once the professional is on the
+    // way the visit is under way.
     const MOVABLE = [
       BOOKING_STATUS.SEARCHING, BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED,
       BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ASSIGNED
     ];
-    if (booking.bookingType !== 'scheduled' || !MOVABLE.includes(booking.status)) {
+    if (!MOVABLE.includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: 'This booking can no longer be rescheduled. You can cancel it instead.'
@@ -573,20 +573,31 @@ const rescheduleBooking = async (req, res) => {
       start: timeSlot.start,
       end: timeSlot.end
     };
+    booking.bookingType = 'scheduled';
+
     // Still looking for a professional: keep searching until the cut-off before the NEW slot
     if (!booking.vendorId) {
       const normalDeadline = Date.now() + config.maxSearchTime * 60 * 1000;
       booking.expiresAt = new Date(Math.max(normalDeadline, newStart - (config.scheduledBookingCutoffHours || 0) * 60 * 60 * 1000));
     }
 
+    booking.statusHistory = booking.statusHistory || [];
+    booking.statusHistory.push({
+      status: booking.status,
+      event: 'rescheduled',
+      note: `${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}`,
+      by: 'user',
+      at: new Date()
+    });
+
     await booking.save();
 
     // Send notification to worker
     if (booking.vendorId) await createNotification({
       vendorId: booking.vendorId,
-      type: 'booking_created', // Keeping type as is for now
+      type: 'booking_rescheduled',
       title: 'Booking Rescheduled',
-      message: `Booking ${booking.bookingNumber} has been rescheduled.`,
+      message: `Booking ${booking.bookingNumber} has been rescheduled to ${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}.`,
       relatedId: booking._id,
       relatedType: 'booking',
       pushData: {
@@ -595,6 +606,30 @@ const rescheduleBooking = async (req, res) => {
         link: `/worker/bookings/${booking._id}`
       }
     });
+
+    // Send notification to user
+    await createNotification({
+      userId: booking.userId,
+      type: 'booking_rescheduled',
+      title: 'Booking Rescheduled',
+      message: `Your booking ${booking.bookingNumber} has been rescheduled to ${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}.`,
+      relatedId: booking._id,
+      relatedType: 'booking',
+      pushData: {
+        type: 'booking_rescheduled',
+        bookingId: booking._id.toString(),
+        link: `/bookings/${booking._id}`
+      }
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      if (booking.vendorId) {
+        io.to(`vendor_${booking.vendorId}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
+      }
+      io.to(`booking_${booking._id}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
+      io.to(`user_${booking.userId}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
+    }
 
     res.status(200).json({
       success: true,

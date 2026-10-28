@@ -20,6 +20,7 @@ const CHILD_ROUTES = {
     'Worker Referrals': '/admin/workers/referrals',
     'Worker Analytics': '/admin/workers/analytics',
     'Worker Payments': '/admin/workers/payments',
+    'Registration Fields': '/admin/workers/registration-fields',
   },
   '/admin/bookings': {
     'All Bookings': '/admin/bookings',
@@ -87,6 +88,7 @@ export const ROUTE_PERMISSION_MAP = {
   '/admin/coupons': 'coupons',
   '/admin/settings': 'settings',
   '/admin/landing-page': 'landing-page',
+  '/admin/login-banners': 'customization',
   '/admin/customization': 'customization',
   '/admin/booking-config': 'booking-config'
 };
@@ -94,15 +96,15 @@ export const ROUTE_PERMISSION_MAP = {
 /** Reads the signed-in admin from storage. */
 export const readAdminUser = () => {
   try {
-    const stored = JSON.parse(sessionStorage.getItem('adminData') || localStorage.getItem('adminData') || '{}');
+    const stored = JSON.parse(sessionStorage.getItem('adminData') || localStorage.getItem('adminData') || localStorage.getItem('adminUser') || '{}');
     return {
       name: stored.name || 'Admin',
       email: stored.email || '',
-      role: stored.role || 'admin',
+      role: stored.role || 'super_admin',
       permissions: Array.isArray(stored.permissions) ? stored.permissions : []
     };
   } catch {
-    return { name: 'Admin', email: '', role: 'admin', permissions: [] };
+    return { name: 'Admin', email: '', role: 'super_admin', permissions: [] };
   }
 };
 

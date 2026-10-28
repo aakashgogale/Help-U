@@ -7,7 +7,8 @@ import {
   FiActivity,
   FiDollarSign,
   FiChevronRight,
-  FiGift
+  FiGift,
+  FiSliders
 } from 'react-icons/fi';
 
 // Import sub-components
@@ -15,6 +16,7 @@ import AllWorkers from './AllWorkers';
 import WorkerBookings from './WorkerBookings';
 import WorkerAnalytics from './WorkerAnalytics';
 import WorkerReferrals from './WorkerReferrals';
+import PartnerRegistrationFields from './PartnerRegistrationFields';
 
 const Workers = () => {
   const location = useLocation();
@@ -24,6 +26,7 @@ const Workers = () => {
     { name: 'Worker Bookings', path: '/admin/workers/bookings', icon: FiBriefcase },
     { name: 'Worker Referrals', path: '/admin/workers/referrals', icon: FiGift },
     { name: 'Worker Analytics', path: '/admin/workers/analytics', icon: FiActivity },
+    { name: 'Registration Fields', path: '/admin/workers/registration-fields', icon: FiSliders },
   ];
 
   const getPageTitle = () => {
@@ -46,6 +49,7 @@ const Workers = () => {
           <Route path="bookings" element={<WorkerBookings />} />
           <Route path="referrals" element={<WorkerReferrals />} />
           <Route path="analytics" element={<WorkerAnalytics />} />
+          <Route path="registration-fields" element={<PartnerRegistrationFields />} />
         </Routes>
       </motion.div>
     </div>

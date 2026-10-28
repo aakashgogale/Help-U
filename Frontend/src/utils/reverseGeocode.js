@@ -1,11 +1,12 @@
 import api from '../services/api';
 
 /**
- * Universal Reverse Geocoder (Google Maps Only)
- * Resolves (lat, lng) to human-readable address exclusively using Google Maps:
- * 1. Backend Google Maps Reverse-Geocode API (uses server key without origin restrictions)
+ * Universal Reverse Geocoder (Google Maps + OpenStreetMap Fallback)
+ * Resolves (lat, lng) to human-readable address:
+ * 1. Backend Google Maps Reverse-Geocode API (server key without origin restrictions)
  * 2. Client Google Maps Geocoder (window.google.maps.Geocoder)
- * 3. Direct Google Maps Geocode HTTP API fetch
+ * 3. Direct Google Maps Geocode API
+ * 4. OpenStreetMap Nominatim Geocoder (Free HTTPS client fallback)
  */
 export async function reverseGeocodeCoords(lat, lng, language = 'en') {
   const numericLat = parseFloat(lat);
@@ -76,7 +77,7 @@ export async function reverseGeocodeCoords(lat, lng, language = 'en') {
     }
   }
 
-  // Parse components from Google Maps result
+  // Parse components from Google Maps result if available
   if (googleResult) {
     const getComponent = (...types) => {
       for (const t of types) {
@@ -120,7 +121,55 @@ export async function reverseGeocodeCoords(lat, lng, language = 'en') {
     };
   }
 
-  // If Google Maps reverse geocode fails, return raw coordinates
+  // 4. OpenStreetMap Nominatim Reverse Geocoding fallback (Free HTTPS, CORS-enabled, reliable locality/city)
+  try {
+    const osmRes = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${numericLat}&lon=${numericLng}&zoom=18&addressdetails=1`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (osmRes.ok) {
+      const osmData = await osmRes.json();
+      if (osmData && osmData.address) {
+        const a = osmData.address;
+        const area = a.suburb || a.neighbourhood || a.residential || a.subdistrict || a.city_district || '';
+        const city = a.city || a.town || a.village || a.county || '';
+        const state = a.state || '';
+        const pincode = a.postcode || '';
+        const landmark = a.road || a.amenity || a.building || '';
+        const fullAddr = osmData.display_name || '';
+
+        let shortLabel = '';
+        if (area && city) {
+          shortLabel = `${area}, ${city}`;
+        } else if (city && state) {
+          shortLabel = `${city}, ${state}`;
+        } else if (city) {
+          shortLabel = city;
+        } else {
+          shortLabel = fullAddr.split(',').slice(0, 2).join(', ').trim() || fullAddr;
+        }
+
+        return {
+          success: true,
+          formattedAddress: fullAddr,
+          shortLabel,
+          area,
+          city,
+          state,
+          pincode,
+          landmark,
+          lat: numericLat,
+          lng: numericLng,
+          components: Object.entries(a).map(([k, v]) => ({ types: [k], long_name: v })),
+          source: 'openstreetmap'
+        };
+      }
+    }
+  } catch (osmErr) {
+    // Continue to raw coords fallback
+  }
+
+  // If all reverse geocoders fail, return raw coordinates
   return {
     success: false,
     formattedAddress: `${numericLat.toFixed(4)}, ${numericLng.toFixed(4)}`,

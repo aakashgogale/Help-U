@@ -57,6 +57,7 @@ export const BOOKING_CONFIG_DEFAULTS = {
   userLateCancelFeeValue: 49,
   userLateCancelFeeMax: 0,
   cancellationPenalty: 49,
+  visitedCharges: 149,
   workerFreeCancelHours: 2,
   workerFreeCancelGraceMinutes: 5,
   workerLateCancelPenaltyType: 'fixed',

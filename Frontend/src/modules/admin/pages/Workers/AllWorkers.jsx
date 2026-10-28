@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { FiCheck, FiX, FiEye, FiSearch, FiFilter, FiDownload, FiLoader, FiPower, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import CardShell from '../UserCategories/components/CardShell';
@@ -52,6 +51,8 @@ const AllWorkers = () => {
             pan: worker.pan?.document,
             other: worker.otherDocuments?.[0]
           },
+          customFields: worker.customFields || {},
+          customDocuments: worker.customDocuments || [],
           createdAt: worker.createdAt,
           isActive: worker.isActive,
           serviceRange: worker.settings?.serviceRange ?? null,
@@ -205,33 +206,35 @@ const AllWorkers = () => {
         </div>
 
         {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="flex-1 relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search workers..."
+              placeholder="Search workers by name, phone, email, service..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-xs"
             />
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {['all', 'pending', 'approved', 'rejected'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-3 py-2 rounded-lg text-xs font-bold capitalize transition-all whitespace-nowrap ${filterStatus === status
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                {status}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {['all', 'pending', 'approved', 'rejected'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold capitalize transition-all whitespace-nowrap ${filterStatus === status
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
             <DataExportButton
               entity="workers"
-              label="professionals"
+              label="workers"
               params={{ search: searchQuery.trim(), approvalStatus: filterStatus === 'all' ? undefined : filterStatus }}
               filterText={[searchQuery.trim() && `search "${searchQuery.trim()}"`, filterStatus !== 'all' && `${filterStatus} only`].filter(Boolean).join(', ')}
             />
@@ -474,8 +477,63 @@ const AllWorkers = () => {
                     </a>
                   </div>
                 )}
+
+                {/* Dynamic Custom Documents */}
+                {Array.isArray(selectedWorker.customDocuments) && selectedWorker.customDocuments.map((doc, idx) => {
+                  const isPdf = doc.url?.toLowerCase().endsWith('.pdf') || doc.fileType?.includes('pdf');
+                  return (
+                    <div key={idx} className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-200">
+                      <label className="block text-xs font-bold text-gray-700 mb-2 truncate">
+                        {doc.label || doc.fieldKey || `Document #${idx + 1}`}
+                      </label>
+                      {isPdf ? (
+                        <div className="w-full h-48 bg-red-50/40 rounded-lg border-2 border-dashed border-red-200 flex flex-col items-center justify-center p-4">
+                          <FiFileText className="w-12 h-12 text-red-500 mb-2" />
+                          <span className="text-xs font-bold text-gray-800 text-center truncate max-w-full">
+                            {doc.fileName || 'PDF Document'}
+                          </span>
+                        </div>
+                      ) : (
+                        <img
+                          src={doc.url}
+                          alt={doc.label || 'Document'}
+                          className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                      )}
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="mt-2 inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                      >
+                        <FiDownload className="w-4 h-4" />
+                        Download / View
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Dynamic Custom Text Fields */}
+            {selectedWorker.customFields && Object.keys(selectedWorker.customFields).length > 0 && (
+              <div className="pt-4 border-t border-gray-200">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Additional Details</label>
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  {Object.entries(selectedWorker.customFields).map(([key, value]) => (
+                    <div key={key}>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-0.5">
+                        {key.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {value !== null && value !== undefined && value !== '' ? String(value) : 'Not Provided'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {selectedWorker.approvalStatus === 'pending' && (
               <div className="flex gap-3 pt-4 border-t border-gray-200">

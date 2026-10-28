@@ -50,7 +50,7 @@ const Header = memo(({
         const geocoded = await reverseGeocodeCoords(pos.latitude, pos.longitude);
         if (!active) return;
 
-        const label = geocoded.shortLabel || geocoded.city || geocoded.formattedAddress;
+        const label = geocoded.shortLabel || geocoded.city || geocoded.formattedAddress || (pos.city ? [pos.city, pos.region].filter(Boolean).join(', ') : '');
         if (label) {
           setLocationLabel(label);
           try { localStorage.setItem(LOCATION_CACHE_KEY, label); } catch { /* ignore */ }
@@ -60,9 +60,9 @@ const Header = memo(({
             const addrPayload = {
               fullAddress: geocoded.formattedAddress || label,
               addressLine1: geocoded.area || label,
-              city: geocoded.city || '',
-              state: geocoded.state || '',
-              pincode: geocoded.pincode || '',
+              city: geocoded.city || pos.city || '',
+              state: geocoded.state || pos.region || '',
+              pincode: geocoded.pincode || pos.pincode || '',
               lat: pos.latitude,
               lng: pos.longitude
             };
@@ -88,12 +88,27 @@ const Header = memo(({
         if (savedLabel) {
           setLocationLabel(savedLabel);
           try { localStorage.setItem(LOCATION_CACHE_KEY, savedLabel); } catch { /* ignore */ }
-        } else {
-          // If no address is configured in profile, automatically detect device location
-          autoDetectDeviceLocation();
+          return;
         }
+
+        // If coordinates already exist in profile or real-time location, reverse-geocode them
+        const savedLat = res?.worker?.address?.lat || res?.worker?.location?.lat;
+        const savedLng = res?.worker?.address?.lng || res?.worker?.location?.lng;
+        if (savedLat && savedLng && !isNaN(Number(savedLat)) && !isNaN(Number(savedLng))) {
+          const geocoded = await reverseGeocodeCoords(savedLat, savedLng);
+          if (!active) return;
+          const label = geocoded.shortLabel || geocoded.city || geocoded.formattedAddress;
+          if (label) {
+            setLocationLabel(label);
+            try { localStorage.setItem(LOCATION_CACHE_KEY, label); } catch { /* ignore */ }
+            return;
+          }
+        }
+
+        // If no address or coordinates are configured in profile, automatically detect device location
+        autoDetectDeviceLocation();
       } catch (e) {
-        // If profile fetch fails and there is no cached label, attempt auto-detect
+        // If profile fetch fails, attempt auto-detect
         if (!locationLabel) {
           autoDetectDeviceLocation();
         }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   getCustomizationToggles,
   updateCustomizationToggles
@@ -11,7 +12,8 @@ import {
   FiUsers,
   FiCalendar,
   FiMapPin,
-  FiLoader
+  FiLoader,
+  FiSmartphone
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
@@ -90,6 +92,24 @@ const SECTIONS = [
         label: 'Partner Registration',
         description:
           'When OFF, new partner sign-ups are refused. Existing partners are unaffected.'
+      }
+    ]
+  },
+  {
+    title: 'Login Banners & Offers',
+    icon: FiSmartphone,
+    toggles: [
+      {
+        key: 'isUserLoginBannersEnabled',
+        label: 'User App Login Banners',
+        description:
+          'When ON, floating banners and promotional offers appear above the sign-in form on the customer app login screen. When OFF, banners are hidden completely.'
+      },
+      {
+        key: 'isPartnerLoginBannersEnabled',
+        label: 'Partner App Login Banners',
+        description:
+          'When ON, moving partner benefit banners appear on the service partner app login screen. When OFF, banners are hidden completely.'
       }
     ]
   }
@@ -221,14 +241,23 @@ const Customization = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <FiSettings className="text-gray-600" />
-          Customization Settings
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Control global feature toggles for the platform. Changes apply immediately.
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <FiSettings className="text-gray-600" />
+            Customization Settings
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Control global feature toggles for the platform. Changes apply immediately.
+          </p>
+        </div>
+        <Link
+          to="/admin/login-banners"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#163B66] hover:bg-[#0F2B48] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition-all"
+        >
+          <FiSmartphone className="w-4 h-4" />
+          Manage Login Banners & Offers &rarr;
+        </Link>
       </div>
 
       {toggles.isUnderMaintenance && (

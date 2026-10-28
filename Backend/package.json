@@ -31,7 +31,8 @@
     "upload:services": "node scripts/uploadServiceImages.js",
     "test:config-defaults": "node tests/configDefaults.test.js",
     "test:settings-conflicts": "node tests/settingsConflicts.test.js",
-    "test:data-export": "node tests/dataExport.test.js"
+    "test:data-export": "node tests/dataExport.test.js",
+    "test:partner-fields": "node tests/partnerRegistrationFields.test.js"
   },
   "keywords": [
     "Help-U",

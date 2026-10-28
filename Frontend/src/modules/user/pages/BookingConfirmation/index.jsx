@@ -20,6 +20,7 @@ import {
 import { bookingService } from '../../../../services/bookingService';
 import NotificationBell from '../../components/common/NotificationBell';
 import ConfirmDialog from '../../../../components/common/ConfirmDialog';
+import RescheduleModal from '../../components/booking/RescheduleModal';
 
 // Inline Searching Animation Component
 const SearchingAnimation = () => {
@@ -99,6 +100,9 @@ const BookingConfirmation = () => {
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(!location.state?.noWorkersFound); // Respect passed state
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+
+  const canReschedule = booking && ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
 
   useEffect(() => {
     const loadBooking = async () => {
@@ -537,6 +541,16 @@ const BookingConfirmation = () => {
               </button>
             )}
 
+            {canReschedule && (
+              <button
+                onClick={() => setShowRescheduleModal(true)}
+                className="w-full py-3 rounded-lg text-base font-semibold border-2 border-teal-600 text-teal-700 bg-teal-50 hover:bg-teal-100 transition-all flex items-center justify-center gap-2"
+              >
+                <FiCalendar className="w-5 h-5" />
+                Reschedule Booking
+              </button>
+            )}
+
             <button
               onClick={handleViewDetails}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-base font-semibold text-white transition-all"
@@ -564,6 +578,22 @@ const BookingConfirmation = () => {
         confirmLabel="Yes, Cancel"
         cancelLabel="No, Keep It"
         type="danger"
+      />
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        isOpen={showRescheduleModal}
+        onClose={() => setShowRescheduleModal(false)}
+        booking={booking}
+        onRescheduled={async () => {
+          if (id) {
+            const response = await bookingService.getById(id);
+            if (response.success) {
+              const data = await withNotionalCharges({ ...response.data });
+              setBooking(data);
+            }
+          }
+        }}
       />
     </div>
   );

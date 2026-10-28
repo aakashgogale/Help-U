@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHome,
@@ -28,6 +28,7 @@ import {
   FiMap,
   FiSearch,
   FiLayout,
+  FiSmartphone,
 } from "react-icons/fi";
 import dashboardService from "../../services/dashboardService";
 import {
@@ -59,6 +60,7 @@ const iconMap = {
   Plans: FiPackage,
   Customization: FiSliders,
   "Landing Page": FiLayout,
+  "Login Banners": FiSmartphone,
   "Legal & Help Pages": FiBook,
   Disputes: FiAlertOctagon,
   "Recurring Bookings": FiRepeat,
@@ -299,32 +301,61 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
   const sidebarContent = (
     <div className="h-full w-full flex flex-col bg-slate-800">
-      {/* Profile */}
-      <div className="px-4 py-4 border-b border-slate-700 bg-slate-900">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0"
-              style={{ background: "linear-gradient(135deg, #2874F0 0%, #4787F7 100%)" }}
-            >
-              <FiUser className="text-white text-lg" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-white text-[15px] leading-tight truncate">{adminUser.name}</h2>
-              <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-300/10 rounded px-1.5 py-0.5">
-                {roleLabel}
-              </span>
-            </div>
+      {/* Brand Header with Help U Logo */}
+      <div className="px-4 py-3.5 border-b border-slate-700 bg-slate-900 flex items-center justify-between">
+        <Link
+          to="/admin/dashboard"
+          onClick={() => {
+            if (window.innerWidth < 1024) onClose();
+          }}
+          className="flex items-center gap-3 min-w-0 group focus:outline-none"
+          title="Help U Admin Dashboard"
+        >
+          <div className="bg-white rounded-lg px-2 py-1 shadow-sm shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+            <img
+              src="/helpu-logo.png"
+              alt="Help U"
+              className="h-7 sm:h-8 w-auto object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
+          <div className="min-w-0">
+            <div className="font-extrabold text-[15px] leading-tight text-white tracking-tight flex items-center">
+              Help<span className="text-amber-400 font-black">-U</span>
+            </div>
+            <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-400 block mt-0.5">
+              Admin Panel
+            </span>
+          </div>
+        </Link>
 
-          {/* Close button, mobile only */}
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors shrink-0 lg:hidden"
-            aria-label="Close sidebar"
+        {/* Close button, mobile only */}
+        <button
+          onClick={onClose}
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors shrink-0 lg:hidden text-slate-400 hover:text-white"
+          aria-label="Close sidebar"
+        >
+          <FiX className="text-xl" />
+        </button>
+      </div>
+
+      {/* Admin Profile */}
+      <div className="px-4 py-3 border-b border-slate-700/70 bg-slate-800/90">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md shrink-0"
+            style={{ background: "linear-gradient(135deg, #2874F0 0%, #4787F7 100%)" }}
           >
-            <FiX className="text-xl text-gray-300" />
-          </button>
+            <FiUser className="text-white text-base" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-white text-[14px] leading-tight truncate">{adminUser.name}</h2>
+            <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-300/10 rounded px-1.5 py-0.5">
+              {roleLabel}
+            </span>
+          </div>
         </div>
       </div>
 

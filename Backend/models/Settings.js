@@ -8,7 +8,7 @@ const settingsSchema = new mongoose.Schema({
   },
   visitedCharges: {
     type: Number,
-    default: 0,
+    default: 149,
     min: 0
   },
   serviceGstPercentage: {
@@ -309,6 +309,16 @@ const settingsSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'City',
     default: null
+  },
+
+  // Master switches for floating login banners on mobile apps
+  isUserLoginBannersEnabled: {
+    type: Boolean,
+    default: true
+  },
+  isPartnerLoginBannersEnabled: {
+    type: Boolean,
+    default: true
   },
 
   // ==========================================

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useModalLock from '../../../../hooks/useModalLock';
 import { FiMenu, FiBell, FiLogOut, FiSearch } from 'react-icons/fi';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
@@ -165,16 +165,30 @@ const AdminHeader = ({ onMenuClick }) => {
       }}
     >
       <div className="flex items-center justify-between px-4 lg:px-6 py-6">
-        {/* Left: Menu Button & Page Title */}
-        <div className="flex items-center gap-4 min-w-0 lg:shrink-0">
+        {/* Left: Menu Button, Logo (mobile) & Page Title */}
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 lg:shrink-0">
           <Button
             onClick={onMenuClick}
             variant="icon"
             className="lg:hidden text-gray-700"
             icon={FiMenu}
           />
+          <Link
+            to="/admin/dashboard"
+            className="lg:hidden flex items-center shrink-0 group"
+            title="Help U Admin Dashboard"
+          >
+            <img
+              src="/helpu-logo.png"
+              alt="Help U"
+              className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </Link>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-800 mb-1 truncate">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-0.5 sm:mb-1 truncate">{title}</h1>
             <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">{description}</p>
           </div>
         </div>

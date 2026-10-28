@@ -856,6 +856,16 @@ const AdminSettings = () => {
             <p className="text-sm text-gray-500">Add, remove, and view all system administrators</p>
           </div>
         )}
+
+        {/* Partner Registration Fields Card */}
+        <div onClick={() => navigate('/admin/workers/registration-fields')}
+          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
+          <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
+            <FiSliders className="w-6 h-6 text-teal-600" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 mb-2">Partner Registration Fields</h3>
+          <p className="text-sm text-gray-500">Configure dynamic text boxes and document upload requirements for partner onboarding</p>
+        </div>
       </div>
     </div>
   );

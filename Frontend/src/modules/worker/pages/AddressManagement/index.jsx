@@ -40,9 +40,13 @@ const AddressManagement = () => {
         const response = await workerService.getProfile();
         if (!active) return;
         
-        if (response.success && response.worker?.address) {
-          const addr = response.worker.address;
-          setSavedAddressData(addr);
+        const addr = response.worker?.address;
+        const loc = response.worker?.location;
+        const hasText = addr && (typeof addr === 'string' ? Boolean(addr.trim()) : Boolean(addr.fullAddress || addr.addressLine1 || addr.city));
+        const hasCoords = (addr?.lat && addr?.lng) || (loc?.lat && loc?.lng);
+
+        if (response.success && (hasText || hasCoords)) {
+          setSavedAddressData(addr || {});
 
           let displayAddress = '';
           let location = null;
@@ -50,7 +54,7 @@ const AddressManagement = () => {
 
           if (typeof addr === 'string') {
             displayAddress = addr;
-          } else {
+          } else if (addr) {
             houseNum = addr.addressLine1 || '';
             displayAddress = addr.fullAddress || addr.address || '';
 
@@ -58,9 +62,11 @@ const AddressManagement = () => {
               displayAddress = [addr.city, addr.state, addr.pincode].filter(Boolean).join(', ');
             }
 
-            if (addr.lat && addr.lng) {
-              const latNum = parseFloat(addr.lat);
-              const lngNum = parseFloat(addr.lng);
+            const rawLat = addr.lat || loc?.lat;
+            const rawLng = addr.lng || loc?.lng;
+            if (rawLat && rawLng) {
+              const latNum = parseFloat(rawLat);
+              const lngNum = parseFloat(rawLng);
               if (!isNaN(latNum) && !isNaN(lngNum)) {
                 location = {
                   lat: latNum,
@@ -72,6 +78,21 @@ const AddressManagement = () => {
 
             if (addr.type) setAddressType(addr.type);
             if (addr.customName) setCustomName(addr.customName);
+          }
+
+          // If coordinates exist but display address is missing, reverse geocode now
+          if (!displayAddress && location?.lat && location?.lng) {
+            try {
+              const geocoded = await reverseGeocodeCoords(location.lat, location.lng);
+              if (active && geocoded) {
+                displayAddress = geocoded.formattedAddress || geocoded.shortLabel || '';
+                location.address = displayAddress;
+                location.components = geocoded.components;
+                if (geocoded.area && !houseNum) houseNum = geocoded.area;
+              }
+            } catch (geoErr) {
+              // Ignore
+            }
           }
 
           setAddress(displayAddress);
@@ -87,7 +108,7 @@ const AddressManagement = () => {
             if (active && pos?.latitude && pos?.longitude) {
               const geocoded = await reverseGeocodeCoords(pos.latitude, pos.longitude);
               if (active) {
-                const autoAddr = geocoded.formattedAddress || geocoded.shortLabel || '';
+                const autoAddr = geocoded.formattedAddress || geocoded.shortLabel || (pos.city ? [pos.city, pos.region].filter(Boolean).join(', ') : '');
                 const locObj = {
                   lat: pos.latitude,
                   lng: pos.longitude,

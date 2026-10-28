@@ -44,6 +44,8 @@ const getProfile = async (req, res) => {
         service: worker.service,
         skills: worker.skills || [],
         address: worker.address || null,
+        location: worker.location || null,
+        geoLocation: worker.geoLocation || null,
         rating: rating > 0 ? parseFloat(rating.toFixed(1)) : 0,
         totalJobs,
         completionRate,
@@ -59,6 +61,8 @@ const getProfile = async (req, res) => {
         aadharNumber: worker.aadhar?.number || null,
         panNumber: worker.pan?.number || null,
         otherDocuments: worker.otherDocuments || [],
+        customFields: worker.customFields || {},
+        customDocuments: worker.customDocuments || [],
         createdAt: worker.createdAt,
         updatedAt: worker.updatedAt
       }
@@ -143,8 +147,13 @@ const updateProfile = async (req, res) => {
           lng: address.lng !== undefined ? address.lng : worker.address?.lng
         };
 
-        // Sync GeoJSON geoLocation for fast geo queries
+        // Sync GeoJSON geoLocation and real-time location
         if (worker.address.lat && worker.address.lng) {
+          worker.location = {
+            lat: worker.address.lat,
+            lng: worker.address.lng,
+            updatedAt: new Date()
+          };
           worker.geoLocation = {
             type: 'Point',
             coordinates: [worker.address.lng, worker.address.lat] // [lng, lat]
@@ -373,12 +382,17 @@ const updateLocation = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Latitude and Longitude are required' });
     }
 
-    // Update only the location field
+    const numLat = parseFloat(lat);
+    const numLng = parseFloat(lng);
+
+    // Update real-time location, coordinates in address, and 2dsphere geoLocation
     await Worker.findByIdAndUpdate(vendorId, {
-      location: { lat, lng, updatedAt: new Date() },
+      location: { lat: numLat, lng: numLng, updatedAt: new Date() },
+      'address.lat': numLat,
+      'address.lng': numLng,
       geoLocation: {
         type: 'Point',
-        coordinates: [lng, lat]
+        coordinates: [numLng, numLat]
       }
     });
 

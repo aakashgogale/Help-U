@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { bookingService } from '../../../../services/bookingService';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
 import ChatButton from '../../../../components/booking/ChatButton';
+import RescheduleModal from '../../components/booking/RescheduleModal';
 
 const PAGE_SIZE = 10;
 
@@ -71,7 +72,7 @@ const getAddressString = (address) => {
   return 'Address not available';
 };
 
-const BookingCard = ({ booking, onOpen }) => {
+const BookingCard = ({ booking, onOpen, onReschedule }) => {
   const status = getStatusMeta(booking.status);
   const StatusIcon = status.Icon;
   const category = booking.serviceCategory || booking.categoryId?.title || '';
@@ -84,6 +85,7 @@ const BookingCard = ({ booking, onOpen }) => {
   const amount = booking.finalAmount || booking.totalAmount || 0;
   const time = booking.scheduledTime || booking.timeSlot?.start;
   const bookingRef = booking.bookingNumber || String(booking._id || booking.id || '').slice(-8).toUpperCase();
+  const canReschedule = ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
 
   return (
     <motion.article
@@ -165,10 +167,25 @@ const BookingCard = ({ booking, onOpen }) => {
           <p className="text-[11px] text-gray-500">#{bookingRef}</p>
           <p className="text-[18px] font-bold text-ink leading-tight">₹{Number(amount).toLocaleString('en-IN')}</p>
         </div>
-        <span className="inline-flex items-center gap-0.5 text-[14px] font-semibold text-accent">
-          View details
-          <FiChevronRight className="w-4 h-4" strokeWidth={2.5} />
-        </span>
+        <div className="flex items-center gap-2">
+          {canReschedule && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onReschedule) onReschedule(booking);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-full border border-teal-200/80 transition-all active:scale-95 shadow-2xs"
+            >
+              <FiCalendar className="w-3 h-3" />
+              Reschedule
+            </button>
+          )}
+          <span className="inline-flex items-center gap-0.5 text-[14px] font-semibold text-accent">
+            View details
+            <FiChevronRight className="w-4 h-4" strokeWidth={2.5} />
+          </span>
+        </div>
       </div>
     </motion.article>
   );
@@ -212,6 +229,7 @@ const MyBookings = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(() => readCache('all')?.page || 1);
   const [hasMore, setHasMore] = useState(() => readCache('all')?.hasMore || false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const requestRef = useRef(0);
   const bookingsRef = useRef(bookings);
   bookingsRef.current = bookings;
@@ -343,7 +361,12 @@ const MyBookings = () => {
               className="space-y-3"
             >
               {bookings.map((booking) => (
-                <BookingCard key={booking._id || booking.id} booking={booking} onOpen={handleBookingClick} />
+                <BookingCard
+                  key={booking._id || booking.id}
+                  booking={booking}
+                  onOpen={handleBookingClick}
+                  onReschedule={setRescheduleTarget}
+                />
               ))}
             </motion.div>
 
@@ -361,6 +384,17 @@ const MyBookings = () => {
           </>
         )}
       </main>
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        isOpen={Boolean(rescheduleTarget)}
+        onClose={() => setRescheduleTarget(null)}
+        booking={rescheduleTarget}
+        onRescheduled={() => {
+          bookingsCache.clear();
+          loadBookings(1, true);
+        }}
+      />
     </div>
   );
 };

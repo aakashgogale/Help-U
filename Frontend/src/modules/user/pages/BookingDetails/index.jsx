@@ -37,6 +37,7 @@ import { walletService } from '../../../../services/walletService';
 import { cartService } from '../../../../services/cartService';
 import RatingModal from '../../components/booking/RatingModal';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
+import RescheduleModal from '../../components/booking/RescheduleModal';
 import { ConfirmDialog } from '../../../../components/common';
 import ReviewCard from '../../components/booking/ReviewCard';
 import BookingExtrasCard from '../../../../components/booking/BookingExtrasCard';
@@ -63,6 +64,7 @@ const BookingDetails = () => {
   const [loadError, setLoadError] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [paying, setPaying] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({
@@ -292,6 +294,8 @@ const BookingDetails = () => {
       default: return status?.replace('_', ' ') || 'Pending';
     }
   };
+
+  const canReschedule = booking && ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
 
   // ... (keep handle methods same) ...
 
@@ -1242,13 +1246,22 @@ const BookingDetails = () => {
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
                   <FiCalendar className="w-5 h-5 text-indigo-600" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mb-1">Slot</p>
                   <p className="text-sm font-medium text-gray-900">
                     {formatDate(booking.scheduledDate)}
                   </p>
                   <p className="text-sm text-gray-500">{booking.scheduledTime || booking.timeSlot?.start || 'N/A'}</p>
                 </div>
+                {canReschedule && (
+                  <button
+                    onClick={() => setShowRescheduleModal(true)}
+                    className="px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-all border border-teal-200/80 active:scale-95 flex items-center gap-1.5 shrink-0 self-center shadow-sm"
+                  >
+                    <FiClock className="w-3.5 h-3.5" />
+                    Reschedule
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -1680,6 +1693,18 @@ const BookingDetails = () => {
               <span className="text-sm font-bold text-gray-700">Email Help</span>
             </button>
 
+            {/* Reschedule Booking */}
+            {canReschedule && (
+              <button
+                onClick={() => setShowRescheduleModal(true)}
+                className="col-span-2 py-4 rounded-2xl text-white font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 hover:opacity-95"
+                style={{ backgroundColor: themeColors.button || '#00A6A6' }}
+              >
+                <FiCalendar className="w-4 h-4" />
+                Reschedule Booking
+              </button>
+            )}
+
             {/* Cancel */}
             {!['cancelled', 'completed', 'work_done'].includes(booking.status?.toLowerCase()) && (
               <button
@@ -1725,6 +1750,16 @@ const BookingDetails = () => {
           booking={booking}
           onPayOnline={handleOnlinePayment}
           onPayWallet={handleWalletPayment}
+        />
+
+        {/* Reschedule Modal */}
+        <RescheduleModal
+          isOpen={showRescheduleModal}
+          onClose={() => setShowRescheduleModal(false)}
+          booking={booking}
+          onRescheduled={() => {
+            loadBooking();
+          }}
         />
 
         <ServiceOptionsSheet request={editRequest} onClose={() => setEditRequest(null)} />

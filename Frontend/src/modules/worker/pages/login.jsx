@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { themeColors } from '../../../theme';
 import { sendOTP, verifyLogin } from '../services/authService';
 import Logo from '../../../components/common/Logo';
+import FloatingLoginBanners from '../../../components/common/FloatingLoginBanners';
 
 import { z } from "zod";
 
@@ -186,14 +187,16 @@ const WorkerLogin = () => {
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[#D68F35]/[0.025] rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md mx-auto text-center relative z-10 pt-2 sm:pt-4 animate-fade-in">
-        <div className="flex justify-center mb-5">
-          <Logo className="h-20 sm:h-24 w-auto object-contain transition-transform duration-300 hover:scale-105" />
+      <div className="w-full max-w-sm sm:max-w-md mx-auto text-center relative z-10 pt-2 sm:pt-3 animate-fade-in">
+        <div className="flex justify-center mb-2">
+          <Logo className="h-16 sm:h-20 w-auto object-contain transition-transform duration-300 hover:scale-105" />
         </div>
-        <h1 className="text-[26px] sm:text-[30px] font-bold text-slate-900 tracking-[-0.025em]">
+        {/* Dynamic Moving Banners for Partner App */}
+        <FloatingLoginBanners app="partner" />
+        <h1 className="text-[24px] sm:text-[28px] font-bold text-slate-900 tracking-[-0.025em] mt-1.5">
           {step === 'phone' ? 'Service Partner Sign In' : 'Verify Identity'}
         </h1>
-        <p className="mt-1.5 text-[14px] sm:text-[15px] text-slate-500 font-normal leading-relaxed animate-stagger-1 animate-fade-in">
+        <p className="mt-1 text-[13px] sm:text-[14px] text-slate-500 font-normal leading-relaxed animate-stagger-1 animate-fade-in">
           {step === 'phone' ? 'Manage your services and bookings' : `We've sent a 6-digit code to ${phoneNumber}`}
         </p>
       </div>

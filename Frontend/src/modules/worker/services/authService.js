@@ -131,6 +131,25 @@ export const register = async (workerData) => {
 };
 
 /**
+ * Fetch dynamic active registration fields and document upload options
+ */
+export const getPartnerRegistrationFields = async () => {
+  try {
+    const response = await api.get('/public/partner-registration-fields');
+    return response.data;
+  } catch (error) {
+    console.warn('Failed to load public partner registration fields, falling back to auth endpoint:', error);
+    try {
+      const fallback = await api.get('/workers/auth/registration-fields');
+      return fallback.data;
+    } catch (e) {
+      console.error('Both partner registration fields endpoints failed:', e);
+      return { success: false, fields: [] };
+    }
+  }
+};
+
+/**
  * Get current worker profile
  * @returns {Promise<Object>} Worker profile
  */

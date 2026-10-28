@@ -64,16 +64,14 @@ const AdminLogin = () => {
       <div className="w-full max-w-md">
         {/* White Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* Icon */}
+          {/* Brand Logo */}
           <div className="flex justify-center mb-6">
-            <div
-              className="w-16 h-16 rounded-xl flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, ${themeColors.button} 0%, #008a8a 100%)`,
-                boxShadow: `0 4px 12px rgba(0, 166, 166, 0.3)`
-              }}
-            >
-              <FiLock className="w-8 h-8 text-white" />
+            <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm flex items-center justify-center">
+              <img
+                src="/helpu-logo.png"
+                alt="Help U Logo"
+                className="h-12 w-auto object-contain"
+              />
             </div>
           </div>
 

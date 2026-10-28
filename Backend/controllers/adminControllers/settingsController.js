@@ -241,14 +241,14 @@ exports.getPublicSettings = async (req, res, next) => {
 
     // Default if not found (fallback values)
     if (!settings) {
-      settings = { visitedCharges: 0, serviceGstPercentage: 18, partsGstPercentage: 18, isScrapEnabled: true, isOnlinePaymentEnabled: true };
+      settings = { visitedCharges: 149, serviceGstPercentage: 18, partsGstPercentage: 18, isScrapEnabled: true, isOnlinePaymentEnabled: true };
     }
     const referral = await require('../../services/userReferralService').getReferralSettings();
 
     res.status(200).json({
       success: true,
       settings: {
-        visitedCharges: settings.visitedCharges || 0,
+        visitedCharges: settings.visitedCharges ?? 149,
         serviceGstPercentage: settings.serviceGstPercentage ?? 18,
         partsGstPercentage: settings.partsGstPercentage ?? 18,
         supportEmail: settings.supportEmail || '',

@@ -190,6 +190,13 @@ const DEFAULT_TESTIMONIALS = [
   }
 ];
 
+const DEFAULT_FOOTER = {
+  brandDescription:
+    'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.',
+  copyrightText: '© {year} Help-U Technologies. All rights reserved.',
+  bottomRightText: 'Built in Indore 🇮🇳 • Speed, Safety & Quality'
+};
+
 /**
  * LandingPageConfig Model
  * Stores all configurable content, links, FAQs, and settings for the public landing page.
@@ -317,6 +324,29 @@ const landingPageConfigSchema = new mongoose.Schema(
         type: Boolean,
         default: true
       },
+      defaultCity: {
+        type: String,
+        default: 'Bangalore'
+      },
+      trades: {
+        type: [String],
+        default: () => [
+          'AC & Appliance Repair',
+          'Electrician',
+          'Plumbing',
+          'Electronics & TV',
+          'Cleaning & Pest Control',
+          'Carpenter & Painting'
+        ]
+      },
+      partnerPlayStoreUrl: {
+        type: String,
+        default: ''
+      },
+      partnerAppStoreUrl: {
+        type: String,
+        default: ''
+      },
       perks: {
         type: Array,
         default: () => DEFAULT_PERKS
@@ -352,6 +382,22 @@ const landingPageConfigSchema = new mongoose.Schema(
     testimonials: {
       type: Array,
       default: () => DEFAULT_TESTIMONIALS
+    },
+
+    // Footer Section (Dynamic copyright, bottom-right badge, brand description)
+    footer: {
+      brandDescription: {
+        type: String,
+        default: DEFAULT_FOOTER.brandDescription
+      },
+      copyrightText: {
+        type: String,
+        default: DEFAULT_FOOTER.copyrightText
+      },
+      bottomRightText: {
+        type: String,
+        default: DEFAULT_FOOTER.bottomRightText
+      }
     }
   },
   { timestamps: true }
@@ -371,7 +417,8 @@ landingPageConfigSchema.statics.getOrCreateConfig = async function () {
       howItWorks: { userSteps: DEFAULT_USER_STEPS, partnerSteps: DEFAULT_PARTNER_STEPS },
       partnerSection: { perks: DEFAULT_PERKS },
       faqs: DEFAULT_FAQS,
-      testimonials: DEFAULT_TESTIMONIALS
+      testimonials: DEFAULT_TESTIMONIALS,
+      footer: { ...DEFAULT_FOOTER }
     });
   } else {
     let changed = false;
@@ -398,9 +445,38 @@ landingPageConfigSchema.statics.getOrCreateConfig = async function () {
       doc.markModified('howItWorks');
       changed = true;
     }
-    if (!doc.partnerSection?.perks || doc.partnerSection.perks.length === 0) {
-      if (!doc.partnerSection) doc.partnerSection = {};
+    if (!doc.partnerSection) {
+      doc.partnerSection = {};
+    }
+    if (!doc.partnerSection.perks || doc.partnerSection.perks.length === 0) {
       doc.partnerSection.perks = DEFAULT_PERKS;
+      doc.markModified('partnerSection');
+      changed = true;
+    }
+    if (!doc.partnerSection.defaultCity) {
+      doc.partnerSection.defaultCity = 'Bangalore';
+      doc.markModified('partnerSection');
+      changed = true;
+    }
+    if (!doc.partnerSection.trades || doc.partnerSection.trades.length === 0) {
+      doc.partnerSection.trades = [
+        'AC & Appliance Repair',
+        'Electrician',
+        'Plumbing',
+        'Electronics & TV',
+        'Cleaning & Pest Control',
+        'Carpenter & Painting'
+      ];
+      doc.markModified('partnerSection');
+      changed = true;
+    }
+    if (doc.partnerSection.partnerPlayStoreUrl === undefined) {
+      doc.partnerSection.partnerPlayStoreUrl = '';
+      doc.markModified('partnerSection');
+      changed = true;
+    }
+    if (doc.partnerSection.partnerAppStoreUrl === undefined) {
+      doc.partnerSection.partnerAppStoreUrl = '';
       doc.markModified('partnerSection');
       changed = true;
     }
@@ -413,6 +489,27 @@ landingPageConfigSchema.statics.getOrCreateConfig = async function () {
       doc.testimonials = DEFAULT_TESTIMONIALS;
       doc.markModified('testimonials');
       changed = true;
+    }
+    if (!doc.footer) {
+      doc.footer = { ...DEFAULT_FOOTER };
+      doc.markModified('footer');
+      changed = true;
+    } else {
+      if (doc.footer.brandDescription === undefined) {
+        doc.footer.brandDescription = DEFAULT_FOOTER.brandDescription;
+        doc.markModified('footer');
+        changed = true;
+      }
+      if (doc.footer.copyrightText === undefined) {
+        doc.footer.copyrightText = DEFAULT_FOOTER.copyrightText;
+        doc.markModified('footer');
+        changed = true;
+      }
+      if (doc.footer.bottomRightText === undefined) {
+        doc.footer.bottomRightText = DEFAULT_FOOTER.bottomRightText;
+        doc.markModified('footer');
+        changed = true;
+      }
     }
     if (changed) {
       await doc.save();

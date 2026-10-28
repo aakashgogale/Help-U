@@ -15,7 +15,9 @@ import {
   FiSearch,
   FiMessageSquare,
   FiClock,
-  FiSmartphone
+  FiSmartphone,
+  FiX,
+  FiLayers
 } from 'react-icons/fi';
 import { PageHeader, Card, Toggle, Field, Button, StatusPill, EmptyState, Pagination } from '../../components/adminUi';
 import { inputClass, formatDateTime } from '../../components/adminFormat';
@@ -28,6 +30,7 @@ const TABS = [
   { id: 'partner', label: 'Partner Section', icon: FiUsers },
   { id: 'faqs', label: 'FAQs Manager', icon: FiHelpCircle },
   { id: 'contact', label: 'Contact & Socials', icon: FiPhone },
+  { id: 'footer', label: 'Footer & Copyright', icon: FiLayers },
   { id: 'leads', label: 'Partner Leads', icon: FiMessageSquare }
 ];
 
@@ -46,13 +49,23 @@ const LandingPageAdmin = () => {
   const [leadCounts, setLeadCounts] = useState({ all: 0, new: 0, contacted: 0, onboarded: 0, rejected: 0 });
   const [leadsLoading, setLeadsLoading] = useState(false);
 
+  // New trade skill input for partner configuration
+  const [newTradeInput, setNewTradeInput] = useState('');
+
   // Fetch Config
   const loadConfig = useCallback(async () => {
     try {
       setLoading(true);
       const res = await landingAdminService.getConfig();
       if (res?.success && res.config) {
-        setConfig(res.config);
+        setConfig({
+          ...res.config,
+          footer: res.config.footer || {
+            brandDescription: 'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.',
+            copyrightText: '© {year} Help-U Technologies. All rights reserved.',
+            bottomRightText: 'Built in Indore 🇮🇳 • Speed, Safety & Quality'
+          }
+        });
       }
     } catch (err) {
       toast.error('Failed to load landing page configuration.');
@@ -136,6 +149,57 @@ const LandingPageAdmin = () => {
     } catch (err) {
       toast.error('Failed to delete lead');
     }
+  };
+
+  // Partner Trades configuration handlers
+  const handleAddTrade = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = newTradeInput.trim();
+    if (!trimmed) return;
+    const currentTrades =
+      config?.partnerSection?.trades && config.partnerSection.trades.length > 0
+        ? config.partnerSection.trades
+        : [
+            'AC & Appliance Repair',
+            'Electrician',
+            'Plumbing',
+            'Electronics & TV',
+            'Cleaning & Pest Control',
+            'Carpenter & Painting'
+          ];
+    if (currentTrades.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error('This skill is already in the list.');
+      return;
+    }
+    setConfig({
+      ...config,
+      partnerSection: {
+        ...config.partnerSection,
+        trades: [...currentTrades, trimmed]
+      }
+    });
+    setNewTradeInput('');
+  };
+
+  const handleRemoveTrade = (tradeToRemove) => {
+    const currentTrades =
+      config?.partnerSection?.trades && config.partnerSection.trades.length > 0
+        ? config.partnerSection.trades
+        : [
+            'AC & Appliance Repair',
+            'Electrician',
+            'Plumbing',
+            'Electronics & TV',
+            'Cleaning & Pest Control',
+            'Carpenter & Painting'
+          ];
+    setConfig({
+      ...config,
+      partnerSection: {
+        ...config.partnerSection,
+        trades: currentTrades.filter((t) => t !== tradeToRemove)
+      }
+    });
   };
 
   if (loading) {
@@ -667,6 +731,168 @@ const LandingPageAdmin = () => {
               ))}
             </div>
           </Card>
+
+          {/* Partner Mobile App Download Links */}
+          <Card title="Partner Mobile App Download Links">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field
+                label="Partner Android Play Store URL"
+                hint="Paste the technician/partner Android listing URL. Displayed in the 'Have a Partner Account?' prompt card."
+              >
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="https://play.google.com/store/apps/details?id=in.helpu.partner"
+                    value={config.partnerSection?.partnerPlayStoreUrl || ''}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        partnerSection: {
+                          ...config.partnerSection,
+                          partnerPlayStoreUrl: e.target.value
+                        }
+                      })
+                    }
+                    className={`${inputClass} pr-14`}
+                  />
+                  {config.partnerSection?.partnerPlayStoreUrl && (
+                    <a
+                      href={config.partnerSection.partnerPlayStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#163B66] hover:underline"
+                    >
+                      Test ↗
+                    </a>
+                  )}
+                </div>
+              </Field>
+
+              <Field
+                label="Partner Apple App Store URL"
+                hint="Paste the technician/partner iOS listing URL. Displayed in the 'Have a Partner Account?' prompt card."
+              >
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="https://apps.apple.com/in/app/help-u-partner/id987654321"
+                    value={config.partnerSection?.partnerAppStoreUrl || ''}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        partnerSection: {
+                          ...config.partnerSection,
+                          partnerAppStoreUrl: e.target.value
+                        }
+                      })
+                    }
+                    className={`${inputClass} pr-14`}
+                  />
+                  {config.partnerSection?.partnerAppStoreUrl && (
+                    <a
+                      href={config.partnerSection.partnerAppStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#163B66] hover:underline"
+                    >
+                      Test ↗
+                    </a>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </Card>
+
+          {/* Partner Registration Form Settings */}
+          <Card title="Partner Registration Form Configuration">
+            <div className="space-y-4">
+              <Field
+                label="Default City"
+                hint="This city is shown as the default value in the City * field on the partner registration form."
+              >
+                <input
+                  type="text"
+                  placeholder="Bangalore"
+                  value={config.partnerSection?.defaultCity || ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      partnerSection: {
+                        ...config.partnerSection,
+                        defaultCity: e.target.value
+                      }
+                    })
+                  }
+                  className={inputClass}
+                />
+              </Field>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Configured Skills / Trades
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  These trades appear in the &quot;Primary Trade / Skill&quot; dropdown. Applicants can also choose &quot;Other Skilled Trade&quot; to write any custom skill.
+                </p>
+
+                {/* Chips */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {(
+                    config.partnerSection?.trades && config.partnerSection.trades.length > 0
+                      ? config.partnerSection.trades
+                      : [
+                          'AC & Appliance Repair',
+                          'Electrician',
+                          'Plumbing',
+                          'Electronics & TV',
+                          'Cleaning & Pest Control',
+                          'Carpenter & Painting'
+                        ]
+                  ).map((trade) => (
+                    <span
+                      key={trade}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-900 border border-blue-200 text-xs font-semibold"
+                    >
+                      <span>{trade}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTrade(trade)}
+                        className="text-blue-500 hover:text-red-600 rounded-full p-0.5 hover:bg-blue-100 transition-colors"
+                        title="Remove skill"
+                      >
+                        <FiX className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Add new skill */}
+                <div className="flex gap-2 max-w-md">
+                  <input
+                    type="text"
+                    placeholder="e.g. CCTV Technician, RO Purifier..."
+                    value={newTradeInput}
+                    onChange={(e) => setNewTradeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTrade();
+                      }
+                    }}
+                    className={inputClass}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleAddTrade}
+                    className="whitespace-nowrap inline-flex items-center gap-1"
+                  >
+                    <FiPlus /> Add Skill
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -768,6 +994,221 @@ const LandingPageAdmin = () => {
                   className={inputClass}
                 />
               </Field>
+            </div>
+          </Card>
+
+          <Card title="Footer Bottom Bar Elements (2nd & 4th Arrows)">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3.5 mb-4 text-xs text-blue-900">
+              <div>
+                <p className="font-bold">Need full control &amp; live preview for the Footer?</p>
+                <p className="text-blue-800">You can also switch to the dedicated Footer &amp; Copyright tab for real-time visual inspection.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('footer')}
+                className="shrink-0 bg-[#163B66] hover:bg-[#122e50] text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+              >
+                Go to Footer Tab &rarr;
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field
+                label="Footer Copyright Text (2nd Arrow)"
+                hint="Use {year} to dynamically output the current year."
+              >
+                <input
+                  type="text"
+                  placeholder="© {year} Help-U Technologies. All rights reserved."
+                  value={config.footer?.copyrightText ?? ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      footer: {
+                        ...(config.footer || {}),
+                        copyrightText: e.target.value
+                      }
+                    })
+                  }
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field
+                label="Footer Bottom-Right Badge / Tagline (4th Arrow)"
+                hint="Quality / Regional tagline at bottom right."
+              >
+                <input
+                  type="text"
+                  placeholder="Built in Indore 🇮🇳 • Speed, Safety & Quality"
+                  value={config.footer?.bottomRightText ?? ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      footer: {
+                        ...(config.footer || {}),
+                        bottomRightText: e.target.value
+                      }
+                    })
+                  }
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB: FOOTER & COPYRIGHT */}
+      {activeTab === 'footer' && config && (
+        <div className="space-y-6">
+          <Card title="Footer Bottom Bar Settings (2nd & 4th Arrows)">
+            <p className="text-xs text-gray-500 mb-4">
+              Configure the copyright notice and the regional quality badge shown in the bottom bar of the landing page footer.
+            </p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Field
+                label="Footer Copyright Text (2nd Arrow)"
+                hint="Use {year} to dynamically display the current year, or type any fixed notice."
+              >
+                <input
+                  type="text"
+                  placeholder="© {year} Help-U Technologies. All rights reserved."
+                  value={config.footer?.copyrightText ?? ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      footer: {
+                        ...(config.footer || {}),
+                        copyrightText: e.target.value
+                      }
+                    })
+                  }
+                  className={inputClass}
+                />
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="font-semibold text-gray-600">Live preview:</span>
+                  <span className="text-gray-900 font-medium">
+                    {(config.footer?.copyrightText || '© {year} Help-U Technologies. All rights reserved.').replace(/\{year\}/gi, new Date().getFullYear())}
+                  </span>
+                </div>
+              </Field>
+
+              <Field
+                label="Footer Bottom-Right Text / Badge (4th Arrow)"
+                hint="Badge or quality tagline shown at the bottom right corner."
+              >
+                <input
+                  type="text"
+                  placeholder="Built in Indore 🇮🇳 • Speed, Safety & Quality"
+                  value={config.footer?.bottomRightText ?? ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      footer: {
+                        ...(config.footer || {}),
+                        bottomRightText: e.target.value
+                      }
+                    })
+                  }
+                  className={inputClass}
+                />
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="font-semibold text-gray-600">Live preview:</span>
+                  <span className="text-gray-900 font-medium">
+                    {config.footer?.bottomRightText || 'Built in Indore 🇮🇳 • Speed, Safety & Quality'}
+                  </span>
+                </div>
+              </Field>
+            </div>
+          </Card>
+
+          <Card title="Footer Brand Overview (1st Arrow)">
+            <Field
+              label="Footer Brand Description (1st Arrow)"
+              hint="Brief summary paragraph displayed directly under the Help-U logo in the footer."
+            >
+              <textarea
+                rows={3}
+                placeholder="Enterprise on-demand home & technical services marketplace across Indore..."
+                value={config.footer?.brandDescription ?? ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    footer: {
+                      ...(config.footer || {}),
+                      brandDescription: e.target.value
+                    }
+                  })
+                }
+                className={inputClass}
+              />
+            </Field>
+          </Card>
+
+          {/* Visual Footer Preview Box */}
+          <Card title="Live Footer Interactive Preview">
+            <p className="text-xs text-gray-500 mb-3">
+              This preview shows exactly how your footer elements appear to visitors, with all 4 arrow positions clearly mapped:
+            </p>
+            <div className="rounded-xl bg-gray-950 p-6 text-white border border-gray-800 text-xs shadow-inner">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6 border-b border-gray-800">
+                <div className="md:col-span-2 space-y-2">
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold">
+                    1st Arrow • Brand Description
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <img src="/helpu-logo.png" alt="Help-U" className="h-6 w-auto bg-white rounded p-0.5" onError={(e) => { e.target.style.display = 'none'; }} />
+                    <span className="font-black text-lg">Help<span className="text-amber-400">-U</span></span>
+                  </div>
+                  <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
+                    {config.footer?.brandDescription || 'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.'}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-2">Explore</h4>
+                  <ul className="space-y-1 text-gray-400 text-xs">
+                    <li>About Us</li>
+                    <li>Services</li>
+                    <li>How It Works</li>
+                    <li>For Partners</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                    3rd Arrow • Location & Helpline
+                  </div>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Location</h4>
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    {config.contact?.companyAddress || 'Vijay Nagar, Scheme 54, Indore, MP 452010'}
+                  </p>
+                  {config.contact?.supportPhone && (
+                    <p className="text-gray-400 text-xs">
+                      Helpline: <span className="text-white font-medium">{config.contact.supportPhone}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                    2nd Arrow
+                  </span>
+                  <p className="text-gray-400">
+                    {(config.footer?.copyrightText || '© {year} Help-U Technologies. All rights reserved.').replace(/\{year\}/gi, new Date().getFullYear())}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                    4th Arrow
+                  </span>
+                  <p className="text-gray-400 flex items-center gap-1">
+                    {config.footer?.bottomRightText || 'Built in Indore 🇮🇳 • Speed, Safety & Quality'}
+                  </p>
+                </div>
+              </div>
             </div>
           </Card>
         </div>

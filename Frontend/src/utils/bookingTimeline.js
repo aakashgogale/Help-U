@@ -31,7 +31,8 @@ const EVENT_LABELS = {
   disputed: { label: 'Dispute raised', tone: 'warning' },
   dispute_resolved: { label: 'Dispute closed', tone: 'success' },
   refunded: { label: 'Refund issued', tone: 'warning' },
-  reassigned: { label: 'Professional cancelled · finding a new one', tone: 'warning' }
+  reassigned: { label: 'Professional cancelled · finding a new one', tone: 'warning' },
+  rescheduled: { label: 'Booking rescheduled', tone: 'info' }
 };
 
 const BY_LABELS = { user: 'Customer', worker: 'Professional', admin: 'Support team', system: null };

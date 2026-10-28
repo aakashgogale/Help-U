@@ -129,6 +129,69 @@ export const getWorkerEarnings = async (id, params = {}) => {
   }
 };
 
+/**
+ * Dynamic Partner Registration Fields & Documents API
+ */
+export const getPartnerRegistrationFields = async () => {
+  try {
+    const response = await api.get('/admin/partner-registration-fields');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching partner registration fields:', error);
+    throw error;
+  }
+};
+
+export const createPartnerRegistrationField = async (data) => {
+  try {
+    const response = await api.post('/admin/partner-registration-fields', data);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating partner registration field:', error);
+    throw error;
+  }
+};
+
+export const updatePartnerRegistrationField = async (id, data) => {
+  try {
+    const response = await api.put(`/admin/partner-registration-fields/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating partner registration field:', error);
+    throw error;
+  }
+};
+
+export const togglePartnerRegistrationField = async (id) => {
+  try {
+    const response = await api.patch(`/admin/partner-registration-fields/${id}/toggle`);
+    return response.data;
+  } catch (error) {
+    console.error('Error toggling partner registration field:', error);
+    throw error;
+  }
+};
+
+export const deletePartnerRegistrationField = async (id) => {
+  try {
+    const response = await api.delete(`/admin/partner-registration-fields/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting partner registration field:', error);
+    throw error;
+  }
+};
+
+export const seedDefaultPartnerRegistrationFields = async () => {
+  try {
+    const response = await api.post('/admin/partner-registration-fields/seed-defaults');
+    return response.data;
+  } catch (error) {
+    console.error('Error seeding default partner registration fields:', error);
+    throw error;
+  }
+};
+
 export default {
   getAllWorkers,
   getWorkerDetails,
@@ -136,6 +199,12 @@ export default {
   rejectWorker,
   suspendWorker,
   getWorkerBookings,
-  getWorkerEarnings
+  getWorkerEarnings,
+  getPartnerRegistrationFields,
+  createPartnerRegistrationField,
+  updatePartnerRegistrationField,
+  togglePartnerRegistrationField,
+  deletePartnerRegistrationField,
+  seedDefaultPartnerRegistrationFields
 };
 

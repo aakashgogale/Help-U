@@ -247,6 +247,7 @@ app.use('/api/admin', require('./routes/admin-routes/cityManagement.routes.js'))
 app.use('/api/admin', require('./routes/admin-routes/dashboard.routes'));
 app.use('/api/admin', require('./routes/admin-routes/userManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/workerManagement.routes'));
+app.use('/api/admin', require('./routes/admin-routes/partnerFieldManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/referral.routes'));
 app.use('/api/admin', require('./routes/admin-routes/categoryManagement.routes'));
 app.use('/api/admin', require('./routes/admin-routes/brandManagement.routes'));
@@ -271,6 +272,7 @@ app.use('/api/admin/disputes', require('./routes/admin-routes/dispute.routes'));
 app.use('/api/admin', require('./routes/admin-routes/bookingFeatures.routes'));
 app.use('/api/admin', require('./routes/admin-routes/zone.routes'));
 app.use('/api/admin', require('./routes/admin-routes/landingManagement.routes'));
+app.use('/api/admin/login-banners', require('./routes/admin-routes/loginBanner.routes'));
 app.use('/api/image', require('./routes/admin-routes/image.routes'));
 app.use('/api', require('./routes/admin-routes/upload.routes')); // Generic upload access
 
@@ -295,6 +297,7 @@ app.use('/api/public', require('./routes/public-routes/catalog.routes'));
 app.use('/api/public', require('./routes/public-routes/plan.routes'));
 app.use('/api/public', require('./routes/public-routes/config.routes'));
 app.use('/api/public', require('./routes/public-routes/landing.routes'));
+app.use('/api/public/login-banners', require('./routes/public-routes/loginBanner.routes'));
 
 // 404 handler
 app.use((req, res) => {

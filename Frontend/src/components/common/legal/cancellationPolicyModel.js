@@ -23,8 +23,10 @@ export const userPolicy = (config, settings) => {
   const grace = Number(config.userFreeCancelGraceMinutes) || 0;
   const lateFee = feeText(config.userLateCancelFeeType, config.userLateCancelFeeValue, config.userLateCancelFeeMax);
   // Mirrors the server: the flat fee exactly as the admin set it
-  const onTheWay = Number(config.cancellationPenalty ?? settings.cancellationPenalty) || 0;
-  const visiting = Number(settings.visitedCharges) > 0 ? Number(settings.visitedCharges) : onTheWay;
+  const onTheWay = Number(config?.cancellationPenalty ?? settings?.cancellationPenalty) || 0;
+  const visiting = Number(settings?.visitedCharges ?? config?.visitedCharges) > 0
+    ? Number(settings?.visitedCharges ?? config?.visitedCharges)
+    : 149;
 
   const stages = [
     {
@@ -52,7 +54,7 @@ export const userPolicy = (config, settings) => {
     },
     {
       key: 'arrived', tone: 'red', icon: 'pin', title: 'Professional arrived',
-      when: 'Once they reach your address', result: visiting > 0 ? `${rupees(visiting)} visiting charge` : 'Visiting charge',
+      when: 'Once they reach your address', result: visiting > 0 ? `${rupees(visiting)} visiting charge` : '₹149 visiting charge',
       detail: 'They have reached you, so the visit is charged.'
     }
   ].filter(Boolean);

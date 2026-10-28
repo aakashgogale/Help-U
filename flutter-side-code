@@ -57,12 +57,14 @@ void setupJavaScriptHandlers(InAppWebViewController controller) {
     return {'success': true};
   });
 
-  // 3. Location Handler (High-Accuracy Native GPS)
+  // 3. Location Handler (Instant Native GPS + Last Known Position)
   // Requires: pubspec.yaml -> geolocator: ^12.0.0
   controller.addJavaScriptHandler(handlerName: 'getLocation', callback: (args) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        // Prompt user to enable GPS settings
+        await Geolocator.openLocationSettings();
         return {'success': false, 'error': 'LOCATION_SERVICES_DISABLED'};
       }
 
@@ -75,12 +77,17 @@ void setupJavaScriptHandlers(InAppWebViewController controller) {
       }
 
       if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
         return {'success': false, 'error': 'PERMISSION_DENIED_FOREVER'};
       }
 
-      Position position = await Geolocator.getCurrentPosition(
+      // Fast-path: Check last known position for instant response
+      Position? position = await Geolocator.getLastKnownPosition();
+
+      // If no cached position, fetch fresh high-accuracy position
+      position ??= await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 8),
       );
 
       return {

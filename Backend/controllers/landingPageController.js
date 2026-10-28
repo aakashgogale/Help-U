@@ -66,6 +66,33 @@ exports.getPublicLandingConfig = async (req, res) => {
     // Real numbers counted from the database unless the admin chose to type their own
     const stats = config.statsMode === 'manual' ? (config.stats || []) : await liveStats();
 
+    const rawPartnerPlayUrl = (config.partnerSection?.partnerPlayStoreUrl || '').trim();
+    const rawPartnerAppUrl = (config.partnerSection?.partnerAppStoreUrl || '').trim();
+    const partnerPlayStoreUrl = PLAY_LISTING_RE.test(rawPartnerPlayUrl)
+      ? rawPartnerPlayUrl
+      : (rawPartnerPlayUrl.startsWith('http') ? rawPartnerPlayUrl : '');
+    const partnerAppStoreUrl = APP_STORE_RE.test(rawPartnerAppUrl)
+      ? rawPartnerAppUrl
+      : (rawPartnerAppUrl.startsWith('http') ? rawPartnerAppUrl : '');
+
+    const partnerSectionData = {
+      ...(config.partnerSection ? (config.partnerSection.toObject ? config.partnerSection.toObject() : config.partnerSection) : {}),
+      partnerPlayStoreUrl,
+      partnerAppStoreUrl,
+      defaultCity: config.partnerSection?.defaultCity || 'Bangalore',
+      trades:
+        config.partnerSection?.trades && config.partnerSection.trades.length > 0
+          ? config.partnerSection.trades
+          : [
+              'AC & Appliance Repair',
+              'Electrician',
+              'Plumbing',
+              'Electronics & TV',
+              'Cleaning & Pest Control',
+              'Carpenter & Painting'
+            ]
+    };
+
     res.status(200).json({
       success: true,
       config: {
@@ -79,7 +106,7 @@ exports.getPublicLandingConfig = async (req, res) => {
         stats,
         statsMode: config.statsMode || 'auto',
         howItWorks: config.howItWorks,
-        partnerSection: config.partnerSection,
+        partnerSection: partnerSectionData,
         faqs: (config.faqs || []).filter(f => f.isActive !== false).sort((a, b) => a.order - b.order),
         // Support phone, email and WhatsApp come only from Admin > Settings > Support, the same
         // numbers the apps use, so the landing page can never show a different set. Nothing is
@@ -91,6 +118,13 @@ exports.getPublicLandingConfig = async (req, res) => {
           companyAddress: globalSettings?.companyAddress || config.contact?.companyAddress || '',
           workingHours: config.contact?.workingHours || '',
           isContactFormEnabled: config.contact?.isContactFormEnabled !== false
+        },
+        footer: {
+          brandDescription:
+            config.footer?.brandDescription ||
+            'Enterprise on-demand home & technical services marketplace across Indore. Certified genuine parts, transparent doorstep billing, and background-checked technicians.',
+          copyrightText: config.footer?.copyrightText || '© {year} Help-U Technologies. All rights reserved.',
+          bottomRightText: config.footer?.bottomRightText || 'Built in Indore 🇮🇳 • Speed, Safety & Quality'
         },
         socialLinks: config.socialLinks,
         testimonials: config.testimonials || [],
@@ -200,7 +234,8 @@ exports.updateAdminLandingConfig = async (req, res) => {
       'faqs',
       'contact',
       'socialLinks',
-      'testimonials'
+      'testimonials',
+      'footer'
     ];
 
     if (updateData.appLinks && typeof updateData.appLinks === 'object') {
@@ -212,7 +247,42 @@ exports.updateAdminLandingConfig = async (req, res) => {
       }
     }
 
+    if (updateData.partnerSection && typeof updateData.partnerSection === 'object') {
+      if (typeof updateData.partnerSection.partnerPlayStoreUrl === 'string') {
+        updateData.partnerSection.partnerPlayStoreUrl = updateData.partnerSection.partnerPlayStoreUrl.trim();
+      }
+      if (typeof updateData.partnerSection.partnerAppStoreUrl === 'string') {
+        updateData.partnerSection.partnerAppStoreUrl = updateData.partnerSection.partnerAppStoreUrl.trim();
+      }
+      if (typeof updateData.partnerSection.defaultCity === 'string') {
+        updateData.partnerSection.defaultCity = updateData.partnerSection.defaultCity.trim();
+      }
+      if (Array.isArray(updateData.partnerSection.trades)) {
+        updateData.partnerSection.trades = updateData.partnerSection.trades
+          .map((t) => String(t || '').trim())
+          .filter(Boolean);
+      }
+    }
+
+    if (updateData.footer && typeof updateData.footer === 'object') {
+      config.footer = {
+        ...(config.footer?.toObject ? config.footer.toObject() : (config.footer || {})),
+        ...updateData.footer
+      };
+      if (typeof updateData.footer.copyrightText === 'string') {
+        config.footer.copyrightText = updateData.footer.copyrightText.trim();
+      }
+      if (typeof updateData.footer.bottomRightText === 'string') {
+        config.footer.bottomRightText = updateData.footer.bottomRightText.trim();
+      }
+      if (typeof updateData.footer.brandDescription === 'string') {
+        config.footer.brandDescription = updateData.footer.brandDescription.trim();
+      }
+      config.markModified('footer');
+    }
+
     allowedFields.forEach((field) => {
+      if (field === 'footer') return;
       if (updateData[field] !== undefined) {
         config[field] = updateData[field];
         config.markModified(field);

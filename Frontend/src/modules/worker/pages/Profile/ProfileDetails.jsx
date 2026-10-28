@@ -29,6 +29,8 @@ const ProfileDetails = () => {
     aadharBackDocument: '',
     panDocument: '',
     otherDocuments: [],
+    customDocuments: [],
+    customFields: {},
   });
 
   const [previewDoc, setPreviewDoc] = useState(null);
@@ -85,6 +87,8 @@ const ProfileDetails = () => {
             aadharBackDocument: storedData.aadharBackDocument || (storedData.aadhar && storedData.aadhar.backDocument) || '',
             panDocument: storedData.panDocument || (storedData.pan && storedData.pan.document) || '',
             otherDocuments: storedData.otherDocuments || [],
+            customDocuments: storedData.customDocuments || [],
+            customFields: storedData.customFields || {},
           }));
         }
 
@@ -116,6 +120,8 @@ const ProfileDetails = () => {
             aadharBackDocument: apiData.aadharBackDocument || (apiData.aadhar && apiData.aadhar.backDocument) || '',
             panDocument: apiData.panDocument || (apiData.pan && apiData.pan.document) || '',
             otherDocuments: apiData.otherDocuments || [],
+            customDocuments: apiData.customDocuments || [],
+            customFields: apiData.customFields || {},
           };
 
           setProfile(prev => ({ ...prev, ...newProfile }));
@@ -304,6 +310,7 @@ const ProfileDetails = () => {
                 { label: 'Aadhar Card (Front)', url: profile.aadharDocument },
                 { label: 'Aadhar Card (Back)', url: profile.aadharBackDocument },
                 { label: 'PAN Card', url: profile.panDocument },
+                ...(Array.isArray(profile.customDocuments) ? profile.customDocuments.map(d => ({ label: d.label || d.fieldKey, url: d.url })) : [])
               ].map((doc, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <div className="flex items-center gap-3">

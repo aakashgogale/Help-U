@@ -38,6 +38,7 @@ const DisputeDetail = lazy(() => import('../pages/Disputes/DisputeDetail'));
 const RecurringBookings = lazy(() => import('../pages/RecurringBookings'));
 const Coupons = lazy(() => import('../pages/Coupons'));
 const Zones = lazy(() => import('../pages/Zones'));
+const LoginBanners = lazy(() => import('../pages/LoginBanners'));
 
 
 
@@ -85,6 +86,7 @@ const AdminRoutes = () => {
           <Route path="settlements/*" element={<Settlements />} />
           <Route path="settings/*" element={<Settings />} />
           <Route path="landing-page" element={<LandingPageAdmin />} />
+          <Route path="login-banners" element={<LoginBanners />} />
           <Route path="customization" element={<Customization />} />
           <Route path="legal-pages" element={<LegalPages />} />
           <Route path="support-messages" element={<SupportMessages />} />

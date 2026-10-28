@@ -5,10 +5,12 @@ const { getPublicSettings } = require('../../controllers/adminControllers/settin
 const { getBookingOptions } = require('../../controllers/addOnController');
 const { getPublicLegalPage } = require('../../controllers/publicControllers/legalPageController');
 const { detectLanguageFromLocation, reverseGeocode } = require('../../services/locationService');
+const { getPublicPartnerFields } = require('../../controllers/adminControllers/partnerFieldController');
 
 router.get('/config', getPublicSettings);
 router.get('/booking-options', getBookingOptions);
 router.get('/legal-pages/:slug', getPublicLegalPage);
+router.get('/partner-registration-fields', getPublicPartnerFields);
 
 /**
  * @route   GET /api/public/detect-language
@@ -69,25 +71,84 @@ router.get('/reverse-geocode', async (req, res) => {
 router.get('/ip-location', async (req, res) => {
   try {
     const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '';
-    const clientIp = String(rawIp).split(',')[0].trim();
-    const isLocal = !clientIp || clientIp === '::1' || clientIp.startsWith('127.') || clientIp.startsWith('192.168.') || clientIp.startsWith('10.');
-    
-    const targetUrl = isLocal
-      ? 'http://ip-api.com/json/'
-      : `http://ip-api.com/json/${encodeURIComponent(clientIp)}`;
+    let clientIp = String(rawIp).split(',')[0].trim();
+    if (clientIp.startsWith('::ffff:')) {
+      clientIp = clientIp.replace('::ffff:', '');
+    }
 
-    const response = await axios.get(targetUrl, { timeout: 4000 });
-    if (response.data && response.data.status === 'success') {
-      return res.json({
-        success: true,
-        latitude: response.data.lat,
-        longitude: response.data.lon,
-        city: response.data.city || '',
-        region: response.data.regionName || response.data.region || '',
-        country: response.data.country || 'India',
-        pincode: response.data.zip || '',
-        ip: response.data.query || clientIp
-      });
+    const isPrivate = !clientIp ||
+      clientIp === '::1' ||
+      clientIp === '127.0.0.1' ||
+      clientIp === 'localhost' ||
+      clientIp.startsWith('10.') ||
+      clientIp.startsWith('192.168.') ||
+      clientIp.startsWith('127.') ||
+      clientIp.startsWith('169.254.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(clientIp);
+
+    const queryParam = isPrivate ? '' : encodeURIComponent(clientIp);
+
+    // Provider 1: ipwho.is (fast HTTPS, generous rate limits, highly accurate in India)
+    try {
+      const targetUrl = `https://ipwho.is/${queryParam}`;
+      const response = await axios.get(targetUrl, { timeout: 3500 });
+      if (response.data && response.data.success && response.data.latitude && response.data.longitude) {
+        return res.json({
+          success: true,
+          latitude: Number(response.data.latitude),
+          longitude: Number(response.data.longitude),
+          city: response.data.city || '',
+          region: response.data.region || '',
+          country: response.data.country || 'India',
+          pincode: response.data.postal || '',
+          ip: response.data.ip || clientIp,
+          provider: 'ipwhois'
+        });
+      }
+    } catch (err1) {
+      // Continue to next provider
+    }
+
+    // Provider 2: freeipapi.com (HTTPS fallback)
+    try {
+      const targetUrl = `https://freeipapi.com/api/json/${queryParam}`;
+      const response = await axios.get(targetUrl, { timeout: 3500, maxRedirects: 3 });
+      if (response.data && response.data.latitude && response.data.longitude) {
+        return res.json({
+          success: true,
+          latitude: Number(response.data.latitude),
+          longitude: Number(response.data.longitude),
+          city: response.data.cityName || '',
+          region: response.data.regionName || '',
+          country: response.data.countryName || 'India',
+          pincode: response.data.zipCode || '',
+          ip: response.data.ipAddress || clientIp,
+          provider: 'freeipapi'
+        });
+      }
+    } catch (err2) {
+      // Continue to next provider
+    }
+
+    // Provider 3: ip-api.com
+    try {
+      const targetUrl = `http://ip-api.com/json/${queryParam}`;
+      const response = await axios.get(targetUrl, { timeout: 3500 });
+      if (response.data && response.data.status === 'success' && response.data.lat && response.data.lon) {
+        return res.json({
+          success: true,
+          latitude: Number(response.data.lat),
+          longitude: Number(response.data.lon),
+          city: response.data.city || '',
+          region: response.data.regionName || response.data.region || '',
+          country: response.data.country || 'India',
+          pincode: response.data.zip || '',
+          ip: response.data.query || clientIp,
+          provider: 'ipapi'
+        });
+      }
+    } catch (err3) {
+      // Continue
     }
   } catch (error) {
     console.warn('[ip-location] IP lookup failed:', error.message);
