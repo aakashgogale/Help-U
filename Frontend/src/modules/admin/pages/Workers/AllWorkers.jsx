@@ -52,7 +52,9 @@ const AllWorkers = () => {
             other: worker.otherDocuments?.[0]
           },
           createdAt: worker.createdAt,
-          isActive: worker.isActive
+          isActive: worker.isActive,
+          serviceRange: worker.settings?.serviceRange ?? null,
+          address: worker.address
         }));
         setWorkers(transformedWorkers);
       } else {
@@ -392,6 +394,18 @@ const AllWorkers = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Active</label>
                 <div className={`text-sm font-semibold ${selectedWorker.isActive ? 'text-green-600' : 'text-red-600'}`}>
                   {selectedWorker.isActive ? 'Active' : 'Inactive'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Service Radius</label>
+                <div className="text-gray-900 font-medium">
+                  {selectedWorker.serviceRange ? `${selectedWorker.serviceRange} km (Custom)` : 'Platform Default'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Home Map Location</label>
+                <div className={`text-sm font-medium ${selectedWorker.address?.lat && selectedWorker.address?.lng ? 'text-green-600' : 'text-amber-600'}`}>
+                  {selectedWorker.address?.lat && selectedWorker.address?.lng ? 'Coordinates Saved' : 'No Coordinates (Uses Platform Radius)'}
                 </div>
               </div>
             </div>

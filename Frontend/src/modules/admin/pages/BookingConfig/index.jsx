@@ -349,6 +349,29 @@ const BookingConfig = () => {
           </div>
         </Card>
 
+        {/* Partner service area */}
+        <Card title="Partner Service Area" icon={FiTarget}>
+          <ToggleRow
+            label="Let partners set their own service radius"
+            description="A partner can choose how many km from his own home address he will travel. It is optional for each partner: empty means the platform search radius applies. When this is off, partners do not see the field and everyone uses the platform radius (saved choices are kept)."
+            checked={config.isWorkerServiceRadiusEnabled}
+            onChange={set('isWorkerServiceRadiusEnabled')}
+          />
+          {config.isWorkerServiceRadiusEnabled && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Smallest radius a partner may choose" hint="Partners must pick at least this many km.">
+                <NumberInput value={config.workerServiceRadiusMinKm} onChange={set('workerServiceRadiusMinKm')} min={1} suffix="km" />
+              </Field>
+              <Field label="Largest radius a partner may choose" hint="Also the farthest from home a partner can ever be matched. Must not be below the smallest.">
+                <NumberInput value={config.workerServiceRadiusMaxKm} onChange={set('workerServiceRadiusMaxKm')} min={1} suffix="km" />
+              </Field>
+            </div>
+          )}
+          <p className="mt-3 rounded bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            A partner's own radius replaces the platform search radius for him (it can be larger or smaller), measured from his saved home address. Partners with no saved map location use the platform radius.
+          </p>
+        </Card>
+
         {/* Wallet top-up */}
         <Card title="Wallet Top-up" icon={FiDollarSign}>
           <div className="grid gap-4 sm:grid-cols-2">

@@ -10,6 +10,7 @@ import AddressSelectionModal from '../../../user/pages/Checkout/components/Addre
 import { toast } from 'react-hot-toast';
 import { z } from "zod";
 import flutterBridge from '../../../../utils/flutterBridge';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
 
 // Zod schema
 const workerProfileSchema = z.object({
@@ -26,6 +27,8 @@ const workerProfileSchema = z.object({
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  // The admin decides whether partners may set a radius, and the smallest and largest they may choose
+  const { isWorkerServiceRadiusEnabled, workerServiceRadiusMinKm, workerServiceRadiusMaxKm } = useBookingConfig();
 
   // Helper function to convert hex to rgba
   const hexToRgba = (hex, alpha) => {
@@ -44,7 +47,7 @@ const EditProfile = () => {
     serviceCategories: [], // Array for multiple selection
     profilePhoto: '', // URL
     aadharDocument: '', // URL
-    serviceRange: 10,
+    serviceRange: '', // optional: empty = use the platform radius
   });
 
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -188,7 +191,7 @@ const EditProfile = () => {
             serviceCategories: Array.isArray(v.service) ? v.service : (v.service ? [v.service] : []),
             profilePhoto: v.profilePhoto || '',
             aadharDocument: v.aadharDocument || (v.aadhar && v.aadhar.document) || '',
-            serviceRange: v.settings?.serviceRange || 10,
+            serviceRange: v.settings?.serviceRange ?? '',
           });
 
           // Update local storage
@@ -341,6 +344,11 @@ const EditProfile = () => {
       serviceCategories: formData.serviceCategories,
     });
 
+    if (isWorkerServiceRadiusEnabled && formData.serviceRange !== '' && (Number(formData.serviceRange) < workerServiceRadiusMinKm || Number(formData.serviceRange) > workerServiceRadiusMaxKm)) {
+      toast.error(`Service radius must be between ${workerServiceRadiusMinKm} and ${workerServiceRadiusMaxKm} km`);
+      return;
+    }
+
     if (!validationResult.success) {
       console.log('Validation failed:', validationResult.error);
       const errorMessage = validationResult.error?.errors?.[0]?.message || 'Validation failed';
@@ -384,7 +392,7 @@ const EditProfile = () => {
         serviceCategory: formData.serviceCategories,
         profilePhoto: photoUrl,
         aadharDocument: aadharUrl,
-        serviceRange: formData.serviceRange
+        serviceRange: formData.serviceRange === '' ? null : Number(formData.serviceRange)
       };
 
       try {
@@ -687,29 +695,44 @@ const EditProfile = () => {
           </div>
 
           {/* Service Range */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <div
-                className="p-2 rounded-lg"
-                style={{
-                  background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
-                }}
-              >
-                <FiMapPin className="w-4 h-4" style={{ color: themeColors.icon }} />
-              </div>
-              <span>Service Range (Km) <span className="text-red-500">*</span></span>
-            </label>
-            <input
-              type="number"
-              value={formData.serviceRange}
-              onChange={(e) => handleInputChange('serviceRange', e.target.value)}
-              placeholder="e.g. 10"
-              min="1"
-              className="w-full px-4 py-3 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-2"
-              style={{ focusRingColor: themeColors.button }}
-            />
-            <p className="text-[10px] text-gray-400 mt-1">Distance from your location where you can provide services</p>
-          </div>
+          {isWorkerServiceRadiusEnabled && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{
+                    background: `linear-gradient(135deg, ${themeColors.icon}25 0%, ${themeColors.icon}15 100%)`,
+                  }}
+                >
+                  <FiMapPin className="w-4 h-4" style={{ color: themeColors.icon }} />
+                </div>
+                <span>Service radius from your home address (km) <span className="text-gray-400 font-normal">(optional)</span></span>
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={formData.serviceRange}
+                onChange={(e) => handleInputChange('serviceRange', e.target.value)}
+                placeholder="Leave empty to use the standard area"
+                min={workerServiceRadiusMinKm}
+                max={workerServiceRadiusMaxKm}
+                step="0.5"
+                className="w-full px-4 py-3 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-2"
+                style={{ focusRingColor: themeColors.button }}
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                How far from your saved home address you will travel for jobs, between {workerServiceRadiusMinKm} and {workerServiceRadiusMaxKm} km. Leave it empty to get jobs in the standard area. It needs your address saved with the map pin.
+              </p>
+              {(!formData.address?.lat || !formData.address?.lng) && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  ⚠️ Note: Your address doesn't have a map location saved yet. Please set your address using the map picker above so your custom radius can be activated.
+                </p>
+              )}
+              {formData.serviceRange !== '' && (Number(formData.serviceRange) < workerServiceRadiusMinKm || Number(formData.serviceRange) > workerServiceRadiusMaxKm) && (
+                <p className="text-[11px] text-red-500 mt-1">Choose between {workerServiceRadiusMinKm} and {workerServiceRadiusMaxKm} km.</p>
+              )}
+            </div>
+          )}
 
           {/* Aadhar Document Upload */}
           <div>

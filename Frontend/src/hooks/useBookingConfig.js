@@ -70,6 +70,9 @@ export const BOOKING_CONFIG_DEFAULTS = {
   scrapWorkerPayoutValue: 0,
   scrapWorkerPayoutMax: 0,
   // Customer wallet top-up limits (₹)
+  isWorkerServiceRadiusEnabled: false,
+  workerServiceRadiusMinKm: 2,
+  workerServiceRadiusMaxKm: 25,
   walletMinTopup: 100,
   walletMaxTopup: 50000
 };

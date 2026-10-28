@@ -248,17 +248,14 @@ const register = async (req, res) => {
       otherUrls = uploadedOthers;
     }
 
-    // A new worker starts with the admin's current cash limit and service range, the same values
-    // the admin screen pushes to existing workers (otherwise only old workers follow the setting).
+    // A new worker starts with the admin's current cash limit. Service radius is optional (null = platform radius).
     const Settings = require('../../models/Settings');
-    const globalSettings = await Settings.findOne({ type: 'global' }).select('vendorCashLimit searchRadius').lean();
+    const globalSettings = await Settings.findOne({ type: 'global' }).select('vendorCashLimit').lean();
     const defaultWallet = Number.isFinite(globalSettings?.vendorCashLimit) ? { cashLimit: globalSettings.vendorCashLimit } : undefined;
-    const defaultSettings = globalSettings?.searchRadius > 0 ? { serviceRange: globalSettings.searchRadius } : undefined;
 
     const worker = await Worker.create({
       name, email, phone,
       ...(defaultWallet ? { wallet: defaultWallet } : {}),
-      ...(defaultSettings ? { settings: defaultSettings } : {}),
       service: Array.isArray(service) ? service.map(s => String(s).trim()).filter(Boolean) : [],
       aadhar: {
         number: aadhar,

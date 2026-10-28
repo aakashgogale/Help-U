@@ -217,9 +217,11 @@ const workerSchema = new mongoose.Schema({
       type: String,
       default: 'en'
     },
+    // How far (km) from his saved home address this partner will travel. Optional: empty means the platform
+    // search radius applies. Only used while the admin has switched the feature on (utils/serviceArea.js).
     serviceRange: {
       type: Number,
-      default: 10, // Default 10km service range for the worker
+      default: null,
       min: 1
     },
     // Whether the worker wants emergency job alerts. On by default so the
@@ -347,6 +349,7 @@ workerSchema.index({ approvalStatus: 1 });
 workerSchema.index({ 'wallet.earnings': -1 });
 workerSchema.index({ referredBy: 1 });
 workerSchema.index({ geoLocation: '2dsphere' }); // Fast geo queries
+workerSchema.index({ 'address.lat': 1, 'address.lng': 1 }); // Partner service area: partners whose home address is near a customer
 workerSchema.index({ isOnline: 1, availability: 1, approvalStatus: 1 }); // Compound index for worker search
 
 // Helper to generate random referral code

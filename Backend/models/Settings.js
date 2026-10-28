@@ -406,6 +406,10 @@ const settingsSchema = new mongoose.Schema({
   assignmentAcceptanceWeight: { type: Number, default: 20, min: 0, max: 100 },
   assignmentCompletionWeight: { type: Number, default: 15, min: 0, max: 100 },
   assignmentResponseTimeWeight: { type: Number, default: 0, min: 0, max: 100 },
+  // Partner service area (utils/serviceArea.js): a partner may limit himself to a radius around his home address
+  isWorkerServiceRadiusEnabled: { type: Boolean, default: false },
+  workerServiceRadiusMinKm: { type: Number, default: 2, min: 1, max: 200 },
+  workerServiceRadiusMaxKm: { type: Number, default: 25, min: 1, max: 200 },
   // Workers rated below this (with enough reviews to trust it) are not alerted.
   assignmentMinRating: { type: Number, default: 0, min: 0, max: 5 },
   // Acceptance and completion rates look back this many days.

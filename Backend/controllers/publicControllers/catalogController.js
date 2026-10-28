@@ -992,17 +992,34 @@ const getCategoriesEta = async (req, res) => {
         }
       }
     })
-      .select('service categories geoLocation')
+      .select('service categories geoLocation settings address')
       .limit(200)
       .lean();
 
-    if (nearby.length === 0) {
+    // Partner service area (admin switch): same rule as the real dispatch, so a badge never promises a partner
+    // who would not actually be alerted. Partners are judged by their own radius from their home address.
+    let nearbyList = nearby;
+    const eligibleConfig = await require('../../utils/bookingConfig').getBookingConfig().catch(() => null);
+    if (eligibleConfig && eligibleConfig.isWorkerServiceRadiusEnabled) {
+      const serviceArea = require('../../utils/serviceArea');
+      nearbyList = nearby.filter((w) => serviceArea.insideOwnArea(w, { lat, lng }, eligibleConfig) !== false);
+      try {
+        const extras = await require('../../services/locationService').findServiceAreaWorkers(
+          { lat, lng }, eligibleConfig, {}, nearby.map((w) => w._id), { availability: 'AVAILABLE' }
+        );
+        nearbyList = [...nearbyList, ...extras];
+      } catch (err) { /* badges are best effort */ }
+    }
+
+    if (nearbyList.length === 0) {
       return res.status(200).json({ success: true, eta: {} });
     }
 
     // Precompute each worker's distance from the user (km). $near already
     // ordered them by distance, so the first match for a category is the closest.
-    const workerDistanceKm = nearby.map(w => {
+    // (the list is sorted by distance below, because partners found by their service area are added at the end)
+    const workerDistanceKm = nearbyList.map(w => {
+      if (w.viaServiceArea && Number.isFinite(w.distance)) return w.distance;
       const [wLng, wLat] = w.geoLocation?.coordinates || [0, 0];
       const dLat = (wLat - lat) * Math.PI / 180;
       const dLng = (wLng - lng) * Math.PI / 180;
@@ -1019,14 +1036,19 @@ const getCategoriesEta = async (req, res) => {
     const MIN_DISPLAY = 20;
     const MAX_DISPLAY = 120;
 
+    // Closest first, so the first match for a category is the nearest partner
+    const order = nearbyList.map((_, i) => i).sort((a, b) => workerDistanceKm[a] - workerDistanceKm[b]);
+    const sortedWorkers = order.map((i) => nearbyList[i]);
+    const sortedKm = order.map((i) => workerDistanceKm[i]);
+
     const eta = {};
     for (const cat of categories) {
       const haystack = [cat.title, cat.slug].filter(Boolean).map(s => s.toLowerCase());
 
       // Find the closest nearby worker whose declared services/categories match
       // this category by title or slug (case-insensitive, substring match either way).
-      for (let i = 0; i < nearby.length; i++) {
-        const w = nearby[i];
+      for (let i = 0; i < sortedWorkers.length; i++) {
+        const w = sortedWorkers[i];
         const workerTags = [...(w.service || []), ...(w.categories || [])]
           .map(s => (s || '').toLowerCase())
           .filter(Boolean);
@@ -1036,7 +1058,7 @@ const getCategoriesEta = async (req, res) => {
         );
 
         if (matches) {
-          const km = workerDistanceKm[i];
+          const km = sortedKm[i];
           const minutes = Math.ceil(BASE_MINUTES + (km / AVG_SPEED_KMPH) * 60);
           const clamped = Math.min(MAX_DISPLAY, Math.max(MIN_DISPLAY, minutes));
           eta[cat._id.toString()] = clamped;

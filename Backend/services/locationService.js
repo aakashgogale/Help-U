@@ -257,7 +257,7 @@ const _buildWorkerQuery = (filters = {}) => {
 /**
  * Find workers within specified radius of a location
  */
-const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) => {
+const findNearbyByLiveLocation = async (centerLocation, radiusKm = 10, filters = {}) => {
   const Worker = require('../models/Worker');
   const Settings = require('../models/Settings');
   const { getNearbyWorkersFromCache, isRedisConnected } = require('./redisService');
@@ -298,7 +298,7 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
         const workers = await Worker.find({
           _id: { $in: workerIds },
           ...baseQuery
-        }).select('name businessName phone address profilePhoto service rating isOnline availability geoLocation');
+        }).select('name businessName phone address profilePhoto service rating isOnline availability geoLocation settings');
 
         // Merge distance from cache
         const workerMap = new Map(workers.map(v => [v._id.toString(), v.toObject()]));
@@ -355,11 +355,8 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
           return workerObj;
         });
 
-        // Filter by individual worker range
-        nearbyWorkers = nearbyWorkers.filter(v => {
-          const vRange = v.settings?.serviceRange || radiusKm;
-          return v.distance <= vRange;
-        });
+        // The partner's own radius is applied afterwards, for every search path alike (see findNearbyWorkers)
+        nearbyWorkers = nearbyWorkers.filter(v => v.distance <= radiusKm);
 
         console.log(`[LocationService] Found ${nearbyWorkers.length} workers using 2dsphere query`);
         return nearbyWorkers;
@@ -389,11 +386,10 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
         });
       }
 
-      const vRange = worker.settings?.serviceRange || radiusKm;
       return {
         ...worker.toObject(),
         distance: distance,
-        withinRange: distance !== null && distance <= vRange,
+        withinRange: distance !== null && distance <= radiusKm,
         isUsingCurrentLocation: !!worker.location?.lat // Flag for debugging
       };
     }).filter(worker => worker.withinRange);
@@ -404,6 +400,77 @@ const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) =>
   } catch (error) {
     console.error('Find nearby workers error:', error);
     return [];
+  }
+};
+
+/**
+ * Partners whose OWN service area covers the customer although they are not within the platform radius of
+ * him right now (for example a partner at the other end of his city who accepts 15 km from home).
+ * Found by their saved home address; the same filters as the normal search apply (online, service, zone, cash
+ * limit). `extraQuery` adds conditions (the "pro arrives" badges only want available partners).
+ */
+const findServiceAreaWorkers = async (center, config, filters = {}, excludeIds = [], extraQuery = {}) => {
+  const Worker = require('../models/Worker');
+  const serviceArea = require('../utils/serviceArea');
+  const { city: _ignoredCity, ...geoFilters } = filters;
+  const box = serviceArea.boundingBox(center, Number(config.workerServiceRadiusMaxKm) || 25);
+
+  const candidates = await Worker.find({
+    ..._buildWorkerQuery(geoFilters),
+    ...extraQuery,
+    ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
+    'settings.serviceRange': { $gt: 0 },
+    'address.lat': { $gte: box.minLat, $lte: box.maxLat },
+    'address.lng': { $gte: box.minLng, $lte: box.maxLng }
+  })
+    .select('name businessName phone address profilePhoto service categories rating isOnline availability geoLocation settings')
+    .limit(100);
+
+  const found = [];
+  for (const doc of candidates) {
+    const worker = doc.toObject();
+    if (serviceArea.insideOwnArea(worker, center, config) !== true) continue;
+    const homeDistance = serviceArea.homeDistanceKm(worker, center);
+    const coords = worker.geoLocation && worker.geoLocation.coordinates;
+    const hasLive = Array.isArray(coords) && coords.length === 2 && !(coords[0] === 0 && coords[1] === 0);
+    // Ranked by how far he really is from the customer now; his home distance when his position is unknown
+    worker.distance = hasLive ? calculateDistance(center, { lat: coords[1], lng: coords[0] }) : homeDistance;
+    worker.homeDistance = homeDistance;
+    worker.viaServiceArea = true;
+    found.push(worker);
+  }
+  return found;
+};
+
+/**
+ * Find partners for a customer location.
+ *
+ * Normally: partners within the platform search radius of the customer (by their current position). While the
+ * admin has "Partner service area" switched on, a partner who chose his own radius is judged by that instead,
+ * measured from his saved home address: left out when the customer is beyond it, and included when the customer
+ * is inside it even though his current position is outside the platform radius. Everyone else is unchanged.
+ */
+const findNearbyWorkers = async (centerLocation, radiusKm = 10, filters = {}) => {
+  const pool = await findNearbyByLiveLocation(centerLocation, radiusKm, filters);
+  if (!centerLocation || typeof centerLocation.lat !== 'number' || typeof centerLocation.lng !== 'number') return pool;
+
+  let config;
+  try {
+    config = await require('../utils/bookingConfig').getBookingConfig();
+  } catch (err) {
+    return pool;
+  }
+  if (!config.isWorkerServiceRadiusEnabled) return pool;
+
+  const serviceArea = require('../utils/serviceArea');
+  const kept = pool.filter((w) => serviceArea.insideOwnArea(w, centerLocation, config) !== false);
+  try {
+    const extras = await findServiceAreaWorkers(centerLocation, config, filters, pool.map((w) => w._id));
+    if (extras.length) console.log(`[LocationService] ${extras.length} more partner(s) whose own service area covers this address`);
+    return [...kept, ...extras];
+  } catch (err) {
+    console.warn('[LocationService] service-area search failed, using the platform radius only:', err.message);
+    return kept;
   }
 };
 
@@ -466,6 +533,7 @@ module.exports = {
   detectLanguageFromLocation,
   getActiveApiKey,
   findNearbyWorkers,
+  findServiceAreaWorkers,
   findWorkersByCity,
   calculateDistance,
   getDistanceMatrix

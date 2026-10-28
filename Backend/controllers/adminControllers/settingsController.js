@@ -199,15 +199,6 @@ exports.updateSettings = async (req, res, next) => {
       );
     }
 
-    // Propagate searchRadius to all existing workers if it was changed
-    if (searchRadius !== undefined) {
-      console.log(`Updating all workers with new service range: ${searchRadius}`);
-      await Worker.updateMany(
-        {},
-        { $set: { 'settings.serviceRange': searchRadius } }
-      );
-    }
-
     res.status(200).json({
       success: true,
       message: 'System settings updated successfully',

@@ -153,9 +153,19 @@ const updateProfile = async (req, res) => {
     }
 
     // Handle service range
+    // Optional service radius from the partner's home address. Only while the admin has the feature switched
+    // on; otherwise whatever the app sent is ignored. Empty clears it (the platform radius applies).
     if (serviceRange !== undefined) {
-      if (!worker.settings) worker.settings = {};
-      worker.settings.serviceRange = Number(serviceRange) || 10;
+      const { getBookingConfig } = require('../../utils/bookingConfig');
+      const { validateServiceRadius } = require('../../utils/serviceArea');
+      const decision = validateServiceRadius(serviceRange, await getBookingConfig());
+      if (decision.action === 'error') {
+        return res.status(400).json({ success: false, message: decision.message });
+      }
+      if (decision.action === 'set' || decision.action === 'clear') {
+        if (!worker.settings) worker.settings = {};
+        worker.settings.serviceRange = decision.action === 'set' ? decision.value : null;
+      }
     }
 
     // Handle skills
