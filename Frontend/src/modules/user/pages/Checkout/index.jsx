@@ -888,7 +888,8 @@ const Checkout = () => {
         const getComp = (type) => locationObj.components?.find(c => c.types.includes(type))?.long_name || '';
 
         const newAddress = {
-          type: 'home',
+          type: locationObj.addressType || 'home',
+          customName: locationObj.customName || '',
           addressLine1: locationObj.address,
           addressLine2: savedHouseNumber,
           landmark: locationObj.landmark || '',
@@ -902,9 +903,10 @@ const Checkout = () => {
 
         const response = await userAuthService.getProfile();
         if (response.success && response.user) {
-          const updatedAddresses = [newAddress]; // Always replace with single address
+          const existing = (response.user.addresses || []).map(a => ({ ...a, isDefault: false }));
+          const updatedAddresses = [...existing, newAddress];
           await userAuthService.updateProfile({ addresses: updatedAddresses });
-          toast.success('Address updated in profile!');
+          toast.success('Address saved to profile!');
         }
       } catch (e) {
         console.error('Failed to save address to profile', e);

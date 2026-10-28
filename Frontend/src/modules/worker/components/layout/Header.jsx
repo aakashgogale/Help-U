@@ -36,15 +36,24 @@ const Header = memo(({
   useEffect(() => {
     if (!showLocation) return undefined;
     let active = true;
-    workerService.getProfile()
-      .then((res) => {
-        const label = toLocationLabel(res?.worker?.address);
-        if (!active) return;
-        setLocationLabel(label);
-        try { label ? localStorage.setItem(LOCATION_CACHE_KEY, label) : localStorage.removeItem(LOCATION_CACHE_KEY); } catch { /* ignore */ }
-      })
-      .catch(() => { /* keep cached label */ });
-    return () => { active = false; };
+    const fetchWorkerLocation = () => {
+      workerService.getProfile()
+        .then((res) => {
+          const label = toLocationLabel(res?.worker?.address);
+          if (!active) return;
+          setLocationLabel(label);
+          try { label ? localStorage.setItem(LOCATION_CACHE_KEY, label) : localStorage.removeItem(LOCATION_CACHE_KEY); } catch { /* ignore */ }
+        })
+        .catch(() => { /* keep cached label */ });
+    };
+
+    fetchWorkerLocation();
+    window.addEventListener('workerAddressUpdated', fetchWorkerLocation);
+
+    return () => { 
+      active = false;
+      window.removeEventListener('workerAddressUpdated', fetchWorkerLocation);
+    };
   }, [showLocation]);
 
   // Sync prop changes

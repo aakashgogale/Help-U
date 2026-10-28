@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { GoogleMap, Marker, MarkerF } from '@react-google-maps/api';
 import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 import { FiCrosshair } from 'react-icons/fi';
 import flutterBridge from '../../../../../utils/flutterBridge';
 import { toast } from 'react-hot-toast';
+
+const MarkerComponent = MarkerF || Marker;
 
 const libraries = ['places', 'geometry'];
 
@@ -163,12 +165,22 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
     </div>;
   }
 
+  const safeMarker = useMemo(() => {
+    if (!marker) return defaultCenter;
+    const lat = Number(marker.lat);
+    const lng = Number(marker.lng);
+    if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+      return { lat, lng };
+    }
+    return defaultCenter;
+  }, [marker]);
+
   return (
     <div className="w-full">
       <div className="relative bg-gray-200" style={{ height }}>
         <GoogleMap
           mapContainerStyle={{ ...mapContainerStyle, height: `${height}px` }}
-          center={marker}
+          center={safeMarker}
           zoom={15}
           onClick={onMapClick}
           onLoad={setMap}
@@ -182,7 +194,7 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
             zoomControl: false
           }}
         >
-          {marker && <Marker position={marker} />}
+          {safeMarker && <MarkerComponent position={safeMarker} />}
         </GoogleMap>
 
         {/* Pin Instruction Overlay */}

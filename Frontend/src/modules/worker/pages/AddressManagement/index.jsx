@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiMapPin, FiSave, FiSearch, FiHome } from 'react-icons/fi';
-import { Autocomplete } from '@react-google-maps/api';
+import { FiArrowLeft, FiMapPin, FiSave, FiSearch, FiHome, FiBriefcase, FiCheck, FiTool } from 'react-icons/fi';
 import { useAppGoogleMaps } from '../../../../hooks/useGoogleMapsConfig';
 import { toast } from 'react-hot-toast';
 import { workerTheme as themeColors } from '../../../../theme';
@@ -15,10 +14,16 @@ const AddressManagement = () => {
   const navigate = useNavigate();
   const [address, setAddress] = useState(''); // Display address
   const [houseNumber, setHouseNumber] = useState('');
+  const [addressType, setAddressType] = useState('home'); // home, office, custom
+  const [customName, setCustomName] = useState('');
+  const [savedAddressData, setSavedAddressData] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null); // { lat, lng, address, components... }
-  const [autocomplete, setAutocomplete] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const searchInputRef = useRef(null);
+  const autocompleteRef = useRef(null);
 
   const { isLoaded } = useAppGoogleMaps({
     libraries
@@ -26,12 +31,16 @@ const AddressManagement = () => {
 
   // Load saved address from backend
   useEffect(() => {
+    let active = true;
     const loadAddress = async () => {
       try {
+        setFetchingProfile(true);
         const response = await workerService.getProfile();
-        // Check if response has worker data
+        if (!active) return;
+        
         if (response.success && response.worker?.address) {
           const addr = response.worker.address;
+          setSavedAddressData(addr);
 
           let displayAddress = '';
           let location = null;
@@ -40,24 +49,27 @@ const AddressManagement = () => {
           if (typeof addr === 'string') {
             displayAddress = addr;
           } else {
-            // It's an object
             houseNum = addr.addressLine1 || '';
-            displayAddress = addr.fullAddress ||
-              addr.address ||
-              '';
+            displayAddress = addr.fullAddress || addr.address || '';
 
-            // If we have city/pincode but no fullAddress, try to construct
             if (!displayAddress && addr.city) {
               displayAddress = [addr.city, addr.state, addr.pincode].filter(Boolean).join(', ');
             }
 
             if (addr.lat && addr.lng) {
-              location = {
-                lat: parseFloat(addr.lat),
-                lng: parseFloat(addr.lng),
-                address: displayAddress
-              };
+              const latNum = parseFloat(addr.lat);
+              const lngNum = parseFloat(addr.lng);
+              if (!isNaN(latNum) && !isNaN(lngNum)) {
+                location = {
+                  lat: latNum,
+                  lng: lngNum,
+                  address: displayAddress
+                };
+              }
             }
+
+            if (addr.type) setAddressType(addr.type);
+            if (addr.customName) setCustomName(addr.customName);
           }
 
           setAddress(displayAddress);
@@ -69,56 +81,73 @@ const AddressManagement = () => {
         }
       } catch (error) {
         console.error('Error loading address:', error);
+      } finally {
+        if (active) setFetchingProfile(false);
       }
     };
     loadAddress();
+    return () => { active = false; };
   }, []);
 
-  const handleLocationSelect = (location) => {
-    setSelectedLocation(location);
-    // setAddress(location.address); 
-    // Usually user selects from map -> we update search query & address field
-    setSearchQuery(location.address);
-    setAddress(location.address);
-  };
+  // Safe Google Places Autocomplete on input element
+  useEffect(() => {
+    if (!isLoaded || !window.google?.maps?.places || !searchInputRef.current) return;
 
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry) {
-        const location = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          address: place.formatted_address,
-          components: place.address_components
-        };
-        setSelectedLocation(location);
-        setAddress(place.formatted_address);
-        setSearchQuery(place.formatted_address);
+    try {
+      if (!autocompleteRef.current) {
+        const ac = new window.google.maps.places.Autocomplete(searchInputRef.current, {
+          componentRestrictions: { country: 'in' },
+          fields: ['formatted_address', 'geometry', 'name', 'address_components']
+        });
+
+        ac.addListener('place_changed', () => {
+          const place = ac.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            const loc = {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+              address: place.formatted_address || place.name || '',
+              components: place.address_components
+            };
+            setSelectedLocation(loc);
+            setAddress(loc.address);
+            setSearchQuery(loc.address);
+          }
+        });
+
+        autocompleteRef.current = ac;
       }
+    } catch (err) {
+      console.warn('Failed to bind Places autocomplete:', err);
     }
-  };
+  }, [isLoaded]);
 
-  const onAutocompleteLoad = (autocompleteInstance) => {
-    setAutocomplete(autocompleteInstance);
+  const handleLocationSelect = (location) => {
+    if (!location) return;
+    setSelectedLocation(location);
+    setSearchQuery(location.address || '');
+    setAddress(location.address || '');
   };
 
   const handleSave = async () => {
-    if (!address || !selectedLocation) {
+    if (!address && !searchQuery) {
       toast.error('Please select an address');
+      return;
+    }
+
+    if (!selectedLocation || typeof selectedLocation.lat !== 'number' || typeof selectedLocation.lng !== 'number') {
+      toast.error('Please pin your location on the map');
       return;
     }
 
     setLoading(true);
 
-    // Prepare full address object similar to `AddressSelectionModal`
     let city = '';
     let state = '';
     let pincode = '';
     let addressLine2 = '';
 
-    // If we have components from Google API (either via map click or autocomplete)
-    if (selectedLocation.components) {
+    if (selectedLocation.components && Array.isArray(selectedLocation.components)) {
       selectedLocation.components.forEach(comp => {
         if (comp.types.includes('locality')) city = comp.long_name;
         if (comp.types.includes('administrative_area_level_1')) state = comp.long_name;
@@ -127,11 +156,18 @@ const AddressManagement = () => {
       });
     }
 
-    // We can also re-use existing logic from updateProfile controller which expects an object
-    // consistent with what EditProfile sends.
+    // Fallback parsing from address string if needed
+    const fullText = selectedLocation.address || address || searchQuery;
+    if (!city && fullText) {
+      const parts = fullText.split(',').map(p => p.trim());
+      city = parts.length > 2 ? parts[parts.length - 3] : (parts.length > 1 ? parts[parts.length - 2] : parts[0]);
+    }
+
     const addrData = {
-      fullAddress: selectedLocation.address || address,
-      addressLine1: houseNumber,
+      type: addressType,
+      customName: addressType === 'custom' ? customName.trim() : '',
+      fullAddress: fullText,
+      addressLine1: houseNumber.trim(),
       addressLine2: addressLine2,
       city: city,
       state: state,
@@ -147,10 +183,16 @@ const AddressManagement = () => {
 
       if (response.success) {
         toast.success('Address saved successfully!');
-        setTimeout(() => {
-          //   navigate('/worker/profile'); // Stay here or go back settings? User preference.
-          //   Let's just show success. Or maybe go back.
-        }, 500);
+        setSavedAddressData(response.worker?.address || addrData);
+
+        // Update local header cache and notify components
+        try {
+          const label = fullText || houseNumber || city || 'Location set';
+          localStorage.setItem('workerLocationLabel', label);
+        } catch (e) {
+          /* ignore */
+        }
+        window.dispatchEvent(new Event('workerAddressUpdated'));
       } else {
         toast.error(response.message || 'Failed to save address');
       }
@@ -162,122 +204,192 @@ const AddressManagement = () => {
     }
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/worker/dashboard');
+    }
+  };
+
   return (
-    <div className="min-h-screen pb-20" style={{ background: themeColors.backgroundGradient }}>
+    <div className="min-h-screen pb-20 bg-slate-50">
       <Header
         title="Manage Business Address"
         showBack={true}
-        onBack={() => navigate('/worker/settings')}
+        onBack={handleBack}
       />
 
-      <main className="px-4 py-6">
-        {/* Info Card - Same logic as Modal */}
-        <div className="rounded-xl p-3 mb-6 border" style={{ backgroundColor: `${themeColors.brand.teal}0D`, borderColor: `${themeColors.brand.teal}1A` }}>
+      <main className="max-w-2xl mx-auto px-4 py-5 space-y-4">
+        {/* Info Card */}
+        <div className="rounded-2xl p-4 bg-emerald-50 border border-emerald-100/80 shadow-xs">
           <div className="flex items-start gap-3">
-            <FiMapPin className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: themeColors.button }} />
+            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl shrink-0 mt-0.5">
+              <FiMapPin className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="font-semibold mb-1 text-sm" style={{ color: themeColors.button }}>Set Business Location</h3>
-              <p className="text-xs" style={{ color: `${themeColors.brand.teal}CC` }}>
-                Place the pin accurately on the map to help customers locate you easily.
+              <h3 className="font-bold text-slate-800 text-sm mb-0.5">Set Base Service Location</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Place the pin accurately to define your base location for receiving nearby job alerts and calculating travel distance.
               </p>
             </div>
           </div>
         </div>
 
+        {/* Current Saved Address Display Card */}
+        {savedAddressData && (savedAddressData.fullAddress || savedAddressData.addressLine1) && (
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Current Saved Address</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase flex items-center gap-1">
+                <FiCheck className="w-3 h-3" /> Active
+              </span>
+            </div>
+            <p className="text-sm font-semibold text-slate-800 leading-snug">
+              {[savedAddressData.addressLine1, savedAddressData.fullAddress || savedAddressData.address].filter(Boolean).join(', ')}
+            </p>
+            {savedAddressData.lat && savedAddressData.lng && (
+              <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                GPS: {Number(savedAddressData.lat).toFixed(4)}, {Number(savedAddressData.lng).toFixed(4)}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Map Section */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-xs overflow-hidden border border-slate-200/90">
+          <div className="px-4 py-2.5 bg-slate-100/60 border-b border-slate-200/70 flex items-center justify-between text-xs font-semibold text-slate-600">
+            <span>Pin Location on Map</span>
+            <span className="text-[11px] text-slate-400">Drag or tap to adjust</span>
+          </div>
           <LocationPicker
             onLocationSelect={handleLocationSelect}
             initialPosition={selectedLocation}
+            height={260}
           />
         </div>
 
         {/* Form Inputs Container */}
-        <div className="bg-white rounded-xl p-4 shadow-md space-y-4">
-
-          {/* Address Autocomplete */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200/90 space-y-4">
+          
+          {/* Address Autocomplete / Search */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Street Address / Area
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Search Street / Area Name
             </label>
-            {isLoaded ? (
-              <Autocomplete
-                onLoad={onAutocompleteLoad}
-                onPlaceChanged={onPlaceChanged}
-                options={{
-                  componentRestrictions: { country: 'in' },
-                  fields: ['formatted_address', 'geometry', 'name', 'address_components']
-                }}
+            <div className="relative">
+              <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={isLoaded ? "Type locality, landmark, or street..." : "Search for area..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* House / Shop / Building Number */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Shop / Flat / Building Number
+            </label>
+            <div className="relative">
+              <FiHome className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="e.g. Shop 104, 2nd Floor, ABC Complex"
+                value={houseNumber}
+                onChange={(e) => setHouseNumber(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Address Save Name / Tag (Home, Office, Custom) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              Save Address As
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setAddressType('home')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  addressType === 'home'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
               >
-                <div className="relative">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                  <input
-                    type="text"
-                    placeholder="Search for area, street name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border-2 rounded-lg text-sm focus:outline-none transition-colors"
-                    style={{ borderColor: '#e5e7eb' }}
-                    onFocus={(e) => e.target.style.borderColor = themeColors.button}
-                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </div>
-              </Autocomplete>
-            ) : (
-              <div className="relative">
+                <FiHome className="w-3.5 h-3.5" />
+                Home
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAddressType('office')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  addressType === 'office'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <FiBriefcase className="w-3.5 h-3.5" />
+                Office
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAddressType('custom')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  addressType === 'custom'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <FiTool className="w-3.5 h-3.5" />
+                Custom
+              </button>
+            </div>
+
+            {addressType === 'custom' && (
+              <div className="mt-2.5">
                 <input
                   type="text"
-                  placeholder="Loading Maps..."
-                  disabled
-                  className="w-full pl-4 py-3 border-2 rounded-lg text-sm bg-gray-100"
+                  placeholder="e.g. Workshop, Service Hub, Garage"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 />
               </div>
             )}
           </div>
 
-          {/* House Number */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Shop / Building Number
-            </label>
-            <div className="relative">
-              <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="e.g. Shop 101, Complex B"
-                value={houseNumber}
-                onChange={(e) => setHouseNumber(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border-2 rounded-lg text-sm focus:outline-none transition-colors"
-                style={{ borderColor: '#e5e7eb' }}
-                onFocus={(e) => e.target.style.borderColor = themeColors.button}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-              />
-            </div>
-          </div>
-
-          {/* Coordinates Display (Optional, for transparency) */}
+          {/* Coordinates Display */}
           {selectedLocation && (
-            <p className="text-xs text-gray-400">
-              Lat/Lng: {selectedLocation.lat?.toFixed(5)}, {selectedLocation.lng?.toFixed(5)}
-            </p>
+            <div className="text-[11px] font-mono text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 flex items-center justify-between">
+              <span>Latitude: {Number(selectedLocation.lat)?.toFixed(5)}</span>
+              <span>Longitude: {Number(selectedLocation.lng)?.toFixed(5)}</span>
+            </div>
           )}
 
           {/* Save Button */}
           <button
+            type="button"
             onClick={handleSave}
-            disabled={!searchQuery || !selectedLocation || loading}
-            className="w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            disabled={(!searchQuery && !address) || !selectedLocation || loading}
+            className="w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-sm mt-1"
             style={{
-              background: themeColors.button,
-              boxShadow: `0 4px 12px ${themeColors.button}40`
+              background: '#0F7457',
+              boxShadow: '0 4px 12px rgba(15, 116, 87, 0.25)'
             }}
           >
-            <FiSave className="w-5 h-5" />
-            {loading ? 'Saving...' : 'Save Business Address'}
+            <FiSave className="w-4 h-4" />
+            {loading ? 'Saving Address...' : 'Save Service Location'}
           </button>
         </div>
       </main>
-
     </div>
   );
 };

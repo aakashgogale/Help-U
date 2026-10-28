@@ -55,11 +55,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  // ENFORCED POLICY: Only 1 address allowed. If user changes it, we replace.
   addresses: [{
     type: {
-      type: String, // home, work, other
+      type: String, // home, office, custom
       default: 'home'
+    },
+    customName: {
+      type: String,
+      default: ''
     },
     addressLine1: String,
     addressLine2: String,
@@ -67,6 +70,14 @@ const userSchema = new mongoose.Schema({
     state: String,
     pincode: String,
     landmark: String,
+    lat: {
+      type: Number,
+      default: null
+    },
+    lng: {
+      type: Number,
+      default: null
+    },
     isDefault: {
       type: Boolean,
       default: false

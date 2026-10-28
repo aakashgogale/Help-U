@@ -10,7 +10,8 @@ export const DEFAULT_LIBRARIES = ['places', 'geometry'];
 // or with conflicting options, which causes @googlemaps/js-api-loader to throw an error.
 let activeLoaderInstance = null;
 let activeLoaderPromise = null;
-let globalIsLoaded = typeof window !== 'undefined' && Boolean(window.google?.maps);
+const isMapsFullyLoaded = () => typeof window !== 'undefined' && Boolean(window.google?.maps && window.google?.maps?.places);
+let globalIsLoaded = isMapsFullyLoaded();
 let globalLoadError = undefined;
 
 /**
@@ -48,15 +49,15 @@ export const useAppGoogleMaps = (options = {}) => {
   const config = useGoogleMapsConfig();
 
   const [isLoaded, setIsLoaded] = useState(() => {
-    return globalIsLoaded || (typeof window !== 'undefined' && Boolean(window.google?.maps));
+    return globalIsLoaded || isMapsFullyLoaded();
   });
   const [loadError, setLoadError] = useState(globalLoadError);
 
   useEffect(() => {
     let isMounted = true;
 
-    // 1. If window.google.maps is already available, resolve immediately
-    if (typeof window !== 'undefined' && window.google?.maps) {
+    // 1. If window.google.maps with places is already available, resolve immediately
+    if (isMapsFullyLoaded()) {
       globalIsLoaded = true;
       if (isMounted) setIsLoaded(true);
       return;

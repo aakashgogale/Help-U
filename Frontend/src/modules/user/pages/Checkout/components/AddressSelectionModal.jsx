@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FiArrowLeft, FiX, FiSearch, FiMapPin, FiHome } from 'react-icons/fi';
-import { Autocomplete } from '@react-google-maps/api';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { FiArrowLeft, FiX, FiSearch, FiMapPin, FiHome, FiBriefcase, FiTag } from 'react-icons/fi';
 import { useAppGoogleMaps } from '../../../../../hooks/useGoogleMapsConfig';
 import { themeColors } from '../../../../../theme';
 import LocationPicker from './LocationPicker';
@@ -8,28 +7,37 @@ import useModalLock from '../../../../../hooks/useModalLock';
 
 const libraries = ['places', 'geometry'];
 
-const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = '', onHouseNumberChange, onSave }) => {
+const AddressSelectionModal = ({
+  isOpen,
+  onClose,
+  address = '',
+  houseNumber = '',
+  onHouseNumberChange,
+  onSave,
+  initialType = 'home',
+  initialCustomName = ''
+}) => {
   const [isClosing, setIsClosing] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [mapAddress, setMapAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [autocomplete, setAutocomplete] = useState(null);
+  const [addressType, setAddressType] = useState(initialType || 'home'); // home, office, custom
+  const [customName, setCustomName] = useState(initialCustomName || '');
+
+  const searchInputRef = useRef(null);
+  const autocompleteRef = useRef(null);
 
   const { isLoaded } = useAppGoogleMaps({
     libraries
   });
 
-  // Locks the page behind the sheet (no jump to top like position:fixed caused) and hides the nav
   useModalLock(isOpen);
 
-  // The map takes whatever height is left once the header, the three fields and the button are
-  // accounted for (about 430px incl. the dimmed strip above the sheet), so it is as big as the
-  // screen allows while the sheet still never scrolls. Clamped for very short / very tall screens.
-  const [mapHeight, setMapHeight] = useState(190);
+  const [mapHeight, setMapHeight] = useState(180);
   useEffect(() => {
     if (!isOpen) return undefined;
-    const update = () => setMapHeight(Math.max(180, Math.min(360, window.innerHeight - 430)));
+    const update = () => setMapHeight(Math.max(160, Math.min(280, window.innerHeight - 480)));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -39,26 +47,52 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
     if (!isOpen) setIsClosing(false);
   }, [isOpen]);
 
-  // Suggest streets, colonies and areas (not airports/hotels/shops), nudged towards where the
-  // pin currently is so "indore" resolves to nearby places first. strictBounds stays off so the
-  // customer can still search elsewhere.
-  const autocompleteOptions = useMemo(() => {
-    const options = {
-      componentRestrictions: { country: 'in' },
-      types: ['geocode'],
-      fields: ['formatted_address', 'geometry', 'name', 'address_components']
-    };
-    const maps = typeof window !== 'undefined' ? window.google?.maps : null;
-    if (maps && selectedLocation?.lat && selectedLocation?.lng) {
-      const d = 0.15; // roughly 15 km each way
-      options.bounds = new maps.LatLngBounds(
-        { lat: selectedLocation.lat - d, lng: selectedLocation.lng - d },
-        { lat: selectedLocation.lat + d, lng: selectedLocation.lng + d }
-      );
-      options.strictBounds = false;
+  useEffect(() => {
+    if (isOpen) {
+      setAddressType(initialType || 'home');
+      setCustomName(initialCustomName || '');
+      if (address) {
+        setSearchQuery(address);
+        setMapAddress(address);
+      }
     }
-    return options;
-  }, [selectedLocation?.lat, selectedLocation?.lng, isLoaded]);
+  }, [isOpen, initialType, initialCustomName, address]);
+
+  // Safe Google Places Autocomplete on input element
+  useEffect(() => {
+    if (!isOpen || !isLoaded || !window.google?.maps?.places || !searchInputRef.current) return;
+
+    try {
+      if (!autocompleteRef.current) {
+        const options = {
+          componentRestrictions: { country: 'in' },
+          types: ['geocode'],
+          fields: ['formatted_address', 'geometry', 'name', 'address_components']
+        };
+
+        const ac = new window.google.maps.places.Autocomplete(searchInputRef.current, options);
+
+        ac.addListener('place_changed', () => {
+          const place = ac.getPlace();
+          if (place && place.geometry && place.geometry.location) {
+            const loc = {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+              address: place.formatted_address || place.name || '',
+              components: place.address_components
+            };
+            setSelectedLocation(loc);
+            setMapAddress(loc.address);
+            setSearchQuery(loc.address);
+          }
+        });
+
+        autocompleteRef.current = ac;
+      }
+    } catch (e) {
+      console.warn('Places Autocomplete initialization error:', e);
+    }
+  }, [isOpen, isLoaded]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -69,30 +103,10 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
   };
 
   const handleLocationSelect = (location) => {
+    if (!location) return;
     setSelectedLocation(location);
-    setMapAddress(location.address);
-    setSearchQuery(location.address);
-  };
-
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry) {
-        const location = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          address: place.formatted_address,
-          components: place.address_components
-        };
-        setSelectedLocation(location);
-        setMapAddress(place.formatted_address);
-        setSearchQuery(place.formatted_address);
-      }
-    }
-  };
-
-  const onAutocompleteLoad = (autocompleteInstance) => {
-    setAutocomplete(autocompleteInstance);
+    setMapAddress(location.address || '');
+    setSearchQuery(location.address || '');
   };
 
   if (!isOpen && !isClosing) return null;
@@ -123,120 +137,170 @@ const AddressSelectionModal = ({ isOpen, onClose, address = '', houseNumber = ''
               <button onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
                 <FiArrowLeft className="w-5 h-5 text-black" />
               </button>
-              <h1 className="text-xl font-bold text-black">Confirm Location</h1>
+              <h1 className="text-lg font-bold text-black">Confirm Location & Address</h1>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <FiX className="w-5 h-5 text-black" />
             </button>
           </div>
 
-          {/* Map Section */}
-          <div className="px-4 pt-3 pb-2 shrink-0">
-            <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100">
-              <LocationPicker
-                onLocationSelect={handleLocationSelect}
-                initialPosition={selectedLocation}
-                height={mapHeight}
-              />
+          {/* Scrollable Container */}
+          <div className="overflow-y-auto flex-1 overscroll-contain">
+            {/* Map Section */}
+            <div className="px-4 pt-3 pb-2 shrink-0">
+              <div className="rounded-2xl overflow-hidden shadow-xs border border-gray-200">
+                <LocationPicker
+                  onLocationSelect={handleLocationSelect}
+                  initialPosition={selectedLocation}
+                  height={mapHeight}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Address details (fits on screen; the sheet never scrolls) */}
-          <div
-            className="px-4 pt-1 pb-3 shrink-0"
-            style={{ touchAction: 'manipulation', overscrollBehavior: 'contain' }}
-          >
-            {/* Address Search */}
-            <div className="mb-2.5">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
-                Pinpoint your Address
-              </label>
-              {isLoaded ? (
-                <Autocomplete
-                  onLoad={onAutocompleteLoad}
-                  onPlaceChanged={onPlaceChanged}
-                  options={autocompleteOptions}
-                >
-                  <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                    <input
-                      type="text"
-                      placeholder="Search for area, street name..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-all"
-                      >
-                        <FiX className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </Autocomplete>
-              ) : (
+            {/* Address Details Form */}
+            <div className="px-4 pt-1 pb-5 space-y-3">
+              {/* Address Search */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-0.5">
+                  Pinpoint Area / Street
+                </label>
                 <div className="relative">
+                  <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search for area, street name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-all"
+                    >
+                      <FiX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* House / Flat number */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-0.5">
+                  House / Flat / Shop Number *
+                </label>
+                <div className="relative">
+                  <FiHome className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                   <input
                     type="text"
-                    placeholder="Loading Maps..."
-                    disabled
-                    className="w-full pl-4 py-3 bg-gray-100 rounded-xl text-sm"
+                    placeholder="e.g. H No 12 or Flat 101, Block B"
+                    value={houseNumber}
+                    onChange={(e) => onHouseNumberChange && onHouseNumberChange(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium"
                   />
                 </div>
-              )}
-            </div>
-
-            {/* House / Flat number */}
-            <div className="mb-2.5">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
-                House No. / Flat No.
-              </label>
-              <div className="relative">
-                <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                <input
-                  type="text"
-                  placeholder="e.g. H No 12 or Flat 101"
-                  value={houseNumber}
-                  onChange={(e) => onHouseNumberChange(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
-                />
               </div>
-            </div>
 
-            {/* Landmark */}
-            <div className="mb-3">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
-                Landmark (Optional)
-              </label>
-              <div className="relative">
-                <FiMapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                <input
-                  type="text"
-                  placeholder="e.g. Near City Mall, opposite SBI Bank"
-                  value={landmark}
-                  onChange={(e) => setLandmark(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-1 focus:ring-primary-500 transition-all font-medium"
-                />
+              {/* Landmark */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-0.5">
+                  Landmark (Optional)
+                </label>
+                <div className="relative">
+                  <FiMapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Near City Mall, opposite SBI Bank"
+                    value={landmark}
+                    onChange={(e) => setLandmark(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Save Button */}
-            <button
-              onClick={() => onSave(houseNumber.trim(), {
-                ...selectedLocation,
-                landmark: landmark.trim()
-              })}
-              disabled={!mapAddress || !houseNumber.trim()}
-              className="w-full py-3.5 rounded-xl font-black text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl uppercase tracking-wider text-xs"
-              style={{
-                backgroundColor: themeColors.button,
-                boxShadow: `0 8px 16px ${themeColors.button}30`
-              }}
-            >
-              Verify & Save Address
-            </button>
+              {/* Save Address As (Home, Office, Custom) */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-0.5">
+                  Save Address As
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddressType('home')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      addressType === 'home'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiHome className="w-3.5 h-3.5" />
+                    Home
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAddressType('office')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      addressType === 'office'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiBriefcase className="w-3.5 h-3.5" />
+                    Office
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAddressType('custom')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      addressType === 'custom'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiTag className="w-3.5 h-3.5" />
+                    Custom
+                  </button>
+                </div>
+
+                {addressType === 'custom' && (
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. Mom's House, Shop, Studio, Clinic"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Save Button */}
+              <button
+                type="button"
+                onClick={() =>
+                  onSave(houseNumber.trim(), {
+                    ...(selectedLocation || { address: mapAddress || searchQuery }),
+                    address: selectedLocation?.address || mapAddress || searchQuery,
+                    landmark: landmark.trim(),
+                    addressType,
+                    customName: addressType === 'custom' ? customName.trim() : ''
+                  })
+                }
+                disabled={(!mapAddress && !searchQuery) || !houseNumber.trim()}
+                className="w-full py-3.5 rounded-xl font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-xs uppercase tracking-wider mt-2"
+                style={{
+                  backgroundColor: themeColors.button,
+                  boxShadow: `0 6px 14px ${themeColors.button}30`
+                }}
+              >
+                Verify & Save Address
+              </button>
+            </div>
           </div>
         </div>
       </div>

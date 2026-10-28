@@ -34,6 +34,7 @@ import VoiceSearchSheet from './components/VoiceSearchSheet';
 import useVoiceSearch from '../../../../hooks/useVoiceSearch';
 import HomeSkeleton from './components/HomeSkeleton';
 import AddressSelectionModal from '../Checkout/components/AddressSelectionModal';
+import { userAuthService } from '../../../../services/authService';
 import ScrapPromotionCard from './components/ScrapPromotionCard';
 import DebugConsole from '../../components/common/DebugConsole';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
@@ -189,7 +190,19 @@ const Home = () => {
   }, [detectedCityName, cities, currentCity, cityLoading]);
 
 
-  const handleAddressSave = (savedHouseNumber, locationObj) => {
+  // Listen for user address selection updates
+  useEffect(() => {
+    const handleAddressSync = () => {
+      const saved = localStorage.getItem('currentAddress');
+      if (saved) setAddress(saved);
+      const savedCity = localStorage.getItem('currentCity');
+      if (savedCity) setDetectedCityName(savedCity);
+    };
+    window.addEventListener('userAddressSelected', handleAddressSync);
+    return () => window.removeEventListener('userAddressSelected', handleAddressSync);
+  }, []);
+
+  const handleAddressSave = async (savedHouseNumber, locationObj) => {
     if (locationObj) {
       const newAddress = locationObj.address;
       setAddress(newAddress);
@@ -200,18 +213,22 @@ const Home = () => {
       }
 
       // Try to parse city from location object (Google Places)
-      const components = locationObj.components || locationObj.address_components;
+      const components = locationObj.components || locationObj.address_components || [];
+      const getComponent = (type) => components.find(c => c.types.includes(type))?.long_name || '';
 
-      let city = '';
-      if (components) {
-        const getComponent = (type) => components.find(c => c.types.includes(type))?.long_name || '';
-        city = getComponent('locality') || getComponent('administrative_area_level_2');
-      }
+      let city = getComponent('locality') || getComponent('administrative_area_level_2');
+      let state = getComponent('administrative_area_level_1') || '';
+      let pincode = getComponent('postal_code') || '';
 
       // Fallback city parsing from address string if components failed
       if (!city && newAddress) {
         const parts = newAddress.split(',').map(p => p.trim());
         city = parts.length > 2 ? parts[parts.length - 3] : (parts.length > 1 ? parts[parts.length - 2] : parts[0]);
+      }
+
+      if (!pincode && newAddress) {
+        const pinMatch = newAddress.match(/\b\d{6}\b/);
+        if (pinMatch) pincode = pinMatch[0];
       }
 
       if (city) {
@@ -233,6 +250,32 @@ const Home = () => {
         }
 
         toast.success(`Location set to ${city}`);
+      }
+
+      // Save to user's saved addresses in database so it shows in Manage Addresses
+      try {
+        const profile = await userAuthService.getProfile();
+        if (profile.success && profile.user) {
+          const existing = (profile.user.addresses || []).map(a => ({ ...a, isDefault: false }));
+          const newSavedAddr = {
+            type: locationObj.addressType || 'home',
+            customName: locationObj.customName || '',
+            addressLine1: newAddress,
+            addressLine2: savedHouseNumber || '',
+            city: city || 'City',
+            state: state || 'State',
+            pincode: pincode || '000000',
+            landmark: locationObj.landmark || '',
+            lat: locationObj.lat,
+            lng: locationObj.lng,
+            isDefault: true
+          };
+          existing.push(newSavedAddr);
+          await userAuthService.updateProfile({ addresses: existing });
+          window.dispatchEvent(new Event('userAddressSelected'));
+        }
+      } catch (err) {
+        // User may be a guest
       }
     }
     setHouseNumber(savedHouseNumber);
