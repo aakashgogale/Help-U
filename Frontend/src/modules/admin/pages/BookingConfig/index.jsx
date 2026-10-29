@@ -372,6 +372,36 @@ const BookingConfig = () => {
           </p>
         </Card>
 
+        {/* Rescheduling */}
+        <Card title="Rescheduling" icon={FiClock}>
+          <ToggleRow
+            label="Allow rescheduling"
+            description="Customers can move a booking to another slot until the professional is on the way. When this is off nobody can reschedule."
+            checked={config.isRescheduleEnabled}
+            onChange={set('isRescheduleEnabled')}
+          />
+          {config.isRescheduleEnabled && (
+            <>
+              <div className="mt-4">
+                <ToggleRow
+                  label="Let partners ask for a new time"
+                  description="The assigned partner can propose another slot. The booking only moves if the customer accepts."
+                  checked={config.isWorkerRescheduleEnabled}
+                  onChange={set('isWorkerRescheduleEnabled')}
+                />
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field label="Reschedules allowed per booking" hint="0 = no limit. Counts every move, whether the customer or an accepted partner request.">
+                  <NumberInput value={config.rescheduleMaxCount} onChange={set('rescheduleMaxCount')} min={0} max={20} />
+                </Field>
+                <Field label="Closes before the appointment" hint="0 = can be moved any time before the visit starts.">
+                  <NumberInput value={config.rescheduleCutoffHours} onChange={set('rescheduleCutoffHours')} min={0} max={72} suffix="hours" />
+                </Field>
+              </div>
+            </>
+          )}
+        </Card>
+
         {/* Wallet top-up */}
         <Card title="Wallet Top-up" icon={FiDollarSign}>
           <div className="grid gap-4 sm:grid-cols-2">

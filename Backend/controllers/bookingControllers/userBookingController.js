@@ -8,6 +8,7 @@ const { createNotification } = require('../notificationControllers/notificationC
 const cloudinaryService = require('../../services/cloudinaryService');
 const { placeBooking } = require('../../services/bookingCreationService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
+const { RescheduleError, describeSlot, assertReschedulable, validateNewSlot, applyReschedule, emitBookingUpdated } = require('../../services/rescheduleService');
 const { evaluateCancellation, onTheWayFee } = require('../../utils/cancellationPolicy');
 const { expectedPaymentCode, clearPaymentCode } = require('../../utils/paymentCode');
 const { resolveFieldsForCategories, validateDetailAnswers } = require('../../utils/detailFields');
@@ -509,127 +510,12 @@ const rescheduleBooking = async (req, res) => {
       });
     }
 
-    // Check if booking can be rescheduled
-    if (booking.status === BOOKING_STATUS.COMPLETED) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot reschedule completed booking'
-      });
-    }
-
-    if (booking.status === BOOKING_STATUS.CANCELLED) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot reschedule cancelled booking'
-      });
-    }
-
-    // Only a scheduled or pending booking that has not started yet can move. Once the professional is on the
-    // way the visit is under way.
-    const MOVABLE = [
-      BOOKING_STATUS.SEARCHING, BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED,
-      BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ASSIGNED
-    ];
-    if (!MOVABLE.includes(booking.status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'This booking can no longer be rescheduled. You can cancel it instead.'
-      });
-    }
-
-    // The new slot must respect the same admin rules as a new booking, and must not collide with
-    // another job of the professional already assigned to this one.
-    const { slotStartMs, isOfferedSlot, getConflictingWorkerIds } = require('../../services/workerAvailabilityService');
     const config = await getBookingConfig();
-    const newStart = slotStartMs({ scheduledDate, timeSlot });
-    if (!Number.isFinite(newStart)) {
-      return res.status(400).json({ success: false, message: 'Please choose a valid date and time slot.' });
-    }
-    if (!isOfferedSlot({ timeSlot }, config)) {
-      return res.status(400).json({ success: false, message: 'That time is not one of the available slots. Please pick a slot from the list.' });
-    }
-    const earliest = Date.now() + (config.slotMinLeadMinutes || 0) * 60 * 1000 - 2 * 60 * 1000;
-    const latest = Date.now() + (config.slotMaxDaysAhead + 1) * 24 * 60 * 60 * 1000;
-    if (newStart < earliest) {
-      return res.status(400).json({ success: false, message: 'That time slot is too soon. Please choose a later slot.' });
-    }
-    if (newStart > latest) {
-      return res.status(400).json({ success: false, message: `Bookings can be made up to ${config.slotMaxDaysAhead} days ahead.` });
-    }
-    if (booking.vendorId) {
-      const conflicts = await getConflictingWorkerIds([booking.vendorId], { slotStart: newStart, config, excludeBookingId: booking._id });
-      if (conflicts.size > 0) {
-        return res.status(409).json({
-          success: false,
-          message: 'Your professional is not available at that time. Please pick another slot, or cancel and rebook.'
-        });
-      }
-    }
+    assertReschedulable(booking, config, 'user');
+    const newStart = await validateNewSlot(booking, { scheduledDate, timeSlot }, config);
 
-    // Update booking (the status is left alone: a confirmed booking stays confirmed)
-    booking.scheduledDate = new Date(scheduledDate);
-    booking.scheduledTime = scheduledTime;
-    booking.timeSlot = {
-      start: timeSlot.start,
-      end: timeSlot.end
-    };
-    booking.bookingType = 'scheduled';
-
-    // Still looking for a professional: keep searching until the cut-off before the NEW slot
-    if (!booking.vendorId) {
-      const normalDeadline = Date.now() + config.maxSearchTime * 60 * 1000;
-      booking.expiresAt = new Date(Math.max(normalDeadline, newStart - (config.scheduledBookingCutoffHours || 0) * 60 * 60 * 1000));
-    }
-
-    booking.statusHistory = booking.statusHistory || [];
-    booking.statusHistory.push({
-      status: booking.status,
-      event: 'rescheduled',
-      note: `${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}`,
-      by: 'user',
-      at: new Date()
-    });
-
-    await booking.save();
-
-    // Send notification to worker
-    if (booking.vendorId) await createNotification({
-      vendorId: booking.vendorId,
-      type: 'booking_rescheduled',
-      title: 'Booking Rescheduled',
-      message: `Booking ${booking.bookingNumber} has been rescheduled to ${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}.`,
-      relatedId: booking._id,
-      relatedType: 'booking',
-      pushData: {
-        type: 'booking_rescheduled',
-        bookingId: booking._id.toString(),
-        link: `/worker/bookings/${booking._id}`
-      }
-    });
-
-    // Send notification to user
-    await createNotification({
-      userId: booking.userId,
-      type: 'booking_rescheduled',
-      title: 'Booking Rescheduled',
-      message: `Your booking ${booking.bookingNumber} has been rescheduled to ${new Date(scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • ${scheduledTime}.`,
-      relatedId: booking._id,
-      relatedType: 'booking',
-      pushData: {
-        type: 'booking_rescheduled',
-        bookingId: booking._id.toString(),
-        link: `/bookings/${booking._id}`
-      }
-    });
-
-    const io = req.app.get('io');
-    if (io) {
-      if (booking.vendorId) {
-        io.to(`vendor_${booking.vendorId}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
-      }
-      io.to(`booking_${booking._id}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
-      io.to(`user_${booking.userId}`).emit('booking_updated', { bookingId: booking._id.toString(), rescheduled: true });
-    }
+    // The status is left alone: a confirmed booking stays confirmed
+    await applyReschedule(booking, { scheduledDate, scheduledTime, timeSlot }, newStart, { by: 'user', config, io: req.app.get('io') });
 
     res.status(200).json({
       success: true,
@@ -637,11 +523,87 @@ const rescheduleBooking = async (req, res) => {
       data: booking
     });
   } catch (error) {
+    if (error instanceof RescheduleError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
     console.error('Reschedule booking error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to reschedule booking. Please try again.'
     });
+  }
+};
+
+/**
+ * Accept or decline the new time the assigned professional asked for.
+ */
+const respondToRescheduleRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const accept = req.body.accept === true || req.body.accept === 'true';
+
+    const booking = await Booking.findOne({ _id: id, userId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const request = booking.rescheduleRequest;
+    if (!request || request.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'There is no reschedule request waiting for your answer.' });
+    }
+
+    const io = req.app.get('io');
+    const config = await getBookingConfig();
+
+    if (!accept) {
+      request.status = 'declined';
+      request.respondedAt = new Date();
+      booking.statusHistory = booking.statusHistory || [];
+      booking.statusHistory.push({
+        status: booking.status,
+        event: 'reschedule_declined',
+        note: describeSlot(request.scheduledDate, request.scheduledTime),
+        by: 'user',
+        at: new Date()
+      });
+      await booking.save();
+      if (booking.vendorId) await createNotification({
+        vendorId: booking.vendorId,
+        type: 'booking_rescheduled',
+        title: 'Reschedule Declined',
+        message: `The customer declined the new time you asked for on booking ${booking.bookingNumber}. The booking stays as it was.`,
+        relatedId: booking._id,
+        relatedType: 'booking',
+        pushData: { type: 'booking_rescheduled', bookingId: booking._id.toString(), link: `/worker/bookings/${booking._id}` }
+      });
+      emitBookingUpdated(io, booking);
+      return res.status(200).json({ success: true, message: 'Request declined. Your booking stays as it was.', data: booking });
+    }
+
+    assertReschedulable(booking, config, 'worker');
+    const slot = { scheduledDate: request.scheduledDate, scheduledTime: request.scheduledTime, timeSlot: { start: request.timeSlot.start, end: request.timeSlot.end } };
+    let newStart;
+    try {
+      newStart = await validateNewSlot(booking, slot, config);
+    } catch (err) {
+      if (err instanceof RescheduleError) {
+        // The asked-for time is no longer usable (passed, or the professional got another job), so the request is void
+        request.status = 'declined';
+        request.respondedAt = new Date();
+        await booking.save();
+        emitBookingUpdated(io, booking);
+      }
+      throw err;
+    }
+    await applyReschedule(booking, slot, newStart, { by: 'worker', config, io });
+
+    res.status(200).json({ success: true, message: 'Booking rescheduled to the new time.', data: booking });
+  } catch (error) {
+    if (error instanceof RescheduleError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Respond to reschedule request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to answer the request. Please try again.' });
   }
 };
 
@@ -931,6 +893,7 @@ module.exports = {
   getCancellationPreview,
   updateBookingDetails,
   rescheduleBooking,
+  respondToRescheduleRequest,
   addReview,
   getUserRatings
 };

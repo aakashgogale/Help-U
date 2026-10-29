@@ -14,6 +14,7 @@ const {
   getCancellationPreview,
   updateBookingDetails,
   rescheduleBooking,
+  respondToRescheduleRequest,
   addReview,
   getUserRatings
 } = require('../../controllers/bookingControllers/userBookingController');
@@ -105,6 +106,7 @@ router.get('/:id/cancellation-preview', authenticate, isUser, getCancellationPre
 router.post('/:id/cancel', authenticate, isUser, cancelBookingValidation, cancelBooking);
 router.put('/:id/details', authenticate, isUser, updateBookingDetails);
 router.put('/:id/reschedule', authenticate, isUser, rescheduleBookingValidation, rescheduleBooking);
+router.post('/:id/reschedule-request/respond', authenticate, isUser, body('accept').isBoolean().withMessage('accept must be true or false'), respondToRescheduleRequest);
 router.post('/:id/review', authenticate, isUser, addReviewValidation, addReview);
 
 module.exports = router;

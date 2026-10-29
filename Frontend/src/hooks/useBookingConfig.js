@@ -74,6 +74,10 @@ export const BOOKING_CONFIG_DEFAULTS = {
   isWorkerServiceRadiusEnabled: false,
   workerServiceRadiusMinKm: 2,
   workerServiceRadiusMaxKm: 25,
+  isRescheduleEnabled: true,
+  isWorkerRescheduleEnabled: true,
+  rescheduleMaxCount: 0,
+  rescheduleCutoffHours: 0,
   walletMinTopup: 100,
   walletMaxTopup: 50000
 };

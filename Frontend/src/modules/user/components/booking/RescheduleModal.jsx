@@ -7,7 +7,10 @@ import useModalLock from '../../../../hooks/useModalLock';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
 import { bookingService } from '../../../../services/bookingService';
 
-const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
+// Used by the customer to move a booking, and (variant="request") by the assigned partner to ask the customer for a new time.
+// `onSubmit(payload)` replaces the default customer call and must return the API response.
+const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled, variant = 'user', onSubmit }) => {
+  const isRequest = variant === 'request';
   useModalLock(isOpen);
   const bookingConfig = useBookingConfig();
 
@@ -15,6 +18,7 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [reason, setReason] = useState('');
 
   // Available dates based on admin config
   const availableDates = useMemo(() => {
@@ -143,16 +147,18 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
       };
 
       const bookingId = booking._id || booking.id;
-      const res = await bookingService.reschedule(bookingId, payload);
+      const res = onSubmit
+        ? await onSubmit(isRequest ? { ...payload, reason: reason.trim() || undefined } : payload)
+        : await bookingService.reschedule(bookingId, payload);
 
       if (res && res.success) {
-        toast.success(res.message || 'Booking rescheduled successfully!');
+        toast.success(res.message || (isRequest ? 'Request sent to the customer.' : 'Booking rescheduled successfully!'));
         if (onRescheduled) {
           onRescheduled(res.data || res.booking || { ...booking, ...payload });
         }
         onClose();
       } else {
-        const msg = res?.message || 'Failed to reschedule booking.';
+        const msg = res?.message || (isRequest ? 'Failed to send the request.' : 'Failed to reschedule booking.');
         setErrorMessage(msg);
         toast.error(msg);
       }
@@ -197,7 +203,7 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
                 <span className="p-1.5 rounded-xl bg-teal-50 text-teal-700">
                   <FiCalendar className="w-4 h-4" />
                 </span>
-                <h2 className="text-xl font-bold text-gray-900">Reschedule Booking</h2>
+                <h2 className="text-xl font-bold text-gray-900">{isRequest ? 'Ask for a New Time' : 'Reschedule Booking'}</h2>
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Booking #{booking.bookingNumber || booking._id?.slice(-8)}
@@ -340,9 +346,26 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
               </div>
             )}
 
+            {isRequest && (
+              <div>
+                <label className="text-sm font-bold text-gray-900 block mb-2">Reason <span className="font-normal text-gray-400">(optional)</span></label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value.slice(0, 300))}
+                  rows={2}
+                  placeholder="Tell the customer why you need another time"
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:outline-none focus:border-teal-600"
+                />
+              </div>
+            )}
+
             {/* Policy Note */}
             <div className="bg-sky-50/80 rounded-2xl p-3.5 border border-sky-100/80 text-[12px] text-sky-800 leading-relaxed">
-              💡 <strong>Free Rescheduling:</strong> Rescheduling is free of charge before the service professional departs. If a professional was already assigned, they will be notified automatically.
+              {isRequest ? (
+                <>💡 <strong>The customer decides:</strong> the booking stays at its current time until the customer accepts the new one. They will get a notification.</>
+              ) : (
+                <>💡 <strong>Free Rescheduling:</strong> Rescheduling is free of charge before the service professional departs. If a professional was already assigned, they will be notified automatically.</>
+              )}
             </div>
           </div>
 
@@ -354,7 +377,7 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
               disabled={submitting}
               className="flex-1 py-3.5 rounded-2xl border border-gray-300 font-bold text-sm text-gray-700 bg-white hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
-              Keep Current
+              {isRequest ? 'Cancel' : 'Keep Current'}
             </button>
             <button
               type="button"
@@ -368,11 +391,11 @@ const RescheduleModal = ({ isOpen, onClose, booking, onRescheduled }) => {
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Rescheduling...</span>
+                  <span>{isRequest ? 'Sending...' : 'Rescheduling...'}</span>
                 </>
               ) : (
                 <>
-                  <span>Confirm Reschedule</span>
+                  <span>{isRequest ? 'Send Request' : 'Confirm Reschedule'}</span>
                   <FiChevronRight className="w-4 h-4" />
                 </>
               )}

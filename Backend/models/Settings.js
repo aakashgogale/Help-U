@@ -420,6 +420,12 @@ const settingsSchema = new mongoose.Schema({
   isWorkerServiceRadiusEnabled: { type: Boolean, default: false },
   workerServiceRadiusMinKm: { type: Number, default: 2, min: 1, max: 200 },
   workerServiceRadiusMaxKm: { type: Number, default: 25, min: 1, max: 200 },
+  // Rescheduling a booking. Customers move their own booking; a partner can only ask the customer to move it.
+  isRescheduleEnabled: { type: Boolean, default: true },
+  isWorkerRescheduleEnabled: { type: Boolean, default: true },
+  // How many times one booking can be moved (0 = no limit) and how close to the visit it is still allowed (0 = any time)
+  rescheduleMaxCount: { type: Number, default: 0, min: 0, max: 20 },
+  rescheduleCutoffHours: { type: Number, default: 0, min: 0, max: 72 },
   // Workers rated below this (with enough reviews to trust it) are not alerted.
   assignmentMinRating: { type: Number, default: 0, min: 0, max: 5 },
   // Acceptance and completion rates look back this many days.

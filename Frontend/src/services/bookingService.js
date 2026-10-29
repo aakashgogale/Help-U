@@ -77,6 +77,12 @@ export const bookingService = {
     return response.data;
   },
 
+  // Accept or decline the new time the professional asked for
+  respondToRescheduleRequest: async (id, accept) => {
+    const response = await api.post(`/users/bookings/${id}/reschedule-request/respond`, { accept });
+    return response.data;
+  },
+
   // Add review and rating
   addReview: async (id, reviewData) => {
     const response = await api.post(`/users/bookings/${id}/review`, reviewData);

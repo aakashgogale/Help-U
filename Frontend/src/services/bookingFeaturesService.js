@@ -98,6 +98,11 @@ export const bookingFeaturesService = {
     return response.data;
   },
 
+  requestReschedule: async (bookingId, payload) => {
+    const response = await api.post(`/workers/bookings/${bookingId}/reschedule-request`, payload);
+    return response.data;
+  },
+
   // ── Customer referrals ──────────────────────────────────
   getReferralStats: async () => {
     const response = await api.get('/users/referrals/stats');

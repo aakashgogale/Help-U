@@ -21,6 +21,8 @@ import { bookingService } from '../../../../services/bookingService';
 import NotificationBell from '../../components/common/NotificationBell';
 import ConfirmDialog from '../../../../components/common/ConfirmDialog';
 import RescheduleModal from '../../components/booking/RescheduleModal';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import { canRescheduleBooking } from '../../../../utils/reschedule';
 
 // Inline Searching Animation Component
 const SearchingAnimation = () => {
@@ -93,6 +95,7 @@ const SearchingAnimation = () => {
 };
 
 const BookingConfirmation = () => {
+  const bookingConfig = useBookingConfig();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -102,7 +105,7 @@ const BookingConfirmation = () => {
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
 
-  const canReschedule = booking && ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
+  const canReschedule = canRescheduleBooking(booking, bookingConfig);
 
   useEffect(() => {
     const loadBooking = async () => {

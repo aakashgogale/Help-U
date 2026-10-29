@@ -27,6 +27,9 @@ import { WorkCompletionModal } from '../../components/common';
 // import BillingModal from '../../components/bookings/BillingModal'; // Consumed by page now
 import workerWalletService from '../../../../services/workerWalletService';
 import { toast } from 'react-hot-toast';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import RescheduleModal from '../../../user/components/booking/RescheduleModal';
+import { canRequestReschedule } from '../../../../utils/reschedule';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import { useLocationTracking } from '../../../../hooks/useLocationTracking';
 
@@ -51,6 +54,8 @@ export default function BookingDetails() {
   const [actionLoading, setActionLoading] = useState(false);
   // Worker drops an accepted job; the customer is matched with someone else.
   const [cancelModal, setCancelModal] = useState({ open: false, reason: '', submitting: false });
+  const [showRescheduleRequest, setShowRescheduleRequest] = useState(false);
+  const bookingConfig = useBookingConfig();
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -220,62 +225,6 @@ export default function BookingDetails() {
     }
   }, [socket, id]);
 
-  const handleVerifyVisit = async () => {
-    const otp = otpInput.join('');
-    if (otp.length !== 4) return toast.error('Enter 4-digit OTP');
-
-    setActionLoading(true);
-
-    if (!navigator.geolocation) {
-      toast.error('Geolocation required for verification');
-      setActionLoading(false);
-      return;
-    }
-
-    // Robust Geolocation Helper - PERMISSIVE MODE
-    const getPosition = () => {
-      return new Promise((resolve, reject) => {
-        // FASTEST STRATEGY: Prefer Wi-Fi/Cell (Low Accuracy) + Cached Positions
-        // Detailed GPS is often blocked indoors where workers verify arrival
-        const options = {
-          enableHighAccuracy: false, // Critical fix: Disable GPS requirement
-          timeout: 30000,            // 30s timeout
-          maximumAge: Infinity       // Accept any valid cached position
-        };
-
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          (error) => {
-            console.warn("Standard geo failed, trying high accuracy as last resort...", error);
-            // Emergency fallback: Try GPS if Wi-Fi location fails (rare)
-            navigator.geolocation.getCurrentPosition(
-              resolve,
-              reject,
-              { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-            );
-          },
-          options
-        );
-      });
-    };
-
-    try {
-      const position = await getPosition();
-      const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-      await verifySelfVisit(id, otp, location);
-      toast.success('Visit Verified');
-      setIsVisitModalOpen(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("Geo Error:", error);
-      if (error.code === 1) toast.error('Location permission denied');
-      else if (error.code === 2) toast.error('Location unavailable. Check GPS.');
-      else if (error.code === 3) toast.error('Location timeout. Move to better signal area.');
-      else toast.error('Failed to get location');
-    } finally {
-      setActionLoading(false);
-    }
-  };
   const getAvailableStatuses = (currentStatus, booking) => {
     // Check payment status
     const finalSettlementDone = booking?.finalSettlementStatus === 'DONE';
@@ -1362,6 +1311,31 @@ export default function BookingDetails() {
               )}
             </div>
           )}
+
+          {/* Ask the customer for another time; the booking only moves if they accept */}
+          {booking.rescheduleRequest?.status === 'pending' && (
+            <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Waiting for the customer to answer your request for {new Date(booking.rescheduleRequest.scheduledDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} • {booking.rescheduleRequest.scheduledTime}. The job stays at its current time until then.
+            </div>
+          )}
+          {canRequestReschedule(booking, bookingConfig) && (
+            <button
+              type="button"
+              onClick={() => setShowRescheduleRequest(true)}
+              className="w-full py-3 rounded-xl font-bold text-sm text-teal-700 bg-teal-50 border border-teal-200 flex items-center justify-center gap-2 active:scale-95"
+            >
+              <FiClock className="w-4 h-4" />
+              Ask customer for a new time
+            </button>
+          )}
+          <RescheduleModal
+            variant="request"
+            isOpen={showRescheduleRequest}
+            onClose={() => setShowRescheduleRequest(false)}
+            booking={booking}
+            onSubmit={(payload) => bookingFeaturesService.requestReschedule(id, payload)}
+            onRescheduled={() => loadBooking()}
+          />
 
           {/* Drop the job before arriving; the backend reassigns it */}
           {['confirmed', 'accepted', 'assigned', 'journey_started'].includes(booking.status) && (

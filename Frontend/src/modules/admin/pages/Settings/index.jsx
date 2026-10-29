@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass, FiClock, FiActivity, FiSearch, FiRefreshCw, FiSmartphone, FiMonitor, FiAlertCircle, FiEye } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiDollarSign, FiSave, FiUser, FiMail, FiTrash2, FiPlus, FiUsers, FiShield, FiFileText, FiMapPin, FiPhone, FiHeadphones, FiMessageCircle, FiEdit, FiLock, FiUnlock, FiX, FiCheckCircle, FiGlobe, FiCheck, FiCompass, FiClock, FiActivity, FiSearch, FiRefreshCw, FiSmartphone, FiMonitor, FiAlertCircle, FiEye, FiSliders } from 'react-icons/fi';
 import { getSettings, updateSettings, updateAdminProfile, getAdminProfile, getAllAdmins, createAdmin, deleteAdmin, updateAdminDetails, toggleAdminStatus, getAdminLoginHistory, getAdminAuditLogs } from '../../services/settingsService';
 import { ALL_AVAILABLE_LANGUAGES } from '../../../../context/LanguageContext';
 import { cityService } from '../../services/cityService';
@@ -856,6 +856,16 @@ const AdminSettings = () => {
             <p className="text-sm text-gray-500">Add, remove, and view all system administrators</p>
           </div>
         )}
+
+        {/* Booking Configuration Card: service radius, rescheduling, slots, cancellation, assignment */}
+        <div onClick={() => navigate('/admin/booking-config')}
+          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
+          <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
+            <FiSettings className="w-6 h-6 text-teal-600" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 mb-2">Booking Configuration</h3>
+          <p className="text-sm text-gray-500">Partner service radius, rescheduling rules, time slots, cancellation fees and partner assignment</p>
+        </div>
 
         {/* Partner Registration Fields Card */}
         <div onClick={() => navigate('/admin/workers/registration-fields')}

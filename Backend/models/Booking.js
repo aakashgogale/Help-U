@@ -431,6 +431,18 @@ const bookingSchema = new mongoose.Schema({
     time: { type: String }  // redundant but kept for frontend convenience format
   },
 
+  // How many times the date/time has been moved, and the partner's pending request to move it (the customer decides)
+  rescheduleCount: { type: Number, default: 0 },
+  rescheduleRequest: {
+    status: { type: String, enum: ['pending', 'accepted', 'declined', null], default: null },
+    scheduledDate: { type: Date },
+    scheduledTime: { type: String },
+    timeSlot: { start: { type: String }, end: { type: String } },
+    reason: { type: String, default: null },
+    requestedAt: { type: Date },
+    respondedAt: { type: Date }
+  },
+
   // ==========================================
   // 7. STATUS & TRACKING
   // ==========================================

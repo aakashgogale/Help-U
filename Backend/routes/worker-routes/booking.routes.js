@@ -21,7 +21,8 @@ const {
   collectSelfCash,
   requestAdvancePayment,
   getWorkerRatings,
-  getPendingBookings
+  getPendingBookings,
+  requestReschedule
 } = require('../../controllers/bookingControllers/workerBookingController');
 
 // Validation rules
@@ -56,6 +57,14 @@ router.post('/:id/reject', authenticate, isWorker, rejectBookingValidation, reje
 router.get('/:id/cancel-preview', authenticate, isWorker, getCancelJobPreview);
 router.post('/:id/cancel', authenticate, isWorker, body('reason').optional().isString().isLength({ max: 300 }), cancelJob);
 router.put('/:id/status', authenticate, isWorker, updateStatusValidation, updateBookingStatus);
+const requestRescheduleValidation = [
+  body('scheduledDate').isISO8601().withMessage('Valid scheduled date is required'),
+  body('scheduledTime').trim().notEmpty().withMessage('Scheduled time is required'),
+  body('timeSlot.start').trim().notEmpty().withMessage('Time slot start is required'),
+  body('timeSlot.end').trim().notEmpty().withMessage('Time slot end is required'),
+  body('reason').optional().isString().trim().isLength({ max: 300 })
+];
+router.post('/:id/reschedule-request', authenticate, isWorker, requestRescheduleValidation, requestReschedule);
 router.post('/:id/notes', authenticate, isWorker, addNotesValidation, addWorkerNotes);
 
 // Chat with the customer

@@ -38,6 +38,8 @@ import { cartService } from '../../../../services/cartService';
 import RatingModal from '../../components/booking/RatingModal';
 import PaymentVerificationModal from '../../components/booking/PaymentVerificationModal';
 import RescheduleModal from '../../components/booking/RescheduleModal';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import { canRescheduleBooking } from '../../../../utils/reschedule';
 import { ConfirmDialog } from '../../../../components/common';
 import ReviewCard from '../../components/booking/ReviewCard';
 import BookingExtrasCard from '../../../../components/booking/BookingExtrasCard';
@@ -65,6 +67,8 @@ const BookingDetails = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [answeringRequest, setAnsweringRequest] = useState(false);
+  const bookingConfig = useBookingConfig();
   const [paying, setPaying] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({
@@ -295,7 +299,7 @@ const BookingDetails = () => {
     }
   };
 
-  const canReschedule = booking && ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
+  const canReschedule = canRescheduleBooking(booking, bookingConfig);
 
   // ... (keep handle methods same) ...
 
@@ -323,6 +327,19 @@ const BookingDetails = () => {
         }
       }
     });
+  };
+
+  const answerRescheduleRequest = async (accept) => {
+    setAnsweringRequest(true);
+    try {
+      const res = await bookingService.respondToRescheduleRequest(booking._id || booking.id, accept);
+      toast.success(res.message || (accept ? 'Booking rescheduled' : 'Request declined'));
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not answer the request. Please try again.');
+    } finally {
+      setAnsweringRequest(false);
+      loadBooking();
+    }
   };
 
   const handleCancelBooking = async () => {
@@ -1162,6 +1179,37 @@ const BookingDetails = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* The professional asked for a new time: the booking only moves if the customer accepts */}
+          {booking.rescheduleRequest?.status === 'pending' && canReschedule && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-sm font-bold text-amber-900">Your professional asked for a new time</p>
+              <p className="mt-1 text-sm text-amber-900">
+                {formatDate(booking.rescheduleRequest.scheduledDate)} • {booking.rescheduleRequest.scheduledTime}
+              </p>
+              {booking.rescheduleRequest.reason && (
+                <p className="mt-1 text-xs text-amber-800">Reason: {booking.rescheduleRequest.reason}</p>
+              )}
+              <p className="mt-1 text-xs text-amber-800">Your booking stays at its current time unless you accept.</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  disabled={answeringRequest}
+                  onClick={() => answerRescheduleRequest(false)}
+                  className="flex-1 rounded-2xl border border-amber-300 bg-white py-2.5 text-sm font-bold text-amber-900 disabled:opacity-50"
+                >
+                  Decline
+                </button>
+                <button
+                  disabled={answeringRequest}
+                  onClick={() => answerRescheduleRequest(true)}
+                  className="flex-[2] rounded-2xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  style={{ backgroundColor: themeColors.button || '#00A6A6' }}
+                >
+                  {answeringRequest ? 'Please wait…' : 'Accept new time'}
+                </button>
               </div>
             </div>
           )}

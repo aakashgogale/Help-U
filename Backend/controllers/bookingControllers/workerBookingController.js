@@ -12,6 +12,7 @@ const { resolveCommission, computeWorkerEarnings, toPayoutConfig, describeCommis
 const { handleWorkerCancellation, remainingCandidates, WORKER_CANCELLABLE_STATUSES } = require('../../services/reassignmentService');
 const { getBookingConfig } = require('../../utils/bookingConfig');
 const escapeRegex = require('../../utils/escapeRegex');
+const { RescheduleError, describeSlot, assertReschedulable, validateNewSlot, emitBookingUpdated } = require('../../services/rescheduleService');
 
 const ADVANCE_REQUEST_ALLOWED_STATUSES = [
   BOOKING_STATUS.CONFIRMED,
@@ -1686,7 +1687,74 @@ const getPendingBookings = async (req, res) => {
   }
 };
 
+/**
+ * The assigned professional asks the customer to move the visit. Nothing changes until the customer accepts.
+ */
+const requestReschedule = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    }
+
+    const vendorId = req.user?.id || req.user?._id;
+    const { scheduledDate, scheduledTime, timeSlot, reason } = req.body;
+
+    const booking = await Booking.findOne({ _id: req.params.id, vendorId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    if (booking.rescheduleRequest?.status === 'pending') {
+      return res.status(400).json({ success: false, message: 'You already asked the customer for a new time. Please wait for their answer.' });
+    }
+
+    const config = await getBookingConfig();
+    assertReschedulable(booking, config, 'worker');
+    await validateNewSlot(booking, { scheduledDate, timeSlot }, config);
+
+    const when = describeSlot(scheduledDate, scheduledTime);
+    booking.rescheduleRequest = {
+      status: 'pending',
+      scheduledDate: new Date(scheduledDate),
+      scheduledTime,
+      timeSlot: { start: timeSlot.start, end: timeSlot.end },
+      reason: reason || null,
+      requestedAt: new Date(),
+      respondedAt: null
+    };
+    booking.statusHistory = booking.statusHistory || [];
+    booking.statusHistory.push({
+      status: booking.status,
+      event: 'reschedule_requested',
+      note: reason ? `${when} — ${reason}` : when,
+      by: 'worker',
+      at: new Date()
+    });
+    await booking.save();
+
+    await createNotification({
+      userId: booking.userId,
+      type: 'booking_rescheduled',
+      title: 'New Time Requested',
+      message: `Your professional asked to move booking ${booking.bookingNumber} to ${when}.${reason ? ` Reason: ${reason}` : ''} Open the booking to accept or decline.`,
+      relatedId: booking._id,
+      relatedType: 'booking',
+      pushData: { type: 'booking_rescheduled', bookingId: booking._id.toString(), link: `/bookings/${booking._id}` }
+    });
+    emitBookingUpdated(req.app.get('io'), booking, { rescheduleRequested: true });
+
+    res.status(200).json({ success: true, message: 'Request sent. The customer will be asked to accept the new time.', data: booking });
+  } catch (error) {
+    if (error instanceof RescheduleError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Request reschedule error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send the request. Please try again.' });
+  }
+};
+
 module.exports = {
+  requestReschedule,
   getWorkerBookings,
   getBookingById,
   acceptBooking,

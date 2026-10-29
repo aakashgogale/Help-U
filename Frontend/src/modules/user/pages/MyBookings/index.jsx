@@ -11,6 +11,8 @@ import { bookingService } from '../../../../services/bookingService';
 import { getCategoryIllustration } from '../../utils/categoryIcons';
 import ChatButton from '../../../../components/booking/ChatButton';
 import RescheduleModal from '../../components/booking/RescheduleModal';
+import useBookingConfig from '../../../../hooks/useBookingConfig';
+import { canRescheduleBooking } from '../../../../utils/reschedule';
 
 const PAGE_SIZE = 10;
 
@@ -73,6 +75,7 @@ const getAddressString = (address) => {
 };
 
 const BookingCard = ({ booking, onOpen, onReschedule }) => {
+  const bookingConfig = useBookingConfig();
   const status = getStatusMeta(booking.status);
   const StatusIcon = status.Icon;
   const category = booking.serviceCategory || booking.categoryId?.title || '';
@@ -85,7 +88,7 @@ const BookingCard = ({ booking, onOpen, onReschedule }) => {
   const amount = booking.finalAmount || booking.totalAmount || 0;
   const time = booking.scheduledTime || booking.timeSlot?.start;
   const bookingRef = booking.bookingNumber || String(booking._id || booking.id || '').slice(-8).toUpperCase();
-  const canReschedule = ['searching', 'requested', 'confirmed', 'accepted', 'assigned'].includes(booking.status?.toLowerCase());
+  const canReschedule = canRescheduleBooking(booking, bookingConfig);
 
   return (
     <motion.article
@@ -392,7 +395,7 @@ const MyBookings = () => {
         booking={rescheduleTarget}
         onRescheduled={() => {
           bookingsCache.clear();
-          loadBookings(1, true);
+          fetchPage(1, { silent: true });
         }}
       />
     </div>
