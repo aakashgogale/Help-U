@@ -135,12 +135,13 @@ const WorkerRoutes = () => {
     ]);
   }, []);
 
-  // Check if current route should hide bottom nav (auth routes or map)
-  // Check if current route should hide bottom nav (auth routes or map or booking alert)
-  const shouldHideBottomNav = location.pathname === '/worker/login' ||
-    location.pathname === '/worker/signup' ||
-    location.pathname === '/worker/login' ||
-    location.pathname === '/worker/signup' ||
+  // Check if current route should hide bottom nav (auth, public legal pages, map, billing, or booking alerts)
+  const isAuthPage = location.pathname === '/worker/login' || location.pathname === '/worker/signup';
+  const isPublicLegalPage = ['/privacy-policy', '/terms', '/cancellation-policy', '/faq']
+    .some((p) => location.pathname.includes(p));
+
+  const shouldHideBottomNav = isAuthPage ||
+    isPublicLegalPage ||
     location.pathname.endsWith('/map') ||
     location.pathname.endsWith('/billing') ||
     location.pathname.includes('/booking-alert/');
