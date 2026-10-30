@@ -647,10 +647,89 @@ const applyLiveServiceData = async (contentObj) => {
     if (!it.targetCategoryId && svc.categoryId) it.targetCategoryId = svc.categoryId;
     // A card tied to a service shows that service's own rating, reviews and options, so nothing is typed twice
     if (svc.displayRating) it.rating = String(svc.displayRating);
-    if (svc.reviewsLabel) it.reviews = svc.reviewsLabel;
+    // The card shows "(890K)", so the word "reviews" the catalog label carries is left off
+    if (svc.reviewsLabel) it.reviews = String(svc.reviewsLabel).replace(/\s*(reviews?|ratings?)\s*$/i, '').trim();
     const options = Array.isArray(svc.variants) ? svc.variants.length : 0;
     if (options > 1) it.optionsCount = String(options);
   });
+};
+
+/**
+ * Home content as the user app receives it: every field the admin set, ids as strings, and
+ * banners / promos / spotlight limited to the customer's zone.
+ */
+const formatHomeContent = (contentObj, activeZoneId, isGlobalScrapEnabled) => {
+  return {
+    banners: (contentObj.banners || [])
+      .filter(item => matchesZone(item, activeZoneId))
+      .map(item => ({
+        ...item,
+        id: item._id ? item._id.toString() : item.id,
+        targetCategoryId: item.targetCategoryId?.toString() || null,
+        targetServiceId: item.targetServiceId?.toString() || null,
+        zoneId: item.zoneId?.toString() || null,
+      })),
+    promos: (contentObj.promos || [])
+      .filter(item => matchesZone(item, activeZoneId))
+      .map(item => ({
+        ...item,
+        id: item._id ? item._id.toString() : item.id,
+        targetCategoryId: item.targetCategoryId?.toString() || null,
+        targetServiceId: item.targetServiceId?.toString() || null,
+        zoneId: item.zoneId?.toString() || null,
+      })),
+    curated: (contentObj.curated || []).map(item => ({
+      ...item,
+      id: item._id ? item._id.toString() : item.id,
+      targetCategoryId: item.targetCategoryId?.toString() || null,
+      targetServiceId: item.targetServiceId?.toString() || null,
+    })),
+    noteworthy: (contentObj.noteworthy || []).map(item => ({
+      ...item,
+      id: item._id ? item._id.toString() : item.id,
+      targetCategoryId: item.targetCategoryId?.toString() || null,
+      targetServiceId: item.targetServiceId?.toString() || null,
+    })),
+    booked: (contentObj.booked || []).map(item => ({
+      ...item,
+      id: item._id ? item._id.toString() : item.id,
+      targetCategoryId: item.targetCategoryId?.toString() || null,
+      targetServiceId: item.targetServiceId?.toString() || null,
+    })),
+    spotlight: (contentObj.spotlight || [])
+      .filter(item => matchesZone(item, activeZoneId))
+      .map(item => ({
+        ...item,
+        id: item._id ? item._id.toString() : item.id,
+        targetCategoryId: item.targetCategoryId?.toString() || null,
+        targetServiceId: item.targetServiceId?.toString() || null,
+        zoneId: item.zoneId?.toString() || null,
+      })),
+    categorySections: (contentObj.categorySections || []).map(section => ({
+      ...section,
+      id: section._id ? section._id.toString() : section.id,
+      seeAllTargetCategoryId: section.seeAllTargetCategoryId?.toString() || null,
+      seeAllTargetServiceId: section.seeAllTargetServiceId?.toString() || null,
+      cards: (section.cards || []).map(card => ({
+        ...card,
+        id: card._id ? card._id.toString() : card.id,
+        targetCategoryId: card.targetCategoryId?.toString() || null,
+        targetServiceId: card.targetServiceId?.toString() || null,
+      }))
+    })),
+    isBannersVisible: contentObj.isBannersVisible ?? true,
+    isPromosVisible: contentObj.isPromosVisible ?? true,
+    isCuratedVisible: contentObj.isCuratedVisible ?? true,
+    isNoteworthyVisible: contentObj.isNoteworthyVisible ?? true,
+    isBookedVisible: contentObj.isBookedVisible ?? true,
+    isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
+    isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
+    homeCategoryLimit: contentObj.homeCategoryLimit ?? 8,
+    showAllServicesTile: contentObj.showAllServicesTile ?? true,
+    allServicesLabel: contentObj.allServicesLabel || 'All services',
+    isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
+    isScrapVisible: isGlobalScrapEnabled
+  };
 };
 
 /**
