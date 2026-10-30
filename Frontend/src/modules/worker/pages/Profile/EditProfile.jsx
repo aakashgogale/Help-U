@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { z } from "zod";
 import flutterBridge from '../../../../utils/flutterBridge';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
+import { useRegistrationConfig } from '../../utils/registrationConfig';
 
 // Zod schema
 const workerProfileSchema = z.object({
@@ -30,6 +31,9 @@ const EditProfile = () => {
   const navigate = useNavigate();
   // The admin decides whether partners may set a radius, and the smallest and largest they may choose
   const { isWorkerServiceRadiusEnabled, workerServiceRadiusMinKm, workerServiceRadiusMaxKm } = useBookingConfig();
+  // Which documents the admin asks for, and what they are called
+  const { core } = useRegistrationConfig();
+  const requiredMark = (cfg) => (cfg.required ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal text-xs">(optional)</span>);
 
   // Helper function to convert hex to rgba
   const hexToRgba = (hex, alpha) => {
@@ -875,6 +879,7 @@ const EditProfile = () => {
             </div>
 
             {/* 1. Aadhar Front */}
+            {core.aadhar_front.active && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -886,12 +891,12 @@ const EditProfile = () => {
                   >
                     <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
                   </div>
-                  <span>Aadhar Card (Front) <span className="text-red-500">*</span></span>
+                  <span>{core.aadhar_front.label} {requiredMark(core.aadhar_front)}</span>
                 </div>
                 {(aadharPreview || formData.aadharDocument) && (
                   <button
                     type="button"
-                    onClick={() => setPreviewModalDoc({ title: 'Aadhar Card (Front)', url: aadharPreview || formData.aadharDocument })}
+                    onClick={() => setPreviewModalDoc({ title: core.aadhar_front.label, url: aadharPreview || formData.aadharDocument })}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
                     <FiEye className="w-3.5 h-3.5" /> View Full
@@ -943,7 +948,7 @@ const EditProfile = () => {
                   ) : (
                     <>
                       <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600 font-medium">Click to upload Aadhar Card (Front)</span>
+                      <span className="text-sm text-gray-600 font-medium">Click to upload {core.aadhar_front.label}</span>
                       <span className="text-xs text-gray-400 mt-1">First Page / Front Side (Max 5MB)</span>
                     </>
                   )}
@@ -951,8 +956,10 @@ const EditProfile = () => {
               </div>
               {errors.aadharDocument && <p className="text-red-500 text-sm mt-1">{errors.aadharDocument}</p>}
             </div>
+            )}
 
             {/* 2. Aadhar Back */}
+            {core.aadhar_back.active && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -964,12 +971,12 @@ const EditProfile = () => {
                   >
                     <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
                   </div>
-                  <span>Aadhar Card (Back) <span className="text-red-500">*</span></span>
+                  <span>{core.aadhar_back.label} {requiredMark(core.aadhar_back)}</span>
                 </div>
                 {(aadharBackPreview || formData.aadharBackDocument) && (
                   <button
                     type="button"
-                    onClick={() => setPreviewModalDoc({ title: 'Aadhar Card (Back)', url: aadharBackPreview || formData.aadharBackDocument })}
+                    onClick={() => setPreviewModalDoc({ title: core.aadhar_back.label, url: aadharBackPreview || formData.aadharBackDocument })}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
                     <FiEye className="w-3.5 h-3.5" /> View Full
@@ -1021,15 +1028,17 @@ const EditProfile = () => {
                   ) : (
                     <>
                       <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600 font-medium">Click to upload Aadhar Card (Back)</span>
+                      <span className="text-sm text-gray-600 font-medium">Click to upload {core.aadhar_back.label}</span>
                       <span className="text-xs text-gray-400 mt-1">Back Side with Address (Max 5MB)</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
+            )}
 
             {/* 3. PAN Card */}
+            {core.pan_document.active && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1041,12 +1050,12 @@ const EditProfile = () => {
                   >
                     <FiUpload className="w-3.5 h-3.5" style={{ color: themeColors.icon }} />
                   </div>
-                  <span>PAN Card <span className="text-red-500">*</span></span>
+                  <span>{core.pan_document.label} {requiredMark(core.pan_document)}</span>
                 </div>
                 {(panPreview || formData.panDocument) && (
                   <button
                     type="button"
-                    onClick={() => setPreviewModalDoc({ title: 'PAN Card', url: panPreview || formData.panDocument })}
+                    onClick={() => setPreviewModalDoc({ title: core.pan_document.label, url: panPreview || formData.panDocument })}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
                     <FiEye className="w-3.5 h-3.5" /> View Full
@@ -1098,13 +1107,14 @@ const EditProfile = () => {
                   ) : (
                     <>
                       <FiUpload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600 font-medium">Click to upload PAN Card</span>
+                      <span className="text-sm text-gray-600 font-medium">Click to upload {core.pan_document.label}</span>
                       <span className="text-xs text-gray-400 mt-1">Clear copy of PAN Card (Max 5MB)</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
+            )}
 
             {/* 4. Other Documents (if any exist) */}
             {formData.otherDocuments && formData.otherDocuments.length > 0 && (

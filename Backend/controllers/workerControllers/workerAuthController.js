@@ -212,7 +212,28 @@ const register = async (req, res) => {
 
     // Dynamic field validation against active partner fields
     const PartnerRegistrationField = require('../../models/PartnerRegistrationField');
-    const activeRegistrationFields = await PartnerRegistrationField.find({ isActive: true }).lean();
+    const { ensureSystemFields, getSystemRules, isSystemKey } = require('../../utils/partnerRegistrationFields');
+    await ensureSystemFields();
+    const allRegistrationFields = await PartnerRegistrationField.find().lean();
+    const rule = getSystemRules(allRegistrationFields);
+    // The admin's own fields; the core ones (Aadhar, PAN...) are checked below
+    const activeRegistrationFields = allRegistrationFields.filter(f => f.isActive && !isSystemKey(f.fieldKey));
+
+    // Core fields the admin switched off are ignored; the others follow the admin's mandatory setting
+    const aadharRule = rule('aadhar_number');
+    const panRule = rule('pan_number');
+    const serviceRule = rule('service_categories');
+    const aadharNumber = aadharRule.active ? String(aadhar || '').trim() : '';
+    const panNumber = panRule.active ? String(pan || '').trim().toUpperCase() : '';
+    if (aadharRule.active && (aadharRule.required || aadharNumber) && !/^\d{12}$/.test(aadharNumber)) {
+      return res.status(400).json({ success: false, message: aadharNumber ? 'Aadhar number must be 12 digits' : 'Aadhar number is required' });
+    }
+    if (panRule.active && (panRule.required || panNumber) && panNumber.length !== 10) {
+      return res.status(400).json({ success: false, message: panNumber ? 'PAN number must be 10 characters' : 'PAN number is required' });
+    }
+    if (serviceRule.active && serviceRule.required && !(Array.isArray(service) && service.some(s => String(s).trim()))) {
+      return res.status(400).json({ success: false, message: 'Please select at least one service category' });
+    }
 
     // Check required dynamic text fields
     const textFields = activeRegistrationFields.filter(f => f.section === 'profile' || f.type !== 'document');
@@ -230,7 +251,7 @@ const register = async (req, res) => {
 
     // Check referral code if provided
     let referrer = null;
-    if (referralCode && referralCode.trim()) {
+    if (rule('referral_code').active && referralCode && referralCode.trim()) {
       referrer = await Worker.findOne({ 
         referralCode: referralCode.trim().toUpperCase(),
         phone: { $ne: phone } // Cannot refer oneself
@@ -238,9 +259,20 @@ const register = async (req, res) => {
     }
 
     // Upload documents
-    let aadharUrl = req.body.aadharDocument || null;
-    let aadharBackUrl = req.body.aadharBackDocument || null;
-    let panUrl = req.body.panDocument || null;
+    let aadharUrl = rule('aadhar_front').active ? (req.body.aadharDocument || null) : null;
+    let aadharBackUrl = rule('aadhar_back').active ? (req.body.aadharBackDocument || null) : null;
+    let panUrl = rule('pan_document').active ? (req.body.panDocument || null) : null;
+    for (const [key, url, label] of [
+      ['aadhar_front', aadharUrl, 'Aadhar Front'],
+      ['aadhar_back', aadharBackUrl, 'Aadhar Back'],
+      ['pan_document', panUrl, 'PAN Card']
+    ]) {
+      const docRule = rule(key);
+      if (docRule.active && docRule.required && !url) {
+        const configured = allRegistrationFields.find(f => f.fieldKey === key);
+        return res.status(400).json({ success: false, message: `Please upload ${configured?.label || label}` });
+      }
+    }
     let otherUrls = req.body.otherDocuments || [];
 
     if (aadharUrl && aadharUrl.startsWith('data:')) {
@@ -323,11 +355,11 @@ const register = async (req, res) => {
       ...(defaultWallet ? { wallet: defaultWallet } : {}),
       service: Array.isArray(service) ? service.map(s => String(s).trim()).filter(Boolean) : [],
       aadhar: {
-        number: aadhar,
+        number: aadharNumber,
         document: aadharUrl,
         backDocument: aadharBackUrl
       },
-      pan: { number: pan, document: panUrl },
+      pan: { number: panNumber, document: panUrl },
       gstin: resolvedGstin,
       otherDocuments: otherUrls,
       customFields: customFields || {},

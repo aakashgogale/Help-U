@@ -55,28 +55,28 @@ const workerSchema = new mongoose.Schema({
   aadhar: {
     number: {
       type: String,
-      required: [true, 'Please provide Aadhar number'],
-      trim: true
+      trim: true,
+      default: ''
     },
     document: {
       type: String, // Cloudinary URL (Front Side)
-      required: [true, 'Please upload Aadhar Front document']
+      default: null
     },
     backDocument: {
       type: String, // Cloudinary URL (Back Side)
-      required: [true, 'Please upload Aadhar Back document']
+      default: null
     }
   },
   pan: {
     number: {
       type: String,
-      required: [true, 'Please provide PAN number'],
       trim: true,
-      uppercase: true
+      uppercase: true,
+      default: ''
     },
     document: {
       type: String, // Cloudinary URL
-      required: [true, 'Please upload PAN document']
+      default: null
     }
   },
   gstin: {
@@ -152,6 +152,22 @@ const workerSchema = new mongoose.Schema({
       default: null
     }
   },
+  // Places the partner works from. Exactly one is the base location (isActive); it is copied into
+  // `address` / `location` / `geoLocation`, which job dispatch and service area use.
+  savedAddresses: [{
+    addressType: { type: String, enum: ['home', 'office', 'custom'], default: 'office' },
+    customName: { type: String, trim: true, default: '' },
+    fullAddress: { type: String, trim: true, required: true },
+    addressLine1: { type: String, trim: true, default: '' },
+    addressLine2: { type: String, trim: true, default: '' },
+    city: { type: String, trim: true, default: '' },
+    state: { type: String, trim: true, default: '' },
+    pincode: { type: String, trim: true, default: '' },
+    landmark: { type: String, trim: true, default: '' },
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
+    isActive: { type: Boolean, default: false }
+  }],
   bankDetails: {
     accountHolderName: {
       type: String,

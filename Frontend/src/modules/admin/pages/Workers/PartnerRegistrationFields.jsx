@@ -195,6 +195,11 @@ const PartnerRegistrationFields = () => {
       };
 
       if (editingField) {
+        if (editingField.isCore) {
+          delete payload.type;
+          delete payload.section;
+          delete payload.options;
+        }
         const res = await updatePartnerRegistrationField(editingField._id, payload);
         if (res.success) {
           toast.success(`Field "${payload.label}" updated`);
@@ -295,7 +300,7 @@ const PartnerRegistrationFields = () => {
               <h1 className="text-xl font-bold text-gray-900">Partner Registration Fields & Documents</h1>
             </div>
             <p className="text-sm text-gray-500 max-w-2xl">
-              Configure dynamic text inputs and verification document upload options for service partner signup. Any field enabled here dynamically appears on the partner app registration page.
+              Control every field of the service partner signup form. Core fields (name, email, Aadhar, PAN, documents, services...) can be renamed, reordered, hidden or made optional; add your own text boxes and document uploads next to them. Changes show on the registration page immediately.
             </p>
           </div>
 
@@ -512,8 +517,17 @@ const PartnerRegistrationFields = () => {
                               : 'bg-blue-50 text-blue-800 border-blue-200'
                           }`}
                         >
-                          {isDoc ? 'Doc Upload' : field.type.toUpperCase()}
+                          {isDoc ? 'Doc Upload' : field.type === 'services' ? 'Service Picker' : field.type.toUpperCase()}
                         </span>
+
+                        {field.isCore && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            title={field.isLocked ? 'Identifies the partner account: always shown and mandatory' : 'Part of the core form: can be hidden or made optional, not deleted'}
+                          >
+                            {field.isLocked ? 'Core · Locked' : 'Core'}
+                          </span>
+                        )}
 
                         {field.isRequired ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
@@ -562,9 +576,11 @@ const PartnerRegistrationFields = () => {
                       <button
                         type="button"
                         onClick={() => handleToggle(field)}
-                        className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 ease-in-out cursor-pointer ${
-                          field.isActive ? 'bg-[#347989]' : 'bg-gray-300'
-                        }`}
+                        disabled={field.isLocked}
+                        title={field.isLocked ? 'This field identifies the partner account and cannot be turned off' : undefined}
+                        className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 ease-in-out ${
+                          field.isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                        } ${field.isActive ? 'bg-[#347989]' : 'bg-gray-300'}`}
                       >
                         <span
                           className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow-xs transition-transform duration-200 ease-in-out ${
@@ -584,12 +600,17 @@ const PartnerRegistrationFields = () => {
                       <FiEdit2 className="w-4 h-4" />
                     </button>
 
-                    {/* Delete button */}
+                    {/* Delete button (core fields are turned off instead) */}
                     <button
                       type="button"
                       onClick={() => setDeleteModal({ isOpen: true, field })}
-                      className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-gray-200"
-                      title="Delete Field"
+                      disabled={field.isCore}
+                      className={`p-2 rounded-xl transition-colors border border-gray-200 ${
+                        field.isCore
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
+                      }`}
+                      title={field.isCore ? 'Core field: turn it off instead of deleting' : 'Delete Field'}
                     >
                       <FiTrash2 className="w-4 h-4" />
                     </button>
@@ -629,8 +650,18 @@ const PartnerRegistrationFields = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {editingField?.isCore && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-[11px] text-indigo-800">
+                  <FiInfo className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    This is part of the core partner form. You can change its title, hint, order{editingField.isLocked ? '' : ', visibility and whether it is mandatory'}.
+                    {editingField.isLocked && ' It identifies the partner account, so it is always shown and mandatory.'}
+                  </span>
+                </div>
+              )}
+
               {/* Field Category & Type */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid grid-cols-2 gap-3 ${editingField?.isCore ? 'hidden' : ''}`}>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Field Category <span className="text-rose-500">*</span>
@@ -687,7 +718,7 @@ const PartnerRegistrationFields = () => {
               </div>
 
               {/* Identifier / Key (Optional custom key) */}
-              <div>
+              <div className={editingField?.isCore ? 'hidden' : ''}>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Unique Identifier Key <span className="text-gray-400 font-normal">(optional, auto-generated from label)</span>
                 </label>
@@ -763,6 +794,7 @@ const PartnerRegistrationFields = () => {
               </div>
 
               {/* Toggles */}
+              {!editingField?.isLocked && (
               <div className="bg-gray-50 p-4 rounded-xl space-y-3 border border-gray-200/70">
                 <label className="flex items-center justify-between cursor-pointer">
                   <div>
@@ -792,6 +824,7 @@ const PartnerRegistrationFields = () => {
                   </label>
                 </div>
               </div>
+              )}
 
               {/* Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

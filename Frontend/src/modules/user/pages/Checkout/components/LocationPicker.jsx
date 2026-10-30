@@ -31,6 +31,17 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
     libraries
   });
 
+  // Hooks must run on every render, so this stays above the early returns for the loading map
+  const safeMarker = useMemo(() => {
+    if (!marker) return defaultCenter;
+    const lat = Number(marker.lat);
+    const lng = Number(marker.lng);
+    if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+      return { lat, lng };
+    }
+    return defaultCenter;
+  }, [marker]);
+
   // Update marker when initialPosition changes (from external selection)
   useEffect(() => {
     if (initialPosition) {
@@ -163,16 +174,6 @@ const LocationPicker = ({ onLocationSelect, initialPosition = null, height = 256
       <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
     </div>;
   }
-
-  const safeMarker = useMemo(() => {
-    if (!marker) return defaultCenter;
-    const lat = Number(marker.lat);
-    const lng = Number(marker.lng);
-    if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
-      return { lat, lng };
-    }
-    return defaultCenter;
-  }, [marker]);
 
   return (
     <div className="w-full">

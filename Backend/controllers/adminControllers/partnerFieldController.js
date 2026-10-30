@@ -1,5 +1,6 @@
 const PartnerRegistrationField = require('../../models/PartnerRegistrationField');
 const { logAdminAudit } = require('../../utils/adminAuditLogger');
+const { SYSTEM_KEYS, isSystemKey, isLockedKey, ensureSystemFields } = require('../../utils/partnerRegistrationFields');
 
 // Default initial fields for partners if none are configured in database
 const DEFAULT_INITIAL_FIELDS = [
@@ -87,6 +88,14 @@ const ensureInitialFields = async () => {
   if (count === 0) {
     await PartnerRegistrationField.insertMany(DEFAULT_INITIAL_FIELDS);
   }
+  // Name, Aadhar, PAN, documents... are fields too, so the admin can control them
+  await ensureSystemFields();
+};
+
+// isCore: part of the fixed form (cannot be deleted); isLocked: also cannot be hidden or made optional
+const withMeta = (field) => {
+  const plain = field.toObject ? field.toObject() : field;
+  return { ...plain, isCore: isSystemKey(plain.fieldKey), isLocked: isLockedKey(plain.fieldKey) };
 };
 
 /**
@@ -107,13 +116,14 @@ exports.getPublicPartnerFields = async (req, res) => {
   try {
     await ensureInitialFields();
 
-    const fields = await PartnerRegistrationField.find({ isActive: true })
+    // Core fields are sent even when switched off, so the signup form knows to hide them
+    const fields = await PartnerRegistrationField.find({ $or: [{ isActive: true }, { fieldKey: { $in: SYSTEM_KEYS } }] })
       .sort({ order: 1, createdAt: 1 })
       .lean();
 
     return res.status(200).json({
       success: true,
-      fields
+      fields: fields.map(withMeta)
     });
   } catch (error) {
     console.error('Error fetching public partner registration fields:', error);
@@ -138,7 +148,7 @@ exports.getAdminFields = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      fields
+      fields: fields.map(withMeta)
     });
   } catch (error) {
     console.error('Error fetching admin partner fields:', error);
@@ -256,25 +266,33 @@ exports.updateField = async (req, res) => {
       });
     }
 
+    const isCore = isSystemKey(field.fieldKey);
+    const isLocked = isLockedKey(field.fieldKey);
+
     if (label !== undefined && label.trim()) field.label = label.trim();
-    if (type !== undefined) {
-      field.type = type;
-      if (type === 'document') {
-        field.section = 'documents';
-      } else if (section) {
+    // A core field keeps its kind and section: the signup form is built around them
+    if (!isCore) {
+      if (type !== undefined) {
+        field.type = type;
+        if (type === 'document') {
+          field.section = 'documents';
+        } else if (section) {
+          field.section = section;
+        }
+      } else if (section !== undefined) {
         field.section = section;
       }
-    } else if (section !== undefined) {
-      field.section = section;
     }
 
     if (placeholder !== undefined) field.placeholder = placeholder.trim();
     if (helpText !== undefined) field.helpText = helpText.trim();
-    if (options !== undefined && Array.isArray(options)) {
+    if (!isCore && options !== undefined && Array.isArray(options)) {
       field.options = options.map(o => String(o).trim()).filter(Boolean);
     }
-    if (isRequired !== undefined) field.isRequired = Boolean(isRequired);
-    if (isActive !== undefined) field.isActive = Boolean(isActive);
+    if (!isLocked) {
+      if (isRequired !== undefined) field.isRequired = Boolean(isRequired);
+      if (isActive !== undefined) field.isActive = Boolean(isActive);
+    }
     if (order !== undefined && !isNaN(Number(order))) field.order = Number(order);
 
     await field.save();
@@ -291,7 +309,7 @@ exports.updateField = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Field updated successfully',
-      field
+      field: withMeta(field)
     });
   } catch (error) {
     console.error('Error updating partner field:', error);
@@ -317,6 +335,13 @@ exports.toggleField = async (req, res) => {
       });
     }
 
+    if (isLockedKey(field.fieldKey)) {
+      return res.status(400).json({
+        success: false,
+        message: `"${field.label}" identifies the partner account and cannot be turned off`
+      });
+    }
+
     field.isActive = !field.isActive;
     await field.save();
 
@@ -332,7 +357,7 @@ exports.toggleField = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Field ${field.isActive ? 'activated' : 'deactivated'} successfully`,
-      field
+      field: withMeta(field)
     });
   } catch (error) {
     console.error('Error toggling partner field:', error);
@@ -355,6 +380,13 @@ exports.deleteField = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Field not found'
+      });
+    }
+
+    if (isSystemKey(field.fieldKey)) {
+      return res.status(400).json({
+        success: false,
+        message: `"${field.label}" is part of the core form. Turn it off instead of deleting it.`
       });
     }
 
@@ -395,11 +427,13 @@ exports.seedDefaultFields = async (req, res) => {
       }
     }
 
-    const fields = await PartnerRegistrationField.find().sort({ section: 1, order: 1 });
+    await ensureSystemFields();
+
+    const fields = await PartnerRegistrationField.find().sort({ section: 1, order: 1 }).lean();
     return res.status(200).json({
       success: true,
       message: 'Default fields verified and initialized',
-      fields
+      fields: fields.map(withMeta)
     });
   } catch (error) {
     console.error('Error seeding default partner fields:', error);

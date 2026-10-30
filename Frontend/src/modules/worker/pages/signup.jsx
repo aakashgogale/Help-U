@@ -8,17 +8,31 @@ import LogoLoader from '../../../components/common/LogoLoader';
 import Logo from '../../../components/common/Logo';
 import { compressImage } from '../../../utils/imageCompression';
 import { publicCatalogService } from '../../../services/catalogService';
+import { buildCoreConfig } from '../utils/registrationConfig';
 
 import { z } from "zod";
 
-// Zod schema for Worker Signup
-const workerSignupSchema = z.object({
-  name: z.string().min(2, "Full Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  phoneNumber: z.string().regex(/^\d{10}$/, "Please enter a valid 10-digit phone number"),
-  aadhar: z.string().regex(/^\d{12}$/, "Aadhar number must be exactly 12 digits"),
-  pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format (e.g. ABCDE1234F)")
-});
+// Zod schema for Worker Signup. Aadhar and PAN follow the admin's visible / mandatory settings.
+const buildSignupSchema = (core) => {
+  const optionalFormat = (regex, message) => z.string().regex(new RegExp(`^(${regex.source})?$`), message);
+  const aadharMessage = "Aadhar number must be exactly 12 digits";
+  const panMessage = "Invalid PAN format (e.g. ABCDE1234F)";
+  const aadharRegex = /\d{12}/;
+  const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/;
+  const aadhar = core.aadhar_number.active
+    ? (core.aadhar_number.required ? z.string().regex(new RegExp(`^${aadharRegex.source}$`), aadharMessage) : optionalFormat(aadharRegex, aadharMessage))
+    : z.string().optional();
+  const pan = core.pan_number.active
+    ? (core.pan_number.required ? z.string().regex(new RegExp(`^${panRegex.source}$`), panMessage) : optionalFormat(panRegex, panMessage))
+    : z.string().optional();
+  return z.object({
+    name: z.string().min(2, "Full Name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email address"),
+    phoneNumber: z.string().regex(/^\d{10}$/, "Please enter a valid 10-digit phone number"),
+    aadhar,
+    pan
+  });
+};
 
 const WorkerSignup = () => {
   const navigate = useNavigate();
@@ -191,16 +205,19 @@ const WorkerSignup = () => {
     fetchFields();
   }, []);
 
-  // Split into active text fields and active document upload fields
+  // Core fields (name, Aadhar, PAN, documents...) as the admin configured them
+  const core = useMemo(() => buildCoreConfig(dynamicFields), [dynamicFields]);
+
+  // Split into active text fields and active document upload fields (the admin's own, not the core ones)
   const dynamicTextFields = useMemo(() => {
     return dynamicFields
-      .filter(f => f.isActive && (f.section === 'profile' || f.type !== 'document'))
+      .filter(f => f.isActive && !f.isCore && (f.section === 'profile' || f.type !== 'document'))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [dynamicFields]);
 
   const dynamicDocFields = useMemo(() => {
     return dynamicFields
-      .filter(f => f.isActive && (f.section === 'documents' || f.type === 'document'))
+      .filter(f => f.isActive && !f.isCore && (f.section === 'documents' || f.type === 'document'))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [dynamicFields]);
 
@@ -458,7 +475,7 @@ const WorkerSignup = () => {
     setFieldErrors({});
 
     // Zod Validation
-    const validationResult = workerSignupSchema.safeParse({
+    const validationResult = buildSignupSchema(core).safeParse({
       name: formData.name?.trim(),
       email: formData.email?.trim(),
       phoneNumber: formData.phoneNumber?.trim(),
@@ -482,9 +499,9 @@ const WorkerSignup = () => {
     const hasAadharDoc = formData.documents.some(d => d.type === 'aadhar');
     const hasAadharBackDoc = formData.documents.some(d => d.type === 'aadharBack');
     const hasPanDoc = formData.documents.some(d => d.type === 'pan');
-    if (!hasAadharDoc) { toast.error('Please upload Aadhar Front document'); return; }
-    if (!hasAadharBackDoc) { toast.error('Please upload Aadhar Back document'); return; }
-    if (!hasPanDoc) { toast.error('Please upload PAN document'); return; }
+    if (core.aadhar_front.active && core.aadhar_front.required && !hasAadharDoc) { toast.error(`Please upload ${core.aadhar_front.label}`); return; }
+    if (core.aadhar_back.active && core.aadhar_back.required && !hasAadharBackDoc) { toast.error(`Please upload ${core.aadhar_back.label}`); return; }
+    if (core.pan_document.active && core.pan_document.required && !hasPanDoc) { toast.error(`Please upload ${core.pan_document.label}`); return; }
 
     // Dynamic Text Fields Validation
     for (const tf of dynamicTextFields) {
@@ -509,7 +526,7 @@ const WorkerSignup = () => {
     }
 
     // Service Categories Validation
-    if (!Array.isArray(formData.service) || formData.service.length === 0) {
+    if (core.service_categories.active && core.service_categories.required && (!Array.isArray(formData.service) || formData.service.length === 0)) {
       setFieldErrors(prev => ({ ...prev, service: 'Please select at least one service category' }));
       toast.error('Please select at least one service category');
       return;
@@ -660,6 +677,10 @@ const WorkerSignup = () => {
 
   const brandColor = themeColors.brand?.teal || '#347989';
 
+  // "(Optional)" next to the label of a core field the admin made optional
+  const optionalTag = (cfg) => (cfg.required ? null : <span className="text-gray-400 text-xs font-normal"> (Optional)</span>);
+  const helpNote = (cfg) => (cfg.helpText ? <p className="text-[11px] text-gray-400 mt-0.5">{cfg.helpText}</p> : null);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
       {/* Decorative Background Elements - Fixed Container to prevent scroll issues */}
@@ -687,11 +708,11 @@ const WorkerSignup = () => {
             <form onSubmit={handleDetailsSubmit} className="space-y-8" noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Basic Details */}
-                <div className="space-y-4 animate-stagger-1 animate-fade-in">
-                  <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Business Profile</h3>
+                <div className="flex flex-col gap-4 animate-stagger-1 animate-fade-in">
+                  <h3 className="text-lg font-bold text-gray-900 border-b pb-2" style={{ order: -1 }}>Business Profile</h3>
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <div className="animate-fade-in" style={{ animationDelay: '0.1s', order: core.name.order }}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{core.name.label}</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
                         <FiUser className="text-gray-400" />
@@ -707,14 +728,15 @@ const WorkerSignup = () => {
                           fieldErrors.name ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                         }`}
                         style={{ '--tw-ring-color': fieldErrors.name ? '#EF4444' : brandColor }}
-                        placeholder="Organization or Person name"
+                        placeholder={core.name.placeholder}
                       />
                     </div>
                     {fieldErrors.name && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.name}</p>}
+                    {helpNote(core.name)}
                   </div>
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <div className="animate-fade-in" style={{ animationDelay: '0.2s', order: core.email.order }}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{core.email.label}</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
                         <FiMail className="text-gray-400" />
@@ -729,15 +751,16 @@ const WorkerSignup = () => {
                           fieldErrors.email ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                         }`}
                         style={{ '--tw-ring-color': fieldErrors.email ? '#EF4444' : brandColor }}
-                        placeholder="worker@example.com"
+                        placeholder={core.email.placeholder}
                       />
                     </div>
                     {fieldErrors.email && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.email}</p>}
+                    {helpNote(core.email)}
                   </div>
 
                   {!verificationToken && (
-                    <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <div className="animate-fade-in" style={{ animationDelay: '0.3s', order: core.phone.order }}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{core.phone.label}</label>
                       <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-3 border-r pr-2 flex items-center pointer-events-none">
                           <span className="text-gray-500 text-sm font-bold">+91</span>
@@ -754,15 +777,17 @@ const WorkerSignup = () => {
                             fieldErrors.phoneNumber ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                           }`}
                           style={{ '--tw-ring-color': fieldErrors.phoneNumber ? '#EF4444' : brandColor }}
-                          placeholder="9876543210"
+                          placeholder={core.phone.placeholder}
                         />
                       </div>
                       {fieldErrors.phoneNumber && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.phoneNumber}</p>}
+                      {helpNote(core.phone)}
                     </div>
                   )}
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
+                  {core.aadhar_number.active && (
+                  <div className="animate-fade-in" style={{ animationDelay: '0.4s', order: core.aadhar_number.order }}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{core.aadhar_number.label}{optionalTag(core.aadhar_number)}</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
                         <FiFileText className="text-gray-400" />
@@ -779,14 +804,17 @@ const WorkerSignup = () => {
                           fieldErrors.aadhar ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                         }`}
                         style={{ '--tw-ring-color': fieldErrors.aadhar ? '#EF4444' : brandColor }}
-                        placeholder="1234 5678 9012"
+                        placeholder={core.aadhar_number.placeholder}
                       />
                     </div>
                     {fieldErrors.aadhar && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.aadhar}</p>}
+                    {helpNote(core.aadhar_number)}
                   </div>
+                  )}
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
+                  {core.pan_number.active && (
+                  <div className="animate-fade-in" style={{ animationDelay: '0.5s', order: core.pan_number.order }}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{core.pan_number.label}{optionalTag(core.pan_number)}</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
                         <FiFileText className="text-gray-400" />
@@ -803,16 +831,19 @@ const WorkerSignup = () => {
                           fieldErrors.pan ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 hover:border-gray-400'
                         }`}
                         style={{ '--tw-ring-color': fieldErrors.pan ? '#EF4444' : brandColor }}
-                        placeholder="ABCDE1234F"
+                        placeholder={core.pan_number.placeholder}
                       />
                     </div>
                     {fieldErrors.pan && <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors.pan}</p>}
+                    {helpNote(core.pan_number)}
                   </div>
+                  )}
 
 
-                  <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                  {core.referral_code.active && (
+                  <div className="animate-fade-in" style={{ animationDelay: '0.6s', order: core.referral_code.order }}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Referral Code <span className="text-gray-400 text-xs font-normal">(Optional - If referred by a worker)</span>
+                      {core.referral_code.label}{optionalTag(core.referral_code)}
                     </label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-[#347989] transition-colors">
@@ -825,18 +856,20 @@ const WorkerSignup = () => {
                         onChange={(e) => setFormData(p => ({ ...p, referralCode: e.target.value.toUpperCase().trim() }))}
                         className="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-offset-2 transition-all duration-300 outline-none hover:border-gray-400 uppercase font-semibold text-gray-800 tracking-wider placeholder:normal-case placeholder:font-normal placeholder:tracking-normal"
                         style={{ '--tw-ring-color': brandColor }}
-                        placeholder="e.g. HOMV-A4B7"
+                        placeholder={core.referral_code.placeholder}
                       />
                     </div>
+                    {helpNote(core.referral_code)}
                   </div>
+                  )}
 
                   {/* Dynamic Text Boxes Configured in Admin Panel */}
                   {dynamicTextFields.length > 0 && (
-                    <div className="pt-2 space-y-4">
+                    <>
                       {dynamicTextFields.map((field) => {
                         const err = customFieldErrors[field.fieldKey];
                         return (
-                          <div key={field._id || field.fieldKey} className="animate-fade-in">
+                          <div key={field._id || field.fieldKey} className="animate-fade-in" style={{ order: field.order || 0 }}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               {field.label} {field.isRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 text-xs font-normal">(Optional)</span>}
                             </label>
@@ -887,7 +920,7 @@ const WorkerSignup = () => {
                           </div>
                         );
                       })}
-                    </div>
+                    </>
                   )}
 
                 </div>
@@ -899,8 +932,9 @@ const WorkerSignup = () => {
                   <div className="grid grid-cols-2 gap-4">
                     {/* Aadhar Upload */}
                     {/* Aadhar Front Upload */}
-                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Aadhar Front</p>
+                    {core.aadhar_front.active && (
+                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.2s', order: core.aadhar_front.order }}>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{core.aadhar_front.label}{optionalTag(core.aadhar_front)}</p>
                       {documentPreview.aadhar ? (
                         <div className="relative group overflow-hidden rounded-xl">
                           <img src={documentPreview.aadhar} className="w-full h-28 object-cover border transform group-hover:scale-110 transition-transform duration-500" />
@@ -926,11 +960,14 @@ const WorkerSignup = () => {
                           </label>
                         </div>
                       )}
+                      {core.aadhar_front.helpText && <p className="text-[10px] text-gray-400 italic">{core.aadhar_front.helpText}</p>}
                     </div>
+                    )}
 
                     {/* Aadhar Back Upload */}
-                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.25s' }}>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Aadhar Back</p>
+                    {core.aadhar_back.active && (
+                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.25s', order: core.aadhar_back.order }}>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{core.aadhar_back.label}{optionalTag(core.aadhar_back)}</p>
                       {documentPreview.aadharBack ? (
                         <div className="relative group overflow-hidden rounded-xl">
                           <img src={documentPreview.aadharBack} className="w-full h-28 object-cover border transform group-hover:scale-110 transition-transform duration-500" />
@@ -956,11 +993,14 @@ const WorkerSignup = () => {
                           </label>
                         </div>
                       )}
+                      {core.aadhar_back.helpText && <p className="text-[10px] text-gray-400 italic">{core.aadhar_back.helpText}</p>}
                     </div>
+                    )}
 
                     {/* PAN Upload */}
-                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">PAN Card</p>
+                    {core.pan_document.active && (
+                    <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.3s', order: core.pan_document.order }}>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{core.pan_document.label}{optionalTag(core.pan_document)}</p>
                       {documentPreview.pan ? (
                         <div className="relative group overflow-hidden rounded-xl">
                           <img src={documentPreview.pan} className="w-full h-28 object-cover border transform group-hover:scale-110 transition-transform duration-500" />
@@ -986,7 +1026,9 @@ const WorkerSignup = () => {
                           </label>
                         </div>
                       )}
+                      {core.pan_document.helpText && <p className="text-[10px] text-gray-400 italic">{core.pan_document.helpText}</p>}
                     </div>
+                    )}
 
                     {/* Dynamic Document Uploads from Admin Panel */}
                     {dynamicDocFields.map((field, idx) => {
@@ -996,7 +1038,7 @@ const WorkerSignup = () => {
                       const isPdf = preview && preview.startsWith('data:application/pdf');
 
                       return (
-                        <div key={field._id || key} className="space-y-2 animate-fade-in" style={{ animationDelay: `${0.35 + idx * 0.05}s` }}>
+                        <div key={field._id || key} className="space-y-2 animate-fade-in" style={{ animationDelay: `${0.35 + idx * 0.05}s`, order: field.order || 0 }}>
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate flex items-center justify-between">
                             <span className="truncate">{field.label}</span>
                             {field.isRequired ? (
@@ -1076,6 +1118,7 @@ const WorkerSignup = () => {
               </div>
 
               {/* ── Services & Categories — full width, proper dropdown with elevated stacking context ── */}
+              {core.service_categories.active && (
               <div
                 className={`transition-all duration-200 ${isCategoryOpen ? 'relative z-40' : 'relative z-10'} animate-fade-in`}
                 style={{ animationDelay: '0.7s' }}
@@ -1084,7 +1127,7 @@ const WorkerSignup = () => {
                 <div className="flex items-center justify-between mb-2">
                   <label className="flex text-sm font-medium text-gray-700 items-center gap-1.5">
                     <FiBriefcase className="text-gray-400 w-4 h-4" />
-                    Services & Categories <span className="text-red-500">*</span>
+                    {core.service_categories.label} {core.service_categories.required ? <span className="text-red-500">*</span> : <span className="text-gray-400 text-xs font-normal">(Optional)</span>}
                   </label>
                   {Array.isArray(formData.service) && formData.service.length > 0 && (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: `${brandColor}15`, color: brandColor }}>
@@ -1150,7 +1193,7 @@ const WorkerSignup = () => {
                     <span className={`text-sm ${formData.service.length > 0 ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
                       {formData.service.length > 0
                         ? `${formData.service.length} item${formData.service.length > 1 ? 's' : ''} selected`
-                        : 'Select services & categories'}
+                        : (core.service_categories.placeholder || 'Select services & categories')}
                     </span>
                     <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isCategoryOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -1313,7 +1356,9 @@ const WorkerSignup = () => {
                 {fieldErrors.service && (
                   <p className="text-xs text-red-500 mt-1.5 font-medium">{fieldErrors.service}</p>
                 )}
+                {helpNote(core.service_categories)}
               </div>
+              )}
 
               <div className="relative z-0 animate-stagger-3 animate-fade-in">
                 <button

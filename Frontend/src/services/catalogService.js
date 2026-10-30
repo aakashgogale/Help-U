@@ -8,6 +8,9 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 // Stale copy of home data per city, used only for instant display on revisit.
 const LAST_HOME_TTL = 5 * 60 * 1000;
+// How long the home page reuses a response before asking the server again. Kept short so admin
+// changes (prices, sections, banners) reach customers within about half a minute.
+const HOME_DATA_TTL_SECONDS = 30;
 const lastHomeData = new Map();
 const lastHomeTimestamps = new Map();
 
@@ -593,14 +596,14 @@ export const publicCatalogService = {
 
     const response = await api.get(`/public/home-data${query}`);
     if (response.data.success) {
-      apiCache.set(cacheKey, response.data, 120); // 2 minutes
+      apiCache.set(cacheKey, response.data, HOME_DATA_TTL_SECONDS);
       lastHomeData.set(cacheKey, response.data);
       lastHomeTimestamps.set(cacheKey, Date.now());
     }
     return response.data;
   },
 
-  // Last successful home data for this city/zone, even if the 2-minute cache expired.
+  // Last successful home data for this city/zone, even if the short cache expired.
   // Lets Home render instantly on revisit while fresh data loads in the background.
   // Expires after 5 minutes so admin-created content appears without a hard refresh.
   peekHomeData: (cityId, zoneId) => {

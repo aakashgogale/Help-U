@@ -6,6 +6,7 @@ import CardShell from '../UserCategories/components/CardShell';
 import Modal from '../UserCategories/components/Modal';
 import adminWorkerService from '../../../../services/adminWorkerService';
 import DataExportButton from '../../components/common/DataExportButton';
+import { getPartnerRegistrationFields } from '../../services/workerService';
 
 const AllWorkers = () => {
   const [workers, setWorkers] = useState([]);
@@ -20,6 +21,17 @@ const AllWorkers = () => {
   }, [urlParams]);
 
   const [selectedWorker, setSelectedWorker] = useState(null);
+  // What the admin currently calls each signup field, so stored answers show a title and not a key
+  const [fieldLabels, setFieldLabels] = useState({});
+  useEffect(() => {
+    getPartnerRegistrationFields()
+      .then((res) => {
+        if (res?.success && Array.isArray(res.fields)) {
+          setFieldLabels(Object.fromEntries(res.fields.map((f) => [f.fieldKey, f.label])));
+        }
+      })
+      .catch(() => { /* keys are shown instead */ });
+  }, []);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   // Load workers from backend
@@ -425,7 +437,7 @@ const AllWorkers = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {selectedWorker.documents.aadhar && (
                   <div>
-                    <label className="block text-xs text-gray-600 mb-2">Aadhar Front</label>
+                    <label className="block text-xs text-gray-600 mb-2">{fieldLabels.aadhar_front || 'Aadhar Front'}</label>
                     <img
                       src={selectedWorker.documents.aadhar}
                       alt="Aadhar Front"
@@ -443,7 +455,7 @@ const AllWorkers = () => {
                 )}
                 {selectedWorker.documents.aadharBack && (
                   <div>
-                    <label className="block text-xs text-gray-600 mb-2">Aadhar Back</label>
+                    <label className="block text-xs text-gray-600 mb-2">{fieldLabels.aadhar_back || 'Aadhar Back'}</label>
                     <img
                       src={selectedWorker.documents.aadharBack}
                       alt="Aadhar Back"
@@ -461,7 +473,7 @@ const AllWorkers = () => {
                 )}
                 {selectedWorker.documents.pan && (
                   <div>
-                    <label className="block text-xs text-gray-600 mb-2">PAN Card</label>
+                    <label className="block text-xs text-gray-600 mb-2">{fieldLabels.pan_document || 'PAN Card'}</label>
                     <img
                       src={selectedWorker.documents.pan}
                       alt="PAN"
@@ -484,7 +496,7 @@ const AllWorkers = () => {
                   return (
                     <div key={idx} className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-200">
                       <label className="block text-xs font-bold text-gray-700 mb-2 truncate">
-                        {doc.label || doc.fieldKey || `Document #${idx + 1}`}
+                        {fieldLabels[doc.fieldKey] || doc.label || doc.fieldKey || `Document #${idx + 1}`}
                       </label>
                       {isPdf ? (
                         <div className="w-full h-48 bg-red-50/40 rounded-lg border-2 border-dashed border-red-200 flex flex-col items-center justify-center p-4">
@@ -524,7 +536,7 @@ const AllWorkers = () => {
                   {Object.entries(selectedWorker.customFields).map(([key, value]) => (
                     <div key={key}>
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-0.5">
-                        {key.replace(/_/g, ' ')}
+                        {fieldLabels[key] || key.replace(/_/g, ' ')}
                       </span>
                       <span className="text-sm font-medium text-gray-900">
                         {value !== null && value !== undefined && value !== '' ? String(value) : 'Not Provided'}

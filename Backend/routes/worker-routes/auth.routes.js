@@ -29,8 +29,10 @@ const registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('phone').customSanitizer(val => String(val || '').trim().replace(/\D/g, '').slice(-10)).notEmpty().withMessage('Phone number is required').isLength({ min: 10, max: 10 }).withMessage('Phone number must be 10 digits'),
-  body('aadhar').trim().notEmpty().withMessage('Aadhar number is required').isLength({ min: 12, max: 12 }).withMessage('Aadhar number must be 12 digits'),
-  body('pan').trim().notEmpty().withMessage('PAN number is required').isLength({ min: 10, max: 10 }).withMessage('PAN number must be 10 characters')
+  // Aadhar, PAN, their documents and the services are optional/required as the admin configured,
+  // so register checks them against the registration fields
+  body('aadhar').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 12, max: 12 }).withMessage('Aadhar number must be 12 digits'),
+  body('pan').optional({ nullable: true, checkFalsy: true }).trim().isLength({ min: 10, max: 10 }).withMessage('PAN number must be 10 characters')
   // service and otp/token relaxed
 ];
 

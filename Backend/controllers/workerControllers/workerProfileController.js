@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { mirrorBaseAddress } = require('./workerAddressController');
 const Worker = require('../../models/Worker');
 const { validationResult } = require('express-validator');
 const cloudinaryService = require('../../services/cloudinaryService');
@@ -146,6 +147,8 @@ const updateProfile = async (req, res) => {
           lat: address.lat !== undefined ? address.lat : worker.address?.lat,
           lng: address.lng !== undefined ? address.lng : worker.address?.lng
         };
+
+        mirrorBaseAddress(worker);
 
         // Sync GeoJSON geoLocation and real-time location
         if (worker.address.lat && worker.address.lng) {
@@ -353,6 +356,7 @@ const updateAddress = async (req, res) => {
       type: 'Point',
       coordinates: [parseFloat(lng), parseFloat(lat)]
     };
+    mirrorBaseAddress(worker);
 
     await worker.save();
 

@@ -60,6 +60,7 @@ const Account = lazyLoad(() => import('../pages/Account'));
 const Native = lazyLoad(() => import('../pages/Native'));
 const Cart = lazyLoad(() => import('../pages/Cart'));
 const Category = lazyLoad(() => import('../pages/Category'));
+const SeeAll = lazyLoad(() => import('../pages/SeeAll'));
 const Services = lazyLoad(() => import('../pages/Services'));
 const Checkout = lazyLoad(() => import('../pages/Checkout'));
 const MyBookings = lazyLoad(() => import('../pages/MyBookings'));
@@ -203,6 +204,7 @@ const UserRoutes = () => {
               <Route path="/category/:idOrSlug" element={<ProtectedRoute userType="user"><Category /></ProtectedRoute>} />
               {/* An appliance under its parent, e.g. /user/category/ac/air-conditioner */}
               <Route path="/category/:parentSlug/:idOrSlug" element={<ProtectedRoute userType="user"><Category /></ProtectedRoute>} />
+              <Route path="/see-all/:sectionKey" element={<ProtectedRoute userType="user"><SeeAll /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute userType="user"><Services /></ProtectedRoute>} />
               <Route path="/native" element={<ProtectedRoute userType="user"><Native /></ProtectedRoute>} />
 

@@ -15,7 +15,7 @@ const partnerRegistrationFieldSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['text', 'number', 'textarea', 'select', 'document'],
+    enum: ['text', 'number', 'textarea', 'select', 'document', 'services'],
     required: [true, 'Field type is required'],
     default: 'text'
   },

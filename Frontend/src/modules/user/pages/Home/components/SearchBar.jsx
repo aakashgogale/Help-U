@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FiSearch, FiMic } from 'react-icons/fi';
 
-const SearchBar = ({ onInputClick, onVoiceClick, voiceSupported = false }) => {
+// suggestions: names of the categories the admin has set up, typed out one after another in the box
+const SearchBar = ({ suggestions = [], onInputClick, onVoiceClick, voiceSupported = false }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
 
-  const serviceNames = [
-    'AC service and repair',
-    'Washing machine services',
-    'Cooler repair at Home',
-    'R.O. repair installation',
-    'Microwave repair',
-    'Geyser repair',
-    'Bathroom appliance installation',
-    'Fridge at Home'
-  ];
+  // Keyed by the names themselves, so a new array with the same names does not restart the typing
+  const suggestionKey = (suggestions || []).join('\n');
+  const serviceNames = useMemo(
+    () => [...new Set(suggestionKey.split('\n').map(name => name.trim()).filter(Boolean))],
+    [suggestionKey]
+  );
+  const hasSuggestions = serviceNames.length > 0;
 
   useEffect(() => {
+    if (!hasSuggestions) return undefined;
     let timer;
-    const currentFullText = serviceNames[currentServiceIndex];
+    const currentFullText = serviceNames[currentServiceIndex % serviceNames.length];
 
     if (isTyping) {
       if (displayedText.length < currentFullText.length) {
@@ -41,7 +40,7 @@ const SearchBar = ({ onInputClick, onVoiceClick, voiceSupported = false }) => {
     }
 
     return () => clearTimeout(timer);
-  }, [displayedText, isTyping, currentServiceIndex]);
+  }, [displayedText, isTyping, currentServiceIndex, serviceNames, hasSuggestions]);
 
   return (
     <div className="w-full max-w-full min-w-0">
@@ -85,12 +84,18 @@ const SearchBar = ({ onInputClick, onVoiceClick, voiceSupported = false }) => {
         >
           {/* Placeholder text with typing animation */}
           <span className="block w-full min-w-0 text-[13.5px] sm:text-[14.5px] text-gray-400 truncate select-none leading-none">
-            <span className="hidden sm:inline">Search for services, e.g. </span>
-            <span className="sm:hidden">Search for </span>
-            <span className="text-gray-700 font-medium">
-              &lsquo;{displayedText}&rsquo;
-              <span className="animate-pulse ml-0.5 text-accent font-normal">|</span>
-            </span>
+            {hasSuggestions ? (
+              <>
+                <span className="hidden sm:inline">Search for services, e.g. </span>
+                <span className="sm:hidden">Search for </span>
+                <span className="text-gray-700 font-medium">
+                  &lsquo;{displayedText}&rsquo;
+                  <span className="animate-pulse ml-0.5 text-accent font-normal">|</span>
+                </span>
+              </>
+            ) : (
+              'Search for services'
+            )}
           </span>
         </div>
       </div>

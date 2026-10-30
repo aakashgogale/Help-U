@@ -1,21 +1,8 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
-// Fallback images when admin item has no image. Keyword match → asset path.
-const FALLBACK_RULES = [
-  { test: /salon|luxe|spa|beauty|facial|wax/i, src: '/noteworthy/salon-luxe.jpg' },
-  { test: /purifier|r\.?o|water/i, src: '/noteworthy/water-purifier.jpg' },
-  { test: /bathroom|toilet|kitchen clean|clean/i, src: '/noteworthy/bathroom-cleaning.jpg' },
-  { test: /hair studio|updo|style|hair|women/i, src: '/noteworthy/hair-studio.jpg' }
-];
-
-const getFallbackImage = (title) => {
-  const match = FALLBACK_RULES.find(r => r.test.test(title || ''));
-  return match ? match.src : '/noteworthy/salon-luxe.jpg';
-};
-
-const resolveImage = (raw, title) => {
-  if (!raw) return getFallbackImage(title);
+const resolveImage = (raw) => {
+  if (!raw) return null;
   if (raw.startsWith('http')) {
     return optimizeCloudinaryUrl(raw, { width: 360, quality: 'auto', crop: 'fill' });
   }
@@ -25,7 +12,7 @@ const resolveImage = (raw, title) => {
 const NoteworthyCard = memo(({ service, onServiceClick }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const title = service.title || 'Service';
-  const src = imageFailed ? getFallbackImage(title) : resolveImage(service.image, title);
+  const src = imageFailed ? null : resolveImage(service.image);
 
   // The admin's "badge" field is used for the top-left pill badge.
   // "duration" (in minutes) feeds the "⚡ In X mins" chip under the title.
@@ -39,14 +26,20 @@ const NoteworthyCard = memo(({ service, onServiceClick }) => {
     >
       {/* Image: square, soft rounded corners */}
       <div className="relative w-full aspect-square rounded-[16px] sm:rounded-[18px] overflow-hidden bg-[#F2F3F5]">
-        <img
-          src={src}
-          alt={title}
-          onError={() => setImageFailed(true)}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-          decoding="async"
-        />
+        {src ? (
+          <img
+            src={src}
+            alt={title}
+            onError={() => setImageFailed(true)}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <img src="/helpu-logo.png" alt="" className="w-12 h-12 object-contain opacity-30 grayscale" />
+          </div>
+        )}
         {topBadge && (
           <span className="absolute top-1.5 left-1.5 bg-[#7B183E] text-white text-[9.5px] sm:text-[10.5px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm tracking-tight leading-none">
             {topBadge}

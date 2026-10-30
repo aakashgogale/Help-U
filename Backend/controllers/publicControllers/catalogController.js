@@ -591,21 +591,52 @@ const advancedCatalogSearch = async (req, res) => {
 /**
  * Home cards that link to a real service show that service's CURRENT price, discount and picture,
  * so a price change in the catalog shows on the home page without editing the card. The card's own
- * title, subtitle and badge stay as the admin wrote them. Cards without a service link are left alone.
+ * title, subtitle and badge stay as the admin wrote them. A card with no link is matched to the service
+ * with exactly the same title (in its own category when several share it); if none matches it is left alone.
  */
 const applyLiveServiceData = async (contentObj) => {
   const lists = [contentObj.noteworthy, contentObj.booked, ...(contentObj.categorySections || []).map((sec) => sec.cards)];
-  const items = lists.flatMap((list) => list || []).filter((it) => it && it.targetServiceId);
-  if (!items.length) return;
+  const allItems = lists.flatMap((list) => list || []).filter((it) => it && it.title !== undefined);
+  if (!allItems.length) return;
 
-  const ids = [...new Set(items.map((it) => String(it.targetServiceId)))].filter((id) => mongoose.isValidObjectId(id));
-  const services = await Service.find({ _id: { $in: ids }, status: 'active', publishStatus: { $ne: 'draft' } })
-    .select('basePrice originalPrice images iconUrl categoryId')
-    .lean();
-  const byId = new Map(services.map((s) => [String(s._id), s]));
+  const liveFields = 'title basePrice originalPrice images iconUrl categoryId displayRating reviewsLabel variants';
+  const activeOnly = { status: 'active', publishStatus: { $ne: 'draft' } };
+  const normalize = (text) => String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-  items.forEach((it) => {
-    const svc = byId.get(String(it.targetServiceId));
+  // 1. Cards the admin linked to a service
+  const linked = allItems.filter((it) => it.targetServiceId);
+  const ids = [...new Set(linked.map((it) => String(it.targetServiceId)))].filter((id) => mongoose.isValidObjectId(id));
+  const byId = new Map();
+  if (ids.length) {
+    const services = await Service.find({ _id: { $in: ids }, ...activeOnly }).select(liveFields).lean();
+    services.forEach((svc) => byId.set(String(svc._id), svc));
+  }
+
+  // 2. Cards typed in by hand: when the title is exactly one service's title, that service is the card,
+  // so its price and rating stay current without the admin linking each card.
+  const unlinked = allItems.filter((it) => !it.targetServiceId && normalize(it.title));
+  const byTitle = new Map();
+  if (unlinked.length) {
+    const titles = [...new Set(unlinked.map((it) => String(it.title).trim()))];
+    const services = await Service.find({ title: { $in: titles }, ...activeOnly })
+      .collation({ locale: 'en', strength: 2 })
+      .select(liveFields)
+      .lean();
+    services.forEach((svc) => {
+      const key = normalize(svc.title);
+      byTitle.set(key, [...(byTitle.get(key) || []), svc]);
+    });
+  }
+  const matchByTitle = (it) => {
+    const candidates = byTitle.get(normalize(it.title)) || [];
+    if (candidates.length === 1) return candidates[0];
+    // Same title in several categories: only the one in the card's own category is certain
+    const inCategory = candidates.filter((svc) => it.targetCategoryId && String(svc.categoryId) === String(it.targetCategoryId));
+    return inCategory.length === 1 ? inCategory[0] : null;
+  };
+
+  allItems.forEach((it) => {
+    const svc = it.targetServiceId ? byId.get(String(it.targetServiceId)) : matchByTitle(it);
     if (!svc) return;
     const price = Number(svc.basePrice) || 0;
     const original = Number(svc.originalPrice) || 0;
@@ -614,6 +645,11 @@ const applyLiveServiceData = async (contentObj) => {
     it.discount = original > price ? `${Math.round(((original - price) / original) * 100)}% OFF` : '';
     if (!it.imageUrl) it.imageUrl = (svc.images && svc.images[0]) || svc.iconUrl || '';
     if (!it.targetCategoryId && svc.categoryId) it.targetCategoryId = svc.categoryId;
+    // A card tied to a service shows that service's own rating, reviews and options, so nothing is typed twice
+    if (svc.displayRating) it.rating = String(svc.displayRating);
+    if (svc.reviewsLabel) it.reviews = svc.reviewsLabel;
+    const options = Array.isArray(svc.variants) ? svc.variants.length : 0;
+    if (options > 1) it.optionsCount = String(options);
   });
 };
 
@@ -650,77 +686,7 @@ const getPublicHomeContent = async (req, res) => {
     await applyLiveServiceData(contentObj);
     const isGlobalScrapEnabled = settings ? settings.isScrapEnabled !== false : true;
 
-    const formattedContent = {
-      banners: (contentObj.banners || [])
-        .filter(item => matchesZone(item, activeZoneId))
-        .map(item => ({
-          ...item,
-          id: item._id ? item._id.toString() : item.id,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          targetServiceId: item.targetServiceId?.toString() || null,
-          zoneId: item.zoneId?.toString() || null,
-        })),
-      promos: (contentObj.promos || [])
-        .filter(item => matchesZone(item, activeZoneId))
-        .map(item => ({
-          ...item,
-          id: item._id ? item._id.toString() : item.id,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          targetServiceId: item.targetServiceId?.toString() || null,
-          zoneId: item.zoneId?.toString() || null,
-        })),
-      curated: (contentObj.curated || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
-      noteworthy: (contentObj.noteworthy || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
-      booked: (contentObj.booked || []).map(item => ({
-        ...item,
-        id: item._id ? item._id.toString() : item.id,
-        targetCategoryId: item.targetCategoryId?.toString() || null,
-        targetServiceId: item.targetServiceId?.toString() || null,
-      })),
-      spotlight: (contentObj.spotlight || [])
-        .filter(item => matchesZone(item, activeZoneId))
-        .map(item => ({
-          ...item,
-          id: item._id ? item._id.toString() : item.id,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          targetServiceId: item.targetServiceId?.toString() || null,
-          zoneId: item.zoneId?.toString() || null,
-        })),
-      categorySections: (contentObj.categorySections || []).map(section => ({
-        ...section,
-        id: section._id ? section._id.toString() : section.id,
-        seeAllTargetCategoryId: section.seeAllTargetCategoryId?.toString() || null,
-        seeAllTargetServiceId: section.seeAllTargetServiceId?.toString() || null,
-        cards: (section.cards || []).map(card => ({
-          ...card,
-          id: card._id ? card._id.toString() : card.id,
-          targetCategoryId: card.targetCategoryId?.toString() || null,
-          targetServiceId: card.targetServiceId?.toString() || null,
-        }))
-      })),
-      isBannersVisible: contentObj.isBannersVisible ?? true,
-      isPromosVisible: contentObj.isPromosVisible ?? true,
-      isCuratedVisible: contentObj.isCuratedVisible ?? true,
-      isNoteworthyVisible: contentObj.isNoteworthyVisible ?? true,
-      isBookedVisible: contentObj.isBookedVisible ?? true,
-      isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
-      isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
-      homeCategoryLimit: contentObj.homeCategoryLimit ?? 8,
-      showAllServicesTile: contentObj.showAllServicesTile ?? true,
-      allServicesLabel: contentObj.allServicesLabel || 'All services',
-      isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
-      isScrapVisible: isGlobalScrapEnabled
-    };
+    const formattedContent = formatHomeContent(contentObj, activeZoneId, isGlobalScrapEnabled);
 
     res.status(200).json({
       success: true,
@@ -830,90 +796,7 @@ const getPublicHomeData = async (req, res) => {
     if (homeContent) {
       const contentObj = homeContent.toObject();
       await applyLiveServiceData(contentObj);
-      formattedContent = {
-        banners: (contentObj.banners || [])
-          .filter(item => matchesZone(item, activeZoneId))
-          .map(item => ({
-            imageUrl: item.imageUrl,
-            targetCategoryId: item.targetCategoryId?.toString() || null,
-            slug: item.slug,
-            order: item.order,
-            zoneId: item.zoneId?.toString() || null
-          })),
-        promos: (contentObj.promos || [])
-          .filter(item => matchesZone(item, activeZoneId))
-          .map(item => ({
-            title: item.title,
-            subtitle: item.subtitle,
-            imageUrl: item.imageUrl,
-            targetCategoryId: item.targetCategoryId?.toString() || null,
-            order: item.order,
-            zoneId: item.zoneId?.toString() || null
-          })),
-        curated: (contentObj.curated || []).map(item => ({
-          title: item.title,
-          gifUrl: item.gifUrl,
-          order: item.order
-        })),
-        noteworthy: (contentObj.noteworthy || []).map(item => ({
-          title: item.title,
-          imageUrl: item.imageUrl,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          order: item.order
-        })),
-        booked: (contentObj.booked || []).map(item => ({
-          title: item.title,
-          rating: item.rating,
-          price: item.price,
-          imageUrl: item.imageUrl,
-          targetCategoryId: item.targetCategoryId?.toString() || null,
-          order: item.order
-        })),
-        spotlight: (contentObj.spotlight || [])
-          .filter(item => matchesZone(item, activeZoneId))
-          .map(item => ({
-            id: item._id ? item._id.toString() : item.id,
-            badge: item.badge,
-            title: item.title,
-            subtitle: item.subtitle,
-            startingPrice: item.startingPrice,
-            buttonText: item.buttonText,
-            imageUrl: item.imageUrl,
-            backgroundColor: item.backgroundColor,
-            textColor: item.textColor,
-            badgeColor: item.badgeColor,
-            targetCategoryId: item.targetCategoryId?.toString() || null,
-            targetServiceId: item.targetServiceId?.toString() || null,
-            slug: item.slug,
-            order: item.order,
-            zoneId: item.zoneId?.toString() || null
-          })),
-        categorySections: (contentObj.categorySections || []).map(section => ({
-          title: section.title,
-          seeAllTargetCategoryId: section.seeAllTargetCategoryId?.toString() || null,
-          cards: (section.cards || []).map(card => ({
-            title: card.title,
-            imageUrl: card.imageUrl,
-            price: card.price,
-            rating: card.rating,
-            optionsCount: card.optionsCount,
-            targetCategoryId: card.targetCategoryId?.toString() || null
-          })),
-          order: section.order
-        })),
-        isBannersVisible: contentObj.isBannersVisible ?? true,
-        isPromosVisible: contentObj.isPromosVisible ?? true,
-        isCuratedVisible: contentObj.isCuratedVisible ?? true,
-        isNoteworthyVisible: contentObj.isNoteworthyVisible ?? true,
-        isBookedVisible: contentObj.isBookedVisible ?? true,
-        isCategorySectionsVisible: contentObj.isCategorySectionsVisible ?? true,
-        isCategoriesVisible: contentObj.isCategoriesVisible ?? true,
-        homeCategoryLimit: contentObj.homeCategoryLimit ?? 8,
-        showAllServicesTile: contentObj.showAllServicesTile ?? true,
-        allServicesLabel: contentObj.allServicesLabel || 'All services',
-        isSpotlightVisible: contentObj.isSpotlightVisible ?? true,
-        isScrapVisible: isGlobalScrapEnabled
-      };
+      formattedContent = formatHomeContent(contentObj, activeZoneId, isGlobalScrapEnabled);
     }
 
     res.status(200).json({

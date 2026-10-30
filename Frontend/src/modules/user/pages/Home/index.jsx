@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
@@ -13,7 +13,7 @@ import { useLanguage } from '../../../../context/LanguageContext';
 import { useGoogleMapsConfig } from '../../../../hooks/useGoogleMapsConfig';
 import { toast } from 'react-hot-toast';
 import { registerFCMToken } from '../../../../services/pushNotificationService';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { HiLocationMarker } from 'react-icons/hi';
 import api from '../../../../services/api';
 
@@ -28,7 +28,6 @@ const ServiceSectionWithRating = lazy(() => import('./components/ServiceSectionW
 const ApplianceRepairSection = lazy(() => import('./components/ApplianceRepairSection'));
 const Banner = lazy(() => import('./components/Banner'));
 const ReferEarnSection = lazy(() => import('./components/ReferEarnSection'));
-const SectionSeeAllSheet = lazy(() => import('./components/SectionSeeAllSheet'));
 import SearchOverlay from './components/SearchOverlay';
 import VoiceSearchSheet from './components/VoiceSearchSheet';
 import useVoiceSearch from '../../../../hooks/useVoiceSearch';
@@ -42,22 +41,6 @@ import { getSectionArtTheme, getSectionArtwork, getSectionArtworkFallback } from
 
 
 
-const getLocalIcon = (title) => {
-  if (!title) return null;
-  const t = title.toLowerCase();
-  const origin = window.location.origin;
-  if (t.includes('refrigerator') || t.includes('fridge')) return `${origin}/ServiceIcon/refrigerator.svg`;
-  if (t.includes('water heater') || t.includes('geyser')) return `${origin}/ServiceIcon/water-heater.svg`;
-  if (t.includes('microwave')) return `${origin}/ServiceIcon/microwave.jpeg`;
-  if (t.includes('r.o') || t.includes('purifier') || t.includes('prufier')) return `${origin}/ServiceIcon/RpPurifier.jpeg`;
-  if (t.includes('led') || t.includes('tv')) return `${origin}/ServiceIcon/LED.jpeg`;
-  if (t.includes('dish washer') || t.includes('dishwasher')) return `${origin}/ServiceIcon/kitchen.jpeg`;
-  if (t.includes('chimney')) return `${origin}/ServiceIcon/chiminy.jpeg`;
-  if (t.includes('cooler')) return `${origin}/ServiceIcon/cooler.jpeg`;
-  if (t.includes('washing machine')) return `${origin}/ServiceIcon/washing machine.jpeg`;
-  if (t.includes('ac ') || t === 'ac') return `${origin}/ServiceIcon/AC.jpeg`;
-  return null;
-};
 
 const mapCategories = (list) => (list || []).map(cat => {
   const dbIcon = cat.homeIconUrl || cat.icon || cat.iconUrl || cat.image || cat.imageUrl;
@@ -81,19 +64,6 @@ const mapCategories = (list) => (list || []).map(cat => {
   };
 });
 
-// Keyword fallback for home cards whose admin category link is missing
-const CATEGORY_KEYWORDS = [
-  { pattern: / (washing|washer|top load|front load) /, category: /washing/ },
-  { pattern: / (geyser|water heater) /, category: /geyser|water heater/ },
-  { pattern: / (fridge|fride|refrigerator) /, category: /fridge|refrigerator/ },
-  { pattern: / (r\.o\.?|ro|purifier|prufier) /, category: /r\.o|purifier|prufier/ },
-  { pattern: / (ac|a\.c\.?|air conditioner) /, category: /^ac$|air condition/ },
-  { pattern: / cooler /, category: /cooler/ },
-  { pattern: / microwave /, category: /microwave/ },
-  { pattern: / chimney /, category: /chimney/ },
-  { pattern: / (led|tv|television) /, category: /^led|tv/ },
-  { pattern: / dish ?washer /, category: /dish ?washer/ },
-];
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -394,10 +364,6 @@ const Home = () => {
     }
   }, [location.state?.scrollToTop, location.pathname]);
 
-  // Row opened in the "See all" screen: { title, subtitle, services, variant, category }
-  const [seeAllSection, setSeeAllSection] = useState(null);
-  const closeSeeAll = useCallback(() => setSeeAllSection(null), []);
-
   // Fetch categories and home content on mount (and when city changes)
   useEffect(() => {
     const fetchData = async () => {
@@ -422,6 +388,13 @@ const Home = () => {
     };
 
     fetchData();
+
+    // Coming back to the app or tab picks up whatever the admin changed meanwhile
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') fetchData();
+    };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => document.removeEventListener('visibilitychange', refreshWhenVisible);
   }, [currentCity, zoneId]);
   const handleSearch = (query) => {
     // Navigate to search results page
@@ -496,8 +469,7 @@ const Home = () => {
     });
     if (byName) return byName;
 
-    const match = CATEGORY_KEYWORDS.find(({ pattern }) => pattern.test(title));
-    return match ? categories.find(c => match.category.test((c.title || '').toLowerCase())) || null : null;
+    return null;
   };
 
   // Category behind a whole row: admin "see all" link, else the one category all its cards share, else a title match
@@ -509,15 +481,20 @@ const Home = () => {
     return resolveServiceCategory({ title: section?.title });
   };
 
+  // "See all" of a row has its own page: /user/see-all/:sectionKey
   const openSeeAll = ({ title, subtitle, services, variant, category = null }) => {
-    setSeeAllSection({
+    const brief = (c) => (c ? { id: c.id || c._id, slug: c.slug, title: c.title, image: c.image } : null);
+    const section = {
       title,
       subtitle,
-      services: services || [],
       variant,
-      category,
-      onCategoryClick: category ? () => handleCategoryClick(category) : null
-    });
+      category: brief(category),
+      // Each card remembers the category it opens, so the page needs no home data
+      services: (services || []).map(service => ({ ...service, resolvedCategory: brief(resolveServiceCategory(service)) }))
+    };
+    const sectionKey = String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    // history state must be structured-cloneable, so pass plain data only
+    navigate(`/user/see-all/${sectionKey}`, { state: { section: JSON.parse(JSON.stringify(section)) } });
   };
 
   const handleServiceClick = (service) => {
@@ -567,7 +544,7 @@ const Home = () => {
           unitPrice: parseInt(service.price?.toString().replace(/,/g, '') || 0),
           serviceCount: 1,
           rating: service.rating || "",
-          reviews: service.reviews || "10k+",
+          reviews: service.reviews || "",
           vendorId: service.vendorId || null,
           sectionId: service.sectionId || null // VITAL: Added for plan benefits
         };
@@ -648,7 +625,7 @@ const Home = () => {
               showNotifications
             />
             <div className="px-4 sm:px-5 pb-2 pt-0 max-w-2xl mx-auto w-full min-w-0 max-w-full">
-              <SearchBar onInputClick={() => setIsSearchOpen(true)} onVoiceClick={voice.start} voiceSupported={voice.supported} />
+              <SearchBar suggestions={categories.filter(c => !c.parentId).map(c => c.title)} onInputClick={() => setIsSearchOpen(true)} onVoiceClick={voice.start} voiceSupported={voice.supported} />
             </div>
           </div>
         </motion.div>
@@ -842,7 +819,7 @@ const Home = () => {
                               id: card._id || cIdx,
                               title: card.title,
                               rating: card.rating || "",
-                              reviews: card.reviews || "10k+",
+                              reviews: card.reviews || "",
                               price: card.price,
                               originalPrice: card.originalPrice,
                               discount: card.discount,
@@ -879,20 +856,21 @@ const Home = () => {
                           title={section.title}
                           subtitle={section.subtitle}
                           services={section.cards?.map((card, cIdx) => {
+                            // The admin's image wins; the built-in illustration only fills in when there is none
                             const sectionArt = artTheme ? getSectionArtwork(artTheme, card.title) : null;
-                            const processedImage = sectionArt || toAssetUrl(card.imageUrl);
+                            const processedImage = toAssetUrl(card.imageUrl) || sectionArt;
                             return {
                               id: card._id || cIdx,
                               title: card.title,
                               rating: card.rating || "",
-                              reviews: card.reviews || "10k+",
+                              reviews: card.reviews || "",
                               price: card.price,
                               originalPrice: card.originalPrice,
                               discount: card.discount,
                               badge: card.badge,
                               optionsCount: card.optionsCount,
                               image: processedImage,
-                              fallbackImage: artTheme ? getSectionArtworkFallback(artTheme) : getLocalIcon(card.title),
+                              fallbackImage: artTheme ? (sectionArt || getSectionArtworkFallback(artTheme)) : null,
                               targetCategoryId: card.targetCategoryId,
                               slug: card.slug
                             };
@@ -960,19 +938,6 @@ const Home = () => {
                 </motion.div>
               )}
 
-              {/* Standalone Appliance Repair & Service section if not returned in dynamic categorySections */}
-              {homeContent?.isCategorySectionsVisible !== false && !(homeContent?.categorySections || []).some(s => (s.title || '').toLowerCase().includes('appliance') && (s.cards || []).length > 0) && (
-                <motion.div variants={itemVariants}>
-                  <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
-                    <ApplianceRepairSection
-                      onSeeAllClick={(services) => openSeeAll({ title: 'Appliance repair & service', services, variant: 'appliance' })}
-                      onServiceClick={(service) => handleServiceClick(service)}
-                      onAddClick={handleAddClick}
-                    />
-                  </Suspense>
-                </motion.div>
-              )}
-
               {/* Dynamic Banner 2 (banners[2]) */}
               {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[2]?.imageUrl) && (
                 <motion.div variants={itemVariants}>
@@ -1002,20 +967,6 @@ const Home = () => {
       </motion.div>
 
       {/* Removed local BottomNav, rendered by routes */}
-
-      {/* "See all" screen for a home row */}
-      <AnimatePresence>
-        {seeAllSection && (
-          <Suspense key="see-all" fallback={null}>
-            <SectionSeeAllSheet
-              section={seeAllSection}
-              onClose={closeSeeAll}
-              onServiceClick={handleServiceClick}
-              onAddClick={handleAddClick}
-            />
-          </Suspense>
-        )}
-      </AnimatePresence>
 
       {/* Search Overlay */}
       <SearchOverlay

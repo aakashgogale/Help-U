@@ -3,106 +3,31 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiFillStar } from 'react-icons/ai';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 
-// High-resolution realistic service assets
-import washingMachineImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/washing-machine.jpg';
-import topLoadMachineImg from '../../../../../assets/images/pages/Home/MostBookedServices/automatic-top-load-machine.jpg';
-import bathroomApplianceImg from '../../../../../assets/images/pages/Home/MostBookedServices/bathroom-appliance-installation.jpg';
-import fanRepairImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/fan-repair.jpg';
-import geyserRepairImg from '../../../../../assets/images/pages/Home/MostBookedServices/geyser-repair.jpg';
-import switchSocketImg from '../../../../../assets/images/pages/Home/MostBookedServices/switch-socket.jpg';
-import acRepairImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/ac-repair.jpg';
-import fridgeRepairImg from '../../../../../assets/images/pages/Home/ApplianceRepair/refrigerator-repair.jpg';
-import tapRepairImg from '../../../../../assets/images/pages/Home/HomeRepairSection/tap-repair.jpg';
-import drillHangImg from '../../../../../assets/images/pages/Home/HomeRepairSection/drill&hang.jpg';
-import waterPurifierImg from '../../../../../assets/images/pages/Home/NewAndNoteworthy/water-purifier.jpg';
-
 const formatPrice = (p) => {
   if (p === null || p === undefined || p === '') return null;
   const clean = p.toString().replace(/[^0-9]/g, '');
   return clean ? new Intl.NumberFormat('en-IN').format(clean) : null;
 };
 
-// Map keywords to high-resolution realistic photography
-const getFallbackImageForTitle = (title) => {
-  if (!title) return washingMachineImg;
-  const t = title.toLowerCase();
-  if (t.includes('bathroom') || t.includes('washroom')) {
-    return bathroomApplianceImg;
-  }
-  if (t.includes('top load')) return topLoadMachineImg;
-  if (t.includes('washing') || t.includes('washer') || t.includes('machine')) return washingMachineImg;
-  if (t.includes('fan') || t.includes('ceiling fan')) return fanRepairImg;
-  if (t.includes('geyser') || t.includes('heater') || t.includes('water heater')) return geyserRepairImg;
-  if (t.includes('switch') || t.includes('socket') || t.includes('electrician') || t.includes('board')) return switchSocketImg;
-  if (t.includes('ac ') || t.includes('air conditioner') || t === 'ac') return acRepairImg;
-  if (t.includes('frid') || t.includes('refrigerat')) return fridgeRepairImg;
-  if (t.includes('tap') || t.includes('plumb') || t.includes('pipe')) return tapRepairImg;
-  if (t.includes('drill') || t.includes('hang')) return drillHangImg;
-  if (t.includes('purifier') || t.includes('ro ')) return waterPurifierImg;
-  return bathroomApplianceImg;
-};
-
-const getFallbackData = (title) => {
-  const t = (title || '').toLowerCase();
-  if (t.includes('bathroom')) {
-    return { rating: '4.80', reviews: '119K', price: '500', options: 1 };
-  }
-  if (t.includes('top load')) {
-    return { rating: '4.78', reviews: '339K', price: '160', options: 4 };
-  }
-  if (t.includes('washing')) {
-    return { rating: '4.79', reviews: '103K', price: '950', options: 1 };
-  }
-  if (t.includes('fan')) {
-    return { rating: '4.85', reviews: '195K', price: '200', options: 2 };
-  }
-  if (t.includes('geyser') || t.includes('heater')) {
-    return { rating: '4.87', reviews: '47K', price: '799', options: 3 };
-  }
-  if (t.includes('switch') || t.includes('socket')) {
-    return { rating: '4.84', reviews: '78K', price: '450', options: 2 };
-  }
-  if (t.includes('ac')) {
-    return { rating: '4.82', reviews: '870K', price: '299', options: 4 };
-  }
-  if (t.includes('frid')) {
-    return { rating: '4.86', reviews: '31K', price: '1200', options: 1 };
-  }
-  return { rating: '4.80', reviews: '50K+', price: '199', options: 1 };
-};
-
 export const BookedServiceCard = memo(({ service, onServiceClick, onAddClick }) => {
   const [imageFailed, setImageFailed] = useState(false);
 
   const title = service.title || 'Popular Service';
-  const fallbackImg = getFallbackImageForTitle(title);
-  const fallbackData = getFallbackData(title);
 
+  // Everything shown comes from the admin's card (or the service it links to)
   const rawImage = service.image;
-  // Exclude low-res legacy webp assets if present
-  const isSuspiciousImage = rawImage && (
-    rawImage.includes('automatic-top-load-machine.webp') ||
-    rawImage.includes('fan-repairs.webp') ||
-    rawImage.includes('intense-bathroom')
-  );
+  const src = rawImage && !imageFailed
+    ? (rawImage.startsWith('http') ? optimizeCloudinaryUrl(rawImage, { width: 360, quality: 'auto', crop: 'fill' }) : rawImage)
+    : null;
 
-  let initialSrc = fallbackImg;
-  if (rawImage && !isSuspiciousImage && !imageFailed) {
-    if (rawImage.startsWith('http')) {
-      initialSrc = optimizeCloudinaryUrl(rawImage, { width: 360, quality: 'auto', crop: 'fill' });
-    } else {
-      initialSrc = rawImage;
-    }
-  }
-
-  const rating = service.rating || fallbackData.rating;
-  const reviews = service.reviews || fallbackData.reviews;
+  const rating = service.rating || '';
+  const reviews = service.reviews || '';
 
   const rawOptions = parseInt(service.optionsCount, 10);
-  const options = !isNaN(rawOptions) && rawOptions > 0 ? rawOptions : fallbackData.options;
+  const options = !isNaN(rawOptions) && rawOptions > 0 ? rawOptions : 1;
   const hasOptions = options > 1;
 
-  const displayPrice = formatPrice(service.price) || fallbackData.price;
+  const displayPrice = formatPrice(service.price);
   const displayOriginalPrice = formatPrice(service.originalPrice);
 
   return (
@@ -112,14 +37,20 @@ export const BookedServiceCard = memo(({ service, onServiceClick, onAddClick }) 
     >
       {/* Rounded-square image container with 18px corners */}
       <div className="relative w-full aspect-square rounded-[18px] overflow-hidden bg-[#F5F5F7]">
-        <img
-          src={imageFailed ? fallbackImg : initialSrc}
-          alt={title}
-          onError={() => setImageFailed(true)}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-          decoding="async"
-        />
+        {src ? (
+          <img
+            src={src}
+            alt={title}
+            onError={() => setImageFailed(true)}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <img src="/helpu-logo.png" alt="" className="w-12 h-12 object-contain opacity-30 grayscale" />
+          </div>
+        )}
         {(service.discount || service.badge) && (
           <span className="absolute top-2 left-2 text-white text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#6E42E5]">
             {service.discount || service.badge}
@@ -136,26 +67,34 @@ export const BookedServiceCard = memo(({ service, onServiceClick, onAddClick }) 
       </h3>
 
       {/* Star rating row: charcoal star + rating + (reviews count) */}
-      <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4 text-[#3F3F46]">
-        <AiFillStar className="w-3.5 h-3.5 text-[#27272A] flex-shrink-0" />
-        <span className="font-semibold text-[#18181B]">{rating}</span>
-        {reviews && (
-          <span className="text-[#52525B]">({reviews})</span>
-        )}
-      </div>
+      {(rating || reviews) && (
+        <div className="mt-1 flex items-center gap-1 text-[12.5px] leading-4 text-[#3F3F46]">
+          {rating && (
+            <>
+              <AiFillStar className="w-3.5 h-3.5 text-[#27272A] flex-shrink-0" />
+              <span className="font-semibold text-[#18181B]">{rating}</span>
+            </>
+          )}
+          {reviews && (
+            <span className="text-[#52525B]">({reviews})</span>
+          )}
+        </div>
+      )}
 
       {/* Bottom row: Starts at ₹... & Outlined Purple Add button */}
       <div className="mt-auto pt-2.5 flex items-end justify-between gap-1">
         <div className="flex flex-col justify-end">
-          {hasOptions && (
+          {hasOptions && displayPrice && (
             <span className="text-[11px] leading-[14px] font-normal text-[#71717A]">
               Starts at
             </span>
           )}
           <div className="flex items-baseline gap-1">
-            <span className="text-[15px] sm:text-[16px] leading-[20px] font-bold text-[#18181B]">
-              ₹{displayPrice}
-            </span>
+            {displayPrice && (
+              <span className="text-[15px] sm:text-[16px] leading-[20px] font-bold text-[#18181B]">
+                ₹{displayPrice}
+              </span>
+            )}
             {displayOriginalPrice && (
               <span className="text-[11px] text-[#A1A1AA] line-through">
                 ₹{displayOriginalPrice}

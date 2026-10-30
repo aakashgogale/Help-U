@@ -19,6 +19,32 @@ const workerService = {
     return response.data;
   },
 
+  // Saved addresses (one of them is the base location jobs are matched on)
+  getAddresses: async () => {
+    const response = await api.get('/workers/addresses');
+    return response.data;
+  },
+
+  addAddress: async (addressData) => {
+    const response = await api.post('/workers/addresses', addressData);
+    return response.data;
+  },
+
+  updateSavedAddress: async (id, addressData) => {
+    const response = await api.put(`/workers/addresses/${id}`, addressData);
+    return response.data;
+  },
+
+  setBaseAddress: async (id) => {
+    const response = await api.put(`/workers/addresses/${id}/activate`);
+    return response.data;
+  },
+
+  deleteAddress: async (id) => {
+    const response = await api.delete(`/workers/addresses/${id}`);
+    return response.data;
+  },
+
   // Update real-time location
   updateLocation: async (lat, lng) => {
     return api.put('/workers/profile/location', { lat, lng });

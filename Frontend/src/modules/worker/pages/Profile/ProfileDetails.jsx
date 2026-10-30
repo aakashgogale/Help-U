@@ -4,9 +4,12 @@ import { FiUser, FiEdit2, FiMapPin, FiPhone, FiMail, FiBriefcase, FiFileText, Fi
 import { workerAuthService } from '../../../../services/authService';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
+import { useRegistrationConfig } from '../../utils/registrationConfig';
 
 const ProfileDetails = () => {
   const navigate = useNavigate();
+  // Which documents the admin asks for, what they are called, and the labels of the extra questions
+  const { core, labelOf } = useRegistrationConfig();
 
   // Helper function to convert hex to rgba
   const hexToRgba = (hex, alpha) => {
@@ -307,11 +310,14 @@ const ProfileDetails = () => {
 
             <div className="space-y-3">
               {[
-                { label: 'Aadhar Card (Front)', url: profile.aadharDocument },
-                { label: 'Aadhar Card (Back)', url: profile.aadharBackDocument },
-                { label: 'PAN Card', url: profile.panDocument },
-                ...(Array.isArray(profile.customDocuments) ? profile.customDocuments.map(d => ({ label: d.label || d.fieldKey, url: d.url })) : [])
-              ].map((doc, idx) => (
+                { key: 'aadhar_front', label: core.aadhar_front.label, url: profile.aadharDocument },
+                { key: 'aadhar_back', label: core.aadhar_back.label, url: profile.aadharBackDocument },
+                { key: 'pan_document', label: core.pan_document.label, url: profile.panDocument }
+              ]
+                // A document the admin no longer asks for is hidden, unless the partner already uploaded one
+                .filter(doc => core[doc.key].active || doc.url)
+                .concat(Array.isArray(profile.customDocuments) ? profile.customDocuments.map(d => ({ label: d.label || labelOf(d.fieldKey), url: d.url })) : [])
+                .map((doc, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -360,6 +366,23 @@ const ProfileDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Answers to the extra questions the admin asks at signup */}
+          {Object.entries(profile.customFields || {}).filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '').length > 0 && (
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">Additional Details</h4>
+              <div className="space-y-3">
+                {Object.entries(profile.customFields || {})
+                  .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+                  .map(([key, value]) => (
+                    <div key={key} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{labelOf(key)}</p>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5 break-words">{String(value)}</p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
         </div>
       </main>
