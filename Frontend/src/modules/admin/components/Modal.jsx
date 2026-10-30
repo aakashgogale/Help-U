@@ -1,6 +1,7 @@
 import React from "react";
 import { FiX } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalLock from '../../../components/common/ModalLock';
 
 const Modal = ({ isOpen, onClose, title, children, size = "md", className = "" }) => {
   const sizeClasses = {
@@ -14,6 +15,7 @@ const Modal = ({ isOpen, onClose, title, children, size = "md", className = "" }
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <ModalLock />
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

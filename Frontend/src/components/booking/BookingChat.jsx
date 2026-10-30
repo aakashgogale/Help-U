@@ -4,6 +4,7 @@ import { FiArrowLeft, FiSend, FiImage, FiLock, FiCheck } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import bookingFeaturesService from '../../services/bookingFeaturesService';
 import { compressImage, fileToBase64 } from '../../utils/imageCompression';
+import ModalLock from '../common/ModalLock';
 
 const NAVY = '#163B66';
 
@@ -158,6 +159,7 @@ const BookingChat = ({ role, bookingId, isOpen, onClose }) => {
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] bg-slate-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Chat">
+      <ModalLock />
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-3 py-3 flex items-center gap-3 shadow-sm">
         <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100" aria-label="Close chat">
@@ -295,6 +297,7 @@ const BookingChat = ({ role, bookingId, isOpen, onClose }) => {
 
       {viewImage && (
         <div className="fixed inset-0 z-[10001] bg-black/95 flex items-center justify-center" onClick={() => setViewImage(null)}>
+          <ModalLock />
           <img src={viewImage} alt="Shared" className="max-w-[92vw] max-h-[85vh] object-contain rounded-lg" />
         </div>
       )}

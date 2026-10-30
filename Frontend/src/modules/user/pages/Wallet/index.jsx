@@ -27,6 +27,7 @@ import { useConfig } from '../../../../context/ConfigContext';
 import LogoLoader from '../../../../components/common/LogoLoader';
 import NotificationBell from '../../components/common/NotificationBell';
 import { themeColors } from '../../../../theme';
+import ModalLock from '../../../../components/common/ModalLock';
 
 /**
  * Ensures Razorpay checkout script is loaded
@@ -808,6 +809,7 @@ const Wallet = () => {
       <AnimatePresence>
         {showAddMoneyModal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -974,6 +976,7 @@ const Wallet = () => {
       <AnimatePresence>
         {showBreakdownModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiAlertCircle, FiX } from 'react-icons/fi';
 import { themeColors } from '../../theme';
+import ModalLock from './ModalLock';
 
 const ConfirmDialog = ({
   isOpen,
@@ -50,6 +51,7 @@ const ConfirmDialog = ({
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <ModalLock />
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
         {/* Close Button */}
         <button

@@ -8,6 +8,7 @@ import { cityService } from '../../services/cityService';
 import { publicCatalogService } from '../../../../services/catalogService';
 import CityManagement from '../Cities';
 import { toast } from 'react-hot-toast';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const AVAILABLE_PERMISSIONS = [
   { key: 'dashboard', label: 'Dashboard', desc: 'KPI cards & overview metrics' },
@@ -2212,6 +2213,7 @@ const AdminSettings = () => {
           {/* Diff Inspector Modal */}
           {selectedDiff && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <ModalLock />
               <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
                 <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
                   <div>

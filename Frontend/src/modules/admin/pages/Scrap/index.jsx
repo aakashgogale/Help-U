@@ -8,6 +8,7 @@ import ScrapTypes from './ScrapTypes';
 import WorkerEarningPanel from './WorkerEarningPanel';
 import { PickupModal, AmountModal } from './ScrapActions';
 import { bookingFeaturesAdminService } from '../../services/bookingFeaturesAdminService';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const AdminScrapPage = () => {
   const [scraps, setScraps] = useState([]);
@@ -506,6 +507,7 @@ const AdminScrapPage = () => {
       {/* Price Offer Modal Popup */}
       {offerModalOpen && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <ModalLock />
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 relative">
             {/* Close button */}
             <button

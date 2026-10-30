@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiX, FiChevronLeft, FiChevronRight, FiImage, FiPlay } from 'react-icons/fi';
+import ModalLock from '../common/ModalLock';
 
 /**
  * Photos and videos the customer attached to show the problem.
@@ -67,6 +68,7 @@ const IssueMediaGallery = ({ photos = [], videos = [], title = 'Problem photos &
 
       {active && createPortal(
         <div className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center" onClick={() => setActiveIndex(null)}>
+          <ModalLock />
           <button
             type="button"
             onClick={() => setActiveIndex(null)}

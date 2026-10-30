@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiTool, FiPlus, FiMinus, FiCheck, FiX, FiEdit3, FiInfo } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { bookingService } from '../../../../services/bookingService';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const OPEN_STATUSES = ['visited', 'in_progress', 'work_done'];
 const MAX_QTY = 10;
@@ -181,6 +182,7 @@ const RepairServicesCard = ({ booking, onSaved }) => {
               className="fixed inset-0 z-[10000] bg-black/50 flex items-end sm:items-center justify-center"
               onClick={() => !saving && setSheetOpen(false)}
             >
+              <ModalLock />
               <motion.div
                 role="dialog"
                 aria-modal="true"

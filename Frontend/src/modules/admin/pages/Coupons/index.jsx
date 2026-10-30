@@ -8,6 +8,7 @@ import {
 import { toast } from 'react-hot-toast';
 import api from '../../../../services/api';
 import AdminZoneSelect from '../../components/AdminZoneSelect';
+import ModalLock from '../../../../components/common/ModalLock';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ const CouponModal = ({ coupon, categories, cities, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <ModalLock />
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
@@ -321,6 +323,7 @@ const StatsModal = ({ couponId, couponCode, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <ModalLock />
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
       >
@@ -690,6 +693,7 @@ const AdminCoupons = () => {
       <AnimatePresence>
         {deleteId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <ModalLock />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
               <div className="flex items-center gap-3 mb-4">

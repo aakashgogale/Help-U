@@ -10,6 +10,7 @@ import { CashCollectionModal, ConfirmDialog } from '../../components/common';
 import { WorkCompletionModal } from '../../components/common';
 import workerWalletService from '../../../../services/workerWalletService';
 import { toast } from 'react-hot-toast';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const BookingTimeline = () => {
   const { id } = useParams();
@@ -485,6 +486,7 @@ const BookingTimeline = () => {
       {/* Visit OTP Modal */}
       {isVisitModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <ModalLock />
           <div className="bg-white w-full max-w-sm rounded-2xl p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold">Verify Self Visit</h3>

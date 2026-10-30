@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiX, FiCheck, FiMapPin, FiUsers, FiBell, FiClock, FiMinimize2, FiRefreshCw } from 'react-icons/fi';
 import { themeColors } from '../../../../../theme';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const NAVY = themeColors.button;
 const AMBER = themeColors.brand.yellow;
@@ -196,6 +197,7 @@ const WorkerSearchModal = ({ isOpen, onClose, currentStep, acceptedWorker, onRet
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm">
+      <ModalLock />
       <style>{RADAR_STYLES}</style>
 
       <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden relative max-h-[94vh] overflow-y-auto">

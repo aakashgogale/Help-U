@@ -9,6 +9,7 @@ import waterPurifierIcon from '../../../../../assets/images/icons/services/water
 import refrigeratorIcon from '../../../../../assets/images/icons/services/refrigerator-icon.png';
 import microwaveIcon from '../../../../../assets/images/icons/services/microwave-icon.png';
 import { themeColors } from '../../../../../theme';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const ACApplianceModal = React.memo(({ isOpen, onClose, location, cartCount }) => {
   const navigate = useNavigate();
@@ -69,6 +70,7 @@ const ACApplianceModal = React.memo(({ isOpen, onClose, location, cartCount }) =
   const modalContent = (
     <>
       {/* Backdrop */}
+      <ModalLock />
       <div
         className={`fixed inset-0 bg-black/50 z-[9998] transition-opacity ${isClosing ? 'opacity-0' : 'opacity-100'
           }`}

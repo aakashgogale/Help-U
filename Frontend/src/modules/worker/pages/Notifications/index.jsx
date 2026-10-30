@@ -11,6 +11,7 @@ import {
   deleteNotification,
   deleteAllNotifications
 } from '../../services/notificationService';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -301,6 +302,7 @@ const Notifications = () => {
       {/* Confirmation Modal */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <ModalLock />
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-scale-in">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">

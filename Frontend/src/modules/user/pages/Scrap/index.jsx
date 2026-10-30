@@ -13,6 +13,7 @@ import { useConfig } from '../../../../context/ConfigContext';
 import PageHeader from '../../components/layout/PageHeader';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
 import WeighedBox from './WeighedBox';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const ACTIVE_STATUSES = ['pending', 'offered', 'accepted', 'weighed'];
 const HISTORY_STATUSES = ['completed', 'cancelled', 'rejected'];
@@ -422,6 +423,7 @@ const UserScrapPage = () => {
         <AnimatePresence>
           {selectedScrap && (
             <>
+              <ModalLock />
               <motion.div
                 key="scrap-backdrop"
                 initial={{ opacity: 0 }}

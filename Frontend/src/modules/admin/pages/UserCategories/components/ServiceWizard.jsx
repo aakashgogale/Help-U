@@ -43,6 +43,7 @@ import { configService } from "../../../../../services/configService";
 import { slugify, toAssetUrl } from "../utils";
 import ToggleSwitch from "./ToggleSwitch";
 import IconUploadWithPreview from "../../../components/IconUploadWithPreview";
+import ModalLock from '../../../../../components/common/ModalLock';
 
 // Pricing Types supported by backend
 const PRICING_TYPES = [
@@ -1118,6 +1119,7 @@ export const ServiceWizard = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs select-none">
+      <ModalLock />
       <div id="service-wizard-modal" className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* ─── MODAL HEADER & STEPPER ──────────────────────────────────────── */}
         <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white px-5 py-4 shrink-0">
@@ -2720,6 +2722,7 @@ export const ServiceWizard = ({
         {/* ─── INLINE MODAL 1: CREATE CATEGORY ─────────────────────────────── */}
         {showCreateCategoryModal && (
           <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <ModalLock />
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xl w-full max-h-[85vh] overflow-y-auto border border-gray-200 space-y-4 animate-in zoom-in-95">
               <div className="flex items-center justify-between border-b pb-3 border-gray-100">
                 <h3 className="text-base font-bold text-gray-900">+ Create New Category</h3>
@@ -2886,6 +2889,7 @@ export const ServiceWizard = ({
         {/* ─── INLINE MODAL 2: CREATE SUB-CATEGORY ─────────────────────────── */}
         {showCreateSubCategoryModal && (
           <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <ModalLock />
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-200 space-y-4 animate-in zoom-in-95">
               <div className="flex items-center justify-between border-b pb-3 border-gray-100">
                 <h3 className="text-base font-bold text-gray-900">+ Add New Sub-category</h3>
@@ -2994,6 +2998,7 @@ export const ServiceWizard = ({
         {/* ─── INLINE MODAL 3: CREATE BRAND (Appliance) ────────────────────── */}
         {showCreateBrandModal && (
           <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <ModalLock />
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-200 space-y-4 animate-in zoom-in-95">
               <div className="flex items-center justify-between border-b pb-3 border-gray-100">
                 <h3 className="text-base font-bold text-gray-900">+ Add New Brand</h3>
@@ -3090,6 +3095,7 @@ export const ServiceWizard = ({
         {/* ─── INLINE MODAL 4: CREATE SECTION (Non-Appliance) ──────────────── */}
         {showCreateSectionModal && (
           <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <ModalLock />
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-200 space-y-4 animate-in zoom-in-95">
               <div className="flex items-center justify-between border-b pb-3 border-gray-100">
                 <h3 className="text-base font-bold text-gray-900">+ Add New Section</h3>
@@ -3186,6 +3192,7 @@ export const ServiceWizard = ({
         {/* ─── UNSAVED CHANGES CONFIRMATION MODAL ──────────────────────────── */}
         {showDiscardConfirm && (
           <div className="fixed inset-0 z-[10001] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <ModalLock />
             <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200 text-center animate-in zoom-in-95">
               <FiAlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
               <h3 className="text-base font-bold text-gray-900">Discard unsaved changes?</h3>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiBell, FiCheck, FiX, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import useModalLock from '../../../../hooks/useModalLock';
 
 // NotificationWindow now controlled by parent (AdminHeader)
 const NotificationWindow = ({
@@ -15,6 +16,9 @@ const NotificationWindow = ({
 }) => {
   const navigate = useNavigate();
   const windowRef = useRef(null);
+
+  // Below lg the window is a full-screen overlay; on desktop it is a dropdown and the page keeps scrolling
+  useModalLock(isOpen && window.matchMedia('(max-width: 1023px)').matches);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
 

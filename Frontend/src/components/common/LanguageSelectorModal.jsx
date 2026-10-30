@@ -4,6 +4,7 @@ import { FiGlobe, FiX, FiCheck } from 'react-icons/fi';
 import { useLanguage } from '../../context/LanguageContext';
 import { userAuthService } from '../../services/authService';
 import { toast } from 'react-hot-toast';
+import ModalLock from './ModalLock';
 
 const LanguageSelectorModal = ({ isOpen, onClose }) => {
   const {
@@ -42,6 +43,7 @@ const LanguageSelectorModal = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <ModalLock />
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}

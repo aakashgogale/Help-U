@@ -5,6 +5,7 @@ import { workerAuthService } from '../../../../services/authService';
 import { workerTheme as themeColors } from '../../../../theme';
 import Header from '../../components/layout/Header';
 import { useRegistrationConfig } from '../../utils/registrationConfig';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const ProfileDetails = () => {
   const navigate = useNavigate();
@@ -393,6 +394,7 @@ const ProfileDetails = () => {
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setPreviewDoc(null)}
         >
+          <ModalLock />
           <div
             className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}

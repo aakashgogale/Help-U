@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../../../services/api';
 import AdminZoneSelect from '../../components/AdminZoneSelect';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -298,6 +299,7 @@ const Notifications = () => {
       <AnimatePresence>
         {isBroadcastOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <ModalLock />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

@@ -5,6 +5,7 @@ import { FiSearch, FiUser, FiPhone, FiMail, FiMapPin, FiCheckCircle, FiSlash, Fi
 import { toast } from 'react-hot-toast';
 import { adminUserService } from '../../../../services/adminUserService';
 import DataExportButton from '../../components/common/DataExportButton';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const formatSavedAddress = (addresses = []) => {
   if (!Array.isArray(addresses) || addresses.length === 0) return 'No saved address';
@@ -370,6 +371,7 @@ const AllUsers = () => {
       <AnimatePresence>
         {selectedWalletUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

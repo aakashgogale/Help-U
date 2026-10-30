@@ -29,6 +29,7 @@ import {
   deletePartnerRegistrationField,
   seedDefaultPartnerRegistrationFields
 } from '../../services/workerService';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const PartnerRegistrationFields = () => {
   const [fields, setFields] = useState([]);
@@ -625,6 +626,7 @@ const PartnerRegistrationFields = () => {
       {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <ModalLock />
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
               <div className="flex items-center gap-2">
@@ -858,6 +860,7 @@ const PartnerRegistrationFields = () => {
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <ModalLock />
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-100">
             <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-100">
               <FiTrash2 className="w-6 h-6" />

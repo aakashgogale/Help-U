@@ -31,6 +31,7 @@ import { toast } from 'react-hot-toast';
 import { loginBannerService } from '../../services/loginBannerService';
 import { serviceService } from '../../../../services/catalogService';
 import Logo from '../../../../components/common/Logo';
+import ModalLock from '../../../../components/common/ModalLock';
 
 // Gradient presets mapping
 const GRADIENTS = [
@@ -1010,6 +1011,7 @@ const LoginBannersAdmin = () => {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

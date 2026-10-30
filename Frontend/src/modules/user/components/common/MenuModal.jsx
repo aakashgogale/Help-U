@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FiX } from 'react-icons/fi';
 import { gsap } from 'gsap';
 import { animateModalIn, animateModalOut } from '../../../../utils/gsapAnimations';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const MenuModal = React.memo(({ isOpen, onClose, onCategoryClick, categories = [] }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -49,6 +50,7 @@ const MenuModal = React.memo(({ isOpen, onClose, onCategoryClick, categories = [
   return (
     <>
       {/* Backdrop */}
+      <ModalLock />
       <div
         ref={backdropRef}
         className="fixed inset-0 bg-black/85 z-[9998]"

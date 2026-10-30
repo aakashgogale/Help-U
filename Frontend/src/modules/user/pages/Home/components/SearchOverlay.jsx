@@ -6,6 +6,7 @@ import { FiSearch, FiArrowLeft, FiClock, FiTrendingUp, FiX, FiLayers, FiChevronR
 import { publicCatalogService } from '../../../../../services/catalogService';
 import { useCity } from '../../../../../context/CityContext';
 import { themeColors } from '../../../../../theme';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -215,6 +216,7 @@ const SearchOverlay = ({ isOpen, onClose, categories = [], onCategoryClick, voic
           transition={{ duration: 0.2 }}
           className="fixed inset-0 bg-white z-[9999] flex flex-col"
         >
+          <ModalLock />
           {/* Header */}
           <div className="flex items-center gap-3 p-4 border-b border-gray-100 shadow-sm bg-white">
             <button

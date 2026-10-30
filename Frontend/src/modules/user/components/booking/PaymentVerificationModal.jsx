@@ -3,6 +3,7 @@ import { FiCheckCircle, FiShield, FiAlertCircle, FiPackage, FiX, FiInfo, FiCredi
 import { motion, AnimatePresence } from 'framer-motion';
 import { configService } from '../../../../services/configService';
 import { walletService } from '../../../../services/walletService';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline, onPayWallet }) => {
   const [isOnlinePaymentEnabled, setIsOnlinePaymentEnabled] = useState(true);
@@ -113,6 +114,7 @@ const PaymentVerificationModal = ({ isOpen, onClose, booking, onPayOnline, onPay
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+        <ModalLock />
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

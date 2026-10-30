@@ -12,6 +12,7 @@ import { z } from "zod";
 import flutterBridge from '../../../../utils/flutterBridge';
 import useBookingConfig from '../../../../hooks/useBookingConfig';
 import { useRegistrationConfig } from '../../utils/registrationConfig';
+import ModalLock from '../../../../components/common/ModalLock';
 
 // Zod schema
 const workerProfileSchema = z.object({
@@ -1201,6 +1202,7 @@ const EditProfile = () => {
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setPreviewModalDoc(null)}
         >
+          <ModalLock />
           <div
             className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative animate-scale-up"
             onClick={(e) => e.stopPropagation()}

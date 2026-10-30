@@ -598,6 +598,10 @@ const Home = () => {
     }
   };
 
+  // Every block fades in by itself. They used to wait for the page container to start them, and the
+  // blocks that mounted a moment after it (the admin's category sections) were left hidden forever.
+  const reveal = { variants: itemVariants, initial: initialSnapshot ? false : 'hidden', animate: 'visible' };
+
   if (loading) {
     return (
       <div className="h-[calc(100dvh-var(--bottom-nav-height,96px)-1rem)] overflow-hidden">
@@ -615,7 +619,7 @@ const Home = () => {
         variants={containerVariants}
       >
         <motion.div
-          variants={itemVariants}
+          {...reveal}
           className="sticky top-0 z-50 bg-canvas/90 backdrop-blur-xl w-full max-w-full overflow-x-clip"
         >
           <div className="max-w-screen-xl mx-auto w-full">
@@ -655,7 +659,7 @@ const Home = () => {
             <>
               {/* Hero Section - Promo Carousel */}
               {homeContent?.isPromosVisible !== false && (homeContent?.promos || []).length > 0 && (
-                <motion.section variants={itemVariants} className="relative z-0 w-full max-w-full overflow-hidden min-w-0">
+                <motion.section {...reveal} className="relative z-0 w-full max-w-full overflow-hidden min-w-0">
                   <PromoCarousel
                     promos={(homeContent?.promos || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(promo => ({
                       id: promo.id || promo._id,
@@ -676,7 +680,7 @@ const Home = () => {
 
               {/* Categories Section */}
               {homeContent?.isCategoriesVisible !== false && (
-                <motion.section variants={itemVariants} className="relative w-full max-w-full overflow-hidden min-w-0">
+                <motion.section {...reveal} className="relative w-full max-w-full overflow-hidden min-w-0">
                   <ServiceCategories
                     categories={categories}
                     onCategoryClick={handleCategoryClick}
@@ -690,7 +694,7 @@ const Home = () => {
 
               {/* Scrap banner, right under the categories so it is seen without scrolling */}
               {(isScrapEnabled && homeContent?.isScrapVisible !== false) && (
-                <motion.section variants={itemVariants} className="pt-3">
+                <motion.section {...reveal} className="pt-3">
                   <ScrapPromotionCard onClick={() => navigate('/user/scrap')} />
                 </motion.section>
               )}
@@ -708,7 +712,7 @@ const Home = () => {
                   : [];
                 if (items.length === 0) return null;
                 return (
-                  <motion.section variants={itemVariants} className="relative w-full max-w-full overflow-hidden min-w-0">
+                  <motion.section {...reveal} className="relative w-full max-w-full overflow-hidden min-w-0">
                     <SpotlightCarousel items={items} onItemClick={handlePromoClick} />
                   </motion.section>
                 );
@@ -734,7 +738,7 @@ const Home = () => {
                 const items = adminItems;
                 if (items.length === 0) return null;
                 return (
-                  <motion.div variants={itemVariants}>
+                  <motion.div {...reveal}>
                     <Suspense fallback={<div className="h-44 bg-gray-50 animate-pulse rounded-2xl mx-4" />}>
                       <NewAndNoteworthy
                         services={items}
@@ -767,7 +771,7 @@ const Home = () => {
                 const items = adminBooked;
                 if (items.length === 0) return null;
                 return (
-                  <motion.div variants={itemVariants}>
+                  <motion.div {...reveal}>
                     <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                       <MostBookedServices
                         services={items}
@@ -789,7 +793,7 @@ const Home = () => {
                 // Admin's first banner is injected right above the "Electric" section
                 const isElectric = /electric|electrician/i.test(section.title || '');
                 const electricBanner = isElectric && homeContent?.isBannersVisible !== false && homeContent?.banners?.[0]?.imageUrl ? (
-                  <motion.div key={`banner-above-${section._id || sIdx}`} variants={itemVariants}>
+                  <motion.div key={`banner-above-${section._id || sIdx}`} {...reveal}>
                     <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                       <Banner
                         imageUrl={toAssetUrl(homeContent.banners[0].imageUrl)}
@@ -810,7 +814,7 @@ const Home = () => {
                   return (
                     <React.Fragment key={section._id || sIdx}>
                       {electricBanner}
-                      <motion.div variants={itemVariants}>
+                      <motion.div {...reveal}>
                         <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                           <ApplianceRepairSection
                             title="Appliance repair & service"
@@ -850,7 +854,7 @@ const Home = () => {
                 return (
                   <React.Fragment key={section._id || sIdx}>
                     {electricBanner}
-                    <motion.div variants={itemVariants}>
+                    <motion.div {...reveal}>
                       <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                         <ServiceSectionWithRating
                           title={section.title}
@@ -896,7 +900,7 @@ const Home = () => {
 
               {/* Dynamic Banner 1 (banners[1]) — banners[0] is injected above Electric above */}
               {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[1]?.imageUrl) && (
-                <motion.div variants={itemVariants}>
+                <motion.div {...reveal}>
                   <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                     <Banner
                       imageUrl={toAssetUrl(homeContent.banners[1].imageUrl)}
@@ -918,7 +922,7 @@ const Home = () => {
 
               {/* Curated Services */}
               {homeContent?.isCuratedVisible !== false && (homeContent?.curated || []).filter(item => item.title && (item.gifUrl || item.imageUrl || item.youtubeUrl)).length > 0 && (
-                <motion.div variants={itemVariants}>
+                <motion.div {...reveal}>
                   <Suspense fallback={<div className="h-40 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                     <CuratedServices
                       services={(homeContent?.curated || [])
@@ -940,7 +944,7 @@ const Home = () => {
 
               {/* Dynamic Banner 2 (banners[2]) */}
               {homeContent?.isBannersVisible !== false && Boolean(homeContent?.banners?.[2]?.imageUrl) && (
-                <motion.div variants={itemVariants}>
+                <motion.div {...reveal}>
                   <Suspense fallback={<div className="mx-4 aspect-3/1 bg-slate-100 animate-pulse rounded-[22px]" />}>
                     <Banner
                       imageUrl={toAssetUrl(homeContent.banners[2].imageUrl)}
@@ -957,7 +961,7 @@ const Home = () => {
               )}
 
               {/* Refer & Earn Section */}
-              <motion.div variants={itemVariants}>
+              <motion.div {...reveal}>
                 <Suspense fallback={<div className="h-32 bg-gray-50 animate-pulse rounded-xl mx-4" />}>
                   <ReferEarnSection onReferClick={handleReferClick} />
                 </Suspense>

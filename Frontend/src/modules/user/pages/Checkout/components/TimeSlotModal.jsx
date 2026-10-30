@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiArrowLeft, FiX } from 'react-icons/fi';
 import { themeColors } from '../../../../../theme';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const TimeSlotModal = ({
   isOpen,
@@ -50,6 +51,7 @@ const TimeSlotModal = ({
   return (
     <>
       {/* Backdrop */}
+      <ModalLock />
       <div
         className={`fixed inset-0 bg-black/50 z-50 transition-opacity ${isClosing ? 'opacity-0' : 'opacity-100'
           }`}

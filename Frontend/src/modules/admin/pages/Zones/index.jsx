@@ -27,6 +27,7 @@ import { toast } from "react-hot-toast";
 import zoneService from "../../services/zoneService";
 import { cityService } from "../../services/cityService";
 import { categoryService } from "../../../../services/catalogService";
+import ModalLock from '../../../../components/common/ModalLock';
 
 const LIBRARIES = ["places", "geometry"];
 
@@ -1066,6 +1067,7 @@ const ZonesPage = () => {
       {/* Create / Edit Slide-over Drawer (Only shown when NOT actively drawing to avoid blocking map) */}
       {isFormOpen && !isDrawing && (
         <div className="fixed inset-0 z-50 flex justify-end">
+          <ModalLock />
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" onClick={handleCloseForm} />
           <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
@@ -1385,6 +1387,7 @@ const ZonesPage = () => {
       {/* Quick Add City Modal */}
       {showAddCityModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <ModalLock />
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden p-5">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">

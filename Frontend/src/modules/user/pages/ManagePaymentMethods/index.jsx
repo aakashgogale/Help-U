@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { gsap } from 'gsap';
 import { FiArrowLeft, FiCreditCard, FiChevronRight, FiX } from 'react-icons/fi';
 import BottomNav from '../../components/layout/BottomNav';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const ManagePaymentMethods = () => {
   const navigate = useNavigate();
@@ -184,6 +185,7 @@ const ManagePaymentMethods = () => {
       {showAddCardModal && (
         <>
           {/* Backdrop */}
+          <ModalLock />
           <div
             ref={backdropRef}
             className="fixed inset-0 bg-black/50 z-50"

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiX } from 'react-icons/fi';
 import { themeColors } from '../../../../../theme';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const ServiceModal = ({ isOpen, onClose, service, location, cartCount }) => {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ const ServiceModal = ({ isOpen, onClose, service, location, cartCount }) => {
   return (
     <>
       {/* Backdrop */}
+      <ModalLock />
       <div
         className={`fixed inset-0 bg-black/50 z-50 transition-opacity ${
           isClosing ? 'opacity-0' : 'opacity-100'

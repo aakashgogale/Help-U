@@ -31,6 +31,7 @@ import {
   FiSmartphone,
 } from "react-icons/fi";
 import dashboardService from "../../services/dashboardService";
+import useModalLock from "../../../../hooks/useModalLock";
 import {
   getChildRoute,
   getVisibleMenu,
@@ -102,6 +103,8 @@ const CountBadge = ({ count, tone = "red" }) => {
 const AdminSidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  // The drawer (and its backdrop) only exists below lg; on desktop isOpen stays false
+  useModalLock(isOpen);
   const searchRef = useRef(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [query, setQuery] = useState("");

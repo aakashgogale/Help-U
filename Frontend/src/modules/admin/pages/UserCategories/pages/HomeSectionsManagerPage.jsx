@@ -25,6 +25,7 @@ import {
   serviceService,
 } from "../../../../../services/catalogService";
 import AdminZoneSelect from "../../../components/AdminZoneSelect";
+import ModalLock from '../../../../../components/common/ModalLock';
 
 /**
  * Home Sections Manager
@@ -522,6 +523,7 @@ const ItemModal = ({ open, section, initialForm, onClose, onSave, categories, se
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+      <ModalLock />
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-bold text-gray-900">
@@ -696,6 +698,7 @@ const ItemModal = ({ open, section, initialForm, onClose, onSave, categories, se
       {/* Nested card modal (card editor inside categorySections) */}
       {cardsEditing !== null && (
         <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
+          <ModalLock />
           <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
               <h3 className="text-lg font-bold text-gray-900">
@@ -846,6 +849,7 @@ const QuickCreateCatalogModal = ({ open, onClose, onCreated }) => {
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
+      <ModalLock />
       <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
           <div>

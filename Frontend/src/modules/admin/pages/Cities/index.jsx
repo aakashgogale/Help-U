@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { cityService } from '../../services/cityService';
 import { HiPlus, HiPencil, HiTrash, HiCheck, HiX } from 'react-icons/hi';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const CityManagement = () => {
   const [cities, setCities] = useState([]);
@@ -189,6 +190,7 @@ const CityManagement = () => {
       {/* Assuming we might want a simple overlay here if we don't use the common Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <ModalLock />
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h2 className="font-bold text-lg">{editingCity ? 'Edit City' : 'Add City'}</h2>

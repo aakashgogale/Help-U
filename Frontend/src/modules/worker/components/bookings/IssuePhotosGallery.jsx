@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiX, FiChevronLeft, FiChevronRight, FiImage } from 'react-icons/fi';
+import ModalLock from '../../../../components/common/ModalLock';
 
 /**
  * Photos the customer attached at checkout to show the problem.
@@ -53,6 +54,7 @@ const IssuePhotosGallery = ({ photos, title = 'Customer Photos', size = 'md', cl
           className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center"
           onClick={() => setActiveIndex(null)}
         >
+          <ModalLock />
           <button
             type="button"
             onClick={() => setActiveIndex(null)}

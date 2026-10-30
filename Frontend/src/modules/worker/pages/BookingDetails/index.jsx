@@ -32,6 +32,7 @@ import RescheduleModal from '../../../user/components/booking/RescheduleModal';
 import { canRequestReschedule } from '../../../../utils/reschedule';
 import { useAppNotifications } from '../../../../hooks/useAppNotifications';
 import { useLocationTracking } from '../../../../hooks/useLocationTracking';
+import ModalLock from '../../../../components/common/ModalLock';
 
 export default function BookingDetails() {
   const { id } = useParams();
@@ -1369,6 +1370,7 @@ export default function BookingDetails() {
       {/* Cancel job (before arrival) */}
       {cancelModal.open && (
         <div className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center" onClick={() => !cancelModal.submitting && setCancelModal({ open: false, reason: '', submitting: false })}>
+          <ModalLock />
           <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,var(--safe-bottom))]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900">Cancel this job?</h3>
             <p className="text-sm text-gray-500 mt-1">The customer will be matched with another professional. Frequent cancellations lower your ranking for new jobs.</p>

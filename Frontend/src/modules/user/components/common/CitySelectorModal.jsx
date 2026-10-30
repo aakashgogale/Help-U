@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiX, HiLocationMarker, HiCheck } from 'react-icons/hi';
 import { themeColors } from '../../../../theme';
 import { useCity } from '../../../../context/CityContext';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const CitySelectorModal = ({ isOpen, onClose }) => {
   const { cities, currentCity, selectCity } = useCity();
@@ -37,6 +38,7 @@ const CitySelectorModal = ({ isOpen, onClose }) => {
       {isOpen && (
         <>
           {/* Backdrop */}
+          <ModalLock />
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

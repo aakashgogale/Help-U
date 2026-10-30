@@ -5,6 +5,7 @@ import { bookingService } from '../../../../../services/bookingService';
 import bookingFeaturesService from '../../../../../services/bookingFeaturesService';
 import { compressImage, fileToBase64 } from '../../../../../utils/imageCompression';
 import flutterBridge from '../../../../../utils/flutterBridge';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const newId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -235,6 +236,7 @@ const IssuePhotosPicker = ({ photos, setPhotos, videos = [], setVideos, config =
 
       {showPhotoMenu && (
         <div className="fixed inset-0 z-[10050] flex items-end justify-center" onClick={() => setShowPhotoMenu(false)}>
+          <ModalLock />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative w-full max-w-lg bg-white rounded-t-2xl p-2 pb-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="pt-2 pb-3 flex justify-center">

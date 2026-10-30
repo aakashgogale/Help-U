@@ -24,6 +24,7 @@ import { userAuthService } from '../../../../services/authService';
 import { useCart } from '../../../../context/CartContext';
 import { useZone } from '../../../../context/ZoneContext';
 import LiveBookingCard from '../../components/booking/LiveBookingCard';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -1999,6 +2000,7 @@ const Checkout = () => {
       {/* Contact Details Edit Modal */}
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <ModalLock />
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-scale-in">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Update Contact Details</h3>
             <p className="text-sm text-gray-500 mb-4">These details will be used for this booking only.</p>

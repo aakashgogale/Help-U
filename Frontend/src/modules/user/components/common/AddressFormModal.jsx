@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { FiX } from 'react-icons/fi';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const AddressFormModal = ({ isOpen, onClose, address, onSave }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -102,6 +103,7 @@ const AddressFormModal = ({ isOpen, onClose, address, onSave }) => {
   return (
     <>
       {/* Backdrop */}
+      <ModalLock />
       <div
         ref={backdropRef}
         className="fixed inset-0 bg-black/50 z-50"

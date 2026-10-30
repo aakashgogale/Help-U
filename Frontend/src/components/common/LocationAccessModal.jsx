@@ -4,6 +4,7 @@ import { FiMapPin, FiNavigation, FiX, FiCheckCircle, FiShield, FiSettings } from
 import { themeColors } from '../../theme';
 import { toast } from 'react-hot-toast';
 import flutterBridge from '../../utils/flutterBridge';
+import ModalLock from './ModalLock';
 
 const LocationAccessModal = ({
   isOpen,
@@ -87,6 +88,7 @@ const LocationAccessModal = ({
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+        <ModalLock />
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}

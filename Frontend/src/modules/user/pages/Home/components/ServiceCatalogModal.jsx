@@ -30,6 +30,7 @@ import CategoryTile from '../../../components/common/CategoryTile';
 import { publicCatalogService } from '../../../../../services/catalogService';
 import { getCategoryIllustration } from '../../../utils/categoryIcons';
 import { toast } from 'react-hot-toast';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 // Helper to sanitize asset URLs
 const toAssetUrl = (url) => {
@@ -1119,6 +1120,7 @@ const ServiceCatalogModal = React.memo(({
           className="fixed inset-0 z-[10000] bg-white flex flex-col w-full max-w-lg mx-auto overflow-hidden select-none shadow-2xl"
           style={{ height: '100dvh' }}
         >
+          <ModalLock />
           {/* ========================================================================= */}
           {/* 1. TOP STICKY BAR (Clean, modern, crisp) */}
           {/* ========================================================================= */}

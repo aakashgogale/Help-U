@@ -14,6 +14,7 @@ import { useConfig } from '../../../../context/ConfigContext';
 import PageHeader from '../../components/layout/PageHeader';
 import ScrapBasket from './ScrapBasket';
 import { basketTotals, basketProblem, formatMoney } from './scrapEstimate';
+import ModalLock from '../../../../components/common/ModalLock';
 
 // Zod schema for Scrap
 const scrapSchema = z.object({
@@ -460,6 +461,7 @@ const AddScrap = () => {
       <AnimatePresence>
         {showSourceSheet && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

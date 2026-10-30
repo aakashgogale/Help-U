@@ -10,6 +10,7 @@ import api from '../../../../services/api';
 import flutterBridge from '../../../../utils/flutterBridge';
 
 import { z } from "zod";
+import ModalLock from '../../../../components/common/ModalLock';
 
 // Zod schema
 const profileSchema = z.object({
@@ -442,6 +443,7 @@ const UpdateProfile = () => {
       <AnimatePresence>
         {showSourceSheet && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center">
+            <ModalLock />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import bookingFeaturesService from '../../services/bookingFeaturesService';
 import EvidencePicker from './EvidencePicker';
 import { uploadedUrls, isUploading } from './disputeUi';
+import ModalLock from '../common/ModalLock';
 
 const NAVY = '#163B66';
 
@@ -52,6 +53,7 @@ const RaiseDisputeModal = ({ role, bookingId, info, isOpen, onClose, onRaised })
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <ModalLock />
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}

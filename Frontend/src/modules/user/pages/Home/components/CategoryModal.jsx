@@ -8,6 +8,7 @@ import { publicCatalogService } from '../../../../../services/catalogService';
 import { optimizeCloudinaryUrl } from '../../../../../utils/cloudinaryOptimize';
 import { useCart } from '../../../../../context/CartContext';
 import { toast } from 'react-hot-toast';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const toAssetUrl = (url) => {
   if (!url) return '';
@@ -262,6 +263,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
       {isOpen && (
         <>
           {/* Backdrop */}
+          <ModalLock />
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -543,6 +545,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                 className="fixed inset-0 z-[10000] bg-black/50 flex items-end sm:items-center justify-center"
                 onClick={() => setOtherPrompt(null)}
               >
+                <ModalLock />
                 <motion.form
                   initial={{ y: 40, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -600,6 +603,7 @@ const CategoryModal = React.memo(({ isOpen, onClose, category, location, cartCou
                 className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center"
                 onClick={() => setHoursPickerSvc(null)}
               >
+                <ModalLock />
                 <motion.div
                   initial={{ y: 40, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}

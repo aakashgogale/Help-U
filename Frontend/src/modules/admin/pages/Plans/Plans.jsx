@@ -21,6 +21,7 @@ import {
   FiAlertCircle
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import ModalLock from '../../../../components/common/ModalLock';
 
 const Plans = () => {
   const [plans, setPlans] = useState([]);
@@ -678,6 +679,7 @@ const Plans = () => {
       {/* Create / Edit Plan Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-y-auto">
+          <ModalLock />
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 my-8 flex flex-col max-h-[92vh]">
             {/* Modal Header */}
             <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/70 sticky top-0 z-10">

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiX, FiLoader } from 'react-icons/fi';
 import FieldControl from '../../../../../components/common/DetailFieldControl';
+import ModalLock from '../../../../../components/common/ModalLock';
 
 const isBlank = (v) => v === undefined || v === null || String(v).trim() === '';
 
@@ -36,6 +37,7 @@ const SheetBody = ({ request, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[10050] flex items-end justify-center">
+      <ModalLock />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
